@@ -4,9 +4,9 @@ import { AuthProvider } from "@/context/AuthContext";
 
 /* ── SEO Metadata ── */
 export const metadata: Metadata = {
-  title: "ARTISTANT — India's music economy, rebuilt.",
+  title: "ARTISTANT — India's live economy, rebuilt.",
   description:
-    "India runs on music. The infrastructure to hire it doesn't exist yet. We're building it. Join the waitlist.",
+    "India runs on live events. The infrastructure to hire it doesn't exist yet. We're building it. Join the waitlist.",
   keywords: [
     "ArtisTant",
     "live entertainment",
@@ -17,18 +17,18 @@ export const metadata: Metadata = {
     "Bangalore artists",
   ],
   openGraph: {
-    title: "ARTISTANT — India's music economy, rebuilt.",
+    title: "ARTISTANT — India's live economy, rebuilt.",
     description:
-      "India runs on music. The infrastructure to hire it doesn't exist yet. We're building it.",
+      "India runs on live events. The infrastructure to hire it doesn't exist yet. We're building it.",
     type: "website",
     siteName: "Artistant",
     locale: "en_IN",
   },
   twitter: {
     card: "summary_large_image",
-    title: "ARTISTANT — India's music economy, rebuilt.",
+    title: "ARTISTANT — India's live economy, rebuilt.",
     description:
-      "India runs on music. The infrastructure to hire it doesn't exist yet. We're building it.",
+      "India runs on live events. The infrastructure to hire it doesn't exist yet. We're building it.",
   },
   robots: "index, follow",
 };
