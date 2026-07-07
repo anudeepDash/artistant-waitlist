@@ -6,8 +6,8 @@ type Scenario = {
   id: string;
   chaosTitle: string;
   cureTitle: string;
-  chaos: { align: string; text: string }[];
-  cureNode?: React.ReactNode;
+  chaos: { align: 'left' | 'right'; text: string; }[];
+  cureNode: React.ReactNode;
   cureMockup?: string;
   mockupPos?: string;
 };

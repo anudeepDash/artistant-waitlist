@@ -9,6 +9,7 @@ import {
   signUpWithEmail,
 } from '@/lib/auth';
 import { reserveUsername, type ArtistCategory } from '@/lib/waitlist';
+import { sendWelcomeEmailAction } from '@/lib/email-actions';
 import { auth, isFirebaseConfigured } from '@/lib/firebase/client';
 import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import SuccessConfirmation from '@/components/SuccessConfirmation';
@@ -262,6 +263,14 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
         genres: selectedGenres,
         ...(resolvedPhone ? { phone: resolvedPhone } : {}),
       });
+
+      // Trigger welcome email notification in the background
+      sendWelcomeEmailAction({
+        email: resolvedEmail,
+        name: pendingUser.displayName ?? resolvedEmail ?? normalised,
+        username: normalised,
+      }).catch(err => console.error("Error sending welcome email:", err));
+
       setReservedUsername(normalised);
       setStep('success');
     } catch (err: any) {

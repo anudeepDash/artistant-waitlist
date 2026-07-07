@@ -4,7 +4,10 @@ import { AuthProvider } from "@/context/AuthContext";
 
 /* ── SEO Metadata ── */
 export const metadata: Metadata = {
-  title: "ARTISTANT — India's live economy, rebuilt.",
+  title: {
+    template: "%s | Artistant",
+    default: "Home | Artistant",
+  },
   description:
     "India runs on live events. The infrastructure to hire it doesn't exist yet. We're building it. Join the waitlist.",
   keywords: [

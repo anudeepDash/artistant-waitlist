@@ -15,10 +15,11 @@ interface NavbarProps {
 interface NavLink {
   label: string;
   /** Target section ID (without the #) */
-  sectionId: string;
+  sectionId?: string;
+  href?: string;
 }
 
-/** Centre nav links — smooth-scroll to corresponding <section id="..."> */
+/** Centre nav links — smooth-scroll to corresponding <section id="..."> or external route */
 const NAV_LINKS: NavLink[] = [
   { label: 'Features', sectionId: 'features' },
   { label: 'Exclusives', sectionId: 'exclusives' },
@@ -102,37 +103,49 @@ const Navbar = ({ onCtaClick }: NavbarProps) => {
             e.preventDefault();
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
-          className="shrink-0 flex items-center gap-2"
+          className="shrink-0 flex items-center"
         >
           <img
-            src="/logo_a.png"
-            alt=""
-            className="w-7 h-7 object-contain"
-            aria-hidden="true"
+            src="/logo_wordmark.png"
+            alt="ArtisTant"
+            className="h-10 md:h-14 w-auto object-contain"
           />
-          <span className="gradient-text font-display text-xl md:text-2xl font-bold tracking-tight select-none">
-            ArtisTant
-          </span>
         </a>
 
         {/* ── CENTER: Desktop Nav Links ───────────── */}
         <ul className="hidden md:flex items-center gap-8">
           {NAV_LINKS.map((link) => (
-            <li key={link.sectionId}>
-              <button
-                type="button"
-                onClick={() => scrollToSection(link.sectionId)}
-                className="
-                  relative font-body text-sm text-text-secondary
-                  hover:text-text-primary transition-colors duration-200
-                  after:absolute after:left-0 after:-bottom-1
-                  after:h-[2px] after:w-0 after:rounded-full
-                  after:bg-brand-orange after:transition-all after:duration-300
-                  hover:after:w-full
-                "
-              >
-                {link.label}
-              </button>
+            <li key={link.label}>
+              {link.href ? (
+                <a
+                  href={link.href}
+                  className="
+                    relative font-body text-sm text-text-secondary
+                    hover:text-text-primary transition-colors duration-200
+                    after:absolute after:left-0 after:-bottom-1
+                    after:h-[2px] after:w-0 after:rounded-full
+                    after:bg-brand-orange after:transition-all after:duration-300
+                    hover:after:w-full
+                  "
+                >
+                  {link.label}
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => scrollToSection(link.sectionId!)}
+                  className="
+                    relative font-body text-sm text-text-secondary
+                    hover:text-text-primary transition-colors duration-200
+                    after:absolute after:left-0 after:-bottom-1
+                    after:h-[2px] after:w-0 after:rounded-full
+                    after:bg-brand-orange after:transition-all after:duration-300
+                    hover:after:w-full
+                  "
+                >
+                  {link.label}
+                </button>
+              )}
             </li>
           ))}
         </ul>
@@ -203,19 +216,35 @@ const Navbar = ({ onCtaClick }: NavbarProps) => {
           >
             <div className="flex flex-col gap-1 p-4">
               {NAV_LINKS.map((link) => (
-                <button
-                  key={link.sectionId}
-                  type="button"
-                  onClick={() => scrollToSection(link.sectionId)}
-                  className="
-                    w-full text-left px-4 py-3 rounded-lg
-                    font-body text-sm text-text-secondary
-                    hover:text-text-primary hover:bg-bg-card/50
-                    transition-colors duration-200
-                  "
-                >
-                  {link.label}
-                </button>
+                link.href ? (
+                  <a
+                    key={link.label}
+                    href={link.href}
+                    className="
+                      w-full text-left px-4 py-3 rounded-lg
+                      font-body text-sm text-text-secondary
+                      hover:text-text-primary hover:bg-bg-card/50
+                      transition-colors duration-200
+                      block
+                    "
+                  >
+                    {link.label}
+                  </a>
+                ) : (
+                  <button
+                    key={link.sectionId}
+                    type="button"
+                    onClick={() => scrollToSection(link.sectionId!)}
+                    className="
+                      w-full text-left px-4 py-3 rounded-lg
+                      font-body text-sm text-text-secondary
+                      hover:text-text-primary hover:bg-bg-card/50
+                      transition-colors duration-200
+                    "
+                  >
+                    {link.label}
+                  </button>
+                )
               ))}
 
               {/* CTA inside mobile menu */}

@@ -1,46 +1,47 @@
-@import url("https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Geist+Mono:wght@400;500;600;700&family=Geist:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
 /* ============================================
    ArtisTant Waitlist — globals.css
-   Typography: Big Shoulders + Instrument Serif
-   Theme: Deep Navy + Orange→Purple
+   Typography: Space Grotesk + Inter
+   Theme: Onyx Black + Electric Indigo
    ============================================ */
 
 @theme {
-  --color-bg: #0B1120;
-  --color-bg-soft: #111827;
-  --color-bg-card: #151E30;
-  --color-line: #1E2A42;
-  --color-line-soft: #172035;
+  --color-bg: #121212;
+  --color-bg-soft: #161616;
+  --color-bg-card: #1E1E1E;
+  --color-line: rgba(255, 255, 255, 0.1);
+  --color-line-soft: rgba(255, 255, 255, 0.05);
   --color-ink: #F0EFF4;
   --color-ink-2: #9BA4B8;
   --color-ink-3: #5C6680;
   --color-brand: #F25A2B;
   --color-brand-ink: #ffffff;
-  --color-hot: #ff5a5f;
+  --color-hot: #FF4B4B;
 
-  --font-display: "Big Shoulders Display", "Arial Narrow", system-ui, sans-serif;
-  --font-serif: "Instrument Serif", Georgia, serif;
-  --font-body: "Geist", "Helvetica Neue", system-ui, sans-serif;
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-serif: "Space Grotesk", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, monospace;
+  --font-grotesk: "Space Grotesk", system-ui, sans-serif;
 }
 
 :root {
-  --bg: #0B1120;
-  --bg-2: #0E1525;
-  --bg-card: #131C2E;
-  --bg-card-hover: #182338;
+  --bg: #121212;
+  --bg-2: #161616;
+  --bg-card: #1E1E1E;
+  --bg-card-hover: #262626;
   --ink: #F0EFF4;
   --ink-2: #9BA4B8;
   --ink-3: #5C6680;
-  --line: #1E2A42;
-  --line-soft: #172035;
+  --line: rgba(255, 255, 255, 0.1);
+  --line-soft: rgba(255, 255, 255, 0.05);
   --brand-1: #F25A2B;
   --brand-2: #D4567A;
   --brand-3: #7C5CFF;
   --brand-4: #6B7CDB;
-  --hot: #FF5A5F;
+  --hot: #FF4B4B;
   --gutter: clamp(20px, 5vw, 80px);
   color-scheme: dark;
 }
@@ -50,7 +51,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; background: var(--bg); }
   body {
-    font-family: "Geist", "Helvetica Neue", system-ui, sans-serif;
+    font-family: "Inter", system-ui, sans-serif;
     font-size: 17px;
     line-height: 1.5;
     color: var(--ink);
@@ -65,7 +66,7 @@
 
 /* ═══ BRAND GRADIENT TEXT ═══ */
 .brand-text {
-  background: linear-gradient(135deg, #F25A2B 0%, #D4567A 40%, #7C5CFF 75%, #6B7CDB 100%);
+  background: linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -77,14 +78,11 @@
   letter-spacing: -0.02em;
 }
 .logo-typo .artis {
-  background: linear-gradient(135deg, #F25A2B 0%, #D4567A 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--ink);
   display: inline-block;
 }
 .logo-typo .tant {
-  background: linear-gradient(135deg, #7C5CFF 0%, #6B7CDB 100%);
+  background: linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -94,7 +92,7 @@
 /* ═══ DISPLAY TYPOGRAPHY ═══ */
 .display {
   font-family: var(--font-display);
-  font-weight: 900;
+  font-weight: 700;
   letter-spacing: -0.025em;
   line-height: 0.9;
   text-transform: uppercase;
@@ -161,17 +159,18 @@
   padding: 8px var(--gutter);
   display: flex; align-items: center; justify-content: space-between;
   transition: all .3s ease;
-  border-bottom: 1px solid transparent;
+  background: transparent;
+  border-bottom: none;
 }
 .nav.scrolled {
-  background: rgba(11,17,32,0.88);
-  backdrop-filter: blur(20px) saturate(150%);
-  -webkit-backdrop-filter: blur(20px) saturate(150%);
-  border-bottom-color: var(--line);
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom: none;
 }
 .nav-logo {
   font-family: var(--font-display);
-  font-weight: 900;
+  font-weight: 700;
   font-size: 28px;
   letter-spacing: -0.02em;
   text-transform: none;
@@ -243,7 +242,7 @@
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
   font-family: var(--font-display);
-  font-weight: 900;
+  font-weight: 700;
   font-size: clamp(400px, 50vw, 800px);
   line-height: 0.8;
   text-transform: uppercase;
@@ -419,7 +418,7 @@
 
 .hero-headline {
   font-family: var(--font-display);
-  font-weight: 900;
+  font-weight: 700;
   letter-spacing: -0.035em;
   line-height: 0.95;
   font-size: clamp(36px, 7vw, 92px);
@@ -518,8 +517,7 @@
 }
 .section-heading {
   font-family: var(--font-display);
-  font-weight: 900;
-  text-transform: uppercase;
+  font-weight: 700;
   font-size: clamp(32px, 5vw, 64px);
   line-height: 0.95;
   letter-spacing: -0.025em;
@@ -559,7 +557,7 @@
 .stat-card:hover::after { opacity: 1; }
 .stat-value {
   font-family: var(--font-display);
-  font-weight: 900;
+  font-weight: 700;
   text-transform: uppercase;
   font-size: clamp(48px, 6vw, 72px);
   line-height: 1;
@@ -608,7 +606,7 @@
 .comparison-title {
   font-family: var(--font-display);
   font-size: 28px;
-  font-weight: 900;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: -0.02em;
   margin-bottom: 24px;
@@ -675,7 +673,7 @@
 .step-title {
   font-family: var(--font-display);
   font-size: 24px;
-  font-weight: 900;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: -0.01em;
   margin-bottom: 10px;
@@ -722,7 +720,7 @@
   content: '\201C';
   font-family: var(--font-display);
   font-size: 48px;
-  font-weight: 900;
+  font-weight: 700;
   color: var(--voice-accent, var(--brand-1));
   opacity: 0.3;
   position: absolute;
@@ -958,7 +956,7 @@
 .interlude-text {
   position: relative;
   font-family: var(--font-display);
-  font-weight: 900;
+  font-weight: 700;
   text-transform: uppercase;
   font-size: clamp(36px, 6vw, 72px);
   line-height: 1;
@@ -1037,7 +1035,7 @@
 
 .card-watermark {
   font-family: var(--font-display);
-  font-weight: 900;
+  font-weight: 700;
   font-size: 80px;
   line-height: 0.8;
   color: rgba(255, 255, 255, 0.03);
@@ -1054,7 +1052,7 @@
 
 .card-title {
   font-family: var(--font-display);
-  font-weight: 900;
+  font-weight: 700;
   font-size: 24px;
   text-transform: uppercase;
   letter-spacing: -0.01em;
@@ -1154,7 +1152,7 @@
 .market-card:hover { transform: translateY(-4px); border-color: rgba(124,92,255,0.3); }
 .market-value {
   font-family: var(--font-display);
-  font-weight: 900;
+  font-weight: 700;
   text-transform: uppercase;
   font-size: clamp(32px, 4vw, 52px);
   line-height: 1;
@@ -1180,7 +1178,7 @@
 }
 .cta-heading {
   font-family: var(--font-display);
-  font-weight: 900;
+  font-weight: 700;
   text-transform: uppercase;
   font-size: clamp(36px, 6vw, 72px);
   line-height: 0.95;
@@ -1482,7 +1480,7 @@
 .score-num {
   font-family: var(--font-display);
   font-size: 44px;
-  font-weight: 900;
+  font-weight: 700;
   color: #FFFFFF;
   line-height: 1;
 }
@@ -1643,7 +1641,7 @@
   justify-content: center;
   color: #0B1120;
   font-family: var(--font-display);
-  font-weight: 900;
+  font-weight: 700;
   font-size: 18px;
   flex-shrink: 0;
 }
@@ -1884,11 +1882,257 @@
   white-space: nowrap;
 }
 
+/* ═══ HORIZONTAL SNAP-SCROLL CAROUSEL ═══ */
+.mobile-scroll-carousel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+@media (max-width: 768px) {
+  .mobile-scroll-carousel {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 16px;
+    padding-bottom: 8px;
+    margin-left: calc(-1 * var(--gutter));
+    margin-right: calc(-1 * var(--gutter));
+    padding-left: var(--gutter);
+    padding-right: var(--gutter);
+  }
+  .mobile-scroll-carousel::-webkit-scrollbar {
+    display: none;
+  }
+  .mobile-scroll-carousel > * {
+    flex: 0 0 82vw;
+    scroll-snap-align: center;
+    min-width: 0;
+  }
+
+  /* Scroll hint indicator dots */
+  .scroll-hint {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 16px;
+  }
+  .scroll-hint-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+  }
+  .scroll-hint-dot.active {
+    background: var(--brand-1);
+    box-shadow: 0 0 6px rgba(242, 90, 43, 0.5);
+  }
+}
+@media (min-width: 769px) {
+  .scroll-hint {
+    display: none;
+  }
+}
+
 /* ═══ MOBILE & ACCESSIBILITY ANIMATION OVERRIDES ═══ */
 @media (max-width: 768px) {
+  /* Display scatter photos on mobile with scale */
   .scatter-photo {
-    display: none !important;
+    display: block !important;
+    --scatter-scale: 2.2;
   }
+
+  .hero-headline {
+    font-size: clamp(28px, 8.5vw, 52px) !important;
+    letter-spacing: -0.03em;
+  }
+  .hero-outline {
+    -webkit-text-stroke-width: 1px !important;
+  }
+  .hero-sub {
+    font-size: 14px !important;
+    margin-top: 16px !important;
+    padding: 0 8px;
+    max-width: 340px;
+  }
+  .hero-ctas {
+    margin-top: 20px !important;
+  }
+  .hero-inner {
+    padding: 0 4px;
+  }
+  .btn-primary {
+    font-size: 14px;
+    padding: 14px 28px;
+  }
+
+  /* ── Orbs: smaller on mobile ── */
+  .orb-1 { width: 200px !important; height: 200px !important; }
+  .orb-2 { width: 180px !important; height: 180px !important; }
+
+  /* ── Voice cards horizontal scroll ── */
+  .voices-grid {
+    display: flex !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 14px !important;
+    margin-left: calc(-1 * var(--gutter));
+    margin-right: calc(-1 * var(--gutter));
+    padding-left: var(--gutter);
+    padding-right: var(--gutter);
+    padding-bottom: 8px;
+  }
+  .voices-grid::-webkit-scrollbar { display: none; }
+  .voices-grid > .voice-card {
+    flex: 0 0 82vw;
+    scroll-snap-align: center;
+    min-width: 0;
+  }
+  .voice-card {
+    padding: 24px 20px;
+  }
+  .voice-quote {
+    font-size: 14.5px;
+    margin-bottom: 20px;
+  }
+
+  /* ── Comparison cards horizontal scroll ── */
+  .comparison-grid {
+    display: flex !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 14px !important;
+    margin-left: calc(-1 * var(--gutter));
+    margin-right: calc(-1 * var(--gutter));
+    padding-left: var(--gutter);
+    padding-right: var(--gutter);
+    padding-bottom: 8px;
+  }
+  .comparison-grid::-webkit-scrollbar { display: none; }
+  .comparison-grid > .comparison-card {
+    flex: 0 0 85vw;
+    scroll-snap-align: center;
+    min-width: 0;
+  }
+  .comparison-card {
+    padding: 28px 22px;
+  }
+  .comparison-title {
+    font-size: 24px !important;
+  }
+  .comparison-item {
+    font-size: 13.5px;
+  }
+
+  /* ── Pillar cards horizontal scroll ── */
+  .pillar-grid {
+    display: flex !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 16px !important;
+    margin-left: calc(-1 * var(--gutter));
+    margin-right: calc(-1 * var(--gutter));
+    padding-left: var(--gutter);
+    padding-right: var(--gutter);
+    padding-bottom: 8px;
+  }
+  .pillar-grid::-webkit-scrollbar { display: none; }
+  .pillar-grid > .pillar-card {
+    flex: 0 0 85vw;
+    scroll-snap-align: center;
+    min-width: 0;
+    min-height: auto;
+  }
+  .pillar-card {
+    padding: 28px 22px 22px 22px;
+  }
+  .pillar-title {
+    font-size: 22px;
+  }
+  .pillar-visual-box {
+    min-height: 200px;
+    padding: 18px;
+  }
+
+  /* ── Section spacing tightened ── */
+  .section {
+    padding: 60px var(--gutter) !important;
+  }
+  .section-heading {
+    font-size: clamp(26px, 7vw, 42px) !important;
+    margin-bottom: 14px !important;
+  }
+  .section-label {
+    font-size: 11px;
+    margin-bottom: 12px;
+  }
+  .section-desc {
+    font-size: 15px !important;
+  }
+
+  /* ── Timeline compact ── */
+  .roadmap-timeline {
+    margin-top: 36px;
+  }
+  .timeline-phase {
+    padding-left: 40px;
+    padding-bottom: 36px;
+  }
+  .timeline-phase-title {
+    font-size: 18px;
+  }
+  .timeline-phase-header {
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .timeline-feature-card {
+    padding: 16px;
+  }
+  .timeline-feature-title {
+    font-size: 14px;
+  }
+  .timeline-feature-desc {
+    font-size: 12px;
+  }
+
+  /* ── CTA section ── */
+  .cta-section {
+    padding: 60px var(--gutter) !important;
+  }
+  .cta-heading {
+    font-size: clamp(28px, 8vw, 48px) !important;
+  }
+
+  /* ── Footer tightened ── */
+  .footer-premium {
+    padding: 48px var(--gutter) 28px var(--gutter);
+  }
+  .footer-logo-img {
+    height: 110px;
+  }
+  .footer-tagline {
+    font-size: 15px;
+  }
+
+  /* ── Category marquee speed ── */
+  .category-marquee-section {
+    padding: 60px var(--gutter) 48px !important;
+  }
+
+  /* ── Frequency wave ── */
   .freq-wave-container {
     overflow-x: auto !important;
     scrollbar-width: none;
@@ -1902,6 +2146,46 @@
   }
   .freq-pill-capsule {
     transform: none !important;
+  }
+
+  /* ── Escrow visual compact ── */
+  .escrow-item {
+    font-size: 12px;
+  }
+  .escrow-val {
+    font-size: 12px;
+  }
+}
+
+/* ── Mobile scroll hint swipe indicator ── */
+@media (max-width: 768px) {
+  .mobile-swipe-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 12px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.7;
+    animation: swipeHintPulse 2.5s ease-in-out infinite;
+  }
+  .mobile-swipe-hint svg {
+    width: 14px;
+    height: 14px;
+    stroke: var(--ink-3);
+  }
+  @keyframes swipeHintPulse {
+    0%, 100% { opacity: 0.4; transform: translateX(0); }
+    50% { opacity: 0.8; transform: translateX(4px); }
+  }
+}
+@media (min-width: 769px) {
+  .mobile-swipe-hint {
+    display: none;
   }
 }
 
@@ -1920,6 +2204,9 @@
   }
   .scatter-photo {
     display: none !important;
+  }
+  .mobile-hero-gallery-track {
+    animation: none !important;
   }
   .bento-bg-card {
     transform: none !important;

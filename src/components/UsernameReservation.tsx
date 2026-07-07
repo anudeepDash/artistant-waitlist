@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '@/hooks/useAuth';
 import { isUsernameAvailable, reserveUsername } from '@/lib/waitlist';
+import { sendWelcomeEmailAction } from '@/lib/email-actions';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -199,6 +200,13 @@ export default function UsernameReservation({
           displayName: user.displayName ?? user.email ?? normalised,
           role: 'artist', // Waitlist is artists-only
         });
+
+        // Trigger welcome email notification in the background
+        sendWelcomeEmailAction({
+          email: user.email ?? '',
+          name: user.displayName ?? user.email ?? normalised,
+          username: normalised,
+        }).catch(err => console.error("Error sending welcome email:", err));
 
         onSuccess(normalised);
       } catch (err: unknown) {

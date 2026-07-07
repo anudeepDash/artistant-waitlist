@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
+import { useRouter } from 'next/navigation';
 
 /* ──────────────────────────────────────────────
    SuccessConfirmation — the celebratory payoff
@@ -88,6 +89,7 @@ export default function SuccessConfirmation({
   username,
   onClose,
 }: SuccessConfirmationProps) {
+  const router = useRouter();
   /* ── Generate confetti pieces once on mount ── */
   const confetti = useMemo(() => generateConfetti(), []);
 
@@ -212,15 +214,18 @@ export default function SuccessConfirmation({
           </div>
         </motion.div>
 
-        {/* ── Close button ── */}
+        {/* ── View Profile button ── */}
         <motion.button
           variants={itemVariants}
-          onClick={onClose}
+          onClick={() => {
+            router.push(`/${username}`);
+            onClose();
+          }}
           whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.97 }}
-          className="rounded-full border border-glass-border px-8 py-3 text-sm font-medium text-text-secondary cursor-pointer transition-colors duration-200 hover:text-text-primary hover:border-text-muted"
+          className="rounded-full gradient-bg px-8 py-3 text-sm font-semibold text-white cursor-pointer transition-all duration-200 shadow-lg shadow-brand-orange/20"
         >
-          Close
+          View My Profile Dashboard
         </motion.button>
       </motion.div>
     </div>
