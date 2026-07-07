@@ -59,7 +59,7 @@ export default function Footer() {
               <h3 className="text-white font-semibold text-xs tracking-[0.15em] uppercase opacity-90">Quick Links</h3>
               <div className="flex flex-col gap-4">
                 <Link href="/#join" className="text-gray-400 hover:text-white transition-colors duration-300 relative group w-fit text-[15px] cursor-pointer">
-                  Reserve Username
+                  Starting Soon
                   <span className="absolute -bottom-1 left-0 w-0 h-[1px] bg-white transition-all duration-300 group-hover:w-full opacity-50"></span>
                 </Link>
                 <Link href="/#problem-voices" className="text-gray-400 hover:text-white transition-colors duration-300 relative group w-fit text-[15px] cursor-pointer">

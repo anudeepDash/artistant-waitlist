@@ -1129,16 +1129,18 @@ export default function Home() {
               transition={{ duration: 0.6, delay: 0.2, ease: 'easeOut' }}
             >
               <MagneticButton 
-                onClick={scrollToWaitlist} 
+                disabled={true}
                 className="btn-primary"
                 style={{
-                  background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)',
-                  color: '#FFFFFF',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  color: 'rgba(255, 255, 255, 0.3)',
                   fontWeight: '700',
-                  border: 'none'
+                  border: 'none',
+                  cursor: 'not-allowed',
+                  opacity: 0.6
                 }}
               >
-                Reserve Username
+                Starting Soon
               </MagneticButton>
             </motion.div>
           </div>
@@ -2022,23 +2024,21 @@ export default function Home() {
             
             {/* Host Option Card */}
             <motion.div 
-              onClick={() => { setSelectedRole('organizer'); setIsRoleModalOpen(true); }}
-              whileHover={{ scale: 1.02, borderColor: 'rgba(124, 92, 255, 0.4)' }}
-              whileTap={{ scale: 0.98 }}
               style={{
                 background: 'rgba(10, 10, 10, 0.8)',
                 border: '1px solid rgba(255, 255, 255, 0.08)',
                 borderRadius: '16px',
                 padding: '40px',
                 textAlign: 'left',
-                cursor: 'pointer',
+                cursor: 'not-allowed',
                 transition: 'all 0.3s ease',
                 backdropFilter: 'blur(10px)',
                 position: 'relative',
                 overflow: 'hidden',
                 boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)',
                 display: 'flex',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                opacity: 0.6
               }}
             >
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '150px', background: 'radial-gradient(ellipse at top left, rgba(124, 92, 255, 0.15), transparent 70%)', pointerEvents: 'none' }} />
@@ -2052,31 +2052,29 @@ export default function Home() {
                 <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.7)', lineHeight: '1.5', marginBottom: '32px', fontWeight: 400 }}>
                   Festivals. Cafes. Brands. Weddings. Find verified talent. Pay through escrow. Sleep at night.
                 </p>
-                <div style={{ marginTop: 'auto', fontSize: '12px', color: '#FFFFFF', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  JOIN AS HOST <span>→</span>
+                <div style={{ marginTop: 'auto', fontSize: '12px', color: '#FFFFFF', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.5 }}>
+                  STARTING SOON
                 </div>
               </div>
             </motion.div>
 
             {/* Fan Option Card */}
             <motion.div 
-              onClick={() => { setSelectedRole('attendee'); setIsRoleModalOpen(true); }}
-              whileHover={{ scale: 1.02, borderColor: 'rgba(212, 86, 122, 0.4)' }}
-              whileTap={{ scale: 0.98 }}
               style={{
                 background: 'rgba(10, 10, 10, 0.8)',
                 border: '1px solid rgba(255, 255, 255, 0.08)',
                 borderRadius: '16px',
                 padding: '40px',
                 textAlign: 'left',
-                cursor: 'pointer',
+                cursor: 'not-allowed',
                 transition: 'all 0.3s ease',
                 backdropFilter: 'blur(10px)',
                 position: 'relative',
                 overflow: 'hidden',
                 boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)',
                 display: 'flex',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                opacity: 0.6
               }}
             >
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '150px', background: 'radial-gradient(ellipse at top right, rgba(212, 86, 122, 0.15), transparent 70%)', pointerEvents: 'none' }} />
@@ -2090,8 +2088,8 @@ export default function Home() {
                 <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.7)', lineHeight: '1.5', marginBottom: '32px', fontWeight: 400 }}>
                   Request custom works, tip directly, and buy tickets. Experience live performances and exhibitions like never before.
                 </p>
-                <div style={{ marginTop: 'auto', fontSize: '12px', color: '#FFFFFF', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  JOIN AS FAN <span>→</span>
+                <div style={{ marginTop: 'auto', fontSize: '12px', color: '#FFFFFF', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.5 }}>
+                  STARTING SOON
                 </div>
               </div>
             </motion.div>
