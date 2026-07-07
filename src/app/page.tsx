@@ -943,7 +943,7 @@ export default function Home() {
               transition={{ duration: 0.6, delay: 0.2, ease: 'easeOut' }}
             >
               <MagneticButton 
-                onClick={(e) => { e.preventDefault(); }} 
+                onClick={scrollToWaitlist} 
                 className="btn-primary"
                 disabled
                 style={{
@@ -1406,7 +1406,7 @@ export default function Home() {
         <div className="category-marquee-row row-left">
           {[...Array(2)].map((_, dupeIdx) => (
             ['Singers & Vocalists', 'DJs & Producers', 'Bands & Ensembles', 'Comedians & MCs', 'Instrumentalists', 'Magicians & Illusionists', 'Dancers & Choreographers'].map((cat, idx) => (
-              <span key={`r1-${dupeIdx}-${idx}`} className="marquee-pill" style={{ '--pill-accent': ['#F25A2B','#D4567A','#7C5CFF','#6B7CDB','#FF5A5F','#F25A2B','#D4567A'][idx] } as any}>
+              <span key={`r1-${dupeIdx}-${idx}`} className="marquee-pill" style={{ '--pill-accent': ['#F25A2B','#D4567A','#7C5CFF','#6B7CDB','#FF5A5F','#F25A2B','#D4567A'][idx] } as React.CSSProperties}>
                 {cat}
               </span>
             ))
@@ -1417,7 +1417,7 @@ export default function Home() {
         <div className="category-marquee-row row-right" style={{ marginTop: '16px' }}>
           {[...Array(2)].map((_, dupeIdx) => (
             ['Acrobats & Aerialists', 'Fire Spinners & Flow Artists', 'Spoken Word Poets', 'Beatboxers', 'Tribute & Cover Acts', 'Live Visual Artists'].map((cat, idx) => (
-              <span key={`r2-${dupeIdx}-${idx}`} className="marquee-pill" style={{ '--pill-accent': ['#7C5CFF','#6B7CDB','#FF5A5F','#F25A2B','#D4567A','#7C5CFF'][idx] } as any}>
+              <span key={`r2-${dupeIdx}-${idx}`} className="marquee-pill" style={{ '--pill-accent': ['#7C5CFF','#6B7CDB','#FF5A5F','#F25A2B','#D4567A','#7C5CFF'][idx] } as React.CSSProperties}>
                 {cat}
               </span>
             ))
@@ -1595,7 +1595,7 @@ export default function Home() {
               </div>
 
               <p style={{ fontSize: '13px', color: 'var(--ink-2)', marginBottom: '20px', lineHeight: 1.6 }}>
-                You're on the early access list. We'll notify you when it's time to set up your profile.
+                You&apos;re on the early access list. We&apos;ll notify you when it&apos;s time to set up your profile.
               </p>
 
               <div style={{
