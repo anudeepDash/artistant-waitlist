@@ -1,0 +1,9 @@
+{
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "private-updates": false,
+      "*": false
+    }
+  }
+}
