@@ -12,17 +12,18 @@ import { isUsernameAvailable, getUserReservation, type WaitlistEntry } from '@/l
 import { signInWithGoogle, signOut } from '@/lib/auth';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 /* ── Sleek SVG Icons for features ── */
 const ICONS = [
   // 1. Connection / Engine (nodes linking)
-  <svg key="1" className="w-5 h-5 text-white stroke-current" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M16 3h5v5M8 21H3v-5M12 12m-3 0a3 3 0 1 0 6 0 3 3 0 1 0 -6 0M21 3L14.5 9.5M3 21l6.5-6.5"/></svg>,
+  <svg key="1" className="w-5 h-5 text-ink stroke-current" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M16 3h5v5M8 21H3v-5M12 12m-3 0a3 3 0 1 0 6 0 3 3 0 1 0 -6 0M21 3L14.5 9.5M3 21l6.5-6.5"/></svg>,
   // 2. Shield (Escrow)
-  <svg key="2" className="w-5 h-5 text-white stroke-current" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 11l2 2 4-4"/></svg>,
+  <svg key="2" className="w-5 h-5 text-ink stroke-current" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 11l2 2 4-4"/></svg>,
   // 3. Concierge (Bell/Support)
-  <svg key="3" className="w-5 h-5 text-white stroke-current" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
+  <svg key="3" className="w-5 h-5 text-ink stroke-current" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
   // 4. Exclusives (Crown/Star)
-  <svg key="4" className="w-5 h-5 text-white stroke-current" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>,
+  <svg key="4" className="w-5 h-5 text-ink stroke-current" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>,
 ];
 
 const ECOSYSTEM_FEATURES = [
@@ -362,7 +363,7 @@ function GlowingFeatureCard({ children, onClick, idx }: any) {
               : 'radial-gradient(circle, rgba(90, 50, 250, 0.18) 0%, rgba(0, 240, 255, 0.04) 50%, transparent 100%)', // Indigo focused
             borderRadius: '50%',
             pointerEvents: 'none',
-            mixBlendMode: 'screen',
+            mixBlendMode: "var(--glow-blend, screen)" as any,
             filter: 'blur(20px)',
             zIndex: 0,
           }}
@@ -702,6 +703,16 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [usernameInput]);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const ref = params.get('ref');
+      if (ref) {
+        localStorage.setItem('artistant_ref', ref.trim().toLowerCase());
+      }
+    }
+  }, []);
+
   const [showNav, setShowNav] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const [activePhase, setActivePhase] = useState('core');
@@ -858,148 +869,145 @@ export default function Home() {
         <a className="nav-logo" href="#top">
           <img src="/logo_wordmark.png" alt="ArtisTant" style={{ height: '180px', width: 'auto', display: 'block' }} />
         </a>
-        {user ? (
-          <div style={{ position: 'relative' }}>
-            <button 
-              onClick={(e) => { e.stopPropagation(); setProfileDropdownOpen(!profileDropdownOpen); }} 
-              className="nav-cta" 
-              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-            >
-              <div style={{
-                width: '26px',
-                height: '26px',
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)',
-                color: '#FFFFFF',
-                display: 'grid',
-                placeItems: 'center',
-                fontSize: '11px',
-                fontWeight: '800',
-                fontFamily: 'var(--font-mono)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.02em',
-                flexShrink: 0,
-              }}>
-                {userReservation?.username?.[0] ?? user.displayName?.[0] ?? user.email?.[0] ?? 'U'}
-              </div>
-              <span>{userReservation ? `@${userReservation.username}` : 'Profile'}</span>
-            </button>
-            
-            <AnimatePresence>
-              {profileDropdownOpen && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  transition={{ duration: 0.2, ease: 'easeOut' }}
-                  onClick={(e) => e.stopPropagation()} 
-                  style={{
-                    position: 'absolute',
-                    top: 'calc(100% + 16px)',
-                    right: 0,
-                    width: '280px',
-                    borderRadius: '20px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    zIndex: 100,
-                    boxShadow: '0 20px 40px -10px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.08)',
-                    background: 'linear-gradient(180deg, rgba(20, 24, 38, 0.98) 0%, rgba(14, 18, 28, 0.98) 100%)',
-                    backdropFilter: 'blur(24px)',
-                    overflow: 'hidden'
-                  }}
-                >
-                  {/* Header Section */}
-                  <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', background: 'rgba(255, 255, 255, 0.02)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                      <div style={{
-                        width: '48px', height: '48px', borderRadius: '50%', flexShrink: 0,
-                        background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
-                        display: 'grid', placeItems: 'center',
-                        fontSize: '18px', fontWeight: '800', color: '#fff',
-                        fontFamily: 'var(--font-mono)', textTransform: 'uppercase',
-                        boxShadow: '0 4px 12px rgba(242, 90, 43, 0.3)'
-                      }}>
-                        {userReservation?.username?.[0] ?? user?.displayName?.[0] ?? user?.email?.[0] ?? 'U'}
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '15px', fontWeight: '700', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {userReservation ? `@${userReservation.username}` : (user?.displayName || 'User')}
-                          </span>
-                          {userReservation && (
-                            <span style={{ 
-                              fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', 
-                              padding: '3px 6px', borderRadius: '4px', background: 'rgba(124, 92, 255, 0.2)', color: '#A994FF',
-                              flexShrink: 0
-                            }}>
-                              Early Access
-                            </span>
-                          )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <ThemeToggle />
+          {user ? (
+            <div style={{ position: 'relative' }}>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setProfileDropdownOpen(!profileDropdownOpen); }} 
+                className="nav-cta" 
+                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                <div style={{
+                  width: '26px',
+                  height: '26px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)',
+                  color: '#FFFFFF',
+                  display: 'grid',
+                  placeItems: 'center',
+                  fontSize: '11px',
+                  fontWeight: '800',
+                  fontFamily: 'var(--font-mono)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.02em',
+                  flexShrink: 0,
+                }}>
+                  {userReservation?.username?.[0] ?? user.displayName?.[0] ?? user.email?.[0] ?? 'U'}
+                </div>
+                <span>{userReservation ? `@${userReservation.username}` : 'Profile'}</span>
+              </button>
+              
+              <AnimatePresence>
+                {profileDropdownOpen && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.2, ease: 'easeOut' }}
+                    onClick={(e) => e.stopPropagation()} 
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 16px)',
+                      right: 0,
+                      width: '280px',
+                      borderRadius: '20px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      zIndex: 100,
+                      boxShadow: "0 20px 40px -10px var(--shadow-heavy)", border: "1px solid var(--glass-border)",
+                      background: "var(--glass-bg)",
+                      backdropFilter: 'blur(24px)',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    {/* User Info Section */}
+                    <div style={{ padding: '20px 20px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '50%',
+                          background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)',
+                          color: '#FFFFFF',
+                          display: 'grid',
+                          placeItems: 'center',
+                          fontSize: '16px',
+                          fontWeight: '800',
+                          fontFamily: 'var(--font-mono)',
+                          textTransform: 'uppercase',
+                        }}>
+                          {userReservation?.username?.[0] ?? user.displayName?.[0] ?? user.email?.[0] ?? 'U'}
                         </div>
-                        <span style={{ fontSize: '12px', color: 'var(--ink-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {user?.email || user?.phoneNumber}
-                        </span>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: '15px', fontWeight: '600', color: '#FFFFFF', letterSpacing: '-0.01em' }}>
+                            {userReservation ? `@${userReservation.username}` : (user.displayName || 'Creator')}
+                          </span>
+                          <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>
+                            {user?.email || user?.phoneNumber}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div style={{ height: '1px', background: 'rgba(255, 255, 255, 0.06)' }} />
+                    <div style={{ height: '1px', background: "var(--line)" }} />
 
-                  {/* Actions Section */}
-                  <div style={{ padding: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <button
-                      onClick={() => {
-                        setProfileDropdownOpen(false);
-                        router.push(`/${userReservation?.username || 'profile'}`);
-                      }}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '12px',
-                        padding: '12px 16px', borderRadius: '12px',
-                        background: 'transparent', border: 'none',
-                        color: 'var(--ink-1)', fontSize: '14px', fontWeight: '500',
-                        cursor: 'pointer', transition: 'all 0.2s',
-                        textAlign: 'left', width: '100%'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--brand-1)' }}>
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="12" cy="7" r="4"></circle>
-                      </svg>
-                      View My Profile
-                    </button>
-                    
-                    <button
-                      onClick={handleSignOut}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '12px',
-                        padding: '12px 16px', borderRadius: '12px',
-                        background: 'transparent', border: 'none',
-                        color: '#FF5A5F', fontSize: '14px', fontWeight: '500',
-                        cursor: 'pointer', transition: 'all 0.2s',
-                        textAlign: 'left', width: '100%'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 90, 95, 0.08)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                        <polyline points="16 17 21 12 16 7"></polyline>
-                        <line x1="21" y1="12" x2="9" y2="12"></line>
-                      </svg>
-                      Sign Out
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        ) : (
-          <button onClick={openModal} className="nav-cta">
-            Sign In <span className="arrow">↗</span>
-          </button>
-        )}
+                    {/* Actions Section */}
+                    <div style={{ padding: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <button
+                        onClick={() => {
+                          setProfileDropdownOpen(false);
+                          router.push(`/${userReservation?.username || 'profile'}`);
+                        }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '12px',
+                          padding: '12px 16px', borderRadius: '12px',
+                          background: 'transparent', border: 'none',
+                          color: 'var(--ink-1)', fontSize: '14px', fontWeight: '500',
+                          cursor: 'pointer', transition: 'all 0.2s',
+                          textAlign: 'left', width: '100%'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--brand-1)' }}>
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                          <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        View My Profile
+                      </button>
+                      
+                      <button
+                        onClick={handleSignOut}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '12px',
+                          padding: '12px 16px', borderRadius: '12px',
+                          background: 'transparent', border: 'none',
+                          color: '#FF5A5F', fontSize: '14px', fontWeight: '500',
+                          cursor: 'pointer', transition: 'all 0.2s',
+                          textAlign: 'left', width: '100%'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 90, 95, 0.08)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                          <polyline points="16 17 21 12 16 7"></polyline>
+                          <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                        Sign Out
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ) : (
+            <button onClick={openModal} className="nav-cta">
+              Sign In <span className="arrow">↗</span>
+            </button>
+          )}
+        </div>
       </motion.nav>
 
       {/* ──────────────────────── SCROLL-DRIVEN 3D SCATTER HERO ──────────────────────── */}
@@ -1074,7 +1082,7 @@ export default function Home() {
                 fontWeight: '600',
                 letterSpacing: '0.18em',
                 textTransform: 'uppercase',
-                color: 'rgba(255,255,255,0.45)',
+                color: 'var(--ink-2)',
               }}>
                 India&apos;s Live Economy,{' '}
                 <span style={{
@@ -1291,40 +1299,40 @@ export default function Home() {
               viewport={{ once: true, amount: 0.2 }}
               variants={slideL}
               style={{
-                background: '#1A1A1A',
-                borderColor: '#2A2A2A',
-                color: '#7C7C7C'
+                background: "var(--bg-card)",
+                borderColor: "var(--line)",
+                color: "var(--ink-2)"
               }}
             >
-              <h3 className="comparison-title" style={{ color: '#8A8A8A', fontSize: 32 }}>
+              <h3 className="comparison-title" style={{ color: "var(--ink-2)", fontSize: 32 }}>
                 The Messy Way
               </h3>
               <ul className="comparison-list">
                 <li className="comparison-item" style={{ opacity: 0.7 }}>
                   <span className="comparison-icon" style={{ color: '#555555' }}>●</span>
                   <div>
-                    <strong style={{ color: '#8A8A8A' }}>Unreliable Instagram DMs</strong>
+                    <strong style={{ color: "var(--ink-2)" }}>Unreliable Instagram DMs</strong>
                     Business requests buried in social notifications and fan messages.
                   </div>
                 </li>
                 <li className="comparison-item" style={{ opacity: 0.7 }}>
                   <span className="comparison-icon" style={{ color: '#555555' }}>●</span>
                   <div>
-                    <strong style={{ color: '#8A8A8A' }}>WhatsApp Price Bargaining</strong>
+                    <strong style={{ color: "var(--ink-2)" }}>WhatsApp Price Bargaining</strong>
                     Endless message haggling, manual invoicing, and chasing bank transfers.
                   </div>
                 </li>
                 <li className="comparison-item" style={{ opacity: 0.7 }}>
                   <span className="comparison-icon" style={{ color: '#555555' }}>●</span>
                   <div>
-                    <strong style={{ color: '#8A8A8A' }}>3x Middleman Agent Markups</strong>
+                    <strong style={{ color: "var(--ink-2)" }}>3x Middleman Agent Markups</strong>
                     Brokers adding opaque commission markups that inflate client pricing.
                   </div>
                 </li>
                 <li className="comparison-item" style={{ opacity: 0.7 }}>
                   <span className="comparison-icon" style={{ color: '#555555' }}>●</span>
                   <div>
-                    <strong style={{ color: '#8A8A8A' }}>No Payment Security</strong>
+                    <strong style={{ color: "var(--ink-2)" }}>No Payment Security</strong>
                     Chasing advances, last-minute event cancellations, or ghosting post-show.
                   </div>
                 </li>
@@ -1544,32 +1552,38 @@ export default function Home() {
         </div>
 
         {/* Row 1 — scrolls left */}
-        <div className="category-marquee-row row-left">
-          {[...Array(2)].map((_, dupeIdx) => (
-            ['Singers & Vocalists', 'DJs & Producers', 'Bands & Ensembles', 'Comedians & MCs', 'Instrumentalists', 'Magicians & Illusionists', 'Dancers & Choreographers'].map((cat, idx) => (
-              <span key={`r1-${dupeIdx}-${idx}`} className="marquee-pill" style={{ '--pill-accent': ['#F25A2B','#D4567A','#7C5CFF','#6B7CDB','#FF5A5F','#F25A2B','#D4567A'][idx] } as any}>
-                {cat}
-              </span>
-            ))
+        <ul className="category-marquee-row row-left">
+          {['Singers & Vocalists', 'DJs & Producers', 'Bands & Ensembles', 'Comedians & MCs', 'Instrumentalists', 'Magicians & Illusionists', 'Dancers & Choreographers'].map((cat, idx) => (
+            <li key={`r1-real-${idx}`} className="marquee-pill" style={{ '--pill-accent': ['#F25A2B','#D4567A','#7C5CFF','#6B7CDB','#FF5A5F','#F25A2B','#D4567A'][idx] } as any}>
+              {cat}
+            </li>
           ))}
-        </div>
+          {['Singers & Vocalists', 'DJs & Producers', 'Bands & Ensembles', 'Comedians & MCs', 'Instrumentalists', 'Magicians & Illusionists', 'Dancers & Choreographers'].map((cat, idx) => (
+            <li key={`r1-dupe-${idx}`} aria-hidden="true" className="marquee-pill" style={{ '--pill-accent': ['#F25A2B','#D4567A','#7C5CFF','#6B7CDB','#FF5A5F','#F25A2B','#D4567A'][idx] } as any}>
+              {cat}
+            </li>
+          ))}
+        </ul>
 
         {/* Row 2 — scrolls right */}
-        <div className="category-marquee-row row-right" style={{ marginTop: '16px' }}>
-          {[...Array(2)].map((_, dupeIdx) => (
-            ['Acrobats & Aerialists', 'Fire Spinners & Flow Artists', 'Spoken Word Poets', 'Beatboxers', 'Tribute & Cover Acts', 'Live Visual Artists'].map((cat, idx) => (
-              <span key={`r2-${dupeIdx}-${idx}`} className="marquee-pill" style={{ '--pill-accent': ['#7C5CFF','#6B7CDB','#FF5A5F','#F25A2B','#D4567A','#7C5CFF'][idx] } as any}>
-                {cat}
-              </span>
-            ))
+        <ul className="category-marquee-row row-right" style={{ marginTop: '16px' }}>
+          {['Acrobats & Aerialists', 'Fire Spinners & Flow Artists', 'Spoken Word Poets', 'Beatboxers', 'Tribute & Cover Acts', 'Live Visual Artists'].map((cat, idx) => (
+            <li key={`r2-real-${idx}`} className="marquee-pill" style={{ '--pill-accent': ['#7C5CFF','#6B7CDB','#FF5A5F','#F25A2B','#D4567A','#7C5CFF'][idx] } as any}>
+              {cat}
+            </li>
           ))}
-        </div>
+          {['Acrobats & Aerialists', 'Fire Spinners & Flow Artists', 'Spoken Word Poets', 'Beatboxers', 'Tribute & Cover Acts', 'Live Visual Artists'].map((cat, idx) => (
+            <li key={`r2-dupe-${idx}`} aria-hidden="true" className="marquee-pill" style={{ '--pill-accent': ['#7C5CFF','#6B7CDB','#FF5A5F','#F25A2B','#D4567A','#7C5CFF'][idx] } as any}>
+              {cat}
+            </li>
+          ))}
+        </ul>
       </section>
 
       {/* ──────────────────────── PLATFORM EVOLUTION TIMELINE (DISTRICT STYLE) ──────────────────────── */}
       <section 
         id="standard" 
-        className="w-full relative z-10 py-24 md:py-32 bg-[#050505] overflow-hidden border-y border-white/5"
+        className="w-full relative z-10 py-24 md:py-32 bg-bg overflow-hidden border-y border-line-soft"
       >
         {/* Background Gradients */}
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#F25A2B]/10 blur-[100px] rounded-full pointer-events-none" />
@@ -1623,7 +1637,7 @@ export default function Home() {
                 key={`${phase.phase}-${fIdx}`}
                 whileHover={{ y: -10, scale: 1.02 }}
                 transition={{ type: "spring", stiffness: 100, damping: 20 }}
-                className="snap-center shrink-0 w-[300px] md:w-[380px] h-[480px] rounded-[2.5rem] p-8 relative overflow-hidden bg-[#111111] border border-white/10 shadow-2xl flex flex-col justify-between group cursor-grab active:cursor-grabbing"
+                className="snap-center shrink-0 w-[300px] md:w-[380px] h-[480px] rounded-[2.5rem] p-8 relative overflow-hidden bg-bg-card border border-line shadow-2xl flex flex-col justify-between group cursor-grab active:cursor-grabbing"
               >
                 {/* Dynamic Card Backgrounds based on phase */}
                 <div className="absolute inset-0 opacity-20 group-hover:opacity-40 transition-opacity duration-500" style={{
@@ -1634,35 +1648,40 @@ export default function Home() {
                 <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/5 to-white/0 pointer-events-none" />
 
                 <div className="relative z-10 flex flex-col items-start gap-4">
-                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center border border-white/10 backdrop-blur-md bg-black/40 shadow-inner" style={{ color: phase.accentColor }}>
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center border border-line backdrop-blur-md bg-black/5 dark:bg-black/40 shadow-inner" style={{ color: phase.accentColor }}>
                     {feature.icon}
                   </div>
                   <div className="flex flex-col gap-1">
                     <span className="font-mono text-[10px] uppercase tracking-widest font-bold" style={{ color: phase.accentColor }}>
                       Phase {phase.phase} • {phase.label}
                     </span>
-                    <h3 className="font-display font-black text-2xl text-white leading-tight">
+                    <h3 className="font-display font-black text-2xl text-ink leading-tight">
                       {feature.title}
                     </h3>
                   </div>
                 </div>
 
                 <div className="relative z-10">
-                  <p className="text-[#9BA4B8] text-sm leading-relaxed mb-6">
+                  <p className="text-ink-2 text-sm leading-relaxed mb-6">
                     {feature.desc}
                   </p>
                   
                   {/* Status Pill */}
-                  <div className="inline-flex items-center gap-2 bg-black/50 border border-white/10 px-4 py-2 rounded-full backdrop-blur-md">
-                    {feature.timeline.includes('Launch') ? (
+                  <div className="inline-flex items-center gap-2 bg-black/5 dark:bg-black/50 border border-line px-4 py-2 rounded-full backdrop-blur-md">
+                    {phase.phase === '01' ? (
                       <>
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                         <span className="font-mono text-[9px] uppercase tracking-widest text-emerald-400 font-bold">Ready for Beta</span>
                       </>
-                    ) : (
+                    ) : phase.phase === '02' ? (
                       <>
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                        <span className="font-mono text-[9px] uppercase tracking-widest text-amber-400 font-bold">Compiling</span>
+                        <span className="font-mono text-[9px] uppercase tracking-widest text-amber-400 font-bold">Coming Soon</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                        <span className="font-mono text-[9px] uppercase tracking-widest text-purple-400 font-bold">Planned</span>
                       </>
                     )}
                   </div>
@@ -1675,10 +1694,10 @@ export default function Home() {
         </div>
 
         <div className="hidden md:flex justify-center items-center gap-4 mt-4">
-          <button onClick={() => scrollRoadmap('left')} className="p-3 rounded-full border border-white/10 text-white hover:text-[#F25A2B] hover:bg-white/5 transition-all bg-[#111111]">
+          <button onClick={() => scrollRoadmap('left')} className="p-3 rounded-full border border-line text-ink hover:text-[#F25A2B] hover:bg-ink/5 transition-all bg-bg-card">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
-          <button onClick={() => scrollRoadmap('right')} className="p-3 rounded-full border border-white/10 text-white hover:text-[#F25A2B] hover:bg-white/5 transition-all bg-[#111111]">
+          <button onClick={() => scrollRoadmap('right')} className="p-3 rounded-full border border-line text-ink hover:text-[#F25A2B] hover:bg-ink/5 transition-all bg-bg-card">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
           </button>
         </div>

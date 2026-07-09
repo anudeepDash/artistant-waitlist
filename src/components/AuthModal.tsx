@@ -253,6 +253,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
         : extraPhone
           ? `+91${extraPhone.replace(/\D/g, '')}`
           : undefined;
+      const ref = typeof window !== 'undefined' ? localStorage.getItem('artistant_ref') || undefined : undefined;
       await reserveUsername({
         uid: pendingUser.uid,
         username: normalised,
@@ -262,6 +263,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
         category,
         genres: selectedGenres,
         ...(resolvedPhone ? { phone: resolvedPhone } : {}),
+        referredBy: ref,
       });
 
       // Trigger welcome email notification in the background

@@ -193,12 +193,14 @@ export default function UsernameReservation({
       setErrorMsg(null);
 
       try {
+        const ref = typeof window !== 'undefined' ? localStorage.getItem('artistant_ref') || undefined : undefined;
         await reserveUsername({
           uid: user.uid,
           username: normalised,
           email: user.email ?? '',
           displayName: user.displayName ?? user.email ?? normalised,
           role: 'artist', // Waitlist is artists-only
+          referredBy: ref,
         });
 
         // Trigger welcome email notification in the background

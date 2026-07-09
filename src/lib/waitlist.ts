@@ -18,6 +18,7 @@ export interface WaitlistEntry {
   role: WaitlistRole | null;
   reserved_at: string;
   position_override?: number | null;
+  referred_by?: string | null;
 }
 
 /** Artist category options */
@@ -44,6 +45,7 @@ export interface ReserveUsernameInput {
   genres?: string[];
   /** Phone number (E.164 format, e.g. +919900000000) */
   phone?: string;
+  referredBy?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -70,13 +72,15 @@ export async function isUsernameAvailable(username: string): Promise<boolean> {
   const supabase = createClient();
   const normalisedUsername = normalise(username);
 
-  // Call a SECURITY DEFINER RPC so unauthenticated users can check availability.
-  // Run this SQL once in Supabase SQL editor to create the function:
+  // Call an RPC to check availability.
+  // To avoid Supabase database linter warnings (0028/0029), it is recommended to define 
+  // it as SECURITY INVOKER and grant column-level SELECT on 'username' to public roles.
+  // See src/lib/supabase/migrations.sql for the SQL details:
   //
   //   create or replace function public.check_username_available(p_username text)
   //   returns boolean
   //   language plpgsql
-  //   security definer
+  //   security invoker
   //   set search_path = public
   //   as $$
   //   begin
@@ -87,6 +91,7 @@ export async function isUsernameAvailable(username: string): Promise<boolean> {
   //   $$;
   //
   //   grant execute on function public.check_username_available(text) to anon, authenticated;
+  //   grant select (username) on public.waitlist_users to anon, authenticated;
 
   try {
     const { data, error } = await supabase.rpc('check_username_available', {
@@ -117,7 +122,7 @@ export async function reserveUsername(
 
 
 
-  const { uid, username, email, displayName, role, category, genres, phone } = input;
+  const { uid, username, email, displayName, role, category, genres, phone, referredBy } = input;
   const normalisedUsername = normalise(username);
 
   const { error } = await supabase.from("waitlist_users").insert({
@@ -129,6 +134,7 @@ export async function reserveUsername(
     ...(category ? { category } : {}),
     ...(genres && genres.length > 0 ? { genres } : {}),
     ...(phone ? { phone } : {}),
+    ...(referredBy ? { referred_by: referredBy.trim().toLowerCase() } : {}),
   });
 
   if (error) {
@@ -248,6 +254,28 @@ export async function getWaitlistPosition(reservedAt: string, userId: string, po
     const dateVal = new Date(reservedAt).getTime();
     const fallbackPos = 120 + (dateVal % 780);
     return fallbackPos;
+  }
+}
+
+/**
+ * Fetches the count of users referred by a given username.
+ */
+export async function getReferralCount(username: string): Promise<number> {
+  const supabase = createClient();
+  try {
+    const { count, error } = await supabase
+      .from("waitlist_users")
+      .select("id", { count: "exact", head: true })
+      .eq("referred_by", username.trim().toLowerCase());
+
+    if (error) {
+      console.warn("Error getting referral count:", error.message);
+      return 0;
+    }
+    return count || 0;
+  } catch (e) {
+    console.error("Failed to fetch referrals:", e);
+    return 0;
   }
 }
 

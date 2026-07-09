@@ -54,10 +54,10 @@ export default function UIMockupSequence() {
 
   return (
     <div 
-      className="comparison-card artistant relative flex flex-col !p-0 overflow-hidden border border-white/10 shadow-2xl"
+      className="comparison-card artistant relative flex flex-col !p-0 overflow-hidden border border-line shadow-2xl"
       style={{
-        background: '#0A0A0A',
-        color: '#FFFFFF'
+        background: "var(--bg-card)",
+        color: "var(--ink)"
       }}
     >
       {/* Subtle Background Glow */}
@@ -66,11 +66,11 @@ export default function UIMockupSequence() {
       {/* TOP HEADER: The Artistant Way */}
       <div className="absolute top-0 left-0 w-full p-8 md:p-10 z-30">
         <div className="flex items-center gap-3 md:gap-4">
-          <span className="font-display text-2xl md:text-[32px] tracking-wide uppercase text-white font-bold leading-none">THE</span>
+          <span className="font-display text-2xl md:text-[32px] tracking-wide uppercase text-ink font-bold leading-none">THE</span>
           <span className="font-display text-3xl md:text-[40px] tracking-tight font-black text-transparent bg-clip-text bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF] leading-none -mt-1">
             ArtisTant
           </span>
-          <span className="font-display text-2xl md:text-[32px] tracking-wide uppercase text-white font-bold leading-none">WAY</span>
+          <span className="font-display text-2xl md:text-[32px] tracking-wide uppercase text-ink font-bold leading-none">WAY</span>
         </div>
       </div>
 
@@ -102,8 +102,8 @@ export default function UIMockupSequence() {
           </motion.div>
         </AnimatePresence>
 
-        {/* BOTTOM GRADIENT: Black to Transparent */}
-        <div className="absolute inset-x-0 bottom-0 h-[45%] bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/90 to-transparent flex flex-col justify-end p-6 md:p-8 pointer-events-none z-20">
+        {/* BOTTOM GRADIENT: Theme Card Color to Transparent */}
+        <div className="absolute inset-x-0 bottom-0 h-[45%] bg-gradient-to-t from-bg-card via-bg-card/90 to-transparent flex flex-col justify-end p-6 md:p-8 pointer-events-none z-20">
           
           <div className="pointer-events-auto w-full relative z-30">
             <AnimatePresence mode="wait">
@@ -114,10 +114,10 @@ export default function UIMockupSequence() {
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.4 }}
               >
-                <h4 className="font-display font-bold text-lg md:text-xl text-white mb-2">
+                <h4 className="font-display font-bold text-lg md:text-xl text-ink mb-2">
                   {SEQUENCE_DATA[activeIndex].title}
                 </h4>
-                <p className="text-xs md:text-sm text-gray-400 leading-relaxed font-light">
+                <p className="text-xs md:text-sm text-ink-2 leading-relaxed font-light">
                   {SEQUENCE_DATA[activeIndex].desc}
                 </p>
               </motion.div>
@@ -134,7 +134,7 @@ export default function UIMockupSequence() {
                     className={`h-1 transition-all duration-500 rounded-full ${
                       isActive 
                         ? 'w-8 bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF]' 
-                        : 'w-2 bg-white/20 hover:bg-white/40'
+                        : 'w-2 bg-ink/10 dark:bg-white/20 hover:bg-ink/30 dark:hover:bg-white/40'
                     }`}
                     aria-label={`Go to slide ${idx + 1}`}
                   />

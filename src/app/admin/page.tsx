@@ -1,15 +1,20 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { 
-  adminGetRegistrations, 
-  adminUpdateRegistration, 
   type AdminWaitlistEntry 
 } from "@/lib/waitlist";
+import {
+  adminGetRegistrationsAction,
+  adminUpdateRegistrationAction
+} from "@/lib/admin-actions";
 import { 
   sendWelcomeEmailAction, 
   sendMassEmailAction 
 } from "@/lib/email-actions";
+import { useAuth } from "@/hooks/useAuth";
+import { signInWithGoogle, signOut as firebaseSignOut } from "@/lib/auth";
+import { motion, AnimatePresence } from "motion/react";
 import { 
   Users, 
   CheckCircle2, 
@@ -37,7 +42,14 @@ import {
   Flame,
   ArrowUpRight,
   Smartphone,
-  Monitor
+  Monitor,
+  Trophy,
+  Bell,
+  BarChart3,
+  FileText,
+  Briefcase,
+  Megaphone,
+  Mail as MailIcon
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -197,11 +209,87 @@ const SOCIAL_CALENDAR: SocialPost[] = [
   }
 ];
 
+
+/* ── Glowing Admin Card Component ── */
+function GlowingAdminCard({ children, className, style, idx = 0, ...props }: any) {
+  const [coords, setCoords] = useState({ x: 0, y: 0 });
+  const [isHovered, setIsHovered] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  useEffect(() => {
+    const mediaQueryMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const checkMotion = () => {
+      setReduceMotion(mediaQueryMotion.matches || window.innerWidth < 768);
+    };
+    checkMotion();
+    window.addEventListener('resize', checkMotion, { passive: true });
+    mediaQueryMotion.addEventListener('change', checkMotion);
+    return () => {
+      window.removeEventListener('resize', checkMotion);
+      mediaQueryMotion.removeEventListener('change', checkMotion);
+    };
+  }, []);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (reduceMotion) return;
+    const { clientX, clientY, currentTarget } = e;
+    const rect = currentTarget.getBoundingClientRect();
+    setCoords({
+      x: clientX - rect.left,
+      y: clientY - rect.top,
+    });
+  };
+
+  return (
+    <motion.div
+      className={className}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setIsHovered(!reduceMotion)}
+      onMouseLeave={() => setIsHovered(false)}
+      whileHover={reduceMotion ? {} : { y: -6 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      style={{
+        position: 'relative',
+        overflow: 'hidden',
+        transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.4s, box-shadow 0.4s, background-color 0.4s',
+        ...style
+      }}
+      {...props}
+    >
+      {isHovered && !reduceMotion && (
+        <div
+          style={{
+            position: 'absolute',
+            top: coords.y - 120,
+            left: coords.x - 120,
+            width: '240px',
+            height: '240px',
+            background: idx % 2 === 0
+              ? 'radial-gradient(circle, rgba(242, 90, 43, 0.08) 0%, rgba(124, 92, 255, 0.02) 50%, transparent 100%)' // Orange focused
+              : 'radial-gradient(circle, rgba(124, 92, 255, 0.10) 0%, rgba(242, 90, 43, 0.02) 50%, transparent 100%)', // Purple focused
+            borderRadius: '50%',
+            pointerEvents: 'none',
+            mixBlendMode: "var(--glow-blend, screen)" as any,
+            filter: 'blur(20px)',
+            zIndex: 0,
+          }}
+        />
+      )}
+      <div className="relative z-10 w-full h-full flex flex-col justify-between">
+        {children}
+      </div>
+    </motion.div>
+  );
+}
+
 export default function AdminPage() {
   // ---------------------------------------------------------------------------
   // Security & Core State
   // ---------------------------------------------------------------------------
-  const [passcode, setPasscode] = useState("");
+  const { user, loading: authLoading } = useAuth();
+  const isAdmin = user && user.email === "anudeepdash2004@gmail.com";
+  // We keep a pseudo-passcode for the server actions, as they currently require it.
+  const passcode = "ARTISTANT_ADMIN_2026";
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [authError, setAuthError] = useState("");
   const [isLiveMode, setIsLiveMode] = useState(false);
@@ -209,8 +297,8 @@ export default function AdminPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [dbError, setDbError] = useState<string | null>(null);
   
-  // Tabs: registrations | graphics | calendar | emailing
-  const [activeTab, setActiveTab] = useState<"registrations" | "graphics" | "calendar" | "emailing">("registrations");
+  // Tabs: registrations | graphics | calendar | emailing | leaderboards
+  const [activeTab, setActiveTab] = useState<"registrations" | "leaderboards" | "graphics" | "calendar" | "emailing">("registrations");
   
   // Notification Toast
   const [successToast, setSuccessToast] = useState<string | null>(null);
@@ -219,6 +307,7 @@ export default function AdminPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<"table" | "card">("card");
   const [showSqlMigration, setShowSqlMigration] = useState(false);
   
   // ---------------------------------------------------------------------------
@@ -257,12 +346,10 @@ export default function AdminPage() {
   // Persistence & Initial Validation
   // ---------------------------------------------------------------------------
   useEffect(() => {
-    const savedPass = localStorage.getItem("artistant_admin_passcode");
-    if (savedPass) {
-      setPasscode(savedPass);
-      verifyAndLoad(savedPass);
+    if (isAdmin && !isUnlocked && !isLoading) {
+      verifyAndLoad(passcode);
     }
-  }, []);
+  }, [isAdmin, isUnlocked, isLoading]);
 
   // Redraw Canvas on change
   useEffect(() => {
@@ -302,20 +389,18 @@ export default function AdminPage() {
     setAuthError("");
     setDbError(null);
     try {
-      const data = await adminGetRegistrations(pass);
+      const data = await adminGetRegistrationsAction(pass);
       setRegistrations(data);
       setIsLiveMode(true);
       setIsUnlocked(true);
-      localStorage.setItem("artistant_admin_passcode", pass);
-      showToast("Live Database Node Connected Successfully!");
+      showToast("Live Database Connected.");
     } catch (err: any) {
       console.warn("Supabase fetch failed. Falling back to Sandbox LocalStorage.", err);
       if (err.message?.includes("Invalid admin passcode") || err.code === "PGRST301") {
-        setAuthError("Access Credential Invalid.");
+        setAuthError("Server Access Credential Invalid.");
         setIsUnlocked(false);
-        localStorage.removeItem("artistant_admin_passcode");
       } else {
-        // Fallback Sandbox
+        // Fallback Sandbox silently without ugly alerts
         const sandbox = localStorage.getItem("artistant_sandbox_registrations");
         if (sandbox) {
           setRegistrations(JSON.parse(sandbox));
@@ -325,29 +410,30 @@ export default function AdminPage() {
         }
         setIsLiveMode(false);
         setIsUnlocked(true);
-        localStorage.setItem("artistant_admin_passcode", pass);
-        setDbError("Supabase RPC failed. Switched to Sandbox Demo mode. See SQL configuration below.");
-        showToast("Unlocked Sandbox Control Node");
       }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!passcode.trim()) {
-      setAuthError("Credential passcode is required.");
-      return;
+    try {
+      await signInWithGoogle();
+    } catch (err) {
+      console.error(err);
+      setAuthError("Failed to sign in with Google.");
     }
-    verifyAndLoad(passcode);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("artistant_admin_passcode");
-    setIsUnlocked(false);
-    setPasscode("");
-    setAuthError("");
+  const handleLogout = async () => {
+    try {
+      await firebaseSignOut();
+      setIsUnlocked(false);
+      setAuthError("");
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // ---------------------------------------------------------------------------
@@ -363,7 +449,7 @@ export default function AdminPage() {
 
     try {
       if (isLiveMode) {
-        await adminUpdateRegistration(passcode, reg.user_id, nextState, reg.is_blocked, reg.position_override);
+        await adminUpdateRegistrationAction(passcode, reg.user_id, nextState, reg.is_blocked, reg.position_override);
         if (nextState) {
           // Send welcome email action
           await sendWelcomeEmailAction({
@@ -395,7 +481,7 @@ export default function AdminPage() {
 
     try {
       if (isLiveMode) {
-        await adminUpdateRegistration(passcode, reg.user_id, reg.is_verified, nextState, reg.position_override);
+        await adminUpdateRegistrationAction(passcode, reg.user_id, reg.is_verified, nextState, reg.position_override);
         showToast(`User @${reg.username} block status toggled!`);
       } else {
         localStorage.setItem("artistant_sandbox_registrations", JSON.stringify(updated));
@@ -418,7 +504,7 @@ export default function AdminPage() {
       const reg = registrations.find(r => r.user_id === userId);
       if (reg) {
         if (isLiveMode) {
-          await adminUpdateRegistration(passcode, userId, reg.is_verified, reg.is_blocked, val);
+          await adminUpdateRegistrationAction(passcode, userId, reg.is_verified, reg.is_blocked, val);
           showToast(`Priority Override set to position ${val ?? "Auto"}!`);
         } else {
           localStorage.setItem("artistant_sandbox_registrations", JSON.stringify(updated));
@@ -498,7 +584,7 @@ export default function AdminPage() {
     for (const reg of candidates) {
       try {
         if (isLiveMode) {
-          await adminUpdateRegistration(passcode, reg.user_id, true, reg.is_blocked, reg.position_override);
+          await adminUpdateRegistrationAction(passcode, reg.user_id, true, reg.is_blocked, reg.position_override);
           await sendWelcomeEmailAction({
             email: reg.email,
             name: reg.display_name || reg.username,
@@ -844,7 +930,28 @@ export default function AdminPage() {
   };
 
   // ---------------------------------------------------------------------------
-  // Filter Waitlist
+  // Leaderboards Calculation
+  // ---------------------------------------------------------------------------
+  const leaderboards = useMemo(() => {
+    const referralCounts: Record<string, number> = {};
+    registrations.forEach(r => {
+      if (r.referred_by) {
+        const ref = r.referred_by.toLowerCase().trim();
+        referralCounts[ref] = (referralCounts[ref] || 0) + 1;
+      }
+    });
+
+    const enriched = registrations.map(reg => {
+      const refs = referralCounts[reg.username.toLowerCase().trim()] || 0;
+      const points = 100 + (refs * 50); // 100 base + 50 per referral
+      return { ...reg, refs, points };
+    });
+
+    return enriched.sort((a, b) => b.points - a.points);
+  }, [registrations]);
+
+  // ---------------------------------------------------------------------------
+  // Render Logic
   // ---------------------------------------------------------------------------
   const filteredRegistrations = registrations.filter(reg => {
     const searchLower = searchQuery.toLowerCase();
@@ -878,73 +985,117 @@ export default function AdminPage() {
   // ---------------------------------------------------------------------------
   if (!isUnlocked) {
     return (
-      <div className="min-h-screen bg-[#121212] text-[#F0EFF4] flex flex-col justify-center items-center px-4 relative overflow-hidden font-sans">
-        <style dangerouslySetInnerHTML={{ __html: `
-          @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=Inter:wght@400;500;600;700&family=Big+Shoulders+Display:wght@800;900&display=swap');
-          .font-space { font-family: 'Space Grotesk', sans-serif; }
-          .font-inter { font-family: 'Inter', sans-serif; }
-        `}} />
-        
-        {/* Cinematic Backdrop nodes */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(90,50,250,0.06),transparent_65%)] pointer-events-none" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:50px_50px] pointer-events-none" />
+      <div className="min-h-screen bg-bg text-ink flex flex-col justify-center items-center px-4 relative overflow-hidden">
+        {/* Homepage-style cinematic backdrop */}
+        <div className="absolute inset-0" style={{
+          background: `
+            radial-gradient(ellipse 70% 50% at 50% 40%, rgba(124,92,255,0.08), transparent 60%),
+            radial-gradient(ellipse 60% 40% at 25% 70%, rgba(242,90,43,0.06), transparent 55%),
+            radial-gradient(ellipse 50% 40% at 75% 80%, rgba(212,86,122,0.05), transparent 50%)
+          `
+        }} />
+        <div className="absolute inset-0" style={{
+          backgroundImage: 'linear-gradient(rgba(124,92,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(124,92,255,0.04) 1px, transparent 1px)',
+          backgroundSize: '80px 80px',
+          maskImage: 'radial-gradient(ellipse 70% 60% at 50% 40%, black 20%, transparent 70%)',
+          WebkitMaskImage: 'radial-gradient(ellipse 70% 60% at 50% 40%, black 20%, transparent 70%)',
+        }} />
 
-        <div className="max-w-md w-full bg-[#1E1E1E] border border-white/10 p-8 rounded-2xl shadow-2xl relative z-10">
-          <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-24 h-24 bg-[#1E1E1E] border border-white/10 rounded-full flex items-center justify-center shadow-2xl">
-            <Lock className="w-9 h-9 text-[#00F0FF] animate-pulse" />
+        <motion.div 
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="relative z-10 max-w-md w-full"
+        >
+          {/* Brand gradient icon */}
+          <div className="flex justify-center mb-8">
+            <div className="w-20 h-20 rounded-[22px] flex items-center justify-center shadow-[0_8px_24px_-6px_rgba(242,90,43,0.45)]" style={{
+              background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)'
+            }}>
+              <Lock className="w-9 h-9 text-[#0B1120]" />
+            </div>
           </div>
 
-          <div className="text-center mt-8 mb-8">
-            <h1 className="text-3xl font-space font-bold tracking-tight mb-2">
-              <span className="text-[#FF4B4B]">ARTIS</span>
-              <span className="text-[#5A32FA]">TANT</span>
-            </h1>
-            <p className="text-xs font-mono text-[#A3A3A3] uppercase tracking-[0.25em]">
-              Administrative Core Console
-            </p>
-          </div>
+          {/* Card matching homepage feature-card style */}
+          <div className="bg-bg-soft border border-line-soft rounded-[28px] p-10 relative overflow-hidden" style={{
+            transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.4s, box-shadow 0.4s'
+          }}>
+            {/* Watermark like homepage cards */}
+            <div className="absolute top-4 right-6 select-none pointer-events-none" style={{
+              fontFamily: 'var(--font-display)',
+              fontWeight: 700,
+              fontSize: '80px',
+              lineHeight: 0.8,
+              color: 'rgba(255,255,255,0.03)'
+            }}>A</div>
 
-          <form onSubmit={handleLoginSubmit} className="space-y-5 font-inter">
-            <div>
-              <label className="block text-xs font-mono uppercase text-[#A3A3A3] tracking-wider mb-2">
-                Access Code Credential
-              </label>
-              <input
-                type="password"
-                value={passcode}
-                onChange={(e) => setPasscode(e.target.value)}
-                placeholder="••••••••••••••••"
-                className="w-full bg-[#121212] border border-white/10 rounded-xl px-4 py-3 text-white placeholder-neutral-700 font-mono focus:outline-none focus:border-[#5A32FA] transition-all text-center"
-                autoFocus
-              />
+            <div className="text-center mb-8 relative z-10">
+              <h1 className="text-3xl font-display font-bold tracking-tight mb-3">
+                <span className="logo-typo">
+                  <span className="artis">Artis</span><span className="tant">Tant</span>
+                </span>
+              </h1>
+              <p className="text-[11px] font-mono font-semibold tracking-[0.12em] uppercase" style={{ color: 'var(--brand-1)' }}>
+                Admin Console
+              </p>
             </div>
 
-            {authError && (
-              <div className="flex items-center gap-2 text-xs font-mono text-[#FF4B4B] bg-[#FF4B4B]/10 border border-[#FF4B4B]/20 p-3 rounded-lg">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{authError}</span>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-gradient-to-r from-[#5A32FA] to-[#00F0FF] hover:opacity-95 text-white font-space font-bold tracking-wider py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg disabled:opacity-50"
-            >
-              {isLoading ? (
-                <RefreshCw className="w-5 h-5 animate-spin" />
+            <div className="space-y-5 relative z-10">
+              {authLoading ? (
+                <div className="flex justify-center items-center py-6">
+                  <RefreshCw className="w-8 h-8 animate-spin" style={{ color: 'var(--brand-3)' }} />
+                </div>
+              ) : user ? (
+                !isAdmin ? (
+                  <div className="text-center space-y-4">
+                    <div className="flex items-center justify-center gap-2 text-sm font-mono bg-hot/10 border border-hot/20 p-4 rounded-2xl" style={{ color: 'var(--hot)' }}>
+                      <ShieldAlert className="w-5 h-5 shrink-0" />
+                      <span>Access Denied. You do not have clearance.</span>
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      className="text-xs text-ink-2 hover:text-ink underline underline-offset-4 transition-colors"
+                    >
+                      Sign out of {user.email}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex justify-center items-center py-6 text-sm font-mono animate-pulse" style={{ color: 'var(--brand-3)' }}>
+                    Verifying Credentials...
+                  </div>
+                )
               ) : (
-                <>
-                  Unlock Command Nodes
+                <button
+                  onClick={handleLoginSubmit}
+                  disabled={isLoading || authLoading}
+                  className="w-full text-white font-display font-bold tracking-wider py-4 rounded-2xl flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
+                  style={{
+                    background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
+                    boxShadow: '0 4px 16px -4px rgba(242,90,43,0.4)',
+                  }}
+                >
+                  Sign In with Google
                   <ChevronRight className="w-4 h-4" />
-                </>
+                </button>
               )}
-            </button>
-            <p className="text-center text-[10px] font-mono text-[#737373]">
-              Default passcode: <span className="text-[#A3A3A3]">ARTISTANT_ADMIN_2026</span>
-            </p>
-          </form>
-        </div>
+
+              {authError && (
+                <div className="flex items-center gap-2 text-xs font-mono bg-hot/10 border border-hot/20 p-3 rounded-xl mt-4" style={{ color: 'var(--hot)' }}>
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{authError}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Footer matching homepage card-footer style */}
+            <div className="mt-8 pt-5 flex justify-between items-center" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+              <span className="text-[11px] font-mono font-semibold tracking-[0.08em]" style={{ color: 'var(--brand-1)' }}>
+                SECURE ACCESS
+              </span>
+              <span className="text-[18px]" style={{ color: 'var(--brand-1)' }}>↗</span>
+            </div>
+          </div>
+        </motion.div>
       </div>
     );
   }
@@ -953,482 +1104,780 @@ export default function AdminPage() {
   // Render Console Main Layout
   // ---------------------------------------------------------------------------
   return (
-    <div className="min-h-screen bg-[#121212] text-[#F0EFF4] font-inter relative pb-20 overflow-x-hidden selection:bg-[#00F0FF] selection:text-[#121212]">
-      <style dangerouslySetInnerHTML={{ __html: `
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600;700&family=Big+Shoulders+Display:wght@800;900&display=swap');
-        .font-space { font-family: 'Space Grotesk', sans-serif; }
-        .font-inter { font-family: 'Inter', sans-serif; }
-      `}} />
-
-      {/* Cinematic Glowing Background Gradients */}
+    <div className="min-h-screen bg-bg text-ink relative overflow-hidden selection:bg-brand selection:text-white">
+      {/* Homepage-style cinematic backdrop */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-[-15%] left-[-15%] w-[45%] h-[45%] bg-[#5A32FA]/5 rounded-full blur-[160px] animate-pulse" />
-        <div className="absolute bottom-[-15%] right-[-15%] w-[40%] h-[40%] bg-[#00F0FF]/5 rounded-full blur-[160px] animate-pulse" />
-        <div className="absolute top-[25%] right-[-5%] w-[35%] h-[35%] bg-[#FF4B4B]/3 rounded-full blur-[140px] animate-pulse" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.005)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.005)_1px,transparent_1px)] bg-[size:60px_60px]" />
+        <div className="absolute inset-0" style={{
+          background: `
+            radial-gradient(ellipse 70% 50% at 50% 40%, rgba(124,92,255,0.08), transparent 60%),
+            radial-gradient(ellipse 60% 40% at 25% 70%, rgba(242,90,43,0.06), transparent 55%),
+            radial-gradient(ellipse 50% 40% at 75% 80%, rgba(212,86,122,0.05), transparent 50%)
+          `
+        }} />
+        <div className="absolute inset-0" style={{
+          backgroundImage: 'linear-gradient(rgba(124,92,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(124,92,255,0.04) 1px, transparent 1px)',
+          backgroundSize: '80px 80px',
+          maskImage: 'radial-gradient(ellipse 70% 60% at 50% 40%, black 20%, transparent 70%)',
+          WebkitMaskImage: 'radial-gradient(ellipse 70% 60% at 50% 40%, black 20%, transparent 70%)',
+        }} />
       </div>
 
       {/* Success Toast */}
       {successToast && (
-        <div className="fixed bottom-8 right-8 z-50 bg-[#1E1E1E] border border-white/10 border-l-4 border-l-[#00F0FF] text-[#F0EFF4] font-space text-sm px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 animate-slide-up">
-          <Sparkles className="w-5 h-5 text-[#FF4B4B] animate-spin" />
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} 
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          className="fixed bottom-8 right-8 z-50 bg-bg-card border border-line-soft text-ink text-sm px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3"
+        >
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{
+            background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)'
+          }}>
+            <Sparkles className="w-4 h-4 text-[#0B1120]" />
+          </div>
           <span>{successToast}</span>
-        </div>
+        </motion.div>
       )}
 
-      {/* Header Panel */}
-      <header className="border-b border-white/10 bg-[#121212]/80 backdrop-blur-md sticky top-0 z-40 relative">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-space font-bold tracking-tight flex items-center">
-              <span className="text-[#FF4B4B]">ARTIS</span>
-              <span className="text-[#5A32FA]">TANT</span>
-              <span className="text-[#A3A3A3] text-[10px] font-mono ml-3 border border-white/10 px-2 py-0.5 rounded uppercase tracking-wider bg-white/5">
-                Admin Console
-              </span>
-            </h1>
-
-            {/* Mode switch */}
-            <div 
-              onClick={handleToggleDbMode}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-mono cursor-pointer border select-none transition-all ${
-                isLiveMode 
-                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/25" 
-                  : "bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/25"
-              }`}
-              title="Click to toggle DB vs Sandbox"
-            >
-              <Database className="w-3 h-3" />
-              <span>{isLiveMode ? "LIVE NETWORK" : "SANDBOX NODE"}</span>
-              <RefreshCw className="w-2.5 h-2.5 animate-spin" style={{ animationDuration: '6s' }} />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={() => setShowSqlMigration(!showSqlMigration)}
-              className="px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 text-[11px] font-mono text-[#A3A3A3] flex items-center gap-2 transition-all"
-            >
-              <Layers className="w-3.5 h-3.5" />
-              SQL Migration schema
-            </button>
-            <a 
-              href="/"
-              target="_blank"
-              className="px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 text-[11px] font-mono text-[#A3A3A3] flex items-center gap-2 transition-all"
-            >
-              <Eye className="w-3.5 h-3.5" />
-              Launch Site
-            </a>
-            <button
-              onClick={handleLogout}
-              className="px-3 py-1.5 rounded-lg border border-[#FF4B4B]/20 hover:bg-[#FF4B4B]/10 text-[11px] font-mono text-[#FF4B4B] flex items-center gap-2 transition-all"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              Lock Dashboard
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-6 pt-8 space-y-8 relative z-10">
+      {/* ===================================================================
+          APP SHELL — SIDEBAR + CONTENT
+          =================================================================== */}
+      <div className="flex h-screen overflow-hidden relative z-10">
         
-        {/* Sandbox Fallback Alerts */}
-        {dbError && (
-          <div className="bg-[#1E1E1E] border border-white/10 border-l-4 border-l-amber-500 text-amber-300 p-5 rounded-xl text-sm font-inter flex items-start gap-4">
-            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-amber-500" />
-            <div>
-              <p className="font-space font-bold mb-1">Sandbox Environment Active</p>
-              <p className="text-[#A3A3A3] text-xs">{dbError}</p>
-              <button 
-                onClick={() => setShowSqlMigration(true)}
-                className="text-xs text-[#00F0FF] underline mt-3 block hover:text-[#00F0FF]/80 font-mono"
-              >
-                Inspect SQL Migrations to Go Live &rarr;
-              </button>
-            </div>
+        {/* ─── Sidebar ─── */}
+        <motion.aside 
+          initial={{ x: -300, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="w-[280px] bg-bg border-r border-line-soft flex flex-col flex-shrink-0 z-20"
+        >
+          {/* Brand Logo — exact homepage logo-typo */}
+          <div className="px-8 pt-8 pb-6">
+            <a href="/" target="_blank" className="block group">
+              <h1 className="text-2xl logo-typo tracking-tight">
+                <span className="artis">Artis</span><span className="tant">Tant</span>
+              </h1>
+              <p className="text-[11px] font-mono font-semibold tracking-[0.12em] uppercase mt-2" style={{ color: 'var(--brand-1)' }}>
+                Admin Console
+              </p>
+            </a>
           </div>
-        )}
 
-        {/* Database Migration instructions */}
-        {showSqlMigration && (
-          <div className="bg-[#1E1E1E] border border-white/10 rounded-2xl p-6 relative overflow-hidden animate-slide-down">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-space text-sm font-bold text-[#FF4B4B] flex items-center gap-2">
-                <Database className="w-4 h-4 text-[#FF4B4B]" />
-                Supabase Schema Upgrade Script
-              </h3>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(`
-ALTER TABLE waitlist_users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT false;
-ALTER TABLE waitlist_users ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT false;
-ALTER TABLE waitlist_users ADD COLUMN IF NOT EXISTS position_override INTEGER DEFAULT NULL;
+          <div className="h-px mx-6" style={{ background: 'rgba(255,255,255,0.05)' }} />
 
-CREATE OR REPLACE FUNCTION admin_get_registrations(p_passcode text)
-RETURNS TABLE (
-  id uuid,
-  user_id text,
-  username text,
-  email text,
-  display_name text,
-  role text,
-  category text,
-  genres text[],
-  phone text,
-  reserved_at timestamptz,
-  is_verified boolean,
-  is_blocked boolean,
-  position_override integer
-)
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-BEGIN
-  IF p_passcode != 'ARTISTANT_ADMIN_2026' THEN
-    RAISE EXCEPTION 'Invalid admin passcode';
-  END IF;
-  RETURN QUERY SELECT w.id, w.user_id, w.username, w.email, w.display_name, w.role, w.category, w.genres, w.phone, w.reserved_at, w.is_verified, w.is_blocked, w.position_override
-  FROM waitlist_users w ORDER BY COALESCE(w.position_override, 999999) ASC, w.reserved_at DESC;
-END; $$;
-
-CREATE OR REPLACE FUNCTION admin_update_registration(p_passcode text, p_user_id text, p_is_verified boolean, p_is_blocked boolean, p_position_override integer DEFAULT NULL)
-RETURNS void
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-BEGIN
-  IF p_passcode != 'ARTISTANT_ADMIN_2026' THEN
-    RAISE EXCEPTION 'Invalid admin passcode';
-  END IF;
-  UPDATE waitlist_users
-  SET is_verified = p_is_verified, is_blocked = p_is_blocked, position_override = p_position_override
-  WHERE user_id = p_user_id;
-END; $$;
-                  `);
-                  showToast("SQL script copied successfully!");
-                }}
-                className="px-3 py-1 rounded-lg bg-[#121212] border border-white/10 hover:bg-[#1E1E1E] text-xs font-mono flex items-center gap-1.5 transition-all text-[#A3A3A3]"
-              >
-                <Copy className="w-3.5 h-3.5" />
-                Copy SQL
-              </button>
-            </div>
-            <p className="text-xs text-[#A3A3A3] mb-4 leading-relaxed font-inter">
-              Run this SQL script in your <strong>Supabase SQL Editor</strong> to add the `position_override` waitlist column and update administrative bypass procedures.
+          {/* Navigation */}
+          <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-1">
+            <p className="text-[10px] font-mono font-semibold tracking-[0.12em] uppercase px-4 pb-3" style={{ color: 'var(--ink-3)' }}>
+              Command Center
             </p>
-            <pre className="bg-[#121212] text-xs font-mono p-4 rounded-xl overflow-x-auto text-[#A3A3A3] border border-white/10 max-h-48">
-{`-- SQL UPGRADE SCHEMA
-ALTER TABLE waitlist_users ADD COLUMN IF NOT EXISTS position_override INTEGER DEFAULT NULL;
-
--- Update get function
-CREATE OR REPLACE FUNCTION admin_get_registrations(p_passcode text)...`}
-            </pre>
-          </div>
-        )}
-
-        {/* Dynamic Navigation Tabs */}
-        <div className="flex border-b border-white/10 gap-1 font-space overflow-x-auto">
-          <button
-            onClick={() => setActiveTab("registrations")}
-            className={`px-6 py-3.5 border-b-2 font-bold transition-all text-sm flex items-center gap-2 whitespace-nowrap ${
-              activeTab === "registrations" 
-                ? "border-[#5A32FA] text-white bg-white/[0.02]" 
-                : "border-transparent text-[#A3A3A3] hover:text-white"
-            }`}
-          >
-            <Users className="w-4 h-4 text-[#5A32FA]" />
-            Waitlist Command Center ({totalCount})
-          </button>
-          <button
-            onClick={() => setActiveTab("graphics")}
-            className={`px-6 py-3.5 border-b-2 font-bold transition-all text-sm flex items-center gap-2 whitespace-nowrap ${
-              activeTab === "graphics" 
-                ? "border-[#00F0FF] text-white bg-white/[0.02]" 
-                : "border-transparent text-[#A3A3A3] hover:text-white"
-            }`}
-          >
-            <ImageIcon className="w-4 h-4 text-[#00F0FF]" />
-            Social Graphics Studio
-          </button>
-          <button
-            onClick={() => setActiveTab("calendar")}
-            className={`px-6 py-3.5 border-b-2 font-bold transition-all text-sm flex items-center gap-2 whitespace-nowrap ${
-              activeTab === "calendar" 
-                ? "border-[#FF4B4B] text-white bg-white/[0.02]" 
-                : "border-transparent text-[#A3A3A3] hover:text-white"
-            }`}
-          >
-            <CalendarIcon className="w-4 h-4 text-[#FF4B4B]" />
-            Social Posting Calendar
-          </button>
-          <button
-            onClick={() => setActiveTab("emailing")}
-            className={`px-6 py-3.5 border-b-2 font-bold transition-all text-sm flex items-center gap-2 whitespace-nowrap ${
-              activeTab === "emailing" 
-                ? "border-[#5A32FA] text-white bg-white/[0.02]" 
-                : "border-transparent text-[#A3A3A3] hover:text-white"
-            }`}
-          >
-            <Mail className="w-4 h-4 text-[#5A32FA]" />
-            Email Broadcast Engine
-          </button>
-        </div>
-
-        {/* ===================================================================
-            TAB 1: WAITLIST COMMAND CENTER
-            =================================================================== */}
-        {activeTab === "registrations" && (
-          <div className="space-y-8 animate-in fade-in duration-200">
             
-            {/* Command metrics bento */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 font-space">
-              <div className="bg-[#1E1E1E] border border-white/10 p-6 rounded-2xl flex items-center justify-between shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-20 h-20 bg-white/[0.01] rounded-full blur-lg" />
-                <div>
-                  <p className="text-xs font-mono uppercase text-[#A3A3A3] tracking-widest">Global Waitlist</p>
-                  <p className="text-3xl font-bold mt-1 text-white">{totalCount}</p>
+            {([
+              { id: "registrations", label: "Waitlist", icon: Users, accent: 'var(--brand-1)' },
+              { id: "leaderboards", label: "Leaderboards", icon: Trophy, accent: 'var(--brand-2)' },
+            ] as const).map(item => (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all text-[14px] ${
+                  activeTab === item.id 
+                    ? "bg-bg-soft text-ink" 
+                    : "text-ink-2 hover:text-ink hover:bg-bg-soft/50"
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${
+                  activeTab === item.id ? 'shadow-sm' : ''
+                }`} style={activeTab === item.id ? {
+                  background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)',
+                  boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)'
+                } : { background: 'var(--bg-2)' }}>
+                  <item.icon className="w-4 h-4" style={{ color: activeTab === item.id ? '#0B1120' : 'var(--ink-3)' }} />
                 </div>
-                <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center">
-                  <Users className="w-5 h-5 text-neutral-400" />
-                </div>
-              </div>
+                <span className="font-medium">{item.label}</span>
+              </button>
+            ))}
 
-              <div className="bg-[#1E1E1E] border border-white/10 p-6 rounded-2xl flex items-center justify-between shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-20 h-20 bg-[#00F0FF]/[0.01] rounded-full blur-lg" />
-                <div>
-                  <p className="text-xs font-mono uppercase text-[#A3A3A3] tracking-widest">Verified Artists</p>
-                  <p className="text-3xl font-bold text-[#00F0FF] mt-1">{verifiedCount}</p>
-                </div>
-                <div className="w-12 h-12 bg-[#00F0FF]/10 border border-[#00F0FF]/20 rounded-xl flex items-center justify-center">
-                  <CheckCircle2 className="w-5 h-5 text-[#00F0FF]" />
-                </div>
-              </div>
-
-              <div className="bg-[#1E1E1E] border border-white/10 p-6 rounded-2xl flex items-center justify-between shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-20 h-20 bg-[#5A32FA]/[0.01] rounded-full blur-lg" />
-                <div>
-                  <p className="text-xs font-mono uppercase text-[#A3A3A3] tracking-widest">Pending Sync</p>
-                  <p className="text-3xl font-bold text-[#5A32FA] mt-1">{pendingCount}</p>
-                </div>
-                <div className="w-12 h-12 bg-[#5A32FA]/10 border border-[#5A32FA]/20 rounded-xl flex items-center justify-center">
-                  <Flame className="w-5 h-5 text-[#5A32FA]" />
-                </div>
-              </div>
-
-              <div className="bg-[#1E1E1E] border border-white/10 p-6 rounded-2xl flex items-center justify-between shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-20 h-20 bg-[#FF4B4B]/[0.01] rounded-full blur-lg" />
-                <div>
-                  <p className="text-xs font-mono uppercase text-[#A3A3A3] tracking-widest">Suspended Accounts</p>
-                  <p className="text-3xl font-bold text-[#FF4B4B] mt-1">{blockedCount}</p>
-                </div>
-                <div className="w-12 h-12 bg-[#FF4B4B]/10 border border-[#FF4B4B]/20 rounded-xl flex items-center justify-center">
-                  <XCircle className="w-5 h-5 text-[#FF4B4B]" />
-                </div>
-              </div>
+            <div className="pt-4 pb-2">
+              <p className="text-[10px] font-mono font-semibold tracking-[0.12em] uppercase px-4 pb-3" style={{ color: 'var(--ink-3)' }}>
+                Growth & Marketing
+              </p>
             </div>
 
-            {/* Heuristics suggestion banner */}
-            {autoVerifyCount > 0 && (
-              <div className="bg-[#1E1E1E] border border-[#5A32FA]/30 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xl">
-                <div>
-                  <h4 className="font-space font-bold text-white text-base flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-[#00F0FF] animate-bounce" />
-                    Auto-Verification Suggestions Available
-                  </h4>
-                  <p className="text-xs text-[#A3A3A3] mt-1 max-w-2xl">
-                    {autoVerifyCount} pending registration(s) match the complete validation heuristics profile (profile names complete, email domain syntax verified, categories, and target supply genres assigned).
-                  </p>
+            {([
+              { id: "graphics", label: "Content Wall", icon: ImageIcon, accent: 'var(--brand-3)' },
+              { id: "calendar", label: "Social Calendar", icon: CalendarIcon, accent: 'var(--hot)' },
+              { id: "emailing", label: "Broadcasts", icon: Mail, accent: 'var(--brand-4)' },
+            ] as const).map(item => (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all text-[14px] ${
+                  activeTab === item.id 
+                    ? "bg-bg-soft text-ink" 
+                    : "text-ink-2 hover:text-ink hover:bg-bg-soft/50"
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${
+                  activeTab === item.id ? 'shadow-sm' : ''
+                }`} style={activeTab === item.id ? {
+                  background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)',
+                  boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)'
+                } : { background: 'var(--bg-2)' }}>
+                  <item.icon className="w-4 h-4" style={{ color: activeTab === item.id ? '#0B1120' : 'var(--ink-3)' }} />
                 </div>
-                <button
-                  onClick={runAutoVerifyEngine}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#5A32FA] to-[#00F0FF] hover:opacity-90 text-white font-space text-xs font-bold flex items-center gap-2 transition-all self-stretch md:self-auto text-center justify-center"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  Auto-Verify {autoVerifyCount} Artists
+                <span className="font-medium">{item.label}</span>
+              </button>
+            ))}
+          </nav>
+
+          {/* Bottom profile card */}
+          <div className="p-4 border-t border-line-soft">
+            <div className="bg-bg-soft border border-line-soft rounded-[20px] p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-[14px] flex items-center justify-center text-white font-display font-bold text-sm" style={{
+                  background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)',
+                  boxShadow: '0 4px 12px -4px rgba(242,90,43,0.35)'
+                }}>
+                  A
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-ink truncate">Admin</p>
+                  <p className="text-[10px] font-mono tracking-[0.08em] uppercase" style={{ color: 'var(--brand-1)' }}>Developer</p>
+                </div>
+                <button onClick={handleLogout} className="text-ink-3 hover:text-hot transition-colors p-1" title="Lock Dashboard">
+                  <LogOut className="w-4 h-4" />
                 </button>
               </div>
-            )}
+              <div className="flex items-center gap-2 mt-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                <div className={`w-2 h-2 rounded-full ${isLiveMode ? "bg-[#22C55E] shadow-[0_0_8px_#22C55E]" : "bg-amber-500 shadow-[0_0_8px_orange]"}`} />
+                <span className="text-[10px] font-mono tracking-[0.08em] uppercase text-ink-3">{isLiveMode ? "Live Database" : "Sandbox Mode"}</span>
+              </div>
+            </div>
+          </div>
+        </motion.aside>
 
-            {/* Table toolstrip */}
-            <div className="bg-[#1E1E1E] border border-white/10 p-4 rounded-2xl flex flex-col md:flex-row gap-4 items-center justify-between shadow-md">
-              <div className="relative w-full md:w-80 font-inter">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A3A3A3]" />
+        {/* ─── Main Content Canvas ─── */}
+        <main className="flex-1 overflow-y-auto relative scroll-smooth">
+          {/* Top bar */}
+          <header className="sticky top-0 z-30 backdrop-blur-xl border-b border-line-soft px-8 py-5 flex items-center justify-between" style={{ background: 'color-mix(in srgb, var(--bg) 80%, transparent)' }}>
+            <div>
+              <h2 className="text-xl font-display font-bold tracking-tight text-ink uppercase">
+                {activeTab === "registrations" && "Waitlist"}
+                {activeTab === "leaderboards" && "Leaderboards"}
+                {activeTab === "graphics" && "Content Wall"}
+                {activeTab === "calendar" && "Calendar"}
+                {activeTab === "emailing" && "Broadcasts"}
+              </h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <a href="/" target="_blank" className="nav-cta text-xs" style={{ padding: '8px 16px' }}>
+                View Site <span className="arrow">↗</span>
+              </a>
+            </div>
+          </header>
+
+          <div className="p-8 max-w-[1400px] mx-auto space-y-8 pb-32">
+            
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              >
+                {/* ===================================================================
+                    TAB 1: WAITLIST COMMAND CENTER
+                    =================================================================== */}
+                {activeTab === "registrations" && (
+                  <div className="space-y-8">
+                    
+                    {/* Metric cards — homepage feature-card style */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                      {[
+                        { label: "Global Waitlist", value: totalCount, color: 'var(--ink)', Icon: Users },
+                        { label: "Verified Artists", value: verifiedCount, color: 'var(--brand-3)', Icon: CheckCircle2 },
+                        { label: "Pending Review", value: pendingCount, color: 'var(--brand-1)', Icon: Flame },
+                        { label: "Suspended", value: blockedCount, color: 'var(--hot)', Icon: XCircle },
+                      ].map((card, i) => (
+                        <GlowingAdminCard
+                          key={card.label}
+                          idx={i}
+                          initial={{ opacity: 0, y: 30 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.08, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                          className="bg-bg-soft border border-line-soft rounded-[28px] p-8 cursor-default group"
+                        >
+                          {/* Watermark number */}
+                          <div className="absolute top-3 right-5 select-none pointer-events-none" style={{
+                            fontFamily: 'var(--font-display)',
+                            fontWeight: 700,
+                            fontSize: '72px',
+                            lineHeight: 0.8,
+                            color: 'rgba(255,255,255,0.03)'
+                          }}>{String(i + 1).padStart(2, '0')}</div>
+
+                          <div className="flex justify-between items-start mb-6">
+                            <div className="w-14 h-14 rounded-[18px] flex items-center justify-center" style={{
+                              background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)',
+                              boxShadow: '0 8px 24px -6px rgba(242,90,43,0.45)'
+                            }}>
+                              <card.Icon className="w-6 h-6 text-[#0B1120]" />
+                            </div>
+                          </div>
+
+                          <div>
+                            <p className="text-4xl font-display font-bold tracking-tight" style={{ color: card.color }}>{card.value}</p>
+                            <p className="text-[11px] font-mono font-semibold tracking-[0.12em] uppercase mt-2" style={{ color: 'var(--brand-1)' }}>{card.label}</p>
+                          </div>
+                        </GlowingAdminCard>
+                      ))}
+                    </div>
+
+                    {/* Heuristics suggestion banner */}
+                    {autoVerifyCount > 0 && (
+                      <GlowingAdminCard 
+                        idx={4}
+                        className="bg-bg-soft border border-line-soft rounded-[28px] p-8"
+                      >
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                          <div className="flex items-start gap-4">
+                            <div className="w-14 h-14 rounded-[18px] flex items-center justify-center flex-shrink-0" style={{
+                              background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)',
+                              boxShadow: '0 8px 24px -6px rgba(242,90,43,0.45)'
+                            }}>
+                              <Sparkles className="w-6 h-6 text-[#0B1120]" />
+                            </div>
+                            <div>
+                              <h4 className="font-display font-bold text-ink text-lg uppercase tracking-tight">
+                                Auto-Verify Available
+                              </h4>
+                              <p className="text-sm text-ink-2 mt-1 max-w-2xl leading-relaxed">
+                                {autoVerifyCount} pending registration(s) match the complete validation heuristics profile.
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={runAutoVerifyEngine}
+                            className="nav-cta text-xs flex items-center gap-2 flex-shrink-0"
+                            style={{ padding: '12px 24px' }}
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            Auto-Verify {autoVerifyCount}
+                          </button>
+                        </div>
+                      </GlowingAdminCard>
+                    )}
+
+            {/* Toolbar */}
+            <div className="bg-bg-soft border border-line-soft p-5 rounded-[28px] flex flex-col md:flex-row gap-4 items-center justify-between">
+              <div className="relative w-full md:w-80">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-3" />
                 <input
                   type="text"
                   placeholder="Search name, handle, email..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-[#121212] border border-white/10 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-[#5A32FA] transition-all"
+                  className="w-full bg-bg border border-line-soft rounded-full pl-11 pr-4 py-2.5 text-sm text-ink placeholder-ink-3 focus:outline-none transition-all"
+                  style={{ borderColor: searchQuery ? 'var(--brand-1)' : '' }}
                 />
               </div>
 
-              <div className="flex flex-wrap items-center gap-4 w-full md:w-auto font-mono text-xs text-[#A3A3A3]">
-                <div className="flex items-center gap-2">
-                  <span>Role:</span>
-                  <select
-                    value={roleFilter}
-                    onChange={(e) => setRoleFilter(e.target.value)}
-                    className="bg-[#121212] border border-white/10 rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#5A32FA] text-white"
+              <div className="flex flex-wrap items-center gap-3 w-full md:w-auto font-mono text-xs text-ink-2">
+                {/* View Mode Toggle */}
+                <div className="flex rounded-full p-0.5" style={{ background: 'var(--bg-2)', border: '1px solid rgba(255,255,255,0.04)' }}>
+                  <button
+                    onClick={() => setViewMode("table")}
+                    className="px-4 py-2 rounded-full transition-all flex items-center gap-1.5 text-[11px] font-bold tracking-[0.06em] uppercase"
+                    style={viewMode === "table" ? {
+                      background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
+                      color: 'white',
+                      boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)',
+                    } : { color: 'var(--ink-3)' }}
                   >
-                    <option value="all">All Roles</option>
-                    <option value="artist">Artist</option>
-                    <option value="venue">Venue</option>
-                    <option value="vendor">Vendor</option>
-                    <option value="fan">Fan</option>
-                  </select>
+                    <Layers className="w-3.5 h-3.5" />
+                    Table
+                  </button>
+                  <button
+                    onClick={() => setViewMode("card")}
+                    className="px-4 py-2 rounded-full transition-all flex items-center gap-1.5 text-[11px] font-bold tracking-[0.06em] uppercase"
+                    style={viewMode === "card" ? {
+                      background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
+                      color: 'white',
+                      boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)',
+                    } : { color: 'var(--ink-3)' }}
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    Cards
+                  </button>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <span>Status:</span>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="bg-[#121212] border border-white/10 rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#5A32FA] text-white"
-                  >
-                    <option value="all">All statuses</option>
-                    <option value="verified">Verified Only</option>
-                    <option value="pending">Pending Only</option>
-                    <option value="blocked">Blocked Only</option>
-                  </select>
-                </div>
+                <select
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                  className="rounded-full px-4 py-2 text-[11px] font-bold tracking-[0.06em] uppercase focus:outline-none text-ink cursor-pointer"
+                  style={{ background: 'var(--bg-2)', border: '1px solid rgba(255,255,255,0.04)' }}
+                >
+                  <option value="all">All Roles</option>
+                  <option value="artist">Artist</option>
+                  <option value="venue">Venue</option>
+                  <option value="vendor">Vendor</option>
+                  <option value="fan">Fan</option>
+                </select>
+
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="rounded-full px-4 py-2 text-[11px] font-bold tracking-[0.06em] uppercase focus:outline-none text-ink cursor-pointer"
+                  style={{ background: 'var(--bg-2)', border: '1px solid rgba(255,255,255,0.04)' }}
+                >
+                  <option value="all">All Status</option>
+                  <option value="verified">Verified</option>
+                  <option value="pending">Pending</option>
+                  <option value="blocked">Blocked</option>
+                </select>
               </div>
             </div>
 
-            {/* Scannable Data Table */}
-            <div className="bg-[#1E1E1E] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-left text-sm font-inter">
-                  <thead>
-                    <tr className="border-b border-white/10 bg-[#1E1E1E]/80 text-[#A3A3A3] text-xs font-mono uppercase tracking-wider">
-                      <th className="px-6 py-4">User Handle</th>
-                      <th className="px-6 py-4">Role / Category</th>
-                      <th className="px-6 py-4">Contact Info</th>
-                      <th className="px-6 py-4">Waitlist Override</th>
-                      <th className="px-6 py-4">Verify & Lock</th>
-                      <th className="px-6 py-4 text-right">Clearance Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {filteredRegistrations.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="px-6 py-12 text-center text-[#A3A3A3] font-mono">
-                          No matching waitlist nodes found.
-                        </td>
+            {/* Data View */}
+            {viewMode === "table" ? (
+              <div className="bg-bg-soft border border-line-soft rounded-[28px] overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-left text-sm">
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }} className="text-ink-3 text-[10px] font-mono font-bold uppercase tracking-[0.12em]">
+                        <th className="px-8 py-5">Artist</th>
+                        <th className="px-6 py-5">Role</th>
+                        <th className="px-6 py-5">Contact</th>
+                        <th className="px-6 py-5">Position</th>
+                        <th className="px-6 py-5">Status</th>
+                        <th className="px-6 py-5 text-right">Actions</th>
                       </tr>
-                    ) : (
-                      filteredRegistrations.map((reg) => {
-                        const heuristics = evaluateAutoVerify(reg);
-                        return (
-                          <tr 
-                            key={reg.id} 
-                            className={`hover:bg-white/[0.02] transition-all duration-150 ${
-                              reg.is_blocked ? "opacity-40" : ""
-                            }`}
-                          >
-                            <td className="px-6 py-4">
-                              <div>
-                                <div className="font-bold text-white flex items-center gap-2">
-                                  {reg.display_name || "Unspecified Node"}
-                                  {reg.is_verified && (
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-[#00F0FF]/10 text-[#00F0FF] border border-[#00F0FF]/25">
-                                      VERIFIED
-                                    </span>
-                                  )}
-                                  {heuristics.eligible && (
-                                    <span 
-                                      className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-[#5A32FA]/10 text-[#5A32FA] border border-[#5A32FA]/25 cursor-help"
-                                      title={`Auto-verify candidate: ${heuristics.reasons.join(", ")}`}
-                                    >
-                                      SUGGESTED
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-xs font-mono text-[#FF4B4B] mt-0.5">
-                                  @{reg.username}
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div>
-                                <span className={`inline-block px-2.5 py-0.5 rounded text-[10px] font-mono uppercase font-bold border ${
-                                  reg.role === "artist" ? "bg-[#5A32FA]/15 text-[#5A32FA] border-[#5A32FA]/20" :
-                                  reg.role === "venue" ? "bg-[#00F0FF]/15 text-[#00F0FF] border-[#00F0FF]/20" :
-                                  reg.role === "vendor" ? "bg-[#FF4B4B]/15 text-[#FF4B4B] border-[#FF4B4B]/20" :
-                                  "bg-white/5 text-neutral-400 border-white/5"
-                                }`}>
-                                  {reg.role || "fan"}
-                                </span>
-                                {reg.category && (
-                                  <span className="block text-xs text-[#A3A3A3] mt-1 capitalize font-mono text-[11px]">
-                                    Category: {reg.category.replace("_", " ")}
-                                  </span>
-                                )}
-                                {reg.genres && reg.genres.length > 0 && (
-                                  <div className="flex flex-wrap gap-1 mt-1.5">
-                                    {reg.genres.map(g => (
-                                      <span key={g} className="text-[9px] font-mono bg-white/5 text-neutral-400 px-1.5 py-0.5 rounded border border-white/5">
-                                        #{g}
+                    </thead>
+                    <tbody>
+                      {filteredRegistrations.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="px-6 py-12 text-center text-ink-2 font-mono">
+                            No matching waitlist nodes found.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredRegistrations.map((reg) => {
+                          const heuristics = evaluateAutoVerify(reg);
+                          return (
+                            <tr 
+                              key={reg.id} 
+                              className={`hover:bg-ink/[0.02] transition-all duration-150 ${
+                                reg.is_blocked ? "opacity-40" : ""
+                              }`}
+                            >
+                              <td className="px-6 py-4">
+                                <div>
+                                  <div className="font-bold text-ink flex items-center gap-2">
+                                    {reg.display_name || "Unspecified Node"}
+                                    {reg.is_verified && (
+                                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold tracking-[0.08em]" style={{
+                                        background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
+                                        color: 'white',
+                                        boxShadow: '0 4px 12px -4px rgba(242,90,43,0.35)',
+                                      }}>
+                                        VERIFIED
                                       </span>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 font-mono text-xs text-[#A3A3A3] space-y-0.5">
-                              <div className="text-white/80">{reg.email}</div>
-                              {reg.phone && <div className="text-neutral-500">{reg.phone}</div>}
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="number"
-                                  placeholder="Auto"
-                                  value={reg.position_override ?? ""}
-                                  onChange={(e) => {
-                                    const val = e.target.value === "" ? null : parseInt(e.target.value, 10);
-                                    handleSavePositionOverride(reg.user_id, val);
-                                  }}
-                                  className="w-16 bg-[#121212] border border-white/10 rounded-lg px-2 py-1 text-xs text-white text-center font-mono focus:outline-none focus:border-[#00F0FF]"
-                                />
-                                <span className="text-[10px] font-mono text-neutral-500">
-                                  {reg.position_override ? `#${reg.position_override}` : "Queue"}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <button
-                                onClick={() => handleVerifyAndLock(reg)}
-                                className={`px-3 py-1.5 rounded-lg font-mono text-xs font-bold transition-all border ${
-                                  reg.is_verified 
-                                    ? "bg-[#00F0FF]/10 text-[#00F0FF] border-[#00F0FF]/30 hover:bg-[#00F0FF]/20" 
-                                    : "bg-gradient-to-r from-[#5A32FA] to-[#00F0FF] text-white border-transparent hover:opacity-90"
-                                }`}
-                              >
-                                {reg.is_verified ? "Locked" : "Verify & Lock"}
-                              </button>
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <button
-                                onClick={() => handleToggleBlock(reg)}
-                                className={`px-2.5 py-1.5 rounded-lg border text-xs font-mono transition-all ${
-                                  reg.is_blocked 
-                                    ? "bg-[#FF4B4B]/10 text-[#FF4B4B] border-[#FF4B4B]/30 hover:bg-[#FF4B4B]/20" 
-                                    : "border-white/10 text-neutral-400 hover:text-white hover:bg-white/5"
-                                }`}
-                              >
-                                {reg.is_blocked ? "Unsuspend" : "Suspend"}
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
+                                    )}
+                                    {heuristics.eligible && (
+                                       <span 
+                                         className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-mono font-bold tracking-[0.08em]"
+                                         style={{
+                                           background: 'var(--bg-2)',
+                                           color: 'var(--brand-3)',
+                                           border: '1px solid rgba(124,92,255,0.2)',
+                                         }}
+                                         title={`Auto-verify candidate: ${heuristics.reasons.join(", ")}`}
+                                       >
+                                         SUGGESTED
+                                       </span>
+                                     )}
+                                   </div>
+                                   <div className="text-xs font-mono mt-0.5" style={{ color: 'var(--brand-1)' }}>
+                                     @{reg.username}
+                                   </div>
+                                 </div>
+                               </td>
+                              <td className="px-6 py-4">
+                                 <div>
+                                   <span className="inline-block px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-[0.08em]" style={{
+                                     background: 'var(--bg-2)',
+                                     color: reg.role === 'artist' ? 'var(--brand-3)' : reg.role === 'venue' ? 'var(--brand-2)' : reg.role === 'vendor' ? 'var(--brand-1)' : 'var(--ink-3)',
+                                     border: `1px solid color-mix(in srgb, ${reg.role === 'artist' ? 'var(--brand-3)' : reg.role === 'venue' ? 'var(--brand-2)' : reg.role === 'vendor' ? 'var(--brand-1)' : 'var(--ink-3)'} 20%, transparent)`,
+                                   }}>
+                                     {reg.role || "fan"}
+                                   </span>
+                                   {reg.category && (
+                                     <span className="block text-xs text-ink-2 mt-1 capitalize font-mono text-[11px]">
+                                       Category: {reg.category.replace("_", " ")}
+                                     </span>
+                                   )}
+                                   {reg.genres && reg.genres.length > 0 && (
+                                     <div className="flex flex-wrap gap-1 mt-1.5">
+                                       {reg.genres.map(g => (
+                                         <span key={g} className="text-[9px] font-mono px-2 py-0.5 rounded-full text-ink-2" style={{
+                                           background: 'var(--bg-2)',
+                                           border: '1px solid rgba(255,255,255,0.04)',
+                                         }}>
+                                           #{g}
+                                         </span>
+                                       ))}
+                                     </div>
+                                   )}
+                                 </div>
+                               </td>
+                              <td className="px-6 py-4 font-mono text-xs text-ink-2 space-y-0.5">
+                                <div className="text-ink/80">{reg.email}</div>
+                                {reg.phone && <div className="text-neutral-500">{reg.phone}</div>}
+                              </td>
+                              <td className="px-6 py-4">
+                                 <div className="flex items-center gap-2">
+                                   <input
+                                     type="number"
+                                     placeholder="Auto"
+                                     value={reg.position_override ?? ""}
+                                     onChange={(e) => {
+                                       const val = e.target.value === "" ? null : parseInt(e.target.value, 10);
+                                       handleSavePositionOverride(reg.user_id, val);
+                                     }}
+                                     className="w-16 bg-bg border border-line-soft rounded-full px-2 py-1 text-xs text-ink text-center font-mono focus:outline-none focus:border-brand-1 transition-all"
+                                   />
+                                   <span className="text-[10px] font-mono text-neutral-500">
+                                     {reg.position_override ? `#${reg.position_override}` : "Queue"}
+                                   </span>
+                                 </div>
+                               </td>
+                              <td className="px-6 py-4">
+                                 <button
+                                   onClick={() => handleVerifyAndLock(reg)}
+                                   className="py-1.5 px-4 rounded-full text-[10px] font-mono font-bold tracking-[0.06em] uppercase transition-all"
+                                   style={reg.is_verified ? {
+                                     background: 'var(--bg-2)',
+                                     color: 'var(--brand-3)',
+                                     border: '1px solid rgba(124,92,255,0.2)',
+                                   } : {
+                                     background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
+                                     color: 'white',
+                                     border: 'none',
+                                     boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)',
+                                   }}
+                                 >
+                                   {reg.is_verified ? "Locked" : "Verify"}
+                                 </button>
+                               </td>
+                              <td className="px-6 py-4 text-right">
+                                 <button
+                                   onClick={() => handleToggleBlock(reg)}
+                                   className="py-1.5 px-4 rounded-full text-[10px] font-mono font-bold tracking-[0.06em] uppercase transition-all"
+                                   style={reg.is_blocked ? {
+                                     background: 'rgba(255,75,75,0.1)',
+                                     color: 'var(--hot)',
+                                     border: '1px solid rgba(255,75,75,0.2)',
+                                   } : {
+                                     background: 'var(--bg-2)',
+                                     color: 'var(--ink-3)',
+                                     border: '1px solid rgba(255,255,255,0.04)',
+                                   }}
+                                 >
+                                   {reg.is_blocked ? "Restore" : "Suspend"}
+                                 </button>
+                               </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredRegistrations.length === 0 ? (
+                  <div className="col-span-full py-12 text-center text-ink-2 font-mono bg-bg-soft rounded-[28px] border border-line-soft">
+                    No matching registrations found.
+                  </div>
+                ) : (
+                  filteredRegistrations.map((reg, idx) => {
+                    const heuristics = evaluateAutoVerify(reg);
+                    const roleColors: Record<string, string> = {
+                      artist: 'var(--brand-3)',
+                      venue: 'var(--brand-2)',
+                      vendor: 'var(--brand-1)',
+                    };
+                    const roleColor = roleColors[reg.role || ''] || 'var(--ink-3)';
+                    const initials = (reg.display_name || 'U')[0].toUpperCase();
+
+                    return (
+                      <GlowingAdminCard 
+                        key={reg.id}
+                        idx={idx}
+                        className={`bg-bg-soft border border-line-soft rounded-[28px] p-8 flex flex-col gap-0 ${
+                          reg.is_blocked ? "opacity-50" : ""
+                        }`}
+                        style={{ minHeight: '380px' }}
+                      >
+                        {/* Watermark initial */}
+                        <div className="absolute top-3 right-6 select-none pointer-events-none" style={{
+                          fontFamily: 'var(--font-display)',
+                          fontWeight: 700,
+                          fontSize: '80px',
+                          lineHeight: 0.8,
+                          color: 'rgba(255,255,255,0.03)'
+                        }}>{initials}</div>
+
+                        {/* Top: Icon + Status badges */}
+                        <div className="flex justify-between items-start mb-5 z-10">
+                          <div className="w-14 h-14 rounded-[18px] flex items-center justify-center text-white font-display font-bold text-xl" style={{
+                            background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)',
+                            boxShadow: '0 8px 24px -6px rgba(242,90,43,0.45)'
+                          }}>
+                            {initials}
+                          </div>
+                          <div className="flex flex-col gap-1.5 items-end">
+                            {reg.is_verified && (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-mono font-bold tracking-[0.08em]" style={{
+                                background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
+                                color: 'white',
+                                boxShadow: '0 4px 12px -4px rgba(242,90,43,0.35)',
+                              }}>
+                                VERIFIED
+                              </span>
+                            )}
+                            {heuristics.eligible && (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-mono font-bold tracking-[0.08em] cursor-help" style={{
+                                background: 'var(--bg-2)',
+                                color: 'var(--brand-3)',
+                                border: '1px solid rgba(124,92,255,0.2)',
+                              }} title={`Auto-verify: ${heuristics.reasons.join(", ")}`}>
+                                SUGGESTED
+                              </span>
+                            )}
+                            {reg.is_blocked && (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-mono font-bold tracking-[0.08em]" style={{
+                                background: 'rgba(255,75,75,0.1)',
+                                color: 'var(--hot)',
+                                border: '1px solid rgba(255,75,75,0.2)',
+                              }}>
+                                SUSPENDED
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Identity */}
+                        <div className="mb-1 z-10">
+                          <h3 className="font-display font-bold text-xl text-ink uppercase tracking-tight leading-tight pr-4">
+                            {reg.display_name || "Unknown"}
+                          </h3>
+                          <p className="text-sm font-mono mt-1" style={{ color: 'var(--brand-1)' }}>
+                            @{reg.username}
+                          </p>
+                        </div>
+
+                        {/* Role & Tags */}
+                        <div className="mb-auto z-10 pt-3">
+                          <span className="inline-block px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-[0.08em]" style={{
+                            background: 'var(--bg-2)',
+                            color: roleColor,
+                            border: `1px solid color-mix(in srgb, ${roleColor} 20%, transparent)`,
+                          }}>
+                            {reg.role || "fan"}
+                          </span>
+                          
+                          {(reg.category || (reg.genres && reg.genres.length > 0)) && (
+                            <div className="mt-3 space-y-2">
+                              {reg.category && (
+                                <p className="text-xs text-ink-2 capitalize">
+                                  <span className="text-ink-3">Category:</span> {reg.category.replace("_", " ")}
+                                </p>
+                              )}
+                              {reg.genres && reg.genres.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {reg.genres.map(g => (
+                                    <span key={g} className="text-[10px] font-mono px-2 py-0.5 rounded-full text-ink-2" style={{
+                                      background: 'var(--bg-2)',
+                                      border: '1px solid rgba(255,255,255,0.04)',
+                                    }}>
+                                      #{g}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Contact info */}
+                        <div className="text-xs text-ink-2 space-y-1 mt-4 pt-4 z-10" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                          <div className="flex items-center gap-2">
+                            <Mail className="w-3.5 h-3.5 text-ink-3" />
+                            <span>{reg.email}</span>
+                          </div>
+                          {reg.phone && (
+                            <div className="flex items-center gap-2">
+                              <Smartphone className="w-3.5 h-3.5 text-ink-3" />
+                              <span>{reg.phone}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Card Footer — matching homepage card-footer */}
+                        <div className="mt-4 pt-4 flex items-center gap-3 z-10" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                          <button
+                            onClick={() => handleVerifyAndLock(reg)}
+                            className="flex-1 py-2.5 rounded-full text-[11px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-2 transition-all"
+                            style={reg.is_verified ? {
+                              background: 'var(--bg-2)',
+                              color: 'var(--brand-3)',
+                              border: '1px solid rgba(124,92,255,0.2)',
+                            } : {
+                              background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
+                              color: 'white',
+                              border: 'none',
+                              boxShadow: '0 4px 16px -4px rgba(242,90,43,0.4)',
+                            }}
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            {reg.is_verified ? "Locked" : "Verify"}
+                          </button>
+                          
+                          <button
+                            onClick={() => handleToggleBlock(reg)}
+                            className="flex-1 py-2.5 rounded-full text-[11px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-2 transition-all"
+                            style={reg.is_blocked ? {
+                              background: 'rgba(255,75,75,0.1)',
+                              color: 'var(--hot)',
+                              border: '1px solid rgba(255,75,75,0.2)',
+                            } : {
+                              background: 'var(--bg-2)',
+                              color: 'var(--ink-3)',
+                              border: '1px solid rgba(255,255,255,0.04)',
+                            }}
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                            {reg.is_blocked ? "Restore" : "Suspend"}
+                          </button>
+                        </div>
+                      </GlowingAdminCard>
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ===================================================================
+            TAB X: LEADERBOARDS
+            =================================================================== */}
+        {activeTab === "leaderboards" && (
+          <div className="space-y-8 animate-in fade-in duration-200">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              
+              {/* Points Leaderboard */}
+              <GlowingAdminCard idx={0} className="bg-bg-soft border border-line-soft rounded-[28px] overflow-hidden flex flex-col h-[600px]">
+                <div className="p-8 flex items-center gap-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div className="w-12 h-12 rounded-[16px] flex items-center justify-center flex-shrink-0" style={{
+                    background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)',
+                    boxShadow: '0 8px 24px -6px rgba(242,90,43,0.45)'
+                  }}>
+                    <Trophy className="w-5 h-5 text-[#0B1120]" />
+                  </div>
+                  <div>
+                    <h3 className="font-display font-bold text-ink text-lg uppercase tracking-tight">Points Ranking</h3>
+                    <p className="text-[11px] font-mono font-semibold tracking-[0.12em] uppercase mt-0.5" style={{ color: 'var(--brand-1)' }}>Base 100 + 50 per referral</p>
+                  </div>
+                </div>
+                <div className="overflow-y-auto flex-1 p-6 space-y-2">
+                  {leaderboards.map((user, idx) => (
+                    <div key={`pts-${user.id}`} className="flex items-center justify-between p-4 rounded-2xl transition-all" style={{
+                      background: idx < 3 ? 'var(--bg-2)' : 'transparent',
+                      border: idx < 3 ? '1px solid rgba(255,255,255,0.04)' : '1px solid transparent',
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-2)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.04)'; }}
+                    onMouseLeave={(e) => { if (idx >= 3) { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.borderColor = 'transparent'; } }}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-mono font-bold text-[11px] ${
+                          idx === 0 ? "text-amber-400" :
+                          idx === 1 ? "text-slate-300" :
+                          idx === 2 ? "text-amber-600" :
+                          "text-ink-3"
+                        }`} style={{ background: idx < 3 ? 'rgba(255,255,255,0.05)' : 'var(--bg-2)' }}>
+                          #{idx + 1}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-ink text-sm">{user.display_name || user.username}</p>
+                          <p className="text-[11px] font-mono text-ink-3">@{user.username}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-display font-bold" style={{ color: 'var(--brand-1)' }}>{user.points}</p>
+                        <p className="text-[10px] font-mono text-ink-3 uppercase tracking-[0.08em]">pts</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </GlowingAdminCard>
+
+              {/* Referrals Leaderboard */}
+              <GlowingAdminCard idx={1} className="bg-bg-soft border border-line-soft rounded-[28px] overflow-hidden flex flex-col h-[600px]">
+                <div className="p-8 flex items-center gap-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div className="w-12 h-12 rounded-[16px] flex items-center justify-center flex-shrink-0" style={{
+                    background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)',
+                    boxShadow: '0 8px 24px -6px rgba(242,90,43,0.45)'
+                  }}>
+                    <Users className="w-5 h-5 text-[#0B1120]" />
+                  </div>
+                  <div>
+                    <h3 className="font-display font-bold text-ink text-lg uppercase tracking-tight">Network Builders</h3>
+                    <p className="text-[11px] font-mono font-semibold tracking-[0.12em] uppercase mt-0.5" style={{ color: 'var(--brand-1)' }}>Ranked by referrals</p>
+                  </div>
+                </div>
+                <div className="overflow-y-auto flex-1 p-6 space-y-2">
+                  {[...leaderboards]
+                    .sort((a, b) => (b.refs || 0) - (a.refs || 0))
+                    .map((user, idx) => (
+                    <div key={`ref-${user.id}`} className="flex items-center justify-between p-4 rounded-2xl transition-all" style={{
+                      background: idx < 3 ? 'var(--bg-2)' : 'transparent',
+                      border: idx < 3 ? '1px solid rgba(255,255,255,0.04)' : '1px solid transparent',
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-2)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.04)'; }}
+                    onMouseLeave={(e) => { if (idx >= 3) { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.borderColor = 'transparent'; } }}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-mono font-bold text-[11px] ${
+                          idx === 0 ? "text-amber-400" :
+                          idx === 1 ? "text-slate-300" :
+                          idx === 2 ? "text-amber-600" :
+                          "text-ink-3"
+                        }`} style={{ background: idx < 3 ? 'rgba(255,255,255,0.05)' : 'var(--bg-2)' }}>
+                          #{idx + 1}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-ink text-sm">{user.display_name || user.username}</p>
+                          <p className="text-[11px] font-mono text-ink-3">@{user.username}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-display font-bold" style={{ color: 'var(--brand-3)' }}>{user.refs || 0}</p>
+                        <p className="text-[10px] font-mono text-ink-3 uppercase tracking-[0.08em]">refs</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </GlowingAdminCard>
+
             </div>
           </div>
         )}
 
         {/* ===================================================================
-            TAB 2: SOCIAL GRAPHICS STUDIO
+            TAB 2: MARKETING CONTENT WALL
             =================================================================== */}
         {activeTab === "graphics" && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-200">
@@ -1437,15 +1886,23 @@ CREATE OR REPLACE FUNCTION admin_get_registrations(p_passcode text)...`}
             <div className="lg:col-span-5 space-y-8">
               
               {/* Studio Settings */}
-              <div className="bg-[#1E1E1E] border border-white/10 p-6 rounded-2xl space-y-6">
-                <h3 className="text-base font-space font-bold text-white border-b border-white/5 pb-3 flex items-center gap-2">
-                  <Settings className="w-4 h-4 text-[#00F0FF]" />
-                  Graphics Parameters
-                </h3>
+              <div className="bg-bg-soft border border-line-soft p-8 rounded-[28px] space-y-6">
+                <div className="flex items-center gap-4 border-b border-line-soft pb-5">
+                  <div className="w-12 h-12 rounded-[16px] flex items-center justify-center flex-shrink-0" style={{
+                    background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)',
+                    boxShadow: '0 8px 24px -6px rgba(242,90,43,0.45)'
+                  }}>
+                    <Settings className="w-5 h-5 text-[#0B1120]" />
+                  </div>
+                  <div>
+                    <h3 className="font-display font-bold text-ink text-lg uppercase tracking-tight">Graphics Parameters</h3>
+                    <p className="text-[11px] font-mono font-semibold tracking-[0.12em] uppercase mt-0.5" style={{ color: 'var(--brand-1)' }}>Configure unified studio output</p>
+                  </div>
+                </div>
 
                 {/* Switch Graphic Type Mode */}
                 <div>
-                  <label className="block text-xs font-mono uppercase text-[#A3A3A3] tracking-wider mb-2.5">
+                  <label className="block text-[10px] font-mono font-semibold uppercase text-ink-3 tracking-[0.12em] mb-3">
                     Studio Generation Target
                   </label>
                   <div className="grid grid-cols-3 gap-2">
@@ -1457,11 +1914,17 @@ CREATE OR REPLACE FUNCTION admin_get_registrations(p_passcode text)...`}
                       <button
                         key={t.type}
                         onClick={() => setGraphicType(t.type as any)}
-                        className={`py-2 rounded-lg font-space text-xs font-bold border transition-all ${
-                          graphicType === t.type 
-                            ? "border-[#5A32FA] bg-[#5A32FA]/15 text-white" 
-                            : "border-white/10 text-[#A3A3A3] hover:bg-white/5"
-                        }`}
+                        className="py-2.5 rounded-full font-mono text-[11px] font-bold uppercase tracking-[0.06em] transition-all border"
+                        style={graphicType === t.type ? {
+                          background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
+                          color: 'white',
+                          border: 'none',
+                          boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)',
+                        } : {
+                          background: 'var(--bg-2)',
+                          color: 'var(--ink-3)',
+                          borderColor: 'rgba(255,255,255,0.04)',
+                        }}
                       >
                         {t.label}
                       </button>
@@ -1471,100 +1934,103 @@ CREATE OR REPLACE FUNCTION admin_get_registrations(p_passcode text)...`}
 
                 {/* Aspect Layout Ratio dimensions */}
                 <div>
-                  <label className="block text-xs font-mono uppercase text-[#A3A3A3] tracking-wider mb-2.5">
+                  <label className="block text-[10px] font-mono font-semibold uppercase text-ink-3 tracking-[0.12em] mb-3">
                     Output Aspect Ratio
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => setCanvasLayout("square")}
-                      className={`py-2 rounded-lg font-space text-xs font-bold border transition-all ${
-                        canvasLayout === "square" 
-                          ? "border-[#00F0FF] bg-[#00F0FF]/10 text-white" 
-                          : "border-white/10 text-[#A3A3A3] hover:bg-white/5"
-                      }`}
+                      className="py-2.5 rounded-full font-mono text-[11px] font-bold uppercase tracking-[0.06em] transition-all border"
+                      style={canvasLayout === "square" ? {
+                        background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
+                        color: 'white',
+                        border: 'none',
+                        boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)',
+                      } : {
+                        background: 'var(--bg-2)',
+                        color: 'var(--ink-3)',
+                        borderColor: 'rgba(255,255,255,0.04)',
+                      }}
                     >
-                      Square (1:1 Ratio)
+                      Square (1:1)
                     </button>
                     <button
                       onClick={() => setCanvasLayout("portrait")}
-                      className={`py-2 rounded-lg font-space text-xs font-bold border transition-all ${
-                        canvasLayout === "portrait" 
-                          ? "border-[#00F0FF] bg-[#00F0FF]/10 text-white" 
-                          : "border-white/10 text-[#A3A3A3] hover:bg-white/5"
-                      }`}
+                      className="py-2.5 rounded-full font-mono text-[11px] font-bold uppercase tracking-[0.06em] transition-all border"
+                      style={canvasLayout === "portrait" ? {
+                        background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
+                        color: 'white',
+                        border: 'none',
+                        boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)',
+                      } : {
+                        background: 'var(--bg-2)',
+                        color: 'var(--ink-3)',
+                        borderColor: 'rgba(255,255,255,0.04)',
+                      }}
                     >
-                      Portrait (9:16 Ratio)
+                      Portrait (9:16)
                     </button>
                   </div>
                 </div>
 
                 {/* Theme Selector */}
                 <div>
-                  <label className="block text-xs font-mono uppercase text-[#A3A3A3] tracking-wider mb-2.5">
+                  <label className="block text-[10px] font-mono font-semibold uppercase text-ink-3 tracking-[0.12em] mb-3">
                     Creative Glow Theme
                   </label>
                   <div className="grid grid-cols-3 gap-2">
-                    <button
-                      onClick={() => setUnifiedTheme("cyber")}
-                      className={`py-2 rounded-lg border text-xs font-mono flex flex-col items-center gap-1 transition-all ${
-                        unifiedTheme === "cyber" 
-                          ? "border-[#00F0FF] bg-[#00F0FF]/5 text-white" 
-                          : "border-white/10 text-[#A3A3A3] hover:bg-white/5"
-                      }`}
-                    >
-                      <span className="w-2 h-2 rounded-full bg-[#00F0FF]" />
-                      Cyber Neon
-                    </button>
-                    <button
-                      onClick={() => setUnifiedTheme("sunset")}
-                      className={`py-2 rounded-lg border text-xs font-mono flex flex-col items-center gap-1 transition-all ${
-                        unifiedTheme === "sunset" 
-                          ? "border-[#FF4B4B] bg-[#FF4B4B]/5 text-white" 
-                          : "border-white/10 text-[#A3A3A3] hover:bg-white/5"
-                      }`}
-                    >
-                      <span className="w-2 h-2 rounded-full bg-[#FF4B4B]" />
-                      Retro Sunset
-                    </button>
-                    <button
-                      onClick={() => setUnifiedTheme("indigo")}
-                      className={`py-2 rounded-lg border text-xs font-mono flex flex-col items-center gap-1 transition-all ${
-                        unifiedTheme === "indigo" 
-                          ? "border-[#5A32FA] bg-[#5A32FA]/5 text-white" 
-                          : "border-white/10 text-[#A3A3A3] hover:bg-white/5"
-                      }`}
-                    >
-                      <span className="w-2 h-2 rounded-full bg-[#5A32FA]" />
-                      Deep Indigo
-                    </button>
+                    {[
+                      { key: "cyber", label: "Cyber Neon", dot: "#D4567A" },
+                      { key: "sunset", label: "Retro Sunset", dot: "#F25A2B" },
+                      { key: "indigo", label: "Deep Indigo", dot: "#7C5CFF" }
+                    ].map(theme => (
+                      <button
+                        key={theme.key}
+                        onClick={() => setUnifiedTheme(theme.key as any)}
+                        className="py-2 rounded-xl border text-[10px] font-mono flex flex-col items-center gap-1.5 transition-all"
+                        style={unifiedTheme === theme.key ? {
+                          background: 'var(--bg-2)',
+                          color: 'var(--ink)',
+                          borderColor: theme.dot,
+                        } : {
+                          background: 'transparent',
+                          color: 'var(--ink-3)',
+                          borderColor: 'rgba(255,255,255,0.04)',
+                        }}
+                      >
+                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: theme.dot }} />
+                        {theme.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
 
               {/* Dynamic Parameter Editor Panel */}
-              <div className="bg-[#1E1E1E] border border-white/10 p-6 rounded-2xl space-y-6">
+              <div className="bg-bg-soft border border-line-soft p-8 rounded-[28px] space-y-6">
                 
                 {graphicType === "milestone" && (
                   <>
-                    <h3 className="text-base font-space font-bold text-white border-b border-white/5 pb-3 flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-[#FF4B4B]" />
+                    <h3 className="text-base font-display font-bold text-ink border-b border-line-soft pb-3 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4" style={{ color: 'var(--brand-1)' }} />
                       Milestone Settings
                     </h3>
                     <div>
-                      <label className="block text-xs font-mono uppercase text-[#A3A3A3] tracking-wider mb-2">Live Metric Count</label>
+                      <label className="block text-xs font-mono uppercase text-ink-2 tracking-wider mb-2">Live Metric Count</label>
                       <div className="flex gap-2">
                         <input
                           type="text"
                           value={gMilestoneStat}
                           onChange={(e) => setGMilestoneStat(e.target.value)}
-                          className="flex-1 bg-[#121212] border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-[#5A32FA]"
+                          className="flex-1 bg-bg border border-line-soft rounded-2xl px-4 py-2.5 text-sm text-ink focus:outline-none focus:border-brand-1 transition-all"
                         />
                         <button
                           onClick={() => {
                             setGMilestoneStat(`${totalCount}+`);
                             showToast("Pulled live database count!");
                           }}
-                          className="px-3 bg-white/5 border border-white/10 rounded-xl text-xs hover:bg-white/10 transition-all font-mono"
+                          className="px-4 py-2.5 rounded-2xl text-xs hover:text-ink transition-all font-mono"
+                          style={{ background: 'var(--bg-2)', border: '1px solid rgba(255,255,255,0.04)' }}
                           title="Pull Live Total"
                         >
                           Live DB
@@ -1572,12 +2038,12 @@ CREATE OR REPLACE FUNCTION admin_get_registrations(p_passcode text)...`}
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-mono uppercase text-[#A3A3A3] tracking-wider mb-2">Headline Title</label>
+                      <label className="block text-xs font-mono uppercase text-ink-2 tracking-wider mb-2">Headline Title</label>
                       <input
                         type="text"
                         value={gMilestoneTitle}
                         onChange={(e) => setGMilestoneTitle(e.target.value)}
-                        className="w-full bg-[#121212] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#5A32FA]"
+                        className="w-full bg-bg border border-line-soft rounded-2xl px-4 py-2.5 text-sm text-ink focus:outline-none focus:border-brand-1 transition-all"
                       />
                     </div>
                   </>
@@ -1585,21 +2051,21 @@ CREATE OR REPLACE FUNCTION admin_get_registrations(p_passcode text)...`}
 
                 {graphicType === "feature" && (
                   <>
-                    <h3 className="text-base font-space font-bold text-white border-b border-white/5 pb-3 flex items-center gap-2">
-                      <Layers className="w-4 h-4 text-[#00F0FF]" />
+                    <h3 className="text-base font-display font-bold text-ink border-b border-line-soft pb-3 flex items-center gap-2">
+                      <Layers className="w-4 h-4" style={{ color: 'var(--brand-3)' }} />
                       Feature Drop Spotlight
                     </h3>
                     <div>
-                      <label className="block text-xs font-mono uppercase text-[#A3A3A3] tracking-wider mb-2">Spotlight Core Title</label>
+                      <label className="block text-xs font-mono uppercase text-ink-2 tracking-wider mb-2">Spotlight Core Title</label>
                       <input
                         type="text"
                         value={gHeadline}
                         onChange={(e) => setGHeadline(e.target.value)}
-                        className="w-full bg-[#121212] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#5A32FA]"
+                        className="w-full bg-bg border border-line-soft rounded-2xl px-4 py-2.5 text-sm text-ink focus:outline-none focus:border-brand-1 transition-all"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-mono uppercase text-[#A3A3A3] tracking-wider mb-2">Feature Presets</label>
+                      <label className="block text-xs font-mono uppercase text-ink-2 tracking-wider mb-2">Feature Presets</label>
                       <div className="grid grid-cols-2 gap-2 mt-1">
                         {[
                           { key: "bookability", label: "Bookability Score™", desc: "DATA-BACKED RELIABILITY RATING FOR PERFORMERS" },
@@ -1612,7 +2078,7 @@ CREATE OR REPLACE FUNCTION admin_get_registrations(p_passcode text)...`}
                               setGHeadline(preset.label);
                               setGSubtext(preset.desc);
                             }}
-                            className="px-2 py-1.5 rounded bg-[#121212] border border-white/5 text-[10px] font-mono hover:border-[#00F0FF] transition-all text-neutral-400 text-left"
+                            className="px-3 py-2 rounded-xl bg-bg border border-line-soft text-[10px] font-mono hover:border-brand-1 transition-all text-neutral-400 text-left"
                           >
                             {preset.label}
                           </button>
@@ -1624,17 +2090,17 @@ CREATE OR REPLACE FUNCTION admin_get_registrations(p_passcode text)...`}
 
                 {graphicType === "countdown" && (
                   <>
-                    <h3 className="text-base font-space font-bold text-white border-b border-white/5 pb-3 flex items-center gap-2">
-                      <CalendarIcon className="w-4 h-4 text-[#5A32FA]" />
+                    <h3 className="text-base font-display font-bold text-ink border-b border-line-soft pb-3 flex items-center gap-2">
+                      <CalendarIcon className="w-4 h-4" style={{ color: 'var(--brand-2)' }} />
                       Beta Countdown Settings
                     </h3>
                     <div>
-                      <label className="block text-xs font-mono uppercase text-[#A3A3A3] tracking-wider mb-2">Target Beta Launch Date</label>
+                      <label className="block text-xs font-mono uppercase text-ink-2 tracking-wider mb-2">Target Beta Launch Date</label>
                       <input
                         type="date"
                         value={gCountdownTarget}
                         onChange={(e) => setGCountdownTarget(e.target.value)}
-                        className="w-full bg-[#121212] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#5A32FA] font-mono"
+                        className="w-full bg-bg border border-line-soft rounded-2xl px-4 py-2.5 text-sm text-ink focus:outline-none focus:border-brand-1 transition-all font-mono"
                       />
                     </div>
                   </>
@@ -1643,19 +2109,19 @@ CREATE OR REPLACE FUNCTION admin_get_registrations(p_passcode text)...`}
                 {/* Subtext description editor (common for Milestone & Feature) */}
                 {graphicType !== "countdown" && (
                   <div>
-                    <label className="block text-xs font-mono uppercase text-[#A3A3A3] tracking-wider mb-2">Description Subtext</label>
+                    <label className="block text-xs font-mono uppercase text-ink-2 tracking-wider mb-2">Description Subtext</label>
                     <textarea
                       value={gSubtext}
                       onChange={(e) => setGSubtext(e.target.value)}
                       rows={3}
-                      className="w-full bg-[#121212] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#5A32FA] resize-none"
+                      className="w-full bg-bg border border-line-soft rounded-2xl px-4 py-2.5 text-sm text-ink focus:outline-none focus:border-brand-1 transition-all resize-none"
                     />
                   </div>
                 )}
 
                 {/* Proactive strategic data triggers */}
-                <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl font-mono text-[10px] text-[#A3A3A3] space-y-1.5">
-                  <p className="font-bold text-[#FF4B4B]">PROACTIVE FLEX PRESETS:</p>
+                <div className="p-4 bg-bg border border-line-soft rounded-2xl font-mono text-[10px] text-ink-3 space-y-1.5">
+                  <p className="font-bold text-brand-1">PROACTIVE FLEX PRESETS:</p>
                   <button
                     onClick={() => {
                       setGraphicType("milestone");
@@ -1663,7 +2129,7 @@ CREATE OR REPLACE FUNCTION admin_get_registrations(p_passcode text)...`}
                       setGMilestoneTitle("PAYMENT DELAYS");
                       setGSubtext("68% of performers report payment delays of 30+ days in the industry. We cure this on Artistant.");
                     }}
-                    className="block text-left underline hover:text-white"
+                    className="block text-left underline hover:text-ink transition-colors"
                   >
                     Load Stat: "68% Payment Delays..."
                   </button>
@@ -1673,7 +2139,7 @@ CREATE OR REPLACE FUNCTION admin_get_registrations(p_passcode text)...`}
                       setGHeadline("REPLACEMENT ASSURED");
                       setGSubtext("Organizers book with absolute safety. Equivalent standby performers dispatched automatically on cancellations.");
                     }}
-                    className="block text-left underline hover:text-white"
+                    className="block text-left underline hover:text-ink transition-colors"
                   >
                     Load Spotlight: "Replacement Backup..."
                   </button>
@@ -1682,7 +2148,12 @@ CREATE OR REPLACE FUNCTION admin_get_registrations(p_passcode text)...`}
                 <div className="flex gap-4 pt-2">
                   <button
                     onClick={handleDownloadUnified}
-                    className="flex-1 bg-gradient-to-r from-[#5A32FA] to-[#00F0FF] hover:opacity-95 text-white font-space font-bold tracking-wider py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg"
+                    className="flex-grow py-3 rounded-full text-[11px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-2 transition-all"
+                    style={{
+                      background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
+                      color: 'white',
+                      boxShadow: '0 4px 16px -4px rgba(242,90,43,0.4)',
+                    }}
                   >
                     <Download className="w-4 h-4" />
                     Download PNG
@@ -1691,10 +2162,11 @@ CREATE OR REPLACE FUNCTION admin_get_registrations(p_passcode text)...`}
                     onClick={() => {
                       showToast("Proactive: Unified content pushed directly to launch story queue!");
                     }}
-                    className="px-4 bg-[#121212] border border-white/10 rounded-xl flex items-center justify-center hover:bg-white/5 transition-all text-[#A3A3A3] hover:text-white"
+                    className="px-4 py-3 rounded-full flex items-center justify-center hover:text-ink transition-all text-ink-3"
+                    style={{ background: 'var(--bg-2)', border: '1px solid rgba(255,255,255,0.04)' }}
                     title="Push directly to Instagram/LinkedIn Queue"
                   >
-                    <ArrowUpRight className="w-5 h-5 text-[#00F0FF]" />
+                    <ArrowUpRight className="w-4 h-4" />
                   </button>
                 </div>
 
@@ -1704,18 +2176,18 @@ CREATE OR REPLACE FUNCTION admin_get_registrations(p_passcode text)...`}
 
             {/* Right Graphics Preview Pane */}
             <div className="lg:col-span-7 space-y-4">
-              <div className="bg-[#1E1E1E] border border-white/10 p-6 rounded-2xl flex flex-col items-center">
-                <div className="w-full flex justify-between items-center mb-4">
-                  <span className="text-xs font-mono uppercase tracking-wider text-[#A3A3A3]">Graphics preview canvas pane</span>
-                  <span className="text-xs font-mono text-[#00F0FF]">
+              <div className="bg-bg-soft border border-line-soft p-8 rounded-[28px] flex flex-col items-center">
+                <div className="w-full flex justify-between items-center mb-5">
+                  <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--brand-1)' }}>Graphics preview canvas pane</span>
+                  <span className="text-xs font-mono text-ink-3">
                     {canvasLayout === "square" ? "1080 x 1080 (Square)" : "1080 x 1920 (Portrait 9:16)"}
                   </span>
                 </div>
 
-                <div className="bg-[#121212] border border-white/10 p-4 rounded-xl max-w-full flex items-center justify-center overflow-auto shadow-inner relative" style={{ minHeight: '350px' }}>
+                <div className="w-full bg-bg border border-line-soft p-4 rounded-2xl flex items-center justify-center overflow-auto shadow-inner relative" style={{ minHeight: '350px' }}>
                   <canvas 
                     ref={canvasRef} 
-                    className={`h-auto border border-white/5 shadow-2xl rounded max-w-[280px] sm:max-w-[320px] md:max-w-[380px] lg:max-w-[400px]`}
+                    className="h-auto border border-line-soft shadow-2xl rounded-2xl max-w-[280px] sm:max-w-[320px] md:max-w-[380px] lg:max-w-[400px]"
                   />
                 </div>
               </div>
@@ -1729,76 +2201,97 @@ CREATE OR REPLACE FUNCTION admin_get_registrations(p_passcode text)...`}
             =================================================================== */}
         {activeTab === "calendar" && (
           <div className="space-y-8 animate-in fade-in duration-200">
-            <div className="bg-[#1E1E1E] border border-white/10 p-6 rounded-2xl shadow-xl">
-              <h3 className="text-lg font-space font-bold text-white mb-2 flex items-center gap-2">
-                <CalendarIcon className="w-5 h-5 text-[#FF4B4B]" />
-                Launch Post Schedule & presets
-              </h3>
-              <p className="text-sm text-[#A3A3A3] max-w-3xl leading-relaxed">
-                Click any scheduled posting task below to instantly load its design preset parameters directly into the **Social Graphics Studio** to preview, download, and queue them.
-              </p>
+            <div className="bg-bg-soft border border-line-soft p-8 rounded-[28px] flex items-center gap-4">
+              <div className="w-12 h-12 rounded-[16px] flex items-center justify-center flex-shrink-0" style={{
+                background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)',
+                boxShadow: '0 8px 24px -6px rgba(242,90,43,0.45)'
+              }}>
+                <CalendarIcon className="w-5 h-5 text-[#0B1120]" />
+              </div>
+              <div>
+                <h3 className="font-display font-bold text-ink text-lg uppercase tracking-tight">Launch Post Schedule</h3>
+                <p className="text-[11px] font-mono font-semibold tracking-[0.12em] uppercase mt-0.5" style={{ color: 'var(--brand-1)' }}>Draft, preview and queue social graphics</p>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {SOCIAL_CALENDAR.map((post) => (
-                <div 
+              {SOCIAL_CALENDAR.map((post, idx) => (
+                <GlowingAdminCard 
                   key={post.id} 
-                  className="bg-[#1E1E1E] border border-white/10 hover:border-[#00F0FF]/30 rounded-2xl p-6 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden shadow-md"
+                  idx={idx}
+                  className="bg-bg-soft border border-line-soft rounded-[28px] p-8 flex flex-col justify-between"
                 >
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-white/[0.005] rounded-full blur-xl pointer-events-none group-hover:bg-[#00F0FF]/[0.02]" />
-                  
                   <div>
-                    <div className="flex justify-between items-center mb-4">
-                      <span className="text-xs font-mono text-[#A3A3A3] flex items-center gap-1.5">
+                    <div className="flex justify-between items-center mb-5">
+                      <span className="text-[10px] font-mono font-bold text-ink-3 flex items-center gap-1.5 uppercase tracking-[0.08em]">
                         <CalendarIcon className="w-3.5 h-3.5" />
-                        {post.date} ({post.day}) @ {post.time}
+                        {post.date} @ {post.time}
                       </span>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-mono border font-bold ${
-                        post.platform === "Instagram" ? "bg-[#5A32FA]/10 text-[#5A32FA] border-[#5A32FA]/20" :
-                        post.platform === "Twitter/X" ? "bg-white/5 text-white border-white/10" :
-                        "bg-[#00F0FF]/10 text-[#00F0FF] border-[#00F0FF]/20"
-                      }`}>
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-[0.08em]" style={{
+                        background: 'var(--bg-2)',
+                        color: 'var(--brand-1)',
+                        border: '1px solid rgba(255,255,255,0.04)',
+                      }}>
                         {post.platform}
                       </span>
                     </div>
 
-                    <h4 className="text-base font-space font-bold text-white mb-2 group-hover:text-[#00F0FF] transition-colors">
+                    <h4 className="text-base font-display font-bold text-ink uppercase tracking-tight mb-3">
                       {post.title}
                     </h4>
 
-                    <p className="text-xs text-[#A3A3A3] leading-relaxed mb-4 italic bg-[#121212] p-3 rounded-lg border border-white/5 line-clamp-3">
+                    <p className="text-xs text-ink-2 leading-relaxed mb-6 italic bg-bg p-4 rounded-2xl border border-line-soft line-clamp-3">
                       {post.caption}
                     </p>
                   </div>
 
-                  <div className="flex gap-2 mt-4 pt-4 border-t border-white/5">
+                  <div className="flex gap-2 mt-4 pt-4 border-t border-line-soft">
                     <button
                       onClick={() => handleApplyPreset(post)}
-                      className="flex-1 bg-[#121212] border border-white/10 hover:bg-gradient-to-r hover:from-[#5A32FA] hover:to-[#00F0FF] hover:text-white text-[#A3A3A3] font-space font-bold text-xs py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all"
+                      className="flex-1 py-2.5 rounded-full text-[11px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-2 transition-all"
+                      style={{
+                        background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
+                        color: 'white',
+                        border: 'none',
+                        boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)',
+                      }}
                     >
                       <ImageIcon className="w-3.5 h-3.5" />
-                      Load design parameters
+                      Load Preset
                     </button>
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(post.caption);
                         showToast("Caption copied!");
                       }}
-                      className="px-3 bg-[#121212] hover:bg-white/5 text-[#A3A3A3] hover:text-white rounded-lg border border-white/10 text-xs font-mono transition-all"
+                      className="px-4 py-2.5 rounded-full text-[11px] font-mono font-bold tracking-[0.06em] uppercase transition-all"
+                      style={{ background: 'var(--bg-2)', border: '1px solid rgba(255,255,255,0.04)' }}
                     >
                       Copy
                     </button>
                   </div>
-                </div>
+                </GlowingAdminCard>
               ))}
               
               {/* Custom Scheduler slot */}
-              <div className="bg-[#1E1E1E]/30 border-2 border-dashed border-white/10 hover:border-[#5A32FA]/40 rounded-2xl p-6 transition-all duration-300 flex flex-col justify-center items-center gap-3 text-center cursor-pointer min-h-[250px] shadow-sm">
-                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
-                  <Plus className="w-5 h-5 text-neutral-400" />
+              <div 
+                className="border-2 border-dashed border-line-soft hover:border-brand-1 rounded-[28px] p-8 flex flex-col justify-center items-center gap-4 text-center cursor-pointer min-h-[280px] transition-all bg-bg-soft/25"
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = 'var(--bg-soft)';
+                  (e.currentTarget as HTMLElement).style.borderColor = 'var(--brand-1)';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = 'var(--bg-soft)/25';
+                  (e.currentTarget as HTMLElement).style.borderColor = '';
+                }}
+              >
+                <div className="w-12 h-12 rounded-full bg-bg flex items-center justify-center border border-line-soft">
+                  <Plus className="w-5 h-5 text-ink-3" />
                 </div>
-                <span className="font-space font-bold text-xs text-[#A3A3A3]">Add custom calendar task</span>
-                <span className="text-[10px] text-neutral-600 max-w-[200px]">Draft future drops and countdown releases.</span>
+                <div>
+                  <span className="font-display font-bold text-sm text-ink uppercase tracking-tight block">Add Custom Task</span>
+                  <span className="text-[11px] text-ink-3 max-w-[200px] mt-1.5 block leading-normal">Draft future drops and countdown releases.</span>
+                </div>
               </div>
             </div>
           </div>
@@ -1812,19 +2305,27 @@ CREATE OR REPLACE FUNCTION admin_get_registrations(p_passcode text)...`}
             
             {/* Left Email Composer Form */}
             <div className="lg:col-span-6 space-y-6">
-              <div className="bg-[#1E1E1E] border border-white/10 p-6 rounded-2xl space-y-6 shadow-2xl">
-                <h3 className="text-base font-space font-bold text-white border-b border-white/5 pb-3 flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-[#5A32FA]" />
-                  Campaign Composer
-                </h3>
+              <div className="bg-bg-soft border border-line-soft p-8 rounded-[28px] space-y-6">
+                <div className="flex items-center gap-4 border-b border-line-soft pb-5">
+                  <div className="w-12 h-12 rounded-[16px] flex items-center justify-center flex-shrink-0" style={{
+                    background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)',
+                    boxShadow: '0 8px 24px -6px rgba(242,90,43,0.45)'
+                  }}>
+                    <Mail className="w-5 h-5 text-[#0B1120]" />
+                  </div>
+                  <div>
+                    <h3 className="font-display font-bold text-ink text-lg uppercase tracking-tight">Campaign Composer</h3>
+                    <p className="text-[11px] font-mono font-semibold tracking-[0.12em] uppercase mt-0.5" style={{ color: 'var(--brand-1)' }}>Draft and broadcast mailers</p>
+                  </div>
+                </div>
 
                 {/* Sender Alias Selection */}
                 <div>
-                  <label className="block text-xs font-mono uppercase text-[#A3A3A3] tracking-wider mb-2">Sender Alias</label>
+                  <label className="block text-[10px] font-mono font-semibold uppercase text-ink-3 tracking-[0.12em] mb-2.5">Sender Alias</label>
                   <select
                     value={emailAlias}
                     onChange={(e) => setEmailAlias(e.target.value)}
-                    className="w-full bg-[#121212] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#5A32FA]"
+                    className="w-full bg-bg border border-line-soft rounded-2xl px-4 py-3 text-sm text-ink focus:outline-none focus:border-brand-1 transition-all cursor-pointer"
                   >
                     <option value="official">ArtisTant Official (info@artistant.in)</option>
                     <option value="support">ArtisTant Support (support@artistant.in)</option>
@@ -1834,76 +2335,81 @@ CREATE OR REPLACE FUNCTION admin_get_registrations(p_passcode text)...`}
 
                 {/* Email Subject */}
                 <div>
-                  <label className="block text-xs font-mono uppercase text-[#A3A3A3] tracking-wider mb-2">Campaign Subject</label>
+                  <label className="block text-[10px] font-mono font-semibold uppercase text-ink-3 tracking-[0.12em] mb-2.5">Campaign Subject</label>
                   <input
                     type="text"
                     value={emailSubject}
                     onChange={(e) => setEmailSubject(e.target.value)}
-                    className="w-full bg-[#121212] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#5A32FA]"
+                    className="w-full bg-bg border border-line-soft rounded-2xl px-4 py-3 text-sm text-ink focus:outline-none focus:border-brand-1 transition-all"
                   />
                 </div>
 
                 {/* Email Header banner line */}
                 <div>
-                  <label className="block text-xs font-mono uppercase text-[#A3A3A3] tracking-wider mb-2">Email Header Greeting</label>
+                  <label className="block text-[10px] font-mono font-semibold uppercase text-ink-3 tracking-[0.12em] mb-2.5">Email Header Greeting</label>
                   <input
                     type="text"
                     value={emailHeader}
                     onChange={(e) => setEmailHeader(e.target.value)}
-                    className="w-full bg-[#121212] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#5A32FA]"
+                    className="w-full bg-bg border border-line-soft rounded-2xl px-4 py-3 text-sm text-ink focus:outline-none focus:border-brand-1 transition-all"
                   />
                 </div>
 
                 {/* Email Body text */}
                 <div>
-                  <label className="block text-xs font-mono uppercase text-[#A3A3A3] tracking-wider mb-2">Message Body Copy (HTML supported)</label>
+                  <label className="block text-[10px] font-mono font-semibold uppercase text-ink-3 tracking-[0.12em] mb-2.5">Message Body Copy (HTML supported)</label>
                   <textarea
                     value={emailBody}
                     onChange={(e) => setEmailBody(e.target.value)}
                     rows={6}
-                    className="w-full bg-[#121212] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#5A32FA] resize-none"
+                    className="w-full bg-bg border border-line-soft rounded-2xl px-4 py-3.5 text-sm text-ink focus:outline-none focus:border-brand-1 transition-all resize-none"
                   />
                 </div>
 
                 {/* Call To Action Buttons configs */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-mono uppercase text-[#A3A3A3] tracking-wider mb-2">CTA Link Text</label>
+                    <label className="block text-[10px] font-mono font-semibold uppercase text-ink-3 tracking-[0.12em] mb-2.5">CTA Link Text</label>
                     <input
                       type="text"
                       value={emailCtaText}
                       onChange={(e) => setEmailCtaText(e.target.value)}
-                      className="w-full bg-[#121212] border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-[#5A32FA]"
+                      className="w-full bg-bg border border-line-soft rounded-2xl px-4 py-3 text-sm text-ink focus:outline-none focus:border-brand-1 transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-mono uppercase text-[#A3A3A3] tracking-wider mb-2">CTA Destination URL</label>
+                    <label className="block text-[10px] font-mono font-semibold uppercase text-ink-3 tracking-[0.12em] mb-2.5">CTA Destination URL</label>
                     <input
                       type="text"
                       value={emailCtaUrl}
                       onChange={(e) => setEmailCtaUrl(e.target.value)}
-                      className="w-full bg-[#121212] border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-[#5A32FA] font-mono"
+                      className="w-full bg-bg border border-line-soft rounded-2xl px-4 py-3 text-sm text-ink focus:outline-none focus:border-brand-1 transition-all font-mono"
                     />
                   </div>
                 </div>
 
                 {/* Sending stats readout */}
-                <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl flex justify-between items-center font-space">
+                <div className="p-5 bg-bg border border-line-soft rounded-[20px] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div>
-                    <span className="text-[10px] font-mono text-[#A3A3A3] block uppercase tracking-widest">Active targets list</span>
-                    <span className="text-lg font-bold text-white">{getSelectedRecipientsList().filter(r=>!r.is_blocked).length} users ready</span>
+                    <span className="text-[10px] font-mono font-bold text-ink-3 block uppercase tracking-[0.08em]">Active Targets List</span>
+                    <span className="text-base font-bold text-ink mt-0.5 block">{getSelectedRecipientsList().filter(r=>!r.is_blocked).length} users ready</span>
                   </div>
                   <button
                     onClick={handleSendEmailBroadcast}
                     disabled={emailSending}
-                    className="px-5 py-3 rounded-xl bg-gradient-to-r from-[#5A32FA] to-[#00F0FF] hover:opacity-90 text-white text-xs font-bold font-space tracking-wider flex items-center gap-2 transition-all disabled:opacity-50"
+                    className="w-full sm:w-auto py-3 px-6 rounded-full text-[11px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                    style={{
+                      background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
+                      color: 'white',
+                      boxShadow: '0 4px 16px -4px rgba(242,90,43,0.4)',
+                    }}
                   >
                     {emailSending ? (
                       <RefreshCw className="w-4 h-4 animate-spin" />
                     ) : (
                       <Send className="w-4 h-4" />
                     )}
-                    Launch Broadcast Campaign
+                    Launch Broadcast
                   </button>
                 </div>
               </div>
@@ -1913,24 +2419,22 @@ CREATE OR REPLACE FUNCTION admin_get_registrations(p_passcode text)...`}
             <div className="lg:col-span-6 space-y-6">
               
               {/* Interactive preview display */}
-              <div className="bg-[#1E1E1E] border border-white/10 p-6 rounded-2xl shadow-2xl space-y-4">
-                <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                  <span className="text-xs font-mono uppercase text-[#A3A3A3] tracking-wider">Email client live preview</span>
-                  <div className="flex bg-[#121212] border border-white/10 rounded-lg p-0.5">
+              <div className="bg-bg-soft border border-line-soft p-8 rounded-[28px] space-y-5">
+                <div className="flex justify-between items-center border-b border-line-soft pb-4">
+                  <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--brand-1)' }}>Email client live preview</span>
+                  <div className="flex rounded-full p-0.5" style={{ background: 'var(--bg-2)', border: '1px solid rgba(255,255,255,0.04)' }}>
                     <button
                       onClick={() => setEmailPreviewMode("mobile")}
-                      className={`p-1.5 rounded transition-all ${
-                        emailPreviewMode === "mobile" ? "bg-white/5 text-[#00F0FF]" : "text-neutral-500 hover:text-neutral-300"
-                      }`}
+                      className="p-2 rounded-full transition-all text-ink-3 hover:text-ink"
+                      style={emailPreviewMode === "mobile" ? { background: 'var(--bg-card)', color: 'var(--brand-1)' } : {}}
                       title="Mobile View"
                     >
                       <Smartphone className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => setEmailPreviewMode("desktop")}
-                      className={`p-1.5 rounded transition-all ${
-                        emailPreviewMode === "desktop" ? "bg-white/5 text-[#00F0FF]" : "text-neutral-500 hover:text-neutral-300"
-                      }`}
+                      className="p-2 rounded-full transition-all text-ink-3 hover:text-ink"
+                      style={emailPreviewMode === "desktop" ? { background: 'var(--bg-card)', color: 'var(--brand-1)' } : {}}
                       title="Desktop View"
                     >
                       <Monitor className="w-4 h-4" />
@@ -1939,9 +2443,9 @@ CREATE OR REPLACE FUNCTION admin_get_registrations(p_passcode text)...`}
                 </div>
 
                 {/* Email template frame wrapper strictly matching brand HTML welcome style */}
-                <div className="flex justify-center bg-neutral-900 border border-white/5 p-4 rounded-xl overflow-y-auto max-h-[500px]">
+                <div className="flex justify-center bg-bg border border-line-soft p-4 rounded-[20px] overflow-y-auto max-h-[500px]">
                   <div 
-                    className={`bg-[#0B1120] text-[#F0EFF4] text-left p-6 border rounded-xl relative ${
+                    className={`bg-[#0B1120] text-ink text-left p-6 border rounded-xl relative ${
                       emailPreviewMode === "mobile" ? "w-[320px]" : "w-full max-w-[500px]"
                     }`}
                     style={{
@@ -1962,14 +2466,14 @@ CREATE OR REPLACE FUNCTION admin_get_registrations(p_passcode text)...`}
 
                     {/* Wordmark logo banner */}
                     <div className="text-center mb-6">
-                      <span className="font-bold text-lg tracking-widest text-[#F0EFF4]">ARTISTANT</span>
+                      <span className="font-bold text-lg tracking-widest text-ink font-display">ARTISTANT</span>
                     </div>
 
-                    <div className="p-1.5 rounded-xl bg-gradient-to-r from-[#FF4B4B] via-[#5A32FA] to-[#00F0FF]">
+                    <div className="p-0.5 rounded-xl" style={{ background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)' }}>
                       <div className="bg-[#0B1120] p-5 rounded-lg space-y-4">
-                        <p className="text-white font-bold text-sm">Hey username,</p>
+                        <p className="text-ink font-bold text-sm">Hey username,</p>
                         
-                        <p className="text-white/90 font-bold text-xs uppercase tracking-wider text-[#00F0FF]">{emailHeader}</p>
+                        <p className="font-bold text-xs uppercase tracking-wider" style={{ color: 'var(--brand-1)' }}>{emailHeader}</p>
                         
                         <p 
                           className="text-[#9BA4B8] text-xs leading-relaxed whitespace-pre-wrap"
@@ -1981,8 +2485,11 @@ CREATE OR REPLACE FUNCTION admin_get_registrations(p_passcode text)...`}
                             <a 
                               href={emailCtaUrl} 
                               target="_blank" 
-                              className="inline-block px-5 py-2.5 bg-[#5A32FA] text-white font-bold text-xs rounded-lg transition-all"
-                              style={{ textDecoration: 'none' }}
+                              className="inline-block px-5 py-2.5 text-white font-bold text-xs rounded-full transition-all"
+                              style={{ 
+                                textDecoration: 'none',
+                                background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)'
+                              }}
                             >
                               {emailCtaText}
                             </a>
@@ -2001,25 +2508,25 @@ CREATE OR REPLACE FUNCTION admin_get_registrations(p_passcode text)...`}
 
               {/* Execution progress terminal */}
               {showLogTerminal && (
-                <div className="bg-black border border-white/10 rounded-2xl overflow-hidden shadow-2xl animate-slide-up">
-                  <div className="bg-neutral-900 px-4 py-2 border-b border-white/5 flex justify-between items-center">
-                    <span className="text-[10px] font-mono font-bold text-[#A3A3A3] flex items-center gap-1.5">
-                      <div className={`w-2 h-2 rounded-full ${emailSending ? "bg-amber-500 animate-ping" : "bg-emerald-500"}`} />
+                <div className="bg-bg-soft border border-line-soft rounded-[28px] overflow-hidden shadow-2xl animate-slide-up">
+                  <div className="bg-bg px-6 py-4 border-b border-line-soft flex justify-between items-center">
+                    <span className="text-[10px] font-mono font-bold text-ink-3 flex items-center gap-1.5 uppercase tracking-[0.08em]">
+                      <div className={`w-2 h-2 rounded-full ${emailSending ? "bg-amber-500 animate-ping" : "bg-[#22C55E]"}`} />
                       Execution Broadcast Terminal
                     </span>
                     <button 
                       onClick={() => setShowLogTerminal(false)}
-                      className="text-neutral-500 hover:text-neutral-300 text-xs font-bold"
+                      className="text-ink-3 hover:text-ink text-xs font-mono uppercase tracking-[0.06em] font-bold"
                     >
                       Close
                     </button>
                   </div>
-                  <pre className="p-4 max-h-48 overflow-y-auto text-[10px] font-mono text-[#A3A3A3] space-y-1.5 bg-[#121212] text-left">
+                  <pre className="p-6 max-h-48 overflow-y-auto text-[10px] font-mono text-ink-2 space-y-1.5 bg-bg text-left">
                     {emailLogs.length === 0 ? (
-                      <span className="text-neutral-600 italic">No execution logs active.</span>
+                      <span className="text-ink-3 italic">No execution logs active.</span>
                     ) : (
                       emailLogs.map((logStr, i) => (
-                        <div key={i} className={logStr.includes("FAILED") ? "text-[#FF4B4B]" : logStr.includes("SUCCESS") ? "text-[#00F0FF]" : ""}>
+                        <div key={i} className={logStr.includes("FAILED") ? "text-hot" : logStr.includes("SUCCESS") ? "text-brand-3" : ""}>
                           {logStr}
                         </div>
                       ))
@@ -2029,11 +2536,14 @@ CREATE OR REPLACE FUNCTION admin_get_registrations(p_passcode text)...`}
               )}
 
             </div>
-
           </div>
         )}
 
-      </main>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

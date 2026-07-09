@@ -31,7 +31,7 @@
       margin: 0 !important;
       padding: 0 !important;
       width: 100% !important;
-      background-color: #fafafa;
+      background-color: #F8FAFC;
     }
 
     /* iOS Blue Links Override */
@@ -49,16 +49,34 @@
       .email-container {
         width: 100% !important;
         max-width: 100% !important;
-        padding-left: 10px !important;
-        padding-right: 10px !important;
+        padding-left: 8px !important;
+        padding-right: 8px !important;
       }
       .content-card {
-        padding: 30px 20px !important;
+        padding: 30px 16px !important;
+      }
+      .ticket-table {
+        border-radius: 12px !important;
+      }
+      .ticket-left, .ticket-right {
+        display: block !important;
+        width: 100% !important;
+        box-sizing: border-box;
+      }
+      .ticket-left {
+        border-right: none !important;
+        border-bottom: 2px dashed #334155 !important;
+        padding: 20px !important;
+      }
+      .ticket-right {
+        padding: 20px !important;
+        text-align: left !important;
       }
       .cta-button {
         width: 100% !important;
         display: block !important;
         box-sizing: border-box;
+        text-align: center !important;
       }
     }
   </style>
@@ -71,84 +89,153 @@
   </xml>
   <![endif]-->
 </head>
-<body style="margin: 0; padding: 0; background-color: #fafafa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+<body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  
   <!-- Preheader text for inbox preview -->
   <div style="display: none; max-height: 0px; overflow: hidden;">
-    Explore your latest updates and creative syncs on ArtisTant.
+    Your ArtisTant username @{{username}} is officially secured! 🚀
   </div>
   
-  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #fafafa; table-layout: fixed;">
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #F8FAFC; table-layout: fixed;">
     <tr>
       <td align="center" style="padding: 20px 0 40px 0;">
         <!-- Email Container Card -->
-        <table border="0" cellpadding="0" cellspacing="0" width="600" class="email-container" style="max-width: 600px; width: 100%; background-color: #ffffff; border: 1px solid #eaeaea; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.04); text-align: left;">
+        <table border="0" cellpadding="0" cellspacing="0" width="600" class="email-container" style="max-width: 600px; width: 100%; background-color: #ffffff; border: 1px solid #E2E8F0; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04); text-align: left;">
           
           <!-- Branded Dark Header -->
           <tr>
             <td style="background-color: #0b1120; padding: 25px 30px; border-top-left-radius: 19px; border-top-right-radius: 19px;">
-              <a href="{{cta_url}}" target="_blank" style="text-decoration: none; display: block;">
-                <img src="https://artistant.in/logo_wordmark.png" alt="ArtisTant Logo" width="150" style="display: block; width: 150px; height: auto; border: 0; outline: none;" onerror="this.onerror=null; this.src='https://raw.githubusercontent.com/anudeepDash/artistant-waitlist/main/public/logo_wordmark.png';">
-              </a>
+              <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td align="left">
+                    <a href="{{cta_url}}" target="_blank" style="text-decoration: none; display: block;">
+                      <img src="https://artistant.in/logo_wordmark.png" alt="ArtisTant Logo" width="130" style="display: block; width: 130px; height: auto; border: 0; outline: none;" onerror="this.onerror=null; this.src='https://raw.githubusercontent.com/anudeepDash/artistant-waitlist/main/public/logo_wordmark.png';">
+                    </a>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 
-          <!-- 3px Gradient Line Divider under Header -->
+          <!-- Top Gradient Border Strip -->
           <tr>
-            <td height="3" style="height: 3px; font-size: 0px; line-height: 0px; background: #F25A2B; background: linear-gradient(90deg, #F25A2B 0%, #D4567A 40%, #7C5CFF 75%, #6B7CDB 100%);">
-              &nbsp;
-            </td>
+            <td height="4" style="background: #F25A2B; background: linear-gradient(90deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%); line-height: 4px; font-size: 0px; padding: 0;">&nbsp;</td>
           </tr>
 
-          <!-- Email Body Content Area (Light Theme with Watermark) -->
+          <!-- Email Body Content Area -->
           <tr>
-            <td class="content-card" style="padding: 40px 30px; background-color: #ffffff; {{watermark_style}}">
+            <td class="content-card" style="padding: 40px 35px; background-color: #ffffff; position: relative; overflow: hidden; {{watermark_style}}">
               <!--[if gte mso 9]>
               <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:598px;height:400px;">
-                <v:fill type="frame" src="https://artistant.in/logo_a_watermark.png" color="#ffffff" opacity="5%" />
+                <v:fill type="frame" src="https://artistant.in/logo_a_watermark.png" color="#ffffff" opacity="4%" />
                 <v:textbox inset="0,0,0,0">
               <![endif]-->
-              <div>
+              <div style="position: relative; z-index: 2;">
                 
+                <!-- Pill Badge -->
+                <div style="display: inline-block; background-color: #FFF0EB; border: 1px solid #FFD4C7; color: #F25A2B; font-size: 10px; font-weight: 800; padding: 6px 14px; border-radius: 99px; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 25px; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
+                  ⚡ WAITLIST ACTIVE
+                </div>
+
+                <!-- Main Heading -->
+                <h1 style="margin: 0 0 15px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 28px; font-weight: 900; line-height: 1.25; color: #0F172A; letter-spacing: -0.5px;">
+                  Welcome to the stage. <br><span style="color: #F25A2B;">@{{username}}</span> is officially stashed.
+                </h1>
+
                 <!-- Greeting -->
-                <table border="0" cellpadding="0" cellspacing="0" width="100%">
-                  <tr>
-                    <td style="padding-bottom: 20px;">
-                      <h1 style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 20px; font-weight: bold; line-height: 24px; color: #111111;">
-                        Hey <span style="color: #F25A2B;">{{name}}</span>,
-                      </h1>
-                    </td>
-                  </tr>
-                </table>
+                <p style="margin: 0 0 15px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 16px; font-weight: 700; color: #0F172A;">
+                  Hey {{name}},
+                </p>
 
                 <!-- Message Body -->
-                <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                <div style="margin: 0 0 35px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; line-height: 1.6; color: #475569;">
+                  {{message}}
+                </div>
+
+                <!-- Unique Custom Pioneer Ticket (Stage Pass) -->
+                <table border="0" cellpadding="0" cellspacing="0" width="100%" class="ticket-table" style="background-color: #0F172A; border-radius: 16px; overflow: hidden; border: 1px solid #1E293B; margin-bottom: 35px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
+                  <!-- Ticket Top Accent Glow -->
                   <tr>
-                    <td style="padding-bottom: 30px; font-size: 14px; line-height: 1.6; color: #333333;">
-                      <div style="margin: 0; min-height: 120px;">
-                        {{message}}
+                    <td colspan="2" height="3" style="background: linear-gradient(90deg, #F25A2B 0%, #7C5CFF 100%); line-height: 3px; font-size: 0;">&nbsp;</td>
+                  </tr>
+                  <tr>
+                    <!-- Ticket Main Body (Left Side) -->
+                    <td class="ticket-left" valign="top" style="padding: 24px; border-right: 2px dashed #1E293B; width: 68%;">
+                      <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                        <tr>
+                          <!-- Ticket Icon & Label -->
+                          <td style="padding-bottom: 20px;">
+                            <table border="0" cellpadding="0" cellspacing="0">
+                              <tr>
+                                <td style="padding-right: 8px;">
+                                  <img src="https://raw.githubusercontent.com/anudeepDash/artistant-waitlist/main/public/logo_a.png" alt="" width="20" height="20" style="display: block; width: 20px; height: 20px;">
+                                </td>
+                                <td>
+                                  <span style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 9px; font-weight: 800; color: #7C5CFF; letter-spacing: 2px; text-transform: uppercase;">ARTISTANT PIONEER PASS</span>
+                                </td>
+                              </tr>
+                            </table>
+                          </td>
+                        </tr>
+                        
+                        <!-- Artist Credentials -->
+                        <tr>
+                          <td>
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                              <tr>
+                                <td style="padding-bottom: 12px; width: 50%;">
+                                  <span style="display: block; font-size: 8px; font-weight: 800; color: #5C6680; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px;">PASSENGER / ARTIST</span>
+                                  <span style="font-size: 13px; font-weight: 700; color: #ffffff;">{{name}}</span>
+                                </td>
+                                <td style="padding-bottom: 12px; width: 50%;">
+                                  <span style="display: block; font-size: 8px; font-weight: 800; color: #5C6680; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px;">STAGE IDENTITY</span>
+                                  <span style="font-size: 13px; font-weight: 700; color: #F25A2B;">@{{username}}</span>
+                                </td>
+                              </tr>
+                              <tr>
+                                <td style="padding-top: 4px;">
+                                  <span style="display: block; font-size: 8px; font-weight: 800; color: #5C6680; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px;">NODE / ACCESS TYPE</span>
+                                  <span style="font-size: 12px; font-weight: 700; color: #ffffff; letter-spacing: 0.5px;">EARLY PIONEER</span>
+                                </td>
+                                <td style="padding-top: 4px;">
+                                  <span style="display: block; font-size: 8px; font-weight: 800; color: #5C6680; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px;">VERIFICATION STATE</span>
+                                  <span style="font-size: 11px; font-weight: 800; color: #10B981; letter-spacing: 0.5px;">✓ RESERVED</span>
+                                </td>
+                              </tr>
+                            </table>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+
+                    <!-- Ticket Tear-off / Points Stub (Right Side) -->
+                    <td class="ticket-right" valign="top" style="padding: 24px; text-align: center; background-color: #0B1120; width: 32%;">
+                      <span style="display: block; font-size: 8px; font-weight: 800; color: #5C6680; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">WAITLIST POWER</span>
+                      
+                      <!-- Score Display -->
+                      <div style="display: inline-block; background: linear-gradient(135deg, #F25A2B 0%, #D4567A 100%); padding: 12px 16px; border-radius: 12px; margin-bottom: 8px; box-shadow: 0 4px 10px rgba(242, 90, 43, 0.15);">
+                        <span style="font-size: 20px; font-weight: 900; color: #ffffff; display: block; line-height: 1;">100</span>
+                        <span style="font-size: 7px; font-weight: 800; color: #ffffff; letter-spacing: 1px; text-transform: uppercase; display: block; margin-top: 2px;">POINTS</span>
                       </div>
+
+                      <span style="display: block; font-size: 9px; font-weight: bold; color: #ffffff; letter-spacing: 0.5px;">Target: 250 PTS</span>
+                      <span style="display: block; font-size: 8px; color: #7C5CFF; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 3px;">Cohort 1 Pass</span>
                     </td>
                   </tr>
-                </table>
-
-                <!-- Call To Action Button -->
-                <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                  
+                  <!-- Ticket Barcode Footer Section -->
                   <tr>
-                    <td align="left" style="padding-bottom: 20px;">
-                      <table border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto; width: auto;">
+                    <td colspan="2" style="background-color: #0A0F1D; padding: 16px 24px; border-top: 1px solid #1E293B; text-align: center;">
+                      <table border="0" cellpadding="0" cellspacing="0" width="100%">
                         <tr>
-                          <td align="center" style="border-radius: 8px; background-color: #F25A2B;">
-                            <!--[if mso]>
-                              <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{cta_url}}" style="height:44px;v-text-anchor:middle;width:200px;" arcsize="18%" stroke="f" fillcolor="#F25A2B">
-                                <w:anchorlock/>
-                                <center style="color:#ffffff;font-family:sans-serif;font-size:15px;font-weight:bold;">{{cta_text}}</center>
-                              </v:roundrect>
-                            <![endif]-->
-                            <!--[if !mso]><!-->
-                            <a class="cta-button" href="{{cta_url}}" target="_blank" style="font-size: 15px; font-family: Helvetica, Arial, sans-serif; color: #ffffff; text-decoration: none; border-radius: 8px; padding: 11px 24px; border: 1px solid #F25A2B; display: inline-block; font-weight: bold; background: #F25A2B; background: linear-gradient(135deg, #F25A2B 0%, #D4567A 100%); box-shadow: 0 4px 10px rgba(242, 90, 43, 0.2);">
-                              {{cta_text}}
-                            </a>
-                            <!--<![endif]-->
+                          <!-- Mock Barcode Graphic -->
+                          <td align="center" style="padding-bottom: 6px;">
+                            <img src="https://img.icons8.com/ios-glyphs/120/ffffff/barcode.png" alt="Barcode" width="140" height="28" style="display: block; width: 140px; height: 28px; opacity: 0.4; filter: invert(0);">
+                          </td>
+                        </tr>
+                        <tr>
+                          <td align="center">
+                            <span style="font-family: monospace; font-size: 9px; color: #5C6680; letter-spacing: 4px;">ART-${{username}}-2026</span>
                           </td>
                         </tr>
                       </table>
@@ -156,16 +243,43 @@
                   </tr>
                 </table>
 
-                <!-- Contact & Queries -->
+                <!-- Call to Action Button Section -->
+                <!-- cta_section_start -->
                 <table border="0" cellpadding="0" cellspacing="0" width="100%">
                   <tr>
-                    <td style="padding-top: 15px; border-top: 1px solid #eaeaea; font-size: 12px; line-height: 18px; color: #999999;">
-                      If you have any questions or did not sign up for this, please contact us at <a href="mailto:hello@artistant.in" style="color: #7C5CFF; text-decoration: none;">hello@artistant.in</a>.
+                    <td align="center" style="padding: 10px 0 20px 0;">
+                      <!--[if mso]>
+                      <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{cta_url}}" style="height:48px;v-text-anchor:middle;width:240px;" arcsize="17%" stroke="f" fillcolor="#7C5CFF">
+                        <w:anchorlock/>
+                        <center style="color:#ffffff;font-family:sans-serif;font-size:14px;font-weight:bold;">{{cta_text}}</center>
+                      </v:roundrect>
+                      <![endif]-->
+                      <!--[if !mso]><!-->
+                      <a class="cta-button" href="{{cta_url}}" target="_blank" style="font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #ffffff; text-decoration: none; border-radius: 8px; padding: 14px 32px; display: inline-block; font-weight: bold; background: #7C5CFF; background: linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%); box-shadow: 0 5px 20px rgba(124, 92, 255, 0.25); text-transform: uppercase; letter-spacing: 0.5px;">
+                        {{cta_text}}
+                      </a>
+                      <!--<![endif]-->
+                    </td>
+                  </tr>
+                </table>
+                <!-- cta_section_end -->
+
+                <!-- Contact & Queries -->
+                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top: 30px;">
+                  <tr>
+                    <td style="padding-top: 20px; border-top: 1px solid #E2E8F0; font-size: 11px; line-height: 16px; color: #64748B; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
+                      If you have any questions or did not sign up for this, please contact us at <a href="mailto:hello@artistant.in" style="color: #7C5CFF; text-decoration: none; font-weight: 500;">hello@artistant.in</a>.
                     </td>
                   </tr>
                 </table>
 
               </div>
+
+              <!-- Background Logo Watermark (Cut off bottom-right) -->
+              <div style="position: absolute; bottom: -50px; right: -50px; width: 220px; height: 220px; pointer-events: none; z-index: 1; opacity: 0.05;">
+                <img src="https://raw.githubusercontent.com/anudeepDash/artistant-waitlist/main/public/logo_a.png" alt="" width="220" height="220" style="display: block; width: 220px; height: 220px; border: 0; outline: none; opacity: 0.85;">
+              </div>
+
               <!--[if gte mso 9]>
                 </v:textbox>
               </v:rect>
@@ -173,46 +287,39 @@
             </td>
           </tr>
 
-          <!-- Divider Line -->
+          <!-- Footer -->
           <tr>
-            <td style="padding: 0 30px;">
-              <hr style="border: none; border-top: 1px solid #eaeaea; margin: 0;">
-            </td>
-          </tr>
-
-          <!-- Footer (Light Gray Theme) -->
-          <tr>
-            <td align="center" style="background-color: #fafafa; padding: 25px 30px; border-bottom-left-radius: 19px; border-bottom-right-radius: 19px;">
+            <td align="center" style="background-color: #F8FAFC; padding: 30px 30px; border-bottom-left-radius: 19px; border-bottom-right-radius: 19px; border-top: 1px solid #E2E8F0;">
               
               <!-- Social Icons -->
-              <table border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 15px; border-collapse: collapse; margin-left: auto; margin-right: auto;">
+              <table border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 20px; border-collapse: collapse; margin-left: auto; margin-right: auto;">
                 <tr>
-                  <td style="padding: 0 10px;">
+                  <td style="padding: 0 12px;">
                     <a href="https://instagram.com/artistant.in" target="_blank" style="text-decoration: none; display: inline-block;">
-                      <img src="https://img.icons8.com/material-outlined/48/888888/instagram-new.png" alt="Instagram" width="16" height="16" style="width: 16px; height: 16px; display: block; opacity: 0.6;">
+                      <img src="https://img.icons8.com/material-outlined/48/64748B/instagram-new.png" alt="Instagram" width="16" height="16" style="width: 16px; height: 16px; display: block; opacity: 0.8;">
                     </a>
                   </td>
-                  <td style="padding: 0 10px;">
+                  <td style="padding: 0 12px;">
                     <a href="https://linkedin.com/company/artistant" target="_blank" style="text-decoration: none; display: inline-block;">
-                      <img src="https://img.icons8.com/material-outlined/48/888888/linkedin.png" alt="LinkedIn" width="16" height="16" style="width: 16px; height: 16px; display: block; opacity: 0.6;">
+                      <img src="https://img.icons8.com/material-outlined/48/64748B/linkedin.png" alt="LinkedIn" width="16" height="16" style="width: 16px; height: 16px; display: block; opacity: 0.8;">
                     </a>
                   </td>
-                  <td style="padding: 0 10px;">
+                  <td style="padding: 0 12px;">
                     <a href="https://artistant.in" target="_blank" style="text-decoration: none; display: inline-block;">
-                      <img src="https://img.icons8.com/material-outlined/48/888888/domain.png" alt="Website" width="16" height="16" style="width: 16px; height: 16px; display: block; opacity: 0.6;">
+                      <img src="https://img.icons8.com/material-outlined/48/64748B/domain.png" alt="Website" width="16" height="16" style="width: 16px; height: 16px; display: block; opacity: 0.8;">
                     </a>
                   </td>
                 </tr>
               </table>
 
               <!-- Brand Copyright -->
-              <p style="font-size: 9px; font-weight: bold; color: #999999; text-transform: uppercase; letter-spacing: 2px; margin: 0 0 8px 0; line-height: 1.4; font-family: sans-serif; text-align: center;">
+              <p style="font-size: 9px; font-weight: bold; color: #94A3B8; text-transform: uppercase; letter-spacing: 2.5px; margin: 0 0 8px 0; line-height: 1.4; font-family: -apple-system, BlinkMacSystemFont, sans-serif; text-align: center;">
                 © 2026 ARTISTANT. ALL RIGHTS RESERVED.
               </p>
               
               <!-- Tagline -->
-              <p style="font-size: 8px; color: #aaaaaa; margin: 0; line-height: 1.3; font-family: sans-serif; letter-spacing: 0.5px; text-align: center;">
-                The Ultimate Creative Link-up &bull; Live Entertainment Ecosystem
+              <p style="font-size: 8px; color: #94A3B8; margin: 0; line-height: 1.3; font-family: -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: 1px; text-align: center;">
+                THE ULTIMATE CREATIVE LINK-UP &bull; LIVE ENTERTAINMENT ECOSYSTEM
               </p>
 
             </td>

@@ -11,6 +11,7 @@ ALTER TABLE waitlist_users ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT f
 ALTER TABLE waitlist_users ADD COLUMN IF NOT EXISTS position_override INTEGER DEFAULT NULL;
 
 -- 2. Create RPC function for admin to fetch all registrations (securely verified by passcode)
+DROP FUNCTION IF EXISTS public.admin_get_registrations(text);
 CREATE OR REPLACE FUNCTION admin_get_registrations(p_passcode text)
 RETURNS TABLE (
   id uuid,
@@ -60,6 +61,7 @@ END;
 $$;
 
 -- 3. Create RPC function for admin to update a registration (securely verified by passcode)
+DROP FUNCTION IF EXISTS public.admin_update_registration(text, text, boolean, boolean);
 CREATE OR REPLACE FUNCTION admin_update_registration(
   p_passcode text,
   p_user_id text,
@@ -87,6 +89,53 @@ BEGIN
 END;
 $$;
 
--- 4. Grant execute permissions to anon and authenticated users (the function itself verifies the passcode)
+-- 4. Grant execute permissions to anon and authenticated users (for fallback mode)
 GRANT EXECUTE ON FUNCTION admin_get_registrations(text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION admin_update_registration(text, text, boolean, boolean, integer) TO anon, authenticated;
+
+-- ===========================================================================
+-- SECURITY RESOLUTIONS FOR DATABASE LINTER (WARNINGS 0028 & 0029)
+-- ===========================================================================
+
+-- OPTION A: Resolving admin warnings for admin_get_registrations and admin_update_registration
+-- Once you have added SUPABASE_SERVICE_ROLE_KEY to your environment variables,
+-- the server actions will query the tables directly using owner privileges.
+-- You can then safely run these commands to revoke execution permissions from public roles:
+-- 
+-- REVOKE EXECUTE ON FUNCTION admin_get_registrations(text) FROM public, anon, authenticated;
+-- REVOKE EXECUTE ON FUNCTION admin_update_registration(text, text, boolean, boolean, integer) FROM public, anon, authenticated;
+
+
+-- OPTION B: Resolving warnings for check_username_available
+-- To resolve linter warnings 0028 and 0029 on check_username_available, we can
+-- define it as a SECURITY INVOKER function, and grant select access solely on
+-- the username column to anon/authenticated roles.
+--
+-- 1. Create check_username_available as SECURITY INVOKER (runs with caller's privileges)
+CREATE OR REPLACE FUNCTION check_username_available(p_username text)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN NOT EXISTS (
+    SELECT 1 FROM waitlist_users WHERE username = lower(trim(p_username))
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION check_username_available(text) TO anon, authenticated;
+
+-- 2. Grant SELECT privilege only on the username column so invokers can run the check
+GRANT SELECT (username) ON public.waitlist_users TO anon, authenticated;
+
+-- 3. If Row-Level Security (RLS) is enabled on waitlist_users, you must also add
+-- a SELECT policy allowing anyone to perform this check:
+--
+-- CREATE POLICY "Allow public username check" ON public.waitlist_users
+-- FOR SELECT TO anon, authenticated USING (true);
+
+-- 4. Add referred_by column to waitlist_users to support the points & viral referral system
+ALTER TABLE waitlist_users ADD COLUMN IF NOT EXISTS referred_by TEXT;
+
