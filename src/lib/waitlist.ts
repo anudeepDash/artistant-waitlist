@@ -1,5 +1,6 @@
 import { createClient } from "./supabase/client";
 import { auth as firebaseAuth, isFirebaseConfigured } from "./firebase/client";
+import { checkUsernameAvailableAction } from "./admin-actions";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -69,44 +70,11 @@ function normalise(username: string): string {
  * @returns `true` if the username has **not** been reserved yet.
  */
 export async function isUsernameAvailable(username: string): Promise<boolean> {
-  const supabase = createClient();
-  const normalisedUsername = normalise(username);
-
-  // Call an RPC to check availability.
-  // To avoid Supabase database linter warnings (0028/0029), it is recommended to define 
-  // it as SECURITY INVOKER and grant column-level SELECT on 'username' to public roles.
-  // See src/lib/supabase/migrations.sql for the SQL details:
-  //
-  //   create or replace function public.check_username_available(p_username text)
-  //   returns boolean
-  //   language plpgsql
-  //   security invoker
-  //   set search_path = public
-  //   as $$
-  //   begin
-  //     return not exists (
-  //       select 1 from waitlist_users where username = lower(trim(p_username))
-  //     );
-  //   end;
-  //   $$;
-  //
-  //   grant execute on function public.check_username_available(text) to anon, authenticated;
-  //   grant select (username) on public.waitlist_users to anon, authenticated;
-
   try {
-    const { data, error } = await supabase.rpc('check_username_available', {
-      p_username: normalisedUsername,
-    });
-
-    if (error) {
-      // RPC doesn't exist yet — fall back to optimistic true so the page isn't broken
-      console.warn('check_username_available RPC not found. Run the migration SQL in Supabase.', error.message);
-      return true;
-    }
-
-    return data === true;
-  } catch {
-    return true;
+    return await checkUsernameAvailableAction(username);
+  } catch (error) {
+    console.error("Error checking username availability:", error);
+    return true; // Fallback to true so registration doesn't completely break
   }
 }
 

@@ -469,3 +469,34 @@ export async function markStorySharedAction(userId: string): Promise<void> {
   }
 }
 
+/**
+ * Server Action to check if a username is available.
+ * Bypasses RLS by using the service role client on the server.
+ */
+export async function checkUsernameAvailableAction(username: string): Promise<boolean> {
+  const client = createAdminClient();
+  const normalised = username.trim().toLowerCase();
+
+  // Directly check the waitlist_users table
+  const { count, error } = await client
+    .from('waitlist_users')
+    .select('id', { count: 'exact', head: true })
+    .eq('username', normalised);
+
+  if (error) {
+    console.error('Error checking username availability directly, falling back:', error);
+    // Fallback to the RPC function in case table structure or permissions have issues
+    const { data, error: rpcError } = await client.rpc('check_username_available', {
+      p_username: normalised,
+    });
+    if (rpcError) {
+      console.error('Fallback RPC check also failed:', rpcError);
+      return true; // Fallback to available so we do not block registrations
+    }
+    return data === true;
+  }
+
+  return count === 0;
+}
+
+

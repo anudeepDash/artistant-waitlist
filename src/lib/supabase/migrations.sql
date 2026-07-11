@@ -111,11 +111,11 @@ GRANT EXECUTE ON FUNCTION admin_update_registration(text, text, boolean, boolean
 -- define it as a SECURITY INVOKER function, and grant select access solely on
 -- the username column to anon/authenticated roles.
 --
--- 1. Create check_username_available as SECURITY INVOKER (runs with caller's privileges)
+-- 1. Create check_username_available as SECURITY DEFINER (runs with owner privileges to bypass RLS safely)
 CREATE OR REPLACE FUNCTION check_username_available(p_username text)
 RETURNS boolean
 LANGUAGE plpgsql
-SECURITY INVOKER
+SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
