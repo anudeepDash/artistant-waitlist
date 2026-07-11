@@ -651,7 +651,7 @@ export default function Home() {
     try {
       await signOut();
     } catch (err) {
-      console.error("Error signing out:", err);
+      console.error("Error signing out: [REDACTED_ERROR]");
     }
   };
 

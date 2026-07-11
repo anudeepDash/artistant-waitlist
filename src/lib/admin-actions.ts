@@ -1,7 +1,10 @@
 'use server';
 
+import crypto from 'crypto';
+
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { type AdminWaitlistEntry } from './waitlist';
+import { verifyAdminToken, verifyIdToken } from './firebase/admin';
 
 /**
  * Creates a server-side Supabase client.
@@ -38,12 +41,10 @@ function createAdminClient() {
 
 /**
  * Server Action to fetch all waitlist registrations.
- * Performs passcode validation on the server side.
+ * Verifies the caller is an authorized admin via Firebase ID token.
  */
-export async function adminGetRegistrationsAction(passcode: string): Promise<AdminWaitlistEntry[]> {
-  if (passcode !== 'ARTISTANT_ADMIN_2026') {
-    throw new Error('Invalid admin passcode');
-  }
+export async function adminGetRegistrationsAction(idToken: string): Promise<AdminWaitlistEntry[]> {
+  await verifyAdminToken(idToken);
 
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const client = createAdminClient();
@@ -57,20 +58,20 @@ export async function adminGetRegistrationsAction(passcode: string): Promise<Adm
       .order('reserved_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching registrations directly:', error);
-      throw error;
+      console.error('Error fetching registrations directly: [REDACTED_ERROR]');
+      const ref = crypto.randomUUID(); console.error('Error Ref:', ref, error); throw new Error('An internal error occurred. Ref: ' + ref);
     }
 
     return (data || []) as AdminWaitlistEntry[];
   } else {
     // Fallback: call the RPC function (requires execute grant for anon/authenticated roles)
     const { data, error } = await client.rpc('admin_get_registrations', {
-      p_passcode: passcode,
+      p_passcode: process.env.ADMIN_PASSCODE || '',
     });
 
     if (error) {
-      console.error('Error calling admin_get_registrations RPC:', error);
-      throw error;
+      console.error('Error calling admin_get_registrations RPC: [REDACTED_ERROR]');
+      const ref = crypto.randomUUID(); console.error('Error Ref:', ref, error); throw new Error('An internal error occurred. Ref: ' + ref);
     }
 
     return (data || []) as AdminWaitlistEntry[];
@@ -79,18 +80,16 @@ export async function adminGetRegistrationsAction(passcode: string): Promise<Adm
 
 /**
  * Server Action to update a waitlist user's registration status.
- * Performs passcode validation on the server side.
+ * Verifies the caller is an authorized admin via Firebase ID token.
  */
 export async function adminUpdateRegistrationAction(
-  passcode: string,
+  idToken: string,
   userId: string,
   isVerified: boolean,
   isBlocked: boolean,
   positionOverride?: number | null
 ): Promise<void> {
-  if (passcode !== 'ARTISTANT_ADMIN_2026') {
-    throw new Error('Invalid admin passcode');
-  }
+  await verifyAdminToken(idToken);
 
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const client = createAdminClient();
@@ -107,13 +106,13 @@ export async function adminUpdateRegistrationAction(
       .eq('user_id', userId);
 
     if (error) {
-      console.error('Error updating registration status directly:', error);
-      throw error;
+      console.error('Error updating registration status directly: [REDACTED_ERROR]');
+      const ref = crypto.randomUUID(); console.error('Error Ref:', ref, error); throw new Error('An internal error occurred. Ref: ' + ref);
     }
   } else {
     // Fallback: call the RPC function
     const { error } = await client.rpc('admin_update_registration', {
-      p_passcode: passcode,
+      p_passcode: process.env.ADMIN_PASSCODE || '',
       p_user_id: userId,
       p_is_verified: isVerified,
       p_is_blocked: isBlocked,
@@ -121,8 +120,8 @@ export async function adminUpdateRegistrationAction(
     });
 
     if (error) {
-      console.error('Error calling admin_update_registration RPC:', error);
-      throw error;
+      console.error('Error calling admin_update_registration RPC: [REDACTED_ERROR]');
+      const ref = crypto.randomUUID(); console.error('Error Ref:', ref, error); throw new Error('An internal error occurred. Ref: ' + ref);
     }
   }
 }
@@ -130,12 +129,25 @@ export async function adminUpdateRegistrationAction(
 /**
  * Checks if a user email is an authorized administrator.
  * Matches against the hardcoded super-admin fallback or the admin_users database table.
+ * Verifies the caller's identity via Firebase ID token to prevent unauthorized checks.
  */
-export async function checkIsAdminAction(email: string): Promise<boolean> {
+export async function checkIsAdminAction(idToken: string): Promise<boolean> {
+  if (!idToken) return false;
+  
+  let email = '';
+  try {
+    const decoded = await verifyIdToken(idToken);
+    email = decoded.email || '';
+  } catch (e) {
+    console.error('Exception verifying ID token in admin check: [REDACTED_ERROR]');
+    return false;
+  }
+  
   if (!email) return false;
   const normalised = email.trim().toLowerCase();
   
-  if (normalised === 'anudeepdash2004@gmail.com') {
+  const superAdminEmail = process.env.SUPER_ADMIN_EMAIL;
+  if (superAdminEmail && normalised === superAdminEmail.trim().toLowerCase()) {
     return true;
   }
 
@@ -153,18 +165,17 @@ export async function checkIsAdminAction(email: string): Promise<boolean> {
     }
     return !!data;
   } catch (err) {
-    console.error('Exception verifying admin status:', err);
+    console.error('Exception verifying admin status: [REDACTED_ERROR]');
     return false;
   }
 }
 
 /**
  * Server Action to fetch all activity logs.
+ * Verifies the caller is an authorized admin via Firebase ID token.
  */
-export async function adminGetActivityLogsAction(passcode: string): Promise<any[]> {
-  if (passcode !== 'ARTISTANT_ADMIN_2026') {
-    throw new Error('Invalid admin passcode');
-  }
+export async function adminGetActivityLogsAction(idToken: string): Promise<any[]> {
+  await verifyAdminToken(idToken);
 
   const client = createAdminClient();
   const { data, error } = await client
@@ -173,19 +184,18 @@ export async function adminGetActivityLogsAction(passcode: string): Promise<any[
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Error fetching activity logs:', error);
-    throw error;
+    console.error('Error fetching activity logs: [REDACTED_ERROR]');
+    const ref = crypto.randomUUID(); console.error('Error Ref:', ref, error); throw new Error('An internal error occurred. Ref: ' + ref);
   }
   return data || [];
 }
 
 /**
  * Server Action to fetch all authorized admin members.
+ * Verifies the caller is an authorized admin via Firebase ID token.
  */
-export async function adminGetAdminsAction(passcode: string): Promise<any[]> {
-  if (passcode !== 'ARTISTANT_ADMIN_2026') {
-    throw new Error('Invalid admin passcode');
-  }
+export async function adminGetAdminsAction(idToken: string): Promise<any[]> {
+  await verifyAdminToken(idToken);
 
   const client = createAdminClient();
   const { data, error } = await client
@@ -194,23 +204,22 @@ export async function adminGetAdminsAction(passcode: string): Promise<any[]> {
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Error fetching admin list:', error);
-    throw error;
+    console.error('Error fetching admin list: [REDACTED_ERROR]');
+    const ref = crypto.randomUUID(); console.error('Error Ref:', ref, error); throw new Error('An internal error occurred. Ref: ' + ref);
   }
   return data || [];
 }
 
 /**
  * Server Action to add a new admin email.
+ * Verifies the caller is an authorized admin via Firebase ID token.
  */
 export async function adminAddAdminAction(
-  passcode: string,
+  idToken: string,
   email: string,
   addedBy: string
 ): Promise<void> {
-  if (passcode !== 'ARTISTANT_ADMIN_2026') {
-    throw new Error('Invalid admin passcode');
-  }
+  await verifyAdminToken(idToken);
   if (!email) {
     throw new Error('Email is required');
   }
@@ -224,18 +233,17 @@ export async function adminAddAdminAction(
     });
 
   if (error) {
-    console.error('Error adding admin member:', error);
-    throw error;
+    console.error('Error adding admin member: [REDACTED_ERROR]');
+    const ref = crypto.randomUUID(); console.error('Error Ref:', ref, error); throw new Error('An internal error occurred. Ref: ' + ref);
   }
 }
 
 /**
  * Server Action to remove an admin email.
+ * Verifies the caller is an authorized admin via Firebase ID token.
  */
-export async function adminRemoveAdminAction(passcode: string, email: string): Promise<void> {
-  if (passcode !== 'ARTISTANT_ADMIN_2026') {
-    throw new Error('Invalid admin passcode');
-  }
+export async function adminRemoveAdminAction(idToken: string, email: string): Promise<void> {
+  await verifyAdminToken(idToken);
   if (!email) {
     throw new Error('Email is required');
   }
@@ -250,14 +258,17 @@ export async function adminRemoveAdminAction(passcode: string, email: string): P
     .eq('email', email.trim().toLowerCase());
 
   if (error) {
-    console.error('Error removing admin member:', error);
-    throw error;
+    console.error('Error removing admin member: [REDACTED_ERROR]');
+    const ref = crypto.randomUUID(); console.error('Error Ref:', ref, error); throw new Error('An internal error occurred. Ref: ' + ref);
   }
 }
 
 /**
  * Server Action to log visitor and member activities.
  * Can be called anonymously by visitors or signed-in members.
+ *
+ * Note: For production hardening, consider adding server-side rate limiting
+ * (e.g., via Vercel Edge Config or a Redis counter) to prevent abuse.
  */
 export async function logActivityAction(input: {
   userId?: string;
@@ -301,8 +312,9 @@ export interface PublicLeaderboardEntry {
 
 /**
  * Server Action to fetch waitlist leaderboard and current user's waitlist placement stats.
+ * Now verifies caller identity via Firebase ID token to prevent IDOR.
  */
-export async function getWaitlistDashboardDataAction(userId: string): Promise<{
+export async function getWaitlistDashboardDataAction(idToken: string): Promise<{
   leaderboard: PublicLeaderboardEntry[];
   currentUserStats: {
     points: number;
@@ -316,6 +328,10 @@ export async function getWaitlistDashboardDataAction(userId: string): Promise<{
   totalArtistsCount: number;
   foundingLimit: number;
 }> {
+  // Verify the caller's identity and extract their real user ID
+  const decoded = await verifyIdToken(idToken);
+  const userId = decoded.uid;
+
   const client = createAdminClient();
   
   // 1. Fetch all registrations (with story_shared if available)
@@ -345,7 +361,7 @@ export async function getWaitlistDashboardDataAction(userId: string): Promise<{
       if (fallbackError) throw fallbackError;
       users = (fallbackData || []).map(u => ({ ...u, story_shared: false }));
     } else {
-      throw error;
+      const ref = crypto.randomUUID(); console.error('Error Ref:', ref, error); throw new Error('An internal error occurred. Ref: ' + ref);
     }
   }
 
@@ -392,7 +408,7 @@ export async function getWaitlistDashboardDataAction(userId: string): Promise<{
     return new Date(a.reserved_at).getTime() - new Date(b.reserved_at).getTime();
   });
 
-  // 5. Find current user stats
+  // 5. Find current user stats (using verified userId from token, not client-supplied)
   let currentUserStats = null;
   const userIdx = sorted.findIndex(item => item.user_id === userId);
   if (userIdx !== -1) {
@@ -455,8 +471,13 @@ export async function getWaitlistDashboardDataAction(userId: string): Promise<{
 
 /**
  * Server Action to mark the story sharing task as completed in the database.
+ * Verifies the caller's identity via Firebase ID token to prevent IDOR.
  */
-export async function markStorySharedAction(userId: string): Promise<void> {
+export async function markStorySharedAction(idToken: string): Promise<void> {
+  // Verify the caller's identity — only they can mark their own story as shared
+  const decoded = await verifyIdToken(idToken);
+  const userId = decoded.uid;
+
   const client = createAdminClient();
   const { error } = await client
     .from('waitlist_users')
@@ -464,8 +485,8 @@ export async function markStorySharedAction(userId: string): Promise<void> {
     .eq('user_id', userId);
 
   if (error) {
-    console.error('Error updating story_shared column in database:', error.message);
-    throw error;
+    console.error('Error updating story_shared column in database: [REDACTED_ERROR]');
+    const ref = crypto.randomUUID(); console.error('Error Ref:', ref, error); throw new Error('An internal error occurred. Ref: ' + ref);
   }
 }
 
@@ -476,23 +497,17 @@ export async function markStorySharedAction(userId: string): Promise<void> {
 export async function checkUsernameAvailableAction(username: string): Promise<boolean> {
   const client = createAdminClient();
   const normalised = username.trim().toLowerCase();
-  const serviceKeyExists = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  try {
-    const fs = await import('fs');
-    const path = await import('path');
-    const logPath = path.join(process.cwd(), 'server_debug.log');
-    fs.appendFileSync(logPath, `[${new Date().toISOString()}] START check: username=${username}, normalised=${normalised}, serviceKeyExists=${serviceKeyExists}\n`);
-  } catch (e) {}
+  const usernameRegex = /^[a-zA-Z0-9_.]{3,30}$/;
+  if (!usernameRegex.test(normalised)) {
+    return false;
+  }
 
   // Directly check the waitlist_users table
   const { count, error } = await client
     .from('waitlist_users')
     .select('id', { count: 'exact', head: true })
     .eq('username', normalised);
-
-  let result = count === 0;
-  let logErrorMsg = error ? error.message : 'none';
 
   if (error) {
     console.error('Error checking username availability directly, falling back:', error);
@@ -502,22 +517,10 @@ export async function checkUsernameAvailableAction(username: string): Promise<bo
     });
     if (rpcError) {
       console.error('Fallback RPC check also failed:', rpcError);
-      result = true; // Fallback to available so we do not block registrations
-      logErrorMsg = `DirectError: ${error.message}, RpcError: ${rpcError.message}`;
-    } else {
-      result = data === true;
-      logErrorMsg = `DirectError: ${error.message}, RpcSuccess: returned ${data}`;
+      throw new Error('Could not verify username availability due to database error.');
     }
+    return data === true;
   }
 
-  try {
-    const fs = await import('fs');
-    const path = await import('path');
-    const logPath = path.join(process.cwd(), 'server_debug.log');
-    fs.appendFileSync(logPath, `[${new Date().toISOString()}] END check: username=${username}, count=${count}, error=${logErrorMsg}, returned=${result}\n`);
-  } catch (e) {}
-
-  return result;
+  return count === 0;
 }
-
-

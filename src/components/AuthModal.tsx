@@ -286,11 +286,14 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
       }).catch(err => console.warn('Error logging waitlist registration:', err));
 
       // Trigger welcome email notification in the background
-      sendWelcomeEmailAction({
-        email: resolvedEmail,
-        name: pendingUser.displayName ?? resolvedEmail ?? normalised,
-        username: normalised,
-      }).catch(err => console.error("Error sending welcome email:", err));
+      pendingUser.getIdToken().then((idToken: string) => {
+        sendWelcomeEmailAction({
+          idToken,
+          email: resolvedEmail,
+          name: pendingUser.displayName ?? resolvedEmail ?? normalised,
+          username: normalised,
+        }).catch((err: unknown) => console.error("Error sending welcome email: [REDACTED_ERROR]"));
+      }).catch((err: unknown) => console.error("Error getting ID token for welcome email: [REDACTED_ERROR]"));
 
 
       setReservedUsername(normalised);
@@ -493,7 +496,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
         setView('phone_verify');
         setTimeout(() => otpInputsRef.current[0]?.focus(), 150);
       } catch (err: any) {
-        console.error(err);
+        console.error("[REDACTED_ERROR] PII stripped from client log.");
         setError(friendlyError(err));
         const container = document.getElementById('recaptcha-container');
         if (container) container.remove();

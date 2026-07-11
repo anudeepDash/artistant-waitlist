@@ -9,14 +9,25 @@ const EMAIL_USER = process.env.EMAIL_USER;
 const EMAIL_PASS = process.env.EMAIL_PASS;
 
 /**
+ * Escapes HTML special characters to prevent XSS in email templates.
+ */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/**
  * Creates and returns a Nodemailer transporter.
  */
 function getTransporter() {
   if (!EMAIL_USER || !EMAIL_PASS) {
-    console.warn(
-      '⚠️ Mailer Warning: EMAIL_USER or EMAIL_PASS is not configured in environment variables. Email sending will be simulated.'
+    throw new Error(
+      'Mailer Error: EMAIL_USER or EMAIL_PASS is not configured in environment variables.'
     );
-    return null;
   }
 
   return nodemailer.createTransport({
@@ -28,7 +39,7 @@ function getTransporter() {
       pass: EMAIL_PASS,
     },
     tls: {
-      rejectUnauthorized: false, // Prevents certificate issues in local environments
+      rejectUnauthorized: true,
     },
   });
 }
@@ -70,19 +81,11 @@ export async function sendWelcomeEmail({ email, name, username }: WelcomeEmailPa
     
     let compiledHtml = htmlContent;
     compiledHtml = compiledHtml.replace('{{watermark_style}}', watermarkStyle);
-    compiledHtml = compiledHtml.replaceAll('{{name}}', name);
-    compiledHtml = compiledHtml.replaceAll('{{username}}', username);
+    compiledHtml = compiledHtml.replaceAll('{{name}}', escapeHtml(name));
+    compiledHtml = compiledHtml.replaceAll('{{username}}', escapeHtml(username));
     compiledHtml = compiledHtml.replaceAll('{{message}}', bodyText);
     compiledHtml = compiledHtml.replaceAll('{{cta_text}}', ctaText);
     compiledHtml = compiledHtml.replaceAll('{{cta_url}}', ctaUrl);
-
-    // If SMTP credentials aren't set, simulate a successful delivery for development purposes
-    if (!transporter) {
-      console.log(`[SIMULATED EMAIL] To: ${email}`);
-      console.log(`[SIMULATED EMAIL] Subject: ${emailSubject}`);
-      console.log(`[SIMULATED EMAIL] Body Placeholder Compiled successfully.`);
-      return { success: true, message: 'Email sent successfully (simulated).' };
-    }
 
     // Configure mail options
     const mailOptions = {
@@ -142,18 +145,10 @@ export async function sendCustomEmail({
     
     let compiledHtml = htmlContent;
     compiledHtml = compiledHtml.replace('{{watermark_style}}', watermarkStyle);
-    compiledHtml = compiledHtml.replaceAll('{{name}}', name || 'ArtisTant Member');
+    compiledHtml = compiledHtml.replaceAll('{{name}}', escapeHtml(name || 'ArtisTant Member'));
     compiledHtml = compiledHtml.replaceAll('{{message}}', messageBody);
     compiledHtml = compiledHtml.replaceAll('{{cta_text}}', ctaText);
     compiledHtml = compiledHtml.replaceAll('{{cta_url}}', ctaUrl);
-
-    // If SMTP credentials aren't set, simulate a successful delivery for development purposes
-    if (!transporter) {
-      console.log(`[SIMULATED EMAIL] To: ${toEmail}`);
-      console.log(`[SIMULATED EMAIL] Subject: ${subject}`);
-      console.log(`[SIMULATED EMAIL] Custom Message Compiled successfully.`);
-      return { success: true, message: 'Email sent successfully (simulated).' };
-    }
 
     // Configure mail options
     const mailOptions = {
@@ -165,7 +160,7 @@ export async function sendCustomEmail({
 
     // Send the email
     const info = await transporter.sendMail(mailOptions);
-    console.log(`Custom email successfully sent to ${toEmail}. Message ID: ${info.messageId}`);
+    console.log(`Custom email successfully sent to [REDACTED_EMAIL]. Message ID: ${info.messageId}`);
     return { success: true, message: `Email sent. Message ID: ${info.messageId}` };
 
   } catch (error: any) {

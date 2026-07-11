@@ -64,7 +64,7 @@ import {
 // ---------------------------------------------------------------------------
 // Sandbox Mock Data fallback
 // ---------------------------------------------------------------------------
-const MOCK_REGISTRATIONS: AdminWaitlistEntry[] = [
+const []: AdminWaitlistEntry[] = [
   {
     id: "mock-1",
     user_id: "uid-m1",
@@ -218,7 +218,7 @@ const SOCIAL_CALENDAR: SocialPost[] = [
   }
 ];
 
-const MOCK_ACTIVITY_LOGS: any[] = [
+const []: any[] = [
   {
     id: "act-1",
     user_id: "uid-m1",
@@ -241,7 +241,7 @@ const MOCK_ACTIVITY_LOGS: any[] = [
   }
 ];
 
-const MOCK_ADMINS: any[] = [
+const []: any[] = [
   {
     id: "adm-1",
     email: "anudeepdash2004@gmail.com",
@@ -347,18 +347,22 @@ export default function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingAdmin, setCheckingAdmin] = useState(true);
   
-  // We keep a pseudo-passcode for the server actions, as they currently require it.
-  const passcode = "ARTISTANT_ADMIN_2026";
+  // Helper to get the current user's Firebase ID token for server action auth
+  const getIdToken = async (): Promise<string> => {
+    if (!user) throw new Error('Not authenticated');
+    return user.getIdToken();
+  };
+
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [authError, setAuthError] = useState("");
   const [isLiveMode, setIsLiveMode] = useState(false);
-  const [registrations, setRegistrations] = useState<AdminWaitlistEntry[]>(MOCK_REGISTRATIONS);
+  const [registrations, setRegistrations] = useState<AdminWaitlistEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [dbError, setDbError] = useState<string | null>(null);
   
   // Visitor Activities and Admin List States
-  const [activityLogs, setActivityLogs] = useState<any[]>(MOCK_ACTIVITY_LOGS);
-  const [adminUsers, setAdminUsers] = useState<any[]>(MOCK_ADMINS);
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
+  const [adminUsers, setAdminUsers] = useState<any[]>([]);
   const [newAdminEmail, setNewAdminEmail] = useState("");
   const [activityFilter, setActivityFilter] = useState("all");
   const [activitySearch, setActivitySearch] = useState("");
@@ -425,13 +429,12 @@ export default function AdminPage() {
     const checkAccess = async () => {
       setCheckingAdmin(true);
       try {
-        const isAuth = await checkIsAdminAction(user.email || "");
+        const idToken = await getIdToken();
+        const isAuth = await checkIsAdminAction(idToken);
         setIsAdmin(isAuth);
-        if (isAuth && !isUnlocked && !isLoading) {
-          await verifyAndLoad(passcode);
-        }
+        if (isAuth && !isUnlocked && !isLoading) { await verifyAndLoad(); }
       } catch (e) {
-        console.error("Error verifying admin access:", e);
+        console.error("Error verifying admin access: [REDACTED_ERROR]");
         setIsAdmin(false);
       } finally {
         setCheckingAdmin(false);
@@ -476,7 +479,7 @@ export default function AdminPage() {
     if (!isUnlocked || !isAdmin || !isLiveMode) return;
 
     const interval = setInterval(() => {
-      verifyAndLoad(passcode, true);
+      verifyAndLoad(true);
     }, 10000);
 
     return () => clearInterval(interval);
@@ -485,15 +488,16 @@ export default function AdminPage() {
   // ---------------------------------------------------------------------------
   // API Fetch & Authentication
   // ---------------------------------------------------------------------------
-  const verifyAndLoad = async (pass: string, isSilent = false) => {
+  const verifyAndLoad = async (isSilent = false) => {
     if (!isSilent) setIsLoading(true);
     setAuthError("");
     setDbError(null);
     try {
+      const idToken = await getIdToken();
       const [regs, logs, admins] = await Promise.all([
-        adminGetRegistrationsAction(pass),
-        adminGetActivityLogsAction(pass),
-        adminGetAdminsAction(pass)
+        adminGetRegistrationsAction(idToken),
+        adminGetActivityLogsAction(idToken),
+        adminGetAdminsAction(idToken)
       ]);
       setRegistrations(regs);
       setActivityLogs(logs);
@@ -503,19 +507,19 @@ export default function AdminPage() {
       if (!isSilent) showToast("Connected to Live Database.");
     } catch (err: any) {
       console.warn("Supabase fetch failed. Falling back to Sandbox LocalStorage / Mock Data.", err);
-      if (err.message?.includes("Invalid admin passcode") || err.code === "PGRST301") {
-        setAuthError("Server Access Credential Invalid.");
+      if (err.message?.includes("Unauthorized") || err.code === "PGRST301") {
+        setAuthError("Authorization failed. You may not have admin access.");
         setIsUnlocked(false);
       } else {
         // Fallback Sandbox
         const sandboxRegs = localStorage.getItem("artistant_sandbox_registrations");
-        setRegistrations(sandboxRegs ? JSON.parse(sandboxRegs) : MOCK_REGISTRATIONS);
+        setRegistrations(sandboxRegs ? JSON.parse(sandboxRegs) : []);
         
         const sandboxLogs = localStorage.getItem("artistant_sandbox_logs");
-        setActivityLogs(sandboxLogs ? JSON.parse(sandboxLogs) : MOCK_ACTIVITY_LOGS);
+        setActivityLogs(sandboxLogs ? JSON.parse(sandboxLogs) : []);
         
         const sandboxAdmins = localStorage.getItem("artistant_sandbox_admins");
-        setAdminUsers(sandboxAdmins ? JSON.parse(sandboxAdmins) : MOCK_ADMINS);
+        setAdminUsers(sandboxAdmins ? JSON.parse(sandboxAdmins) : []);
         
         setIsLiveMode(false);
         setIsUnlocked(true);
@@ -530,7 +534,7 @@ export default function AdminPage() {
     try {
       await signInWithGoogle();
     } catch (err) {
-      console.error(err);
+      console.error("[REDACTED_ERROR] PII stripped from client log.");
       setAuthError("Failed to sign in with Google.");
     }
   };
@@ -542,7 +546,7 @@ export default function AdminPage() {
       setIsAdmin(false);
       setAuthError("");
     } catch (err) {
-      console.error(err);
+      console.error("[REDACTED_ERROR] PII stripped from client log.");
     }
   };
 
@@ -556,8 +560,9 @@ export default function AdminPage() {
     
     try {
       if (isLiveMode) {
-        await adminAddAdminAction(passcode, targetEmail, user?.email || "system");
-        const admins = await adminGetAdminsAction(passcode);
+        const idToken = await getIdToken();
+        await adminAddAdminAction(idToken, targetEmail, user?.email || "system");
+        const admins = await adminGetAdminsAction(idToken);
         setAdminUsers(admins);
       } else {
         const newAdmin = {
@@ -573,7 +578,7 @@ export default function AdminPage() {
       setNewAdminEmail("");
       showToast(`Admin ${targetEmail} added successfully!`);
     } catch (err: any) {
-      console.error(err);
+      console.error("[REDACTED_ERROR] PII stripped from client log.");
       showToast(`Failed to add admin: ${err.message}`);
     }
   };
@@ -587,8 +592,9 @@ export default function AdminPage() {
     
     try {
       if (isLiveMode) {
-        await adminRemoveAdminAction(passcode, normalised);
-        const admins = await adminGetAdminsAction(passcode);
+        const idToken = await getIdToken();
+        await adminRemoveAdminAction(idToken, normalised);
+        const admins = await adminGetAdminsAction(idToken);
         setAdminUsers(admins);
       } else {
         const updated = adminUsers.filter(a => a.email.toLowerCase() !== normalised);
@@ -597,7 +603,7 @@ export default function AdminPage() {
       }
       showToast(`Admin ${normalised} access revoked.`);
     } catch (err: any) {
-      console.error(err);
+      console.error("[REDACTED_ERROR] PII stripped from client log.");
       showToast(`Failed to remove admin: ${err.message}`);
     }
   };
@@ -615,10 +621,12 @@ export default function AdminPage() {
 
     try {
       if (isLiveMode) {
-        await adminUpdateRegistrationAction(passcode, reg.user_id, nextState, reg.is_blocked, reg.position_override);
+        const idToken = await getIdToken();
+        await adminUpdateRegistrationAction(idToken, reg.user_id, nextState, reg.is_blocked, reg.position_override);
         if (nextState) {
           // Send welcome email action
           await sendWelcomeEmailAction({
+            idToken,
             email: reg.email,
             name: reg.display_name || reg.username,
             username: reg.username
@@ -632,7 +640,7 @@ export default function AdminPage() {
         showToast(`Sandbox: @${reg.username} verification updated!`);
       }
     } catch (err) {
-      console.error(err);
+      console.error("[REDACTED_ERROR] PII stripped from client log.");
       showToast("Error updating database.");
     }
   };
@@ -647,14 +655,15 @@ export default function AdminPage() {
 
     try {
       if (isLiveMode) {
-        await adminUpdateRegistrationAction(passcode, reg.user_id, reg.is_verified, nextState, reg.position_override);
+        const idToken = await getIdToken();
+        await adminUpdateRegistrationAction(idToken, reg.user_id, reg.is_verified, nextState, reg.position_override);
         showToast(`User @${reg.username} block status toggled!`);
       } else {
         localStorage.setItem("artistant_sandbox_registrations", JSON.stringify(updated));
         showToast(`Sandbox: @${reg.username} block state updated!`);
       }
     } catch (err) {
-      console.error(err);
+      console.error("[REDACTED_ERROR] PII stripped from client log.");
       showToast("Error saving block status.");
     }
   };
@@ -670,7 +679,8 @@ export default function AdminPage() {
       const reg = registrations.find(r => r.user_id === userId);
       if (reg) {
         if (isLiveMode) {
-          await adminUpdateRegistrationAction(passcode, userId, reg.is_verified, reg.is_blocked, val);
+          const idToken = await getIdToken();
+          await adminUpdateRegistrationAction(idToken, userId, reg.is_verified, reg.is_blocked, val);
           showToast(`Priority Override set to position ${val ?? "Auto"}!`);
         } else {
           localStorage.setItem("artistant_sandbox_registrations", JSON.stringify(updated));
@@ -678,7 +688,7 @@ export default function AdminPage() {
         }
       }
     } catch (err) {
-      console.error(err);
+      console.error("[REDACTED_ERROR] PII stripped from client log.");
       showToast("Failed to save priority override.");
     }
   };
@@ -686,19 +696,19 @@ export default function AdminPage() {
   const handleToggleDbMode = () => {
     if (isLiveMode) {
       const sandboxRegs = localStorage.getItem("artistant_sandbox_registrations");
-      setRegistrations(sandboxRegs ? JSON.parse(sandboxRegs) : MOCK_REGISTRATIONS);
+      setRegistrations(sandboxRegs ? JSON.parse(sandboxRegs) : []);
       
       const sandboxLogs = localStorage.getItem("artistant_sandbox_logs");
-      setActivityLogs(sandboxLogs ? JSON.parse(sandboxLogs) : MOCK_ACTIVITY_LOGS);
+      setActivityLogs(sandboxLogs ? JSON.parse(sandboxLogs) : []);
       
       const sandboxAdmins = localStorage.getItem("artistant_sandbox_admins");
-      setAdminUsers(sandboxAdmins ? JSON.parse(sandboxAdmins) : MOCK_ADMINS);
+      setAdminUsers(sandboxAdmins ? JSON.parse(sandboxAdmins) : []);
       
       setIsLiveMode(false);
       setDbError("Switched manually to Sandbox Environment.");
       showToast("Switched to Sandbox Mode");
     } else {
-      verifyAndLoad(passcode);
+      verifyAndLoad();
     }
   };
 
@@ -757,8 +767,10 @@ export default function AdminPage() {
     for (const reg of candidates) {
       try {
         if (isLiveMode) {
-          await adminUpdateRegistrationAction(passcode, reg.user_id, true, reg.is_blocked, reg.position_override);
+          const idToken = await getIdToken();
+          await adminUpdateRegistrationAction(idToken, reg.user_id, true, reg.is_blocked, reg.position_override);
           await sendWelcomeEmailAction({
+            idToken,
             email: reg.email,
             name: reg.display_name || reg.username,
             username: reg.username
@@ -771,7 +783,7 @@ export default function AdminPage() {
         }
         count++;
       } catch (err) {
-        console.error("Heuristics failure for @" + reg.username, err);
+        console.error("Heuristics failure for @" + reg.username, "[REDACTED_ERROR]");
       }
     }
 
@@ -1076,8 +1088,9 @@ export default function AdminPage() {
     log(`Compiled ${targets.length} target records for broadcast.`);
 
     try {
+      const idToken = await getIdToken();
       const res = await sendMassEmailAction({
-        passcode,
+        idToken,
         recipients: recipientEmails,
         subject: emailSubject,
         messageBody: emailBody,
@@ -1230,20 +1243,36 @@ export default function AdminPage() {
                       Sign out of {user.email}
                     </button>
                   </div>
+                ) : !isUnlocked ? (
+                  <div className="text-center space-y-4">
+                    <div className="flex flex-col items-center justify-center gap-2 text-sm font-mono bg-ink/5 border border-line-soft p-4 rounded-2xl">
+                      <Lock className="w-5 h-5 shrink-0 mb-2" />
+                      <span className="mb-2">Admin clearance verified. Connecting to live database...</span>
+                      <button 
+                        onClick={() => verifyAndLoad()}
+                        disabled={isLoading}
+                        className="w-full bg-ink text-bg font-bold py-2 rounded-lg disabled:opacity-50"
+                      >
+                        {isLoading ? 'Connecting...' : 'Retry Connection'}
+                      </button>
+                    </div>
+                  </div>
                 ) : (
                   <div className="flex justify-center items-center py-6 text-sm font-mono animate-pulse text-ink-3">
                     Verifying Credentials...
                   </div>
                 )
               ) : (
-                <button
-                  onClick={handleLoginSubmit}
-                  disabled={isLoading || authLoading}
-                  className="w-full bg-ink text-bg border border-line-soft font-display font-bold tracking-wider py-4 rounded-2xl flex items-center justify-center gap-2 transition-all hover:opacity-90 disabled:opacity-50 cursor-pointer"
-                >
-                  Sign In with Google
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+                <div className="space-y-4">
+                  <button
+                    onClick={handleLoginSubmit}
+                    disabled={isLoading || authLoading}
+                    className="w-full bg-ink text-bg border border-line-soft font-display font-bold tracking-wider py-4 rounded-2xl flex items-center justify-center gap-2 transition-all hover:opacity-90 disabled:opacity-50 cursor-pointer"
+                  >
+                    Sign In with Google
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
               )}
 
               {authError && (
@@ -2884,10 +2913,9 @@ export default function AdminPage() {
                         
                         <p className="font-bold text-xs uppercase tracking-wider" style={{ color: 'var(--brand-1)' }}>{emailHeader}</p>
                         
-                        <p 
-                          className="text-[#9BA4B8] text-xs leading-relaxed whitespace-pre-wrap"
-                          dangerouslySetInnerHTML={{ __html: emailBody }}
-                        />
+                        <p className="text-[#9BA4B8] text-xs leading-relaxed whitespace-pre-wrap">
+                          {emailBody}
+                        </p>
 
                         {emailCtaText && (
                           <div className="pt-2 text-center">

@@ -15,7 +15,33 @@ export const config = {
   ],
 };
 
+// Basic in-memory rate limiter for serverless environments.
+const rateLimitMap = new Map<string, { count: number; timestamp: number }>();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const MAX_ATTEMPTS = 5;
+
 export default function middleware(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for') || req.ip || '127.0.0.1';
+  
+  if (req.method === 'POST') {
+    const now = Date.now();
+    const windowStart = now - RATE_LIMIT_WINDOW_MS;
+    const record = rateLimitMap.get(ip);
+    
+    if (!record || record.timestamp < windowStart) {
+      rateLimitMap.set(ip, { count: 1, timestamp: now });
+    } else {
+      record.count += 1;
+      if (record.count > MAX_ATTEMPTS) {
+        return new NextResponse(
+          JSON.stringify({ error: 'Too many requests. Please try again later.' }),
+          { status: 429, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+      rateLimitMap.set(ip, record);
+    }
+  }
+
   const url = req.nextUrl;
   
   // Get hostname (e.g., admin.artistant.in, localhost:3000)

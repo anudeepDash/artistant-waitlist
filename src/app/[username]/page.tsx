@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useScroll, useTransform, useMotionValueEvent }
 import { useAuth } from '@/hooks/useAuth';
 import { getUserReservation, getWaitlistPosition, getReferralCount, type WaitlistEntry } from '@/lib/waitlist';
 import { getWaitlistDashboardDataAction, markStorySharedAction, type PublicLeaderboardEntry } from '@/lib/admin-actions';
+import { deleteAccountDataAction } from '@/lib/account-actions';
 import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
@@ -158,6 +159,7 @@ export default function ProfilePage() {
   const [waitlistPos, setWaitlistPos] = useState<number | null>(null);
   const [textIndex, setTextIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [referrals, setReferrals] = useState<number>(0);
   const [copied, setCopied] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -230,18 +232,19 @@ export default function ProfilePage() {
       const pos = await getWaitlistPosition(entry.reserved_at, uid, entry.position_override);
       setWaitlistPos(pos);
       setCohortVal(pos ? Math.ceil(pos / 100).toString().padStart(3, '0') : '003');
-      const localStoryShared = localStorage.getItem(`story_shared_${uid}`) === 'true';
-      setStoryShared(localStoryShared);
-      setPoints(100 + rawRefs * 50 + (localStoryShared ? 80 : 0));
+      const dbStoryShared = entry.story_shared === true;
+      setStoryShared(dbStoryShared);
+      setPoints(100 + rawRefs * 50 + (dbStoryShared ? 80 : 0));
     } catch (err) {
       console.error("Fallback load failed:", err);
     }
   };
 
   // ── Dashboard Data Loader ──
-  const loadDashboardData = async (uid: string, entry: WaitlistEntry) => {
+  const loadDashboardData = async (entry: WaitlistEntry) => {
     try {
-      const data = await getWaitlistDashboardDataAction(uid);
+      const idToken = await user!.getIdToken();
+      const data = await getWaitlistDashboardDataAction(idToken);
       setLeaderboard(data.leaderboard);
       setFoundingArtists(data.foundingArtists);
       setTotalArtistsCount(data.totalArtistsCount);
@@ -255,20 +258,13 @@ export default function ProfilePage() {
         setCohortVal(data.currentUserStats.cohort);
         
         let dbStoryShared = data.currentUserStats.storyShared;
-        const localStoryShared = localStorage.getItem(`story_shared_${uid}`) === 'true';
-        if (localStoryShared && !dbStoryShared) {
-          try {
-            await markStorySharedAction(uid);
-            dbStoryShared = true;
-          } catch {}
-        }
-        setStoryShared(dbStoryShared || localStoryShared);
+        setStoryShared(dbStoryShared);
       } else {
-        await loadLegacyFallback(uid, entry);
+        await loadLegacyFallback(user!.uid, entry);
       }
     } catch (e) {
       console.error("Error loading dashboard data, using legacy fallback:", e);
-      await loadLegacyFallback(uid, entry);
+      await loadLegacyFallback(user!.uid, entry);
     }
   };
 
@@ -281,7 +277,7 @@ export default function ProfilePage() {
       .then(async (res) => {
         if (!res) { router.push('/'); return; }
         setReservation(res);
-        await loadDashboardData(user.uid, res);
+        await loadDashboardData(res);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -291,13 +287,13 @@ export default function ProfilePage() {
   const handleCompleteStoryTask = async () => {
     if (!user || !reservation) return;
     try {
-      await markStorySharedAction(user.uid);
+      const idToken = await user.getIdToken();
+      await markStorySharedAction(idToken);
     } catch (e) {
-      console.warn("Failed to mark story shared in DB, using local storage backup", e);
+      console.warn("Failed to mark story shared in DB:", e);
     }
-    localStorage.setItem(`story_shared_${user.uid}`, 'true');
     setStoryShared(true);
-    await loadDashboardData(user.uid, reservation);
+    await loadDashboardData(reservation);
     showToast("Story shared: +80 PTS added!");
   };
 
@@ -316,6 +312,31 @@ export default function ProfilePage() {
   };
 
   const handleSignOut = async () => { try { await signOut(); router.push('/'); } catch {} };
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    const confirmDelete = window.confirm("Are you sure you want to permanently delete your account and all data? This action cannot be undone.");
+    if (!confirmDelete) return;
+
+    setIsDeleting(true);
+    try {
+      // Delete from Supabase (using ID token for server-side identity verification)
+      const idToken = await user.getIdToken();
+      await deleteAccountDataAction(idToken);
+      // Delete from Firebase Auth
+      await user.delete();
+      router.push('/');
+    } catch (err: any) {
+      console.error("[REDACTED_ERROR] PII stripped from client log.");
+      if (err.message && err.message.includes('requires-recent-login')) {
+        showToast("Please sign out and sign in again before deleting your account.");
+      } else {
+        showToast("Failed to delete account. Please try again or contact support.");
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // ── 3D Card tilt logic ──
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -1689,6 +1710,21 @@ export default function ProfilePage() {
 
           {/* ── THE ECOSYSTEM ACCESS (STATIC MOCKUP SHOWCASE) ── */}
           <StaticModulesShowcase cohort={cohort} />
+
+          {/* ── DANGER ZONE ── */}
+          <section className="w-full max-w-5xl mx-auto px-4 sm:px-6 mt-12 mb-20">
+             <div className="rounded-[2.5rem] p-8 border border-red-500/20 bg-red-500/5">
+                <h3 className="text-xl font-display font-black text-red-500 uppercase tracking-tight mb-2">Danger Zone</h3>
+                <p className="text-xs text-ink-2 mb-6">Permanently delete your account and all associated data. This action cannot be undone.</p>
+                <button 
+                  onClick={handleDeleteAccount} 
+                  disabled={isDeleting} 
+                  className="px-6 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 font-bold font-mono text-xs uppercase tracking-wider rounded-xl border border-red-500/20 transition-colors"
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete Account'}
+                </button>
+             </div>
+          </section>
       </main>
 
       {/* ═══ FOOTER BAR ═══ */}

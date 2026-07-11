@@ -9,13 +9,13 @@ import path from 'path';
 import serviceAccount from './service-account.json' with { type: "json" };
 
 // Supabase and Email Credentials (from .env.local)
-const SUPABASE_URL = 'https://gpuedwozcbzlkhdkcebm.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_QgAz0iKG6xjYddS_8QeMIw_j-9ySrZt';
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://gpuedwozcbzlkhdkcebm.supabase.co';
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-const EMAIL_HOST = 'smtp.gmail.com';
-const EMAIL_PORT = 587;
-const EMAIL_USER = 'hello@artistant.in';
-const EMAIL_PASS = 'lpuiylveacxakgfz';
+const EMAIL_HOST = process.env.EMAIL_HOST || 'smtp.gmail.com';
+const EMAIL_PORT = process.env.EMAIL_PORT ? parseInt(process.env.EMAIL_PORT, 10) : 587;
+const EMAIL_USER = process.env.EMAIL_USER;
+const EMAIL_PASS = process.env.EMAIL_PASS;
 
 initializeApp({
   credential: cert(serviceAccount)

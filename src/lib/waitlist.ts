@@ -93,6 +93,17 @@ export async function reserveUsername(
   const { uid, username, email, displayName, role, category, genres, phone, referredBy } = input;
   const normalisedUsername = normalise(username);
 
+  // Validate username format
+  const usernameRegex = /^[a-zA-Z0-9_.]{3,30}$/;
+  if (!usernameRegex.test(normalisedUsername)) {
+    throw new Error('Username must be 3-30 characters long and can only contain letters, numbers, underscores, and dots.');
+  }
+
+  // Prevent self-referrals
+  if (referredBy && normalise(referredBy) === normalisedUsername) {
+    throw new Error('You cannot refer yourself.');
+  }
+
   const { error } = await supabase.from("waitlist_users").insert({
     user_id: uid,
     username: normalisedUsername,
@@ -109,7 +120,7 @@ export async function reserveUsername(
     if (error.code === '23505') { // Postgres Unique Violation
       throw new Error(`Username "${username}" is already taken.`);
     }
-    throw error;
+    const ref = crypto.randomUUID(); console.error('Error Ref:', ref, '[REDACTED_ERROR]'); throw new Error('An internal error occurred. Ref: ' + ref);
   }
 }
 
@@ -160,7 +171,7 @@ export async function adminGetRegistrations(passcode: string): Promise<AdminWait
   });
 
   if (error) {
-    throw error;
+    const ref = crypto.randomUUID(); console.error('Error Ref:', ref, error); throw new Error('An internal error occurred. Ref: ' + ref);
   }
 
   return data as AdminWaitlistEntry[];
@@ -187,7 +198,7 @@ export async function adminUpdateRegistration(
   });
 
   if (error) {
-    throw error;
+    const ref = crypto.randomUUID(); console.error('Error Ref:', ref, error); throw new Error('An internal error occurred. Ref: ' + ref);
   }
 }
 
