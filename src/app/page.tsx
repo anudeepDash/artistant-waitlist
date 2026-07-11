@@ -14,7 +14,7 @@ import { signInWithGoogle, signOut } from '@/lib/auth';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
-import { logActivityAction, checkUsernameAvailableAction } from '@/lib/admin-actions';
+import { logActivityAction, checkUsernameAvailableAction, checkMultipleUsernamesAvailableAction } from '@/lib/admin-actions';
 
 const isUsernameAvailable = checkUsernameAvailableAction;
 
@@ -755,13 +755,8 @@ export default function Home() {
         const timer = setTimeout(async () => {
           try {
             const candidates = getCandidateUsernames(raw);
-            const results = await Promise.all(
-              candidates.map(async (candidate) => {
-                const free = await isUsernameAvailable(candidate);
-                return { candidate, free };
-              })
-            );
-            const available = results.filter(r => r.free).map(r => r.candidate).slice(0, 4);
+            const availabilityMap = await checkMultipleUsernamesAvailableAction(candidates);
+            const available = candidates.filter(c => availabilityMap[c]).slice(0, 4);
             setSuggestions(available);
           } catch {
             setSuggestions([]);
@@ -790,13 +785,8 @@ export default function Home() {
       const timer = setTimeout(async () => {
         try {
           const candidates = getCandidateUsernames(raw);
-          const results = await Promise.all(
-            candidates.map(async (candidate) => {
-              const free = await isUsernameAvailable(candidate);
-              return { candidate, free };
-            })
-          );
-          const available = results.filter(r => r.free).map(r => r.candidate).slice(0, 4);
+          const availabilityMap = await checkMultipleUsernamesAvailableAction(candidates);
+          const available = candidates.filter(c => availabilityMap[c]).slice(0, 4);
           setSuggestions(available);
         } catch {
           setSuggestions([]);
@@ -831,13 +821,8 @@ export default function Home() {
       const timer = setTimeout(async () => {
         try {
           const candidates = getCandidateUsernames(raw);
-          const results = await Promise.all(
-            candidates.map(async (candidate) => {
-              const free = await isUsernameAvailable(candidate);
-              return { candidate, free };
-            })
-          );
-          const available = results.filter(r => r.free).map(r => r.candidate).slice(0, 4);
+          const availabilityMap = await checkMultipleUsernamesAvailableAction(candidates);
+          const available = candidates.filter(c => availabilityMap[c]).slice(0, 4);
           setSuggestions(available);
         } catch {
           setSuggestions([]);
@@ -861,13 +846,8 @@ export default function Home() {
       const timer = setTimeout(async () => {
         try {
           const candidates = getCandidateUsernames(raw);
-          const results = await Promise.all(
-            candidates.map(async (candidate) => {
-              const free = await isUsernameAvailable(candidate);
-              return { candidate, free };
-            })
-          );
-          const available = results.filter(r => r.free).map(r => r.candidate).slice(0, 4);
+          const availabilityMap = await checkMultipleUsernamesAvailableAction(candidates);
+          const available = candidates.filter(c => availabilityMap[c]).slice(0, 4);
           setSuggestions(available);
         } catch {
           setSuggestions([]);
@@ -892,13 +872,8 @@ export default function Home() {
         } else {
           setAvailStatus('taken');
           const candidates = getCandidateUsernames(raw);
-          const results = await Promise.all(
-            candidates.map(async (candidate) => {
-              const free = await isUsernameAvailable(candidate);
-              return { candidate, free };
-            })
-          );
-          const available = results.filter(r => r.free).map(r => r.candidate).slice(0, 4);
+          const availabilityMap = await checkMultipleUsernamesAvailableAction(candidates);
+          const available = candidates.filter(c => availabilityMap[c]).slice(0, 4);
           setSuggestions(available);
           setSuggestionsLoading(false);
         }

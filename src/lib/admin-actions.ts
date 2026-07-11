@@ -524,3 +524,49 @@ export async function checkUsernameAvailableAction(username: string): Promise<bo
 
   return count === 0;
 }
+
+/**
+ * Server Action to check multiple usernames for availability at once.
+ * Bypasses RLS by using the service role client on the server.
+ */
+export async function checkMultipleUsernamesAvailableAction(usernames: string[]): Promise<Record<string, boolean>> {
+  const client = createAdminClient();
+  const normalisedUsernames = usernames
+    .map(u => u.trim().toLowerCase())
+    .filter(u => /^[a-zA-Z0-9_.]{3,30}$/.test(u));
+
+  const result: Record<string, boolean> = {};
+  
+  if (normalisedUsernames.length === 0) {
+    for (const u of usernames) {
+      result[u] = false;
+    }
+    return result;
+  }
+
+  const { data, error } = await client
+    .from('waitlist_users')
+    .select('username')
+    .in('username', normalisedUsernames);
+
+  if (error) {
+    console.error('Error checking bulk usernames availability:', error);
+    for (const u of usernames) {
+      result[u] = false;
+    }
+    return result;
+  }
+
+  const takenSet = new Set(data?.map(row => row.username) || []);
+  
+  for (const username of usernames) {
+    const norm = username.trim().toLowerCase();
+    if (!/^[a-zA-Z0-9_.]{3,30}$/.test(norm)) {
+      result[username] = false;
+    } else {
+      result[username] = !takenSet.has(norm);
+    }
+  }
+
+  return result;
+}
