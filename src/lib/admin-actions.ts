@@ -476,12 +476,23 @@ export async function markStorySharedAction(userId: string): Promise<void> {
 export async function checkUsernameAvailableAction(username: string): Promise<boolean> {
   const client = createAdminClient();
   const normalised = username.trim().toLowerCase();
+  const serviceKeyExists = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  try {
+    const fs = await import('fs');
+    const path = await import('path');
+    const logPath = path.join(process.cwd(), 'server_debug.log');
+    fs.appendFileSync(logPath, `[${new Date().toISOString()}] START check: username=${username}, normalised=${normalised}, serviceKeyExists=${serviceKeyExists}\n`);
+  } catch (e) {}
 
   // Directly check the waitlist_users table
   const { count, error } = await client
     .from('waitlist_users')
     .select('id', { count: 'exact', head: true })
     .eq('username', normalised);
+
+  let result = count === 0;
+  let logErrorMsg = error ? error.message : 'none';
 
   if (error) {
     console.error('Error checking username availability directly, falling back:', error);
@@ -491,12 +502,22 @@ export async function checkUsernameAvailableAction(username: string): Promise<bo
     });
     if (rpcError) {
       console.error('Fallback RPC check also failed:', rpcError);
-      return true; // Fallback to available so we do not block registrations
+      result = true; // Fallback to available so we do not block registrations
+      logErrorMsg = `DirectError: ${error.message}, RpcError: ${rpcError.message}`;
+    } else {
+      result = data === true;
+      logErrorMsg = `DirectError: ${error.message}, RpcSuccess: returned ${data}`;
     }
-    return data === true;
   }
 
-  return count === 0;
+  try {
+    const fs = await import('fs');
+    const path = await import('path');
+    const logPath = path.join(process.cwd(), 'server_debug.log');
+    fs.appendFileSync(logPath, `[${new Date().toISOString()}] END check: username=${username}, count=${count}, error=${logErrorMsg}, returned=${result}\n`);
+  } catch (e) {}
+
+  return result;
 }
 
 

@@ -3,8 +3,11 @@
 import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '@/hooks/useAuth';
-import { isUsernameAvailable, reserveUsername } from '@/lib/waitlist';
+import { reserveUsername } from '@/lib/waitlist';
 import { sendWelcomeEmailAction } from '@/lib/email-actions';
+import { checkUsernameAvailableAction } from '@/lib/admin-actions';
+
+const isUsernameAvailable = checkUsernameAvailableAction;
 
 // ---------------------------------------------------------------------------
 // Types

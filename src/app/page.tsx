@@ -9,12 +9,14 @@ import RoleWaitlistModal from '@/components/RoleWaitlistModal';
 import InteractiveTeaser from '@/components/InteractiveTeaser';
 import UIMockupSequence from '@/components/UIMockupSequence';
 import Navbar from '@/components/Navbar';
-import { isUsernameAvailable, getUserReservation, type WaitlistEntry } from '@/lib/waitlist';
+import { getUserReservation, type WaitlistEntry } from '@/lib/waitlist';
 import { signInWithGoogle, signOut } from '@/lib/auth';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
-import { logActivityAction } from '@/lib/admin-actions';
+import { logActivityAction, checkUsernameAvailableAction } from '@/lib/admin-actions';
+
+const isUsernameAvailable = checkUsernameAvailableAction;
 
 
 /* ── Sleek SVG Icons for features ── */
