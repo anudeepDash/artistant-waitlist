@@ -72,8 +72,8 @@ function IconCircle({
 
 function ScoreBar({ label, percent }: { label: string; percent: number }) {
   return (
-    <div className="flex items-center gap-3 text-sm">
-      <span className="w-40 shrink-0 text-text-secondary">{label}</span>
+    <div className="flex items-center gap-3 text-xs sm:text-sm">
+      <span className="w-24 sm:w-40 shrink-0 text-text-secondary truncate">{label}</span>
       <div className="relative h-2 flex-1 rounded-full bg-bg-tertiary overflow-hidden">
         <motion.div
           className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-accent-gold to-brand-orange"
@@ -406,7 +406,7 @@ export default function EcosystemPreview() {
           </p>
 
           {/* Horizontal scroll on mobile, flex-wrap on larger screens */}
-          <div className="flex gap-4 overflow-x-auto pb-4 md:flex-wrap md:justify-center md:overflow-visible scrollbar-hide">
+          <div className="flex gap-4 overflow-x-auto overflow-y-hidden pb-4 md:flex-wrap md:justify-center md:overflow-visible scrollbar-hide">
             {[
               { emoji: '⭐', title: 'Audience Favorites' },
               { emoji: '🎵', title: 'Discover Setlist Songs' },

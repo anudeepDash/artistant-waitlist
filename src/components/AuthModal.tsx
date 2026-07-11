@@ -10,6 +10,8 @@ import {
 } from '@/lib/auth';
 import { reserveUsername, type ArtistCategory } from '@/lib/waitlist';
 import { sendWelcomeEmailAction } from '@/lib/email-actions';
+import { logActivityAction } from '@/lib/admin-actions';
+
 import { auth, isFirebaseConfigured } from '@/lib/firebase/client';
 import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import SuccessConfirmation from '@/components/SuccessConfirmation';
@@ -230,6 +232,14 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
   // goToProfileStep — routes after any auth method completes
   // --------------------------------------------------------------------------
   const goToProfileStep = useCallback((firebaseUser: any) => {
+    // Log login activity
+    logActivityAction({
+      userId: firebaseUser.uid,
+      email: firebaseUser.email || undefined,
+      actionType: 'login',
+      userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : undefined,
+    }).catch(err => console.warn('Error logging sign-in:', err));
+
     if (!initialUsername || initialUsername.trim() === '') {
       onClose();
       return;
@@ -266,12 +276,22 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
         referredBy: ref,
       });
 
+      // Log waitlist registration activity
+      logActivityAction({
+        userId: pendingUser.uid,
+        email: resolvedEmail,
+        username: normalised,
+        actionType: 'waitlist_register',
+        userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : undefined,
+      }).catch(err => console.warn('Error logging waitlist registration:', err));
+
       // Trigger welcome email notification in the background
       sendWelcomeEmailAction({
         email: resolvedEmail,
         name: pendingUser.displayName ?? resolvedEmail ?? normalised,
         username: normalised,
       }).catch(err => console.error("Error sending welcome email:", err));
+
 
       setReservedUsername(normalised);
       setStep('success');
@@ -542,7 +562,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
           {/* ── Modal Card ─────────────────────────────────── */}
           <motion.div
             key="auth-card"
-            className="glass-card relative max-w-md w-full mx-4 p-8 border border-white/10 rounded-3xl shadow-[0_24px_60px_-15px_rgba(0,0,0,0.7)] overflow-hidden"
+            className="glass-card relative max-w-md w-full mx-4 p-5 sm:p-8 border border-white/10 rounded-3xl shadow-[0_24px_60px_-15px_rgba(0,0,0,0.7)] overflow-hidden"
             style={{ 
               background: 'rgba(14, 21, 36, 0.88)',
               boxShadow: '0 24px 60px -15px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255,255,255,0.1)'
@@ -843,7 +863,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                               value={val}
                               onChange={(e) => handleOtpCellChange(e.target.value, idx)}
                               onKeyDown={(e) => handleOtpCellKeyDown(e, idx)}
-                              className="w-12 h-12 text-center text-xl font-bold font-mono bg-bg-secondary/40 border border-white/10 rounded-xl text-white focus:border-brand-orange focus:ring-1 focus:ring-brand-orange outline-none transition-all duration-200"
+                              className="w-10 h-10 sm:w-12 sm:h-12 text-center text-xl font-bold font-mono bg-bg-secondary/40 border border-white/10 rounded-xl text-white focus:border-brand-orange focus:ring-1 focus:ring-brand-orange outline-none transition-all duration-200"
                               style={{ boxShadow: val ? '0 0 10px rgba(242,90,43,0.15)' : 'none' }}
                               initial={{ scale: 0.85, opacity: 0 }}
                               animate={{ scale: 1, opacity: 1 }}

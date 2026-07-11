@@ -90,7 +90,7 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
         >
           <motion.div
             key="role-card"
-            className="glass-card relative max-w-md w-full mx-4 p-8"
+            className="glass-card relative max-w-md w-full mx-4 p-5 sm:p-8"
             variants={cardVariants}
             initial="hidden"
             animate="visible"

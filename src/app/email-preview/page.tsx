@@ -184,7 +184,7 @@ const WELCOME_TEMPLATE_RAW = `<!DOCTYPE html>
                   {{message}}
                 </div>
 
-                <!-- Unique Custom Pioneer Ticket (Stage Pass) -->
+                <!-- Unique Custom Founding Ticket (Stage Pass) -->
                 <table border="0" cellpadding="0" cellspacing="0" width="100%" class="ticket-table" style="background-color: #0F172A; border-radius: 16px; overflow: hidden; border: 1px solid #1E293B; margin-bottom: 35px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
                   <!-- Ticket Top Accent Glow -->
                   <tr>
@@ -203,7 +203,7 @@ const WELCOME_TEMPLATE_RAW = `<!DOCTYPE html>
                                   <img src="https://raw.githubusercontent.com/anudeepDash/artistant-waitlist/main/public/logo_a.png" alt="" width="20" height="20" style="display: block; width: 20px; height: 20px;">
                                 </td>
                                 <td>
-                                  <span style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 9px; font-weight: 800; color: #7C5CFF; letter-spacing: 2px; text-transform: uppercase;">ARTISTANT PIONEER PASS</span>
+                                  <span style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 9px; font-weight: 800; color: #7C5CFF; letter-spacing: 2px; text-transform: uppercase;">ARTISTANT FOUNDING CARD</span>
                                 </td>
                               </tr>
                             </table>
@@ -227,7 +227,7 @@ const WELCOME_TEMPLATE_RAW = `<!DOCTYPE html>
                               <tr>
                                 <td style="padding-top: 4px;">
                                   <span style="display: block; font-size: 8px; font-weight: 800; color: #5C6680; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px;">NODE / ACCESS TYPE</span>
-                                  <span style="font-size: 12px; font-weight: 700; color: #ffffff; letter-spacing: 0.5px;">EARLY PIONEER</span>
+                                  <span style="font-size: 12px; font-weight: 700; color: #ffffff; letter-spacing: 0.5px;">FOUNDING MEMBER</span>
                                 </td>
                                 <td style="padding-top: 4px;">
                                   <span style="display: block; font-size: 8px; font-weight: 800; color: #5C6680; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px;">VERIFICATION STATE</span>
@@ -584,7 +584,6 @@ const DEFAULT_NORMAL_MSG = "[Type your email here]\n\nBest regards,\nTeam ArtisT
 export default function EmailPreviewPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<'welcome' | 'normal'>('welcome');
   const [name, setName] = useState('Anudeep');
-  const [username, setUsername] = useState('artist_name');
   const [username, setUsername] = useState('artist_name');
   const [message, setMessage] = useState(DEFAULT_WELCOME_MSG);
   const [ctaText, setCtaText] = useState('View Your Dashboard');

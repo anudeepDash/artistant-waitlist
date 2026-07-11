@@ -232,8 +232,18 @@ const SCENARIOS: Scenario[] = [
 export default function InteractiveTeaser() {
   const [scenarioIdx, setScenarioIdx] = useState(0);
   const [phase, setPhase] = useState<'chaos' | 'cure'>('chaos');
+  const [isMobile, setIsMobile] = useState(false);
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize, { passive: true });
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     let phaseTimeout: NodeJS.Timeout;
@@ -260,7 +270,7 @@ export default function InteractiveTeaser() {
       width: '100%',
       maxWidth: '600px',
       margin: '0',
-      height: '380px',
+      height: isMobile ? '340px' : '380px',
       borderRadius: '24px',
       overflow: 'hidden',
       position: 'relative',
@@ -277,7 +287,7 @@ export default function InteractiveTeaser() {
             animate={{ opacity: 1, filter: 'blur(0px)' }}
             exit={{ opacity: 0, filter: 'blur(10px)' }}
             transition={{ duration: 0.6 }}
-            style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, padding: '32px 24px', display: 'flex', flexDirection: 'column', gap: '16px', background: isDark ? 'linear-gradient(to bottom, #1a0f0f, #050505)' : '#efeae2' }}
+            style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, padding: isMobile ? '20px 16px' : '32px 24px', display: 'flex', flexDirection: 'column', gap: isMobile ? '10px' : '16px', background: isDark ? 'linear-gradient(to bottom, #1a0f0f, #050505)' : '#efeae2' }}
           >
             <div style={{ position: 'absolute', inset: 0, background: isDark ? 'radial-gradient(circle at center, rgba(255,90,95,0.08) 0%, transparent 70%)' : 'radial-gradient(circle at center, rgba(255,90,95,0.03) 0%, transparent 70%)', pointerEvents: 'none' }} />
             
@@ -290,10 +300,10 @@ export default function InteractiveTeaser() {
                 style={{ 
                   alignSelf: msg.align === 'right' ? 'flex-end' : 'flex-start', 
                   background: msg.align === 'right' ? (isDark ? '#005c4b' : '#d9fdd3') : (isDark ? '#202C33' : '#ffffff'), 
-                  padding: '14px 18px', 
+                  padding: isMobile ? '10px 14px' : '14px 18px', 
                   borderRadius: msg.align === 'right' ? '18px 18px 0 18px' : '18px 18px 18px 0', 
                   color: isDark ? '#fff' : '#111b21', 
-                  fontSize: '14px', 
+                  fontSize: isMobile ? '13px' : '14px', 
                   lineHeight: '1.4',
                   maxWidth: '85%', 
                   boxShadow: isDark ? '0 4px 12px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.03)' 
@@ -318,7 +328,7 @@ export default function InteractiveTeaser() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.05 }}
             transition={{ duration: 0.6, ease: 'easeOut' }}
-            style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: isDark ? 'linear-gradient(to bottom, #0A1118, #050505)' : 'linear-gradient(to bottom, #f4f4f5, #ffffff)' }}
+            style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, padding: isMobile ? '16px' : '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: isDark ? 'linear-gradient(to bottom, #0A1118, #050505)' : 'linear-gradient(to bottom, #f4f4f5, #ffffff)' }}
           >
             <div style={{ position: 'absolute', inset: 0, background: isDark ? 'radial-gradient(circle at center, rgba(124, 92, 255, 0.1) 0%, transparent 60%)' : 'radial-gradient(circle at center, rgba(124, 92, 255, 0.05) 0%, transparent 60%)', pointerEvents: 'none' }} />
             
@@ -326,7 +336,7 @@ export default function InteractiveTeaser() {
             <div style={{ 
               width: '100%', 
               maxWidth: '460px', 
-              height: '180px',
+              height: isMobile ? '150px' : '180px',
               borderRadius: '20px', 
               boxShadow: isDark ? '0 24px 50px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05), 0 0 0 1px rgba(124, 92, 255, 0.15)' : '0 24px 50px rgba(0,0,0,0.05), 0 0 0 1px rgba(124, 92, 255, 0.08)', 
               position: 'relative', 

@@ -4,12 +4,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform, useMotionValueEvent } from 'motion/react';
 import { useAuth } from '@/hooks/useAuth';
 import { getUserReservation, getWaitlistPosition, getReferralCount, type WaitlistEntry } from '@/lib/waitlist';
+import { getWaitlistDashboardDataAction, markStorySharedAction, type PublicLeaderboardEntry } from '@/lib/admin-actions';
 import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
+import { useTheme } from 'next-themes';
+import Navbar from '@/components/Navbar';
 import {
-  Lock, Check, LogOut, CheckCircle, Copy, Sparkles, Award, Shield, Zap,
+  Lock, LockKeyhole, Check, LogOut, CheckCircle, Copy, Sparkles, Award, Shield, Zap,
   Star, Calendar, Users, MessageSquare, TrendingUp, Gift, ChevronRight,
-  ExternalLink, DownloadCloud, Smartphone, HelpCircle, Trophy
+  ExternalLink, DownloadCloud, Smartphone, HelpCircle, Trophy, X
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════════════════
@@ -39,29 +42,46 @@ const CINEMATIC_FEATURES = [
   { isLogo: true, desc: "The ultimate creative link-up." }
 ];
 
+// Custom inline SVG icons for social media
+const InstagramIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+  </svg>
+);
+
+const LinkedinIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
+    <rect x="2" y="9" width="4" height="12" />
+    <circle cx="4" cy="4" r="2" />
+  </svg>
+);
+
 /* ═══════════════════════════════════════════════════
    SCROLL CONVERGENCE MOCKUP SHOWCASE
    ═══════════════════════════════════════════════════ */
 
 function StaticModulesShowcase({ cohort }: { cohort: string }) {
   return (
-    <div className="relative w-full py-20 bg-black rounded-[3rem] border border-white/5 overflow-hidden my-12 flex flex-col items-center">
+    <div className="relative w-full py-20 bg-transparent overflow-hidden my-12 flex flex-col items-center">
       
       {/* Subtle grid background */}
       <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{
-        backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
+        backgroundImage: 'radial-gradient(circle, var(--ink) 1px, transparent 1px)',
         backgroundSize: '30px 30px'
       }} />
 
       {/* Title above */}
       <div className="text-center px-4 mb-16 relative z-30">
         <span className="font-mono text-[9px] text-[#7C5CFF] uppercase tracking-[0.25em] font-bold">Consolidated Ecosystem</span>
-        <h2 className="font-display font-black text-2xl md:text-3xl text-white uppercase tracking-tight mt-1">Unlocking Modules</h2>
-        <p className="text-[10px] font-mono text-[#9BA4B8] mt-1.5 uppercase tracking-wider">All direct routing, calendars & safe escrow in one creative hub</p>
+        <h2 className="font-display font-black text-2xl md:text-3xl text-ink uppercase tracking-tight mt-1">Unlocking Modules</h2>
+        <p className="text-[10px] font-mono text-ink-2 mt-1.5 uppercase tracking-wider">All direct routing, calendars & safe escrow in one creative hub</p>
       </div>
 
       {/* Mockups Container */}
-      <div className="relative w-full max-w-4xl h-[450px] flex items-center justify-center scale-[0.55] sm:scale-80 md:scale-[0.9] lg:scale-100 transition-all z-10">
+      <div className="relative w-full max-w-4xl h-[260px] sm:h-[360px] md:h-[450px] flex items-center justify-center scale-[0.55] sm:scale-80 md:scale-[0.9] lg:scale-100 transition-all z-10">
         
         {/* SCREEN 1: Far Left (Portfolio) */}
         <div 
@@ -111,6 +131,16 @@ function StaticModulesShowcase({ cohort }: { cohort: string }) {
 
       </div>
 
+      {/* Beta Dropping Soon Info Card */}
+      <div className="mt-12 max-w-2xl mx-4 px-6 py-5 rounded-[2rem] bg-gradient-to-b from-[#7C5CFF]/10 to-transparent border border-[#7C5CFF]/20 text-center relative z-20 shadow-xl backdrop-blur-md">
+        <span className="font-mono text-[9px] text-[#F25A2B] uppercase tracking-[0.2em] font-bold block mb-2">BETA DROPPING SOON</span>
+        <h4 className="font-display font-black text-lg text-ink uppercase tracking-tight mb-2">
+          Cohort 1 Early Beta Privilege
+        </h4>
+        <p className="text-xs text-ink-2 leading-relaxed">
+          Artists qualifying for <strong className="text-ink text-[#7C5CFF]">Cohort 1</strong> will get exclusive Beta access before anyone else. This early entry allows you to start building your verified <strong className="text-ink">Bookability Score™</strong> ahead of the general public. A stronger Bookability Score directly boosts your visibility, translating to higher frequency of booking routing. Additionally, Cohort 1 artists will get their first gig platform fee waived!
+        </p>
+      </div>
 
     </div>
   );
@@ -131,8 +161,33 @@ export default function ProfilePage() {
   const [referrals, setReferrals] = useState<number>(0);
   const [copied, setCopied] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [activeStoryTemplate, setActiveStoryTemplate] = useState<number>(0);
+  const [mounted, setMounted] = useState(false);
+  const [activeInfo, setActiveInfo] = useState<string | null>(null);
+  const [rawTextOpen, setRawTextOpen] = useState(false);
+  const { resolvedTheme } = useTheme();
+  const isLight = mounted && resolvedTheme === 'light';
+  const [isHelpExpanded, setIsHelpExpanded] = useState(false);
+  const [hasPoppedOut, setHasPoppedOut] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (hasPoppedOut) return;
+      if (window.scrollY > 150) {
+        setHasPoppedOut(true);
+        setIsHelpExpanded(true);
+        setTimeout(() => {
+          setIsHelpExpanded(false);
+        }, 3000);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [hasPoppedOut]);
 
   // 3D Card Hover Effect state
   const cardRef = useRef<HTMLDivElement>(null);
@@ -141,13 +196,23 @@ export default function ProfilePage() {
   const [sheenX, setSheenX] = useState(50);
   const [sheenY, setSheenY] = useState(50);
 
-  // Points & Cohort system
-  const points = 100 + referrals * 50;
+  // Points & Cohort system (Dynamic)
+  const [verifiedReferrals, setVerifiedReferrals] = useState<number>(0);
+  const [unverifiedReferrals, setUnverifiedReferrals] = useState<number>(0);
+  const [points, setPoints] = useState<number>(100);
+  const [cohortVal, setCohortVal] = useState<string>('003');
+  const [storyShared, setStoryShared] = useState<boolean>(false);
+  const [leaderboard, setLeaderboard] = useState<PublicLeaderboardEntry[]>([]);
+  const [foundingArtists, setFoundingArtists] = useState<PublicLeaderboardEntry[]>([]);
+  const [totalArtistsCount, setTotalArtistsCount] = useState<number>(0);
+  const [foundingLimit, setFoundingLimit] = useState<number>(50);
+
   const targetPoints = 250;
-  const isCohort1 = points >= targetPoints;
-  const progressPercentage = Math.min(100, ((points - 100) / (targetPoints - 100)) * 100);
-  const referralsNeeded = Math.max(0, 3 - referrals);
-  const cohort = waitlistPos ? Math.ceil(waitlistPos / 100).toString().padStart(3, '0') : '003';
+  const isCohort1 = cohortVal === '001';
+  // Progress is relative to 500 PTS (Founding Artist Tier)
+  const progressPercentage = Math.min(100, ((points - 100) / (500 - 100)) * 100);
+  const referralsNeeded = Math.max(0, Math.ceil((500 - points) / 50));
+  const cohort = cohortVal;
 
   // ── Cinematic Bottom Ticker Timer ──
   useEffect(() => {
@@ -156,6 +221,56 @@ export default function ProfilePage() {
     }, 2000);
     return () => clearInterval(interval);
   }, []);
+
+  // ── Legacy Fallback Loader ──
+  const loadLegacyFallback = async (uid: string, entry: WaitlistEntry) => {
+    try {
+      const rawRefs = await getReferralCount(entry.username);
+      setVerifiedReferrals(rawRefs); // Treat all as verified in fallback
+      const pos = await getWaitlistPosition(entry.reserved_at, uid, entry.position_override);
+      setWaitlistPos(pos);
+      setCohortVal(pos ? Math.ceil(pos / 100).toString().padStart(3, '0') : '003');
+      const localStoryShared = localStorage.getItem(`story_shared_${uid}`) === 'true';
+      setStoryShared(localStoryShared);
+      setPoints(100 + rawRefs * 50 + (localStoryShared ? 80 : 0));
+    } catch (err) {
+      console.error("Fallback load failed:", err);
+    }
+  };
+
+  // ── Dashboard Data Loader ──
+  const loadDashboardData = async (uid: string, entry: WaitlistEntry) => {
+    try {
+      const data = await getWaitlistDashboardDataAction(uid);
+      setLeaderboard(data.leaderboard);
+      setFoundingArtists(data.foundingArtists);
+      setTotalArtistsCount(data.totalArtistsCount);
+      setFoundingLimit(data.foundingLimit);
+      
+      if (data.currentUserStats) {
+        setVerifiedReferrals(data.currentUserStats.verifiedReferrals);
+        setUnverifiedReferrals(data.currentUserStats.unverifiedReferrals);
+        setPoints(data.currentUserStats.points);
+        setWaitlistPos(data.currentUserStats.rank);
+        setCohortVal(data.currentUserStats.cohort);
+        
+        let dbStoryShared = data.currentUserStats.storyShared;
+        const localStoryShared = localStorage.getItem(`story_shared_${uid}`) === 'true';
+        if (localStoryShared && !dbStoryShared) {
+          try {
+            await markStorySharedAction(uid);
+            dbStoryShared = true;
+          } catch {}
+        }
+        setStoryShared(dbStoryShared || localStoryShared);
+      } else {
+        await loadLegacyFallback(uid, entry);
+      }
+    } catch (e) {
+      console.error("Error loading dashboard data, using legacy fallback:", e);
+      await loadLegacyFallback(uid, entry);
+    }
+  };
 
   // ── Auth + Data fetch ──
   useEffect(() => {
@@ -166,20 +281,27 @@ export default function ProfilePage() {
       .then(async (res) => {
         if (!res) { router.push('/'); return; }
         setReservation(res);
-        try { setReferrals(await getReferralCount(res.username)); } catch { setReferrals(0); }
-        try { setWaitlistPos(await getWaitlistPosition(res.reserved_at, user.uid, res.position_override)); } catch {}
+        await loadDashboardData(user.uid, res);
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, [user, authLoading, router]);
 
-  // ── Profile menu outside click ──
-  useEffect(() => {
-    if (!profileMenuOpen) return;
-    const close = () => setProfileMenuOpen(false);
-    window.addEventListener('click', close);
-    return () => window.removeEventListener('click', close);
-  }, [profileMenuOpen]);
+  // Helper to trigger story sharing completion
+  const handleCompleteStoryTask = async () => {
+    if (!user || !reservation) return;
+    try {
+      await markStorySharedAction(user.uid);
+    } catch (e) {
+      console.warn("Failed to mark story shared in DB, using local storage backup", e);
+    }
+    localStorage.setItem(`story_shared_${user.uid}`, 'true');
+    setStoryShared(true);
+    await loadDashboardData(user.uid, reservation);
+    showToast("Story shared: +80 PTS added!");
+  };
+
+
 
   // ── Helpers ──
   const showToast = (msg: string) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 3000); };
@@ -220,223 +342,420 @@ export default function ProfilePage() {
      STORY GENERATOR CANVAS RENDERING
      ═══════════════════════════════════════════════════ */
 
-  const handleDownloadStory = async (templateId: number = activeStoryTemplate) => {
+  const handleShareStory = async (platform: 'whatsapp' | 'instagram' | 'x', templateId: number = activeStoryTemplate) => {
     if (!reservation) return;
-    showToast("Generating high-res story pass...");
+    showToast("Preparing your founding pass...");
+    
     try {
+      // Preload the official wordmark logo image
+      const logoImg = new Image();
+      logoImg.src = '/logo_wordmark.png';
+      await new Promise((resolve) => {
+        logoImg.onload = resolve;
+        logoImg.onerror = resolve;
+      });
+
       const canvas = document.createElement('canvas');
       canvas.width = 1080;
       canvas.height = 1920;
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error("Could not get 2d context");
 
-      // Common Background Base
-      ctx.fillStyle = '#050505';
-      ctx.fillRect(0, 0, 1080, 1920);
-
-      // Grid Layout Overlay
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.015)';
-      ctx.lineWidth = 1;
-      for (let x = 0; x < canvas.width; x += 80) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-      }
-      for (let y = 0; y < canvas.height; y += 80) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-      }
-
-      // Reusable 3D tilted card drawer
-      const draw3DCard = (x: number, y: number, w: number, h: number, bgStyle: string | CanvasGradient, borderStyle: string, textColor: string) => {
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(-0.06); // slight rotation angle
-        ctx.transform(0.96, 0.04, -0.04, 0.9, 0, 0); // 3D skew perspective matrix
-
-        // Backdrop
-        ctx.fillStyle = bgStyle;
+      // ── Helper: rounded rect fill ──
+      const fillRoundRect = (x: number, y: number, w: number, h: number, r: number, style: string | CanvasGradient) => {
+        ctx.fillStyle = style;
         ctx.beginPath();
-        ctx.roundRect(-w / 2, -h / 2, w, h, 40);
+        ctx.roundRect(x, y, w, h, r);
         ctx.fill();
+      };
 
-        // Highlight stroke border
-        ctx.strokeStyle = borderStyle;
-        ctx.lineWidth = 3;
+      // ── Helper: rounded rect stroke ──
+      const strokeRoundRect = (x: number, y: number, w: number, h: number, r: number, style: string, lw: number) => {
+        ctx.strokeStyle = style;
+        ctx.lineWidth = lw;
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, r);
+        ctx.stroke();
+      };
+
+      // ── Helper: draw the Artistant wordmark logo image ──
+      const drawLogo = (cx: number, y: number, width: number, invertColor: boolean) => {
+        if (!logoImg.complete || logoImg.naturalWidth === 0) return;
+        ctx.save();
+        if (invertColor) {
+          ctx.filter = 'invert(1)';
+        }
+        const aspect = logoImg.naturalHeight / logoImg.naturalWidth;
+        const height = width * aspect;
+        ctx.drawImage(logoImg, cx - width / 2, y, width, height);
+        ctx.restore();
+      };
+
+      // ── Helper: draw the pass card (flat, clean, no skew) ──
+      const drawPassCard = (x: number, y: number, w: number, h: number, cardBg: string | CanvasGradient, borderColor: string, textColor: string, accentColor: string) => {
+        ctx.save();
+        // Card background
+        fillRoundRect(x, y, w, h, 32, cardBg);
+        strokeRoundRect(x, y, w, h, 32, borderColor, 2);
+
+        // Top label row
+        ctx.font = 'bold 20px monospace';
+        ctx.fillStyle = accentColor;
+        ctx.textAlign = 'left';
+        ctx.fillText('FOUNDING CARD', x + 40, y + 52);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = textColor;
+        ctx.globalAlpha = 0.5;
+        ctx.fillText('FOUNDING ARTIST', x + w - 40, y + 52);
+        ctx.globalAlpha = 1;
+
+        // Divider line
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x + 40, y + 72);
+        ctx.lineTo(x + w - 40, y + 72);
         ctx.stroke();
 
-        // Concentric radar lines behind
-        ctx.strokeStyle = textColor === '#FFFFFF' ? 'rgba(255, 255, 255, 0.015)' : 'rgba(124, 92, 255, 0.04)';
-        ctx.beginPath(); ctx.arc(150, 50, 200, 0, Math.PI * 2); ctx.stroke();
-        ctx.beginPath(); ctx.arc(150, 50, 100, 0, Math.PI * 2); ctx.stroke();
-
-        // Top Row
-        ctx.fillStyle = textColor;
-        ctx.font = 'bold 22px monospace';
-        ctx.textAlign = 'left';
-        ctx.fillText('PIONEER PASSPORT', -w / 2 + 45, -h / 2 + 65);
-
-        ctx.textAlign = 'right';
-        ctx.fillText(`COHORT ${cohort}`, w / 2 - 45, -h / 2 + 65);
-
-        // Center Position Rank
+        // Center: Position number
         ctx.textAlign = 'center';
-        ctx.font = '900 120px "Space Grotesk", sans-serif';
-        ctx.fillText(`#${waitlistPos || '---'}`, 0, 30);
+        ctx.fillStyle = textColor;
+        ctx.font = `900 96px "Space Grotesk", sans-serif`;
+        ctx.fillText(`#${waitlistPos || '---'}`, x + w / 2, y + h / 2 + 12);
+        ctx.font = 'bold 16px monospace';
+        ctx.fillStyle = textColor;
+        ctx.globalAlpha = 0.35;
+        ctx.fillText('WAITLIST POSITION', x + w / 2, y + h / 2 + 48);
+        ctx.globalAlpha = 1;
 
-        ctx.font = 'bold 18px monospace';
-        ctx.fillStyle = textColor === '#FFFFFF' ? 'rgba(255,255,255,0.4)' : 'rgba(15,15,20,0.4)';
-        ctx.fillText('WAITLIST POSITION RANK', 0, 85);
-
-        // Bottom Row
+        // Bottom row
         ctx.textAlign = 'left';
         ctx.fillStyle = textColor;
-        ctx.font = 'bold 38px "Space Grotesk", sans-serif';
-        ctx.fillText(`@${reservation.username}`, -w / 2 + 45, h / 2 - 75);
-        ctx.font = 'bold 15px monospace';
-        ctx.fillStyle = textColor === '#FFFFFF' ? 'rgba(255,255,255,0.4)' : 'rgba(15,15,20,0.4)';
-        ctx.fillText('VERIFIED PIONEER NODE', -w / 2 + 45, h / 2 - 45);
+        ctx.font = `bold 30px "Space Grotesk", sans-serif`;
+        ctx.fillText(`@${reservation.username}`, x + 40, y + h - 48);
+        ctx.font = 'bold 14px monospace';
+        ctx.fillStyle = textColor;
+        ctx.globalAlpha = 0.3;
+        ctx.fillText('VERIFIED ARTIST', x + 40, y + h - 22);
+        ctx.globalAlpha = 1;
 
-        // Barcode
+        // Bottom-right: barcode placeholder
         ctx.textAlign = 'right';
-        ctx.fillStyle = textColor === '#FFFFFF' ? 'rgba(255,255,255,0.15)' : 'rgba(124,92,255,0.2)';
-        ctx.font = 'bold 22px monospace';
-        ctx.fillText('||||| | |||| | |||', w / 2 - 45, h / 2 - 50);
+        ctx.fillStyle = accentColor;
+        ctx.globalAlpha = 0.2;
+        ctx.font = 'bold 20px monospace';
+        ctx.fillText('||||| | |||| | |||', x + w - 40, y + h - 30);
+        ctx.globalAlpha = 1;
 
         ctx.restore();
       };
 
+      // ── Helper: draw feature list ──
+      const drawFeatures = (cx: number, startY: number, features: string[], color: string, checkColor: string) => {
+        ctx.textAlign = 'center';
+        features.forEach((feat, idx) => {
+          ctx.font = 'bold 26px monospace';
+          ctx.fillStyle = checkColor;
+          const text = `✓  ${feat}`;
+          ctx.fillStyle = color;
+          ctx.fillText(text, cx, startY + idx * 60);
+        });
+      };
+
+      // ═════════════════════════════════════════
+      // TEMPLATE 0: DARK NOIR
+      // ═════════════════════════════════════════
       if (templateId === 0) {
-        // TEMPLATE 0: DARK PREMIUM
-        const bgGrad = ctx.createLinearGradient(0, 0, 1080, 1920);
-        bgGrad.addColorStop(0, '#101015');
-        bgGrad.addColorStop(1, '#050507');
-        ctx.fillStyle = bgGrad;
+        // Base
+        const bg = ctx.createLinearGradient(0, 0, 0, 1920);
+        bg.addColorStop(0, '#0A0A10');
+        bg.addColorStop(1, '#04040A');
+        ctx.fillStyle = bg;
         ctx.fillRect(0, 0, 1080, 1920);
 
-        // Glowing backdrop
-        const glow = ctx.createRadialGradient(540, 960, 0, 540, 960, 900);
-        glow.addColorStop(0, 'rgba(242, 90, 43, 0.12)');
+        // Subtle radial glow behind card
+        const glow = ctx.createRadialGradient(540, 680, 0, 540, 680, 600);
+        glow.addColorStop(0, 'rgba(242, 90, 43, 0.08)');
+        glow.addColorStop(0.5, 'rgba(124, 92, 255, 0.04)');
         glow.addColorStop(1, 'transparent');
         ctx.fillStyle = glow;
         ctx.fillRect(0, 0, 1080, 1920);
 
-        // Draw 3D Card
-        draw3DCard(540, 580, 800, 500, 'rgba(255,255,255,0.02)', 'rgba(255,255,255,0.08)', '#FFFFFF');
-
-        // Middle Statement
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = '900 52px "Space Grotesk", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('I HAVE OPTED FOR', 540, 1050);
-        ctx.fillText('NO MIDDLEMEN.', 540, 1130);
-
-        ctx.fillStyle = '#F25A2B';
-        ctx.font = 'bold 22px monospace';
-        ctx.fillText('• commission-free direct booking •', 540, 1210);
-
-        // Features List
-        const feats = [
-          "Direct client-to-artist routing",
-          "GigSafe security deposit escrow",
-          "Auto-synced availability booking"
-        ];
-        ctx.font = 'bold 26px monospace';
-        ctx.fillStyle = '#9BA4B8';
-        feats.forEach((feat, idx) => {
-          ctx.fillText(`[✔] ${feat.toUpperCase()}`, 540, 1320 + idx * 75);
-        });
-
-      } else if (templateId === 1) {
-        // TEMPLATE 1: BRAND GRADIENT (Rebel Poster style)
-        const grad = ctx.createLinearGradient(0, 0, 1080, 1920);
-        grad.addColorStop(0, '#F25A2B');
-        grad.addColorStop(1, '#7C5CFF');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, 1080, 1920);
-
-        // Subtle dark wash overlay
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
-        ctx.fillRect(0, 0, 1080, 1920);
-
-        // Draw Tilted Card with gradient background
-        const cardGrad = ctx.createLinearGradient(-400, -250, 400, 250);
-        cardGrad.addColorStop(0, 'rgba(25,25,30,0.85)');
-        cardGrad.addColorStop(1, 'rgba(10,10,12,0.95)');
-        draw3DCard(540, 580, 800, 500, cardGrad, 'rgba(255,255,255,0.15)', '#FFFFFF');
-
-        // Typography stack
-        ctx.font = '900 60px "Space Grotesk", sans-serif';
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillText("NO COMMISSIONS.", 540, 1050);
-        ctx.fillText("ARTIST FIRST.", 540, 1140);
-        
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
-        ctx.font = 'bold 22px monospace';
-        ctx.fillText('• reclaiming creative value •', 540, 1220);
-
-        // Features list
-        const feats = [
-          "Direct bookings (0% fees)",
-          "GigSafe escrow guarantees",
-          "Custom portfolio @handle"
-        ];
-        ctx.font = 'bold 26px monospace';
-        ctx.fillStyle = '#FFFFFF';
-        feats.forEach((feat, idx) => {
-          ctx.fillText(`[✔] ${feat.toUpperCase()}`, 540, 1330 + idx * 75);
-        });
-
-      } else {
-        // TEMPLATE 2: CLEAN LIGHT (Futuristic Blueprint)
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, 1080, 1920);
-
-        // Blueprint lines
-        ctx.strokeStyle = 'rgba(124, 92, 255, 0.08)';
+        // Fine grid lines
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.012)';
         ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 60) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        for (let i = 0; i < 1080; i += 90) {
+          ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 1920); ctx.stroke();
         }
-        for (let y = 0; y < canvas.height; y += 60) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        for (let i = 0; i < 1920; i += 90) {
+          ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(1080, i); ctx.stroke();
         }
 
-        // Draw 3D Card in light-blueprint styling
-        draw3DCard(540, 580, 800, 500, 'rgba(124, 92, 255, 0.03)', 'rgba(124, 92, 255, 0.15)', '#0F0F14');
-
-        // Telemetry details below
-        ctx.fillStyle = '#7C5CFF';
-        ctx.font = '900 52px "Space Grotesk", sans-serif';
+        // Logo
+        drawLogo(540, 95, 460, false);
         ctx.textAlign = 'center';
-        ctx.fillText('CREATIVE INFRASTRUCTURE', 540, 1050);
+        ctx.font = 'bold 14px monospace';
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.fillText('FOUNDING MEMBER PASSPORT', 540, 240);
 
-        ctx.fillStyle = '#0F0F14';
+        // Card
+        const cardGrad = ctx.createLinearGradient(100, 350, 980, 750);
+        cardGrad.addColorStop(0, 'rgba(255,255,255,0.03)');
+        cardGrad.addColorStop(1, 'rgba(255,255,255,0.01)');
+        drawPassCard(100, 340, 880, 380, cardGrad, 'rgba(255,255,255,0.08)', '#FFFFFF', '#F25A2B');
+
+        // Headline
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = `900 56px "Space Grotesk", sans-serif`;
+        ctx.fillText('I CHOSE ZERO', 540, 920);
+        ctx.fillText('MIDDLEMEN.', 540, 990);
+
+        // Accent subtitle
         ctx.font = 'bold 22px monospace';
-        ctx.fillText(`• node unlocked // cohort ${cohort} •`, 540, 1130);
+        const accentGrad = ctx.createLinearGradient(300, 0, 780, 0);
+        accentGrad.addColorStop(0, '#F25A2B');
+        accentGrad.addColorStop(1, '#7C5CFF');
+        ctx.fillStyle = accentGrad;
+        ctx.fillText('DIRECT BOOKING ECOSYSTEM', 540, 1060);
 
-        const feats = [
-          "DIRECT GIG BOOKING SYSTEM",
-          "ESCROW PAYMENT INFRASTRUCTURE",
-          "VERIFIED AVAILABILITY STATES"
-        ];
-        ctx.font = 'bold 26px monospace';
+        // Divider
+        const divGrad = ctx.createLinearGradient(240, 0, 840, 0);
+        divGrad.addColorStop(0, 'transparent');
+        divGrad.addColorStop(0.3, 'rgba(255,255,255,0.1)');
+        divGrad.addColorStop(0.7, 'rgba(255,255,255,0.1)');
+        divGrad.addColorStop(1, 'transparent');
+        ctx.fillStyle = divGrad;
+        ctx.fillRect(240, 1110, 600, 1);
+
+        // Features
+        drawFeatures(540, 1200, [
+          'DIRECT CLIENT-TO-ARTIST ROUTING',
+          'GIGSAFE ESCROW PAYMENT SECURITY',
+          'AUTO-SYNCED AVAILABILITY BOOKING'
+        ], 'rgba(255,255,255,0.5)', '#F25A2B');
+
+        // CTA box
+        fillRoundRect(240, 1440, 600, 90, 20, 'rgba(255,255,255,0.04)');
+        strokeRoundRect(240, 1440, 600, 90, 20, 'rgba(255,255,255,0.08)', 1);
+        ctx.textAlign = 'center';
+        ctx.font = `bold 18px monospace`;
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.fillText('SECURE YOUR NAME BEFORE SOMEONE ELSE DOES', 540, 1495);
+
+        // Bottom branding
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.font = 'bold 16px monospace';
+        ctx.fillText('ARTISTANT.IN', 540, 1780);
+
+      // ═════════════════════════════════════════
+      // TEMPLATE 1: GRADIENT EDITORIAL
+      // ═════════════════════════════════════════
+      } else if (templateId === 1) {
+        // Gradient background
+        const bg = ctx.createLinearGradient(0, 0, 1080, 1920);
+        bg.addColorStop(0, '#7C5CFF');
+        bg.addColorStop(0.4, '#D4567A');
+        bg.addColorStop(1, '#F25A2B');
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, 1080, 1920);
+
+        // Dark overlay for depth
+        const overlay = ctx.createLinearGradient(0, 0, 0, 1920);
+        overlay.addColorStop(0, 'rgba(0,0,0,0.25)');
+        overlay.addColorStop(0.5, 'rgba(0,0,0,0.1)');
+        overlay.addColorStop(1, 'rgba(0,0,0,0.35)');
+        ctx.fillStyle = overlay;
+        ctx.fillRect(0, 0, 1080, 1920);
+
+        // Logo
+        drawLogo(540, 95, 460, false);
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 14px monospace';
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.fillText('FOUNDING MEMBER PASSPORT', 540, 240);
+
+        // Card (dark glass)
+        const cardBg = ctx.createLinearGradient(100, 340, 980, 720);
+        cardBg.addColorStop(0, 'rgba(10,10,15,0.8)');
+        cardBg.addColorStop(1, 'rgba(5,5,8,0.9)');
+        drawPassCard(100, 340, 880, 380, cardBg, 'rgba(255,255,255,0.12)', '#FFFFFF', '#F25A2B');
+
+        // Headline
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = `900 60px "Space Grotesk", sans-serif`;
+        ctx.fillText('BUILT FOR STAGE.', 540, 930);
+        ctx.fillText('ARTIST FIRST.', 540, 1005);
+
+        ctx.font = 'bold 22px monospace';
+        ctx.fillStyle = 'rgba(255,255,255,0.65)';
+        ctx.fillText('RECLAIMING CREATIVE VALUE', 540, 1075);
+
+        // Divider
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.fillRect(340, 1120, 400, 1);
+
+        // Features
+        drawFeatures(540, 1210, [
+          'DIRECT CLIENT BOOKINGS',
+          'GIGSAFE ESCROW GUARANTEES',
+          'CUSTOM PORTFOLIO @HANDLE'
+        ], 'rgba(255,255,255,0.6)', '#FFFFFF');
+
+        // CTA box
+        fillRoundRect(240, 1440, 600, 90, 20, 'rgba(0,0,0,0.2)');
+        strokeRoundRect(240, 1440, 600, 90, 20, 'rgba(255,255,255,0.15)', 1);
+        ctx.textAlign = 'center';
+        ctx.font = `bold 18px monospace`;
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.fillText('CLAIM YOUR @HANDLE NOW', 540, 1495);
+
+        // Bottom branding
+        ctx.fillStyle = 'rgba(255,255,255,0.25)';
+        ctx.font = 'bold 16px monospace';
+        ctx.fillText('ARTISTANT.IN', 540, 1780);
+
+      // ═════════════════════════════════════════
+      // TEMPLATE 2: CLEAN LIGHT MINIMAL
+      // ═════════════════════════════════════════
+      } else {
+        // White background
+        ctx.fillStyle = '#FAFAFA';
+        ctx.fillRect(0, 0, 1080, 1920);
+
+        // Subtle dot grid pattern
+        ctx.fillStyle = 'rgba(124, 92, 255, 0.06)';
+        for (let x = 60; x < 1080; x += 40) {
+          for (let y = 60; y < 1920; y += 40) {
+            ctx.beginPath();
+            ctx.arc(x, y, 1.2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        // Logo
+        drawLogo(540, 95, 460, true);
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 14px monospace';
+        ctx.fillStyle = 'rgba(15,15,20,0.35)';
+        ctx.fillText('FOUNDING MEMBER PASSPORT', 540, 240);
+
+        // Card (light glass)
+        drawPassCard(100, 340, 880, 380, '#FFFFFF', 'rgba(124, 92, 255, 0.12)', '#0F0F14', '#7C5CFF');
+
+        // Outer card shadow
+        ctx.save();
+        ctx.shadowColor = 'rgba(124, 92, 255, 0.08)';
+        ctx.shadowBlur = 40;
+        ctx.shadowOffsetY = 12;
+        fillRoundRect(100, 340, 880, 380, 32, '#FFFFFF');
+        ctx.restore();
+        // Redraw the card cleanly on top of shadow
+        drawPassCard(100, 340, 880, 380, '#FFFFFF', 'rgba(124, 92, 255, 0.12)', '#0F0F14', '#7C5CFF');
+
+        // Headline
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#0F0F14';
+        ctx.font = `900 56px "Space Grotesk", sans-serif`;
+        ctx.fillText('BUILT FOR ARTISTS.', 540, 930);
+        ctx.fillText('NOT PLATFORMS.', 540, 1000);
+
+        ctx.font = 'bold 22px monospace';
         ctx.fillStyle = '#7C5CFF';
-        feats.forEach((feat, idx) => {
-          ctx.fillText(`[✔] ${feat}`, 540, 1240 + idx * 75);
-        });
+        ctx.fillText(`COHORT ${cohort} · FOUNDING ARTIST`, 540, 1070);
+
+        // Divider
+        const divGrad2 = ctx.createLinearGradient(240, 0, 840, 0);
+        divGrad2.addColorStop(0, 'transparent');
+        divGrad2.addColorStop(0.3, 'rgba(124,92,255,0.15)');
+        divGrad2.addColorStop(0.7, 'rgba(124,92,255,0.15)');
+        divGrad2.addColorStop(1, 'transparent');
+        ctx.fillStyle = divGrad2;
+        ctx.fillRect(240, 1120, 600, 1);
+
+        // Features
+        drawFeatures(540, 1210, [
+          'DIRECT GIG BOOKING SYSTEM',
+          'ESCROW PAYMENT INFRASTRUCTURE',
+          'VERIFIED AVAILABILITY SYNC'
+        ], '#7C5CFF', '#7C5CFF');
+
+        // CTA box
+        fillRoundRect(240, 1440, 600, 90, 20, 'rgba(124, 92, 255, 0.05)');
+        strokeRoundRect(240, 1440, 600, 90, 20, 'rgba(124, 92, 255, 0.12)', 1);
+        ctx.textAlign = 'center';
+        ctx.font = `bold 18px monospace`;
+        ctx.fillStyle = 'rgba(15,15,20,0.4)';
+        ctx.fillText('SECURE YOUR NAME BEFORE IT\'S TAKEN', 540, 1495);
+
+        // Bottom branding
+        ctx.fillStyle = '#7C5CFF';
+        ctx.globalAlpha = 0.35;
+        ctx.font = 'bold 16px monospace';
+        ctx.fillText('ARTISTANT.IN', 540, 1780);
+        ctx.globalAlpha = 1;
       }
 
-      // Shared bottom link
-      ctx.textAlign = 'center';
-      ctx.fillStyle = templateId === 2 ? '#9BA4B8' : '#5C6680';
-      ctx.font = 'bold 28px monospace';
-      ctx.fillText('artistant.in', 540, 1760);
+      // 2. Share / Download Flow (Only creative, no text)
+      canvas.toBlob(async (blob) => {
+        if (!blob) throw new Error("Blob generation failed");
 
-      // Trigger high-res image download
-      const dataUrl = canvas.toDataURL('image/png', 1.0);
-      const link = document.createElement('a');
-      link.download = `Artistant_Pass_${reservation.username}.png`;
-      link.href = dataUrl;
-      link.click();
-      showToast("Story pass saved successfully!");
+        const file = new File([blob], `Artistant_Pass_${reservation.username}.png`, { type: 'image/png' });
+        
+        // Attempt Native Web Share first (supported by iOS/Android Chrome/Safari)
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              files: [file]
+            });
+            showToast("Founding Pass shared successfully!");
+            await handleCompleteStoryTask();
+            return;
+          } catch (err) {
+            console.log("Web Share cancelled/failed, falling back to download:", err);
+          }
+        }
+
+        // Fallback for Desktop: Trigger download
+        const dataUrl = canvas.toDataURL('image/png', 1.0);
+        const link = document.createElement('a');
+        link.download = `Artistant_Pass_${reservation.username}.png`;
+        link.href = dataUrl;
+        link.click();
+
+        // Copy image to clipboard so user can paste it on desktop
+        let copiedToClipboard = false;
+        try {
+          if (navigator.clipboard && navigator.clipboard.write) {
+            await navigator.clipboard.write([
+              new ClipboardItem({
+                [blob.type]: blob
+              })
+            ]);
+            copiedToClipboard = true;
+          }
+        } catch (clipErr) {
+          console.error("Clipboard image write failed:", clipErr);
+        }
+
+        // Launch Web Intents or show generic toast
+        if (platform === 'whatsapp') {
+          showToast(copiedToClipboard ? "Creative pass downloaded & copied! Opening WhatsApp..." : "Creative pass saved to downloads! Opening WhatsApp...");
+          setTimeout(() => {
+            window.open(`https://web.whatsapp.com`, '_blank');
+          }, 800);
+        } else if (platform === 'x') {
+          showToast(copiedToClipboard ? "Creative pass downloaded & copied! Opening X..." : "Creative pass saved to downloads! Opening X...");
+          setTimeout(() => {
+            window.open(`https://x.com`, '_blank');
+          }, 800);
+        } else {
+          showToast(copiedToClipboard ? "Creative pass graphic saved & copied to clipboard!" : "Creative pass graphic saved! Upload to stories.");
+        }
+        await handleCompleteStoryTask();
+      }, 'image/png');
+
     } catch (e) {
       console.error(e);
       showToast("Error generating image.");
@@ -455,6 +774,7 @@ export default function ProfilePage() {
   if (!reservation) return null;
 
   const greeting = (() => {
+    if (!mounted) return 'Welcome';
     const h = new Date().getHours();
     if (h < 12) return 'Good morning';
     if (h < 17) return 'Good afternoon';
@@ -465,12 +785,12 @@ export default function ProfilePage() {
      RENDER — DASHBOARD LAYOUT
      ═══════════════════════════════════════════ */
   return (
-    <div className="min-h-screen text-[#F0EFF4] relative overflow-x-hidden selection:bg-[#7C5CFF]/30 selection:text-white" style={{ background: '#0A0A0A' }}>
+    <div className="min-h-screen text-[var(--ink)] relative overflow-x-hidden selection:bg-[#7C5CFF]/30 selection:text-white transition-colors duration-300" style={{ background: 'var(--bg)' }}>
 
       {/* ── AMBIENT BACKGROUND GLOWS ── */}
-      <div className="absolute top-[10%] left-[-10%] w-[50%] h-[50%] bg-[#F25A2B]/3 rounded-full blur-[150px] pointer-events-none z-0 animate-pulse" style={{ animationDuration: '8s' }} />
-      <div className="absolute top-[40%] right-[-10%] w-[45%] h-[45%] bg-[#7C5CFF]/3 rounded-full blur-[150px] pointer-events-none z-0" />
-      <div className="absolute bottom-[10%] left-[-15%] w-[60%] h-[60%] bg-[#D4567A]/2 rounded-full blur-[180px] pointer-events-none z-0" />
+      <div className={`absolute top-[10%] left-[-10%] w-[50%] h-[50%] ${isLight ? 'bg-[#F25A2B]/8' : 'bg-[#F25A2B]/3'} rounded-full blur-[150px] pointer-events-none z-0 animate-pulse`} style={{ animationDuration: '8s' }} />
+      <div className={`absolute top-[40%] right-[-10%] w-[45%] h-[45%] ${isLight ? 'bg-[#7C5CFF]/7' : 'bg-[#7C5CFF]/3'} rounded-full blur-[150px] pointer-events-none z-0`} />
+      <div className={`absolute bottom-[10%] left-[-15%] w-[60%] h-[60%] ${isLight ? 'bg-[#D4567A]/5' : 'bg-[#D4567A]/2'} rounded-full blur-[180px] pointer-events-none z-0`} />
 
       {/* ── Toast ── */}
       <AnimatePresence>
@@ -479,8 +799,8 @@ export default function ProfilePage() {
             initial={{ opacity: 0, y: -20, x: '-50%' }}
             animate={{ opacity: 1, y: 0, x: '-50%' }}
             exit={{ opacity: 0, y: -20, x: '-50%' }}
-            className="fixed top-20 left-1/2 z-[100] px-5 py-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2 border border-white/10 backdrop-blur-xl"
-            style={{ background: 'rgba(10,10,10,0.9)', color: '#fff', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}
+            className="fixed top-20 left-1/2 z-[100] px-5 py-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2 border border-[var(--line-soft)] backdrop-blur-xl"
+            style={{ background: 'var(--glass-bg)', color: 'var(--ink)', boxShadow: '0 10px 30px var(--shadow-base)' }}
           >
             <CheckCircle className="w-4 h-4 text-emerald-400" />
             {toastMessage}
@@ -489,88 +809,28 @@ export default function ProfilePage() {
       </AnimatePresence>
 
       {/* ═══ TOP BAR ═══ */}
-      <header
-        className="sticky top-0 z-50 flex items-center justify-between px-6 md:px-12 h-20 border-b border-white/5"
-        style={{ background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(24px)' }}
-      >
-        <a href="/" className="flex items-center shrink-0 transition-transform active:scale-95">
-          <img src="/logo_wordmark.png" alt="Artistant" style={{ height: '180px', width: 'auto', display: 'block' }} className="opacity-95" />
-        </a>
-        <div className="hidden md:flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-[#9BA4B8]/40">
-          <span>Portal</span>
-          <ChevronRight className="w-3 h-3 text-[#9BA4B8]/20" />
-          <span className="text-[#7C5CFF] font-bold">@{reservation.username}</span>
-        </div>
-        <div className="flex items-center gap-3">
-          {/* Vouch Points Badge */}
-          <div className="flex items-center gap-1.5 h-10 px-3.5 rounded-full bg-white/5 border border-white/10 font-mono text-[10px] uppercase tracking-wider font-bold text-white shadow-inner select-none">
-            <Trophy className="w-3.5 h-3.5 text-[#F25A2B]" />
-            <span>{points} Authority</span>
-          </div>
-
-          <div className="relative" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-              className="flex items-center gap-2.5 h-10 pl-1.5 pr-4 rounded-full transition-all bg-white/5 border border-white/10 hover:border-white/20 active:scale-95"
-            >
-              <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
-                style={{ background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)' }}>
-                {reservation.username[0].toUpperCase()}
-              </div>
-              <span className="text-xs font-bold text-white/80 hidden sm:block">@{reservation.username}</span>
-            </button>
-            <AnimatePresence>
-              {profileMenuOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute right-0 mt-3 w-64 rounded-2xl overflow-hidden backdrop-blur-xl border border-white/10"
-                  style={{ background: 'rgba(15,15,22,0.95)', boxShadow: '0 24px 70px -12px rgba(0,0,0,0.9)' }}
-                >
-                  <div className="p-4 border-b border-white/5 bg-black/40">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white"
-                        style={{ background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)' }}>
-                        {reservation.username[0].toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold text-white truncate">@{reservation.username}</div>
-                        <div className="text-[10px] text-[#5C6680] truncate font-mono mt-0.5">{user?.email}</div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-2">
-                    <button onClick={handleSignOut}
-                      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-red-400 hover:bg-red-500/10 transition-colors text-left font-mono uppercase tracking-wider">
-                      <LogOut className="w-3.5 h-3.5" /> Sign Out
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-      </header>
+      <Navbar
+        user={user}
+        userReservation={reservation}
+        onSignInClick={() => router.push('/?auth=true')}
+        onSignOut={handleSignOut}
+        onProfileClick={() => router.push(`/${reservation?.username || 'profile'}`)}
+        foundingPoints={points}
+      />
 
       {/* ═══ DASHBOARD CONTENT (App Workspace View) ═══ */}
-      <main className="max-w-6xl mx-auto px-6 py-10 md:py-16 space-y-12 relative z-10">
+      <main className="max-w-6xl mx-auto px-6 pt-24 pb-10 md:pt-36 md:pb-16 space-y-12 relative z-10">
         
-        {/* ── TOP HERO BANNER (PIONEER IDENTITY) ── */}
+        {/* ── TOP HERO BANNER (FOUNDING IDENTITY) ── */}
         <section className="flex flex-col items-center text-center max-w-3xl mx-auto">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="mb-8">
-            <span className="font-mono text-[9px] text-[#7C5CFF] uppercase tracking-[0.25em] font-bold mb-4 block">Claimed Identity Verified // @{reservation.username}</span>
-            <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white uppercase" style={{ fontFamily: 'var(--font-display)' }}>
-              Lock Your Name.<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF]">Upgrade Your Bookings.</span>
+            <h1 className="text-4xl md:text-5xl font-black tracking-tight text-[var(--ink)] uppercase" style={{ fontFamily: 'var(--font-display)' }}>
+              {greeting},<br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF]">@{reservation.username}</span>
             </h1>
-            <p className="text-xs md:text-sm text-[#9BA4B8]/80 mt-4 leading-relaxed max-w-2xl">
-              Claim your <span className="text-white font-bold font-mono">@{reservation.username}</span> handle to secure your professional booking link. No more messy WhatsApp threads, hidden middleman fees, or chasing payments. Just a clean profile, GigSafe Escrow, and complete Artistant Protection for every show.
-            </p>
           </motion.div>
 
-          {/* 3D TILT PIONEER PASS CARD */}
+          {/* 3D TILT FOUNDING CARD */}
           <div className="w-full max-w-md aspect-[1.58/1] relative mb-8" style={{ perspective: 1200 }}>
             <motion.div
               ref={cardRef}
@@ -578,428 +838,884 @@ export default function ProfilePage() {
               onMouseLeave={handleMouseLeave}
               animate={{ rotateX, rotateY }}
               transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-              className="w-full h-full relative rounded-[2.5rem] p-[1.5px] overflow-hidden group cursor-pointer shadow-[0_30px_90px_-20px_rgba(0,0,0,0.9)]"
+              className={`w-full h-full relative rounded-[2.5rem] p-[1.5px] overflow-hidden group cursor-pointer ${isLight ? 'shadow-[0_20px_50px_rgba(124,92,255,0.08)]' : 'shadow-[0_30px_90px_-20px_rgba(0,0,0,0.9)]'}`}
               style={{
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.01) 40%, rgba(124,92,255,0.2))',
+                background: isLight 
+                  ? 'linear-gradient(135deg, rgba(124,92,255,0.2), rgba(242,90,43,0.1) 40%, rgba(255,255,255,0.5))'
+                  : 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.01) 40%, rgba(124,92,255,0.2))',
                 transformStyle: 'preserve-3d',
               }}
             >
-              <div className="relative w-full h-full bg-[#050508]/90 rounded-[2.4rem] p-6 flex flex-col justify-between overflow-hidden border border-white/5">
-                <div className="absolute -right-20 -bottom-20 w-80 h-80 rounded-full border border-white/[0.02] flex items-center justify-center pointer-events-none">
-                  <div className="w-60 h-60 rounded-full border border-white/[0.01] flex items-center justify-center" />
+              <div 
+                className={`relative w-full h-full ${isLight ? 'bg-[#FFFFFF]/90' : 'bg-[#050508]/90'} rounded-[2.4rem] p-5 md:p-6 flex flex-col justify-between overflow-hidden border ${isLight ? 'border-[#7C5CFF]/15' : 'border-white/5'}`}
+                style={{
+                  isolation: 'isolate',
+                  WebkitMaskImage: '-webkit-radial-gradient(white, black)'
+                }}
+              >
+                <div className={`absolute -right-20 -bottom-20 w-80 h-80 rounded-full border ${isLight ? 'border-[#7C5CFF]/5' : 'border-white/[0.02]'} flex items-center justify-center pointer-events-none`}>
+                  <div className={`w-60 h-60 rounded-full border ${isLight ? 'border-[#7C5CFF]/5' : 'border-white/[0.01]'} flex items-center justify-center`} />
                 </div>
 
                 {/* Top Row */}
-                <div className="flex justify-between items-start z-10">
+                <div className="flex justify-between items-start z-10 w-full">
                   <div className="flex items-center gap-2">
-                    <img src="/logo_a.png" alt="A" className="w-6 h-6 object-contain opacity-80" />
-                    <span className="font-mono text-[9px] font-bold tracking-[0.2em] text-[#9BA4B8]">PIONEER PASSPORT</span>
+                    <img src="/logo_a.png" alt="A" className="w-6 h-6 object-contain opacity-80 dark:invert-0 invert" />
+                    <span className="font-mono text-[9px] font-bold tracking-[0.2em] text-[var(--ink-2)]">FOUNDING CARD</span>
                   </div>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-mono text-[9px] font-bold uppercase tracking-widest bg-white/[0.03] border border-white/10 shadow-lg">
-                    <span className="w-1.5 h-1.5 rounded-full animate-pulse shadow-[0_0_8px_currentColor]" style={{ background: isCohort1 ? '#7C5CFF' : '#F25A2B' }} />
-                    {isCohort1 ? 'Cohort 1 VIP' : `Cohort ${cohort} Node`}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {/* Liquid Glass Badge */}
+                    <span 
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-mono text-[9px] font-bold uppercase tracking-wider relative overflow-hidden transition-all duration-300 ${
+                        points >= 500 
+                          ? isLight
+                            ? 'bg-emerald-50 border border-emerald-200 text-emerald-700 shadow-sm'
+                            : 'bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 text-emerald-400 shadow-[0_2px_10px_rgba(16,185,129,0.1)]' 
+                          : isLight
+                            ? 'bg-black/[0.04] border border-black/8 text-black/45 shadow-sm'
+                            : 'bg-white/[0.02] border border-white/5 text-white/40 shadow-sm'
+                      }`}
+                      style={{
+                        backdropFilter: 'blur(8px)',
+                        WebkitBackdropFilter: 'blur(8px)',
+                        boxShadow: points >= 500
+                          ? isLight
+                            ? 'none'
+                            : 'inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.2), 0 2px 8px rgba(16,185,129,0.08)'
+                          : isLight
+                            ? 'inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -1px 0 rgba(0,0,0,0.03)'
+                            : 'inset 0 1px 0 rgba(255,255,255,0.03), inset 0 -1px 0 rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.15)',
+                      }}
+                    >
+                      {points >= 500 ? (
+                        <>
+                          <span className={`w-1.5 h-1.5 rounded-full ${isLight ? 'bg-emerald-500' : 'bg-emerald-400 animate-pulse shadow-[0_0_8px_#34D399]'}`} />
+                          <span>Founding Artist</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className={`w-1 h-1 rounded-full ${isLight ? 'bg-black/20' : 'bg-white/20'}`} />
+                          <span>Founding Artist</span>
+                          <LockKeyhole className={`w-2.5 h-2.5 ${isLight ? 'text-black/35' : 'text-white/30'} ml-0.5 shrink-0`} />
+                        </>
+                      )}
+                    </span>
+                    {/* Question Mark Button */}
+                    <motion.button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveInfo('founding-artist-badge');
+                      }}
+                      animate={{ width: isHelpExpanded ? 76 : 18 }}
+                      className="rounded-full flex items-center justify-center text-[9px] font-mono font-bold text-white bg-gradient-to-br from-[#7C5CFF] to-[#D4567A] border border-white/10 shadow-[0_0_6px_rgba(124,92,255,0.3)] cursor-pointer overflow-hidden whitespace-nowrap gap-1"
+                      style={{ width: isHelpExpanded ? '76px' : '18px', height: '18px', minWidth: '18px', padding: isHelpExpanded ? '0 6px' : '0' }}
+                      title="About the Founding Artist badge"
+                    >
+                      <span>?</span>
+                      {isHelpExpanded && (
+                        <span className="text-[7px] tracking-wider uppercase">Badge Info</span>
+                      )}
+                    </motion.button>
+                  </div>
                 </div>
 
                 {/* Rank Pos (Center) */}
-                <div className="flex flex-col items-center justify-center z-10 flex-1 my-4">
-                  <h1 className="font-display font-black leading-none text-white tracking-tighter text-5xl md:text-6xl" style={{ textShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
+                <div className="flex flex-col items-center justify-center z-10 flex-1 my-1 md:my-2">
+                  <h1 className="font-display font-black leading-none text-[var(--ink)] tracking-tighter text-4xl md:text-6xl" style={{ textShadow: isLight ? '0 10px 30px rgba(124,92,255,0.06)' : '0 10px 30px rgba(0,0,0,0.5)' }}>
                     #{waitlistPos || '---'}
                   </h1>
-                  <div className="flex flex-col items-center mt-2.5">
-                    <span className="font-mono text-[9px] font-bold tracking-[0.35em] text-[#5C6680] mb-0.5">WAITLIST RANK • COHORT {cohort}</span>
+                  <div className="flex flex-col items-center mt-1.5 md:mt-2.5">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="font-mono text-[9px] font-bold tracking-[0.35em] text-[var(--ink-3)]">WAITLIST RANK • COHORT {cohort}</span>
+                      <motion.button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveInfo('how-cohorts');
+                        }}
+                        animate={{ width: isHelpExpanded ? 72 : 14 }}
+                        className="rounded-full flex items-center justify-center text-[7px] font-mono font-bold text-white bg-gradient-to-br from-[#7C5CFF] to-[#D4567A] border border-white/10 shadow-[0_0_6px_rgba(124,92,255,0.3)] cursor-pointer overflow-hidden whitespace-nowrap gap-0.5"
+                        style={{ width: isHelpExpanded ? '72px' : '14px', height: '14px', minWidth: '14px', padding: isHelpExpanded ? '0 4px' : '0' }}
+                        title="About cohorts"
+                      >
+                        <span>?</span>
+                        {isHelpExpanded && (
+                          <span className="text-[6px] tracking-wider uppercase">Cohort Info</span>
+                        )}
+                      </motion.button>
+                    </div>
                     <span className="font-mono text-[8px] font-bold tracking-[0.15em] text-[#F25A2B]">{isCohort1 ? 'BETA ACCESS GRANTED' : 'POSITION SECURED'}</span>
                   </div>
                 </div>
 
                 {/* Bottom Row */}
-                <div className="flex justify-between items-end z-10">
+                <div className="flex justify-between items-center z-10">
                   <div className="flex flex-col text-left">
-                    <span className="font-display text-xl md:text-2xl font-black tracking-tight text-white">@{reservation.username}</span>
-                    <span className="text-[9px] uppercase font-mono tracking-widest text-[#5C6680] mt-0.5">Verified Node</span>
+                    <span className="font-display text-xl md:text-2xl font-black tracking-tight text-[var(--ink)]">@{reservation.username}</span>
+                    <span 
+                      className="text-[9px] uppercase font-mono tracking-widest text-[var(--ink-3)] mt-0.5 pl-[12px] md:pl-[15px]"
+                      style={{
+                        textShadow: isLight
+                          ? '0.5px 0.5px 0px rgba(255,255,255,1), -0.5px -0.5px 0.5px rgba(0,0,0,0.15)'
+                          : '-0.5px -0.5px 0px rgba(0,0,0,0.8), 0.5px 0.5px 0.5px rgba(255,255,255,0.1)'
+                      }}
+                    >
+                      Verified Artist
+                    </span>
                   </div>
-                  <div className="flex flex-col items-end opacity-20 font-mono text-[6px] tracking-wider text-[#9BA4B8]">
-                    <span>||||| | |||| | |||</span>
+                  <div className="flex flex-col items-end">
+                    <img src="/logo_wordmark.png" alt="ArtisTant" className="w-24 md:w-32 h-auto object-contain opacity-85 dark:invert-0 invert -my-3 md:-my-4" />
+                    <span className="opacity-15 font-mono text-[6px] tracking-wider text-[var(--ink-2)]">||||| | |||| | |||</span>
                   </div>
                 </div>
 
                 {/* Holographic Effects */}
-                <div className="absolute inset-0 pointer-events-none mix-blend-color-dodge transition-opacity duration-300 opacity-0 group-hover:opacity-60"
-                  style={{ background: `radial-gradient(circle at ${sheenX}% ${sheenY}%, rgba(124,92,255,0.2) 0%, rgba(212,86,122,0.1) 40%, transparent 70%)` }} />
-                <div className="absolute inset-0 pointer-events-none mix-blend-overlay transition-opacity duration-500 opacity-0 group-hover:opacity-100"
-                  style={{
-                    background: `linear-gradient(135deg, transparent 30%, rgba(255,255,255,0.06) 45%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.06) 55%, transparent 70%)`,
-                    transform: `translateX(${(sheenX - 50) * 1.2}px) translateY(${(sheenY - 50) * 1.2}px)`
-                  }} />
-              </div>
-            </motion.div>
-          </div>
-        </section>
+                  <div className="absolute inset-0 pointer-events-none mix-blend-color-dodge transition-opacity duration-300 opacity-0 group-hover:opacity-60"
+                    style={{ background: `radial-gradient(circle at ${sheenX}% ${sheenY}%, rgba(124,92,255,0.2) 0%, rgba(212,86,122,0.1) 40%, transparent 70%)` }} />
+                  <div className="absolute inset-0 pointer-events-none mix-blend-overlay transition-opacity duration-500 opacity-0 group-hover:opacity-100"
+                    style={{
+                      background: `linear-gradient(135deg, transparent 30%, rgba(255,255,255,0.06) 45%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.06) 55%, transparent 70%)`,
+                      transform: `translateX(${(sheenX - 50) * 1.2}px) translateY(${(sheenY - 50) * 1.2}px)`
+                    }} />
+                </div>
+              </motion.div>
+            </div>
+          </section>
 
-        {/* ── DASHBOARD TWO-COLUMN WORKSPACE ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
-           
-           {/* LEFT COLUMN: REFERRALS HUB (7 Cols) */}
-           <div className="lg:col-span-7 space-y-6">
-              
-              {/* Network Authority Panel */}
-              <div className="rounded-[2.5rem] p-[1.5px] bg-gradient-to-b from-white/10 to-transparent shadow-2xl relative overflow-hidden group">
-                <div className="bg-[#06060A]/95 rounded-[2.4rem] p-6 md:p-8 backdrop-blur-xl border border-white/5 relative">
+          {/* ── DASHBOARD TWO-COLUMN WORKSPACE ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
+             
+            {/* LEFT COLUMN: REFERRALS HUB (7 Cols) */}
+            <div className="lg:col-span-7 space-y-6">
+               
+              {/* Founding Network Status Card */}
+              <div className="rounded-[2.5rem] p-[1.5px] bg-gradient-to-b from-[var(--line)] to-transparent shadow-2xl relative overflow-hidden group">
+                <div className="bg-bg-card/95 rounded-[2.4rem] p-6 md:p-8 backdrop-blur-xl border border-line-soft relative">
                   <div className="absolute -left-20 -top-20 w-48 h-48 rounded-full bg-[#7C5CFF]/3 blur-[80px] pointer-events-none" />
 
-                  <h3 className="font-mono text-[10px] font-bold text-[#9BA4B8] uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                    <TrendingUp className="w-3.5 h-3.5 text-[#7C5CFF]" /> Network Authority
-                  </h3>
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="font-mono text-[10px] font-bold text-ink-2 uppercase tracking-[0.2em] flex items-center gap-2">
+                      <TrendingUp className="w-3.5 h-3.5 text-[#7C5CFF]" /> Founding Status
+                    </h3>
+                    <motion.button 
+                      onClick={() => setActiveInfo('why-refer')}
+                      animate={{ width: isHelpExpanded ? 82 : 20 }}
+                      className="rounded-full flex items-center justify-center text-[10px] font-mono font-bold text-white bg-gradient-to-br from-[#7C5CFF] to-[#D4567A] border border-white/10 shadow-[0_0_8px_rgba(124,92,255,0.3)] cursor-pointer overflow-hidden whitespace-nowrap gap-1"
+                      style={{ width: isHelpExpanded ? '82px' : '20px', height: '20px', minWidth: '20px', padding: isHelpExpanded ? '0 7px' : '0' }}
+                      title="Why invite peers?"
+                    >
+                      <span>?</span>
+                      {isHelpExpanded && (
+                        <span className="text-[7px] tracking-wider uppercase">Invite Info</span>
+                      )}
+                    </motion.button>
+                  </div>
 
-                  <div className="flex justify-between items-end mb-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center mb-6">
                     <div>
-                      <span className="font-mono text-[9px] text-[#5C6680] uppercase tracking-widest block">Authority Standing</span>
-                      <div className="font-display font-black text-5xl mt-2 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-white/40 drop-shadow-[0_4px_12px_rgba(255,255,255,0.15)]">
-                        {points} <span className="font-mono text-xs font-bold text-[#7C5CFF]">AUTH</span>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="font-mono text-[9px] text-ink-3 tracking-widest block uppercase font-bold">Current Standing</span>
+                        <motion.button 
+                          onClick={() => setActiveInfo('vouch-points')}
+                          animate={{ width: isHelpExpanded ? 80 : 16 }}
+                          className="rounded-full flex items-center justify-center text-[8px] font-mono font-bold text-white bg-gradient-to-br from-[#7C5CFF] to-[#D4567A] border border-white/10 shadow-[0_0_6px_rgba(124,92,255,0.3)] cursor-pointer overflow-hidden whitespace-nowrap gap-1"
+                          style={{ width: isHelpExpanded ? '80px' : '16px', height: '16px', minWidth: '16px', padding: isHelpExpanded ? '0 5px' : '0' }}
+                          title="How points work"
+                        >
+                          <span>?</span>
+                          {isHelpExpanded && (
+                            <span className="text-[7px] tracking-wider uppercase">Points Info</span>
+                          )}
+                        </motion.button>
                       </div>
+                      <div className="font-display font-black text-5xl mt-2 tracking-tight text-ink drop-shadow-[0_4px_12px_var(--shadow-base)] flex items-baseline gap-1.5">
+                        {points} <span className="font-mono text-xs font-bold text-[#7C5CFF]">PTS</span>
+                      </div>
+                      <p className="text-[10px] text-ink-2 mt-2 font-mono">
+                        Base 100 PTS + 50 PTS per verified referral + 80 PTS for Story task.
+                      </p>
                     </div>
-                    <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 shadow-inner flex items-center justify-center">
-                      <Trophy className="w-4 h-4 text-[#F25A2B] drop-shadow-[0_0_8px_rgba(242,90,43,0.4)]" />
+
+                    {/* Vouch Slots Progress Panel */}
+                    <div className="w-full h-32 bg-black/5 dark:bg-black/30 border border-line-soft rounded-3xl p-4 shadow-inner">
+                      <div className="grid grid-cols-3 gap-3 w-full h-full items-center">
+                        {Array.from({ length: 3 }).map((_, idx) => {
+                          const active = idx < verifiedReferrals;
+                          return (
+                            <div 
+                              key={idx}
+                              className={`flex flex-col items-center justify-center p-2 rounded-2xl border transition-all duration-300 relative overflow-hidden ${
+                                active 
+                                  ? 'bg-gradient-to-b from-[#7C5CFF]/12 to-[#D4567A]/4 border-[#7C5CFF]/20 shadow-[0_4px_12px_rgba(124,92,255,0.08)]' 
+                                  : 'bg-black/10 dark:bg-white/[0.01] border-line-soft'
+                              }`}
+                              style={{ height: '96px' }}
+                            >
+                              {active ? (
+                                <>
+                                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#7C5CFF] to-[#D4567A] flex items-center justify-center text-white mb-2 shadow-[0_0_10px_rgba(124,92,255,0.4)]">
+                                    <Check className="w-3.5 h-3.5" />
+                                  </div>
+                                  <span className="font-mono text-[9px] uppercase tracking-wider text-[#34D399] font-bold">Vouched</span>
+                                  <span className="font-mono text-[7px] text-ink-3 uppercase tracking-widest mt-0.5 font-bold">Artist {idx + 1}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="w-7 h-7 rounded-full bg-black/20 dark:bg-white/5 flex items-center justify-center text-ink-3 mb-2 border border-line-soft">
+                                    <LockKeyhole className="w-3 h-3 opacity-40 text-ink-3" />
+                                  </div>
+                                  <span className="font-mono text-[9px] uppercase tracking-wider text-ink-3 opacity-60">Locked</span>
+                                  <span className="font-mono text-[7px] text-ink-3 uppercase tracking-widest mt-0.5">Artist {idx + 1}</span>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="relative">
-                    {/* Punchy single-line directive above progress bar */}
-                    <p className="font-mono text-[10px] text-white uppercase tracking-wider mb-3 leading-relaxed">
-                      Secure 3 verified peers to unlock Cohort 1 VIP Access and priority GigSafe onboarding.
-                    </p>
+                  <div className="relative space-y-4">
+                    <div>
+                      <p className="font-mono text-[9px] text-ink-2 uppercase tracking-wider mb-2.5 leading-relaxed">
+                        Progress to Founding Artist Badge:
+                      </p>
 
-                    {/* Segmented hardware-style track */}
-                    <div className="relative w-full h-3 rounded-full bg-black/40 border border-white/5 overflow-hidden p-0.5 shadow-inner">
-                      <div className="absolute inset-0 flex pointer-events-none z-20">
-                        <div className="w-px h-full bg-white/10" style={{ marginLeft: '25%' }} />
-                        <div className="w-px h-full bg-white/10" style={{ marginLeft: '50%' }} />
-                        <div className="w-px h-full bg-white/10" style={{ marginLeft: '75%' }} />
+                      {/* Segmented hardware-style progress track */}
+                      <div className="relative w-full h-3 rounded-full bg-black/10 dark:bg-black/40 border border-line-soft overflow-hidden p-0.5 shadow-inner">
+                        <div className="absolute inset-0 flex pointer-events-none z-20">
+                          <div className="w-px h-full bg-black/10 dark:bg-white/10" style={{ marginLeft: '25%' }} />
+                          <div className="w-px h-full bg-black/10 dark:bg-white/10" style={{ marginLeft: '50%' }} />
+                          <div className="w-px h-full bg-black/10 dark:bg-white/10" style={{ marginLeft: '75%' }} />
+                        </div>
+                        <motion.div 
+                          className="h-full rounded-full bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF]" 
+                          initial={{ width: 0 }} 
+                          whileInView={{ width: `${progressPercentage}%` }} 
+                          viewport={{ once: true }} 
+                          transition={{ duration: 1.2, ease: "easeOut" }} 
+                        />
                       </div>
-                      <motion.div 
-                        className="h-full rounded-full bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF]" 
-                        initial={{ width: 0 }} 
-                        whileInView={{ width: `${progressPercentage}%` }} 
-                        viewport={{ once: true }} 
-                        transition={{ duration: 1.2, ease: "easeOut" }} 
-                      />
+
+                      <div className="flex justify-between items-center mt-3">
+                        <span className="text-[9px] text-ink-3 font-mono uppercase tracking-widest">Founding Artist Level (500 PTS)</span>
+                        <span className="text-[9px] text-ink-3 font-mono uppercase tracking-widest font-bold">{points}/500 PTS</span>
+                      </div>
                     </div>
 
-                    <div className="flex justify-between items-center mt-3.5">
-                      <span className="text-[9px] text-[#5C6680] font-mono uppercase tracking-widest">VIP Level Target</span>
-                      <span className="text-[9px] text-[#5C6680] font-mono uppercase tracking-widest">{points}/250</span>
-                    </div>
+                    {/* Unverified Referrals pending notice */}
+                    {unverifiedReferrals > 0 && (
+                      <div className="px-4 py-3 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-amber-500/90 text-[10px] font-mono flex items-center gap-2.5 shadow-inner">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0 shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
+                        <span>Your referrals are being verified. Once approved, points will unlock and climb your rank! ({unverifiedReferrals} pending)</span>
+                      </div>
+                    )}
+
+                    {/* Dynamic competitive notification */}
+                    {verifiedReferrals >= 3 ? (
+                      <div className="px-4 py-3 rounded-2xl bg-[#7C5CFF]/10 border border-[#7C5CFF]/20 text-[var(--ink)] text-[10px] font-mono leading-relaxed shadow-sm">
+                        🚀 **You've referred {verifiedReferrals} peers! But don't stop there.** Earning more points helps you climb the leaderboard, secure your priority position in **Cohort 001**, and prevents other artists from overtaking your rank!
+                      </div>
+                    ) : (
+                      <div className="text-[9px] font-mono text-ink-3 text-left">
+                        Refer active artists to earn points, climb the leaderboard, and claim a spot in Cohort 1.
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Vouch Link Copy & WhatsApp Invite Panel */}
-              <div className="rounded-[2.5rem] p-[1.5px] bg-gradient-to-b from-white/10 to-transparent shadow-2xl relative overflow-hidden group">
-                <div className="bg-[#06060A]/95 rounded-[2.4rem] p-6 md:p-8 backdrop-blur-xl border border-white/5 relative">
+              {/* Referral Invite & Vouch Engine Card */}
+              <div className="rounded-[2.5rem] p-[1.5px] bg-gradient-to-b from-[var(--line)] to-transparent shadow-2xl relative overflow-hidden group">
+                <div className="bg-bg-card/95 rounded-[2.4rem] p-6 md:p-8 backdrop-blur-xl border border-line-soft relative">
                   <div className="absolute -right-20 -bottom-20 w-48 h-48 rounded-full bg-[#F25A2B]/2 blur-[80px] pointer-events-none" />
 
-                  <h3 className="font-mono text-[10px] font-bold text-[#9BA4B8] uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                    <Users className="w-3.5 h-3.5 text-[#F25A2B]" /> Referral Engine
-                  </h3>
-                  
-                  <h4 className="text-lg font-display font-black text-white uppercase tracking-tight mb-2">
-                    Skip the Line. Become a Founding Artist.
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-mono text-[10px] font-bold text-ink-2 uppercase tracking-[0.2em] flex items-center gap-2">
+                      <Users className="w-3.5 h-3.5 text-[#F25A2B]" /> Vouch Engine
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      {verifiedReferrals > 0 ? (
+                        <span className="font-mono text-[9px] uppercase font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full select-none">
+                          {verifiedReferrals} approved
+                        </span>
+                      ) : (
+                        <span className="font-mono text-[9px] uppercase font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full select-none animate-pulse">
+                          0 approved
+                        </span>
+                      )}
+                      <motion.button 
+                        onClick={() => setActiveInfo('why-refer')}
+                        animate={{ width: isHelpExpanded ? 82 : 20 }}
+                        className="rounded-full flex items-center justify-center text-[10px] font-mono font-bold text-white bg-gradient-to-br from-[#7C5CFF] to-[#D4567A] border border-white/10 shadow-[0_0_8px_rgba(124,92,255,0.3)] cursor-pointer overflow-hidden whitespace-nowrap gap-1"
+                        style={{ width: isHelpExpanded ? '82px' : '20px', height: '20px', minWidth: '20px', padding: isHelpExpanded ? '0 7px' : '0' }}
+                        title="Why share stories?"
+                      >
+                        <span>?</span>
+                        {isHelpExpanded && (
+                          <span className="text-[7px] tracking-wider uppercase">Invite Info</span>
+                        )}
+                      </motion.button>
+                    </div>
+                  </div>
+
+                  <h4 className="text-xl font-display font-black text-ink uppercase tracking-tight mb-2.5">
+                    Fast-Track to Cohort 1 & Founding Status
                   </h4>
-                  <p className="text-xs text-[#9BA4B8] mb-6 font-sans leading-relaxed">
-                    The Beta opens soon. Want day-one access? Invite your network. When 3 artists use your link to join, you skip the waitlist, unlock your <strong className="text-white font-bold">"Founding Artist"</strong> badge, and get priority search ranking when organizers start booking.
+                  <p className="text-xs text-ink-2 mb-6 leading-relaxed">
+                    Access is released in rollouts. Earn <strong className="text-ink">250 PTS</strong> to qualify for Cohort 1 priority access (includes first gig platform fee waived), and reach <strong className="text-ink">500 PTS</strong> to claim a permanent verified <strong className="text-ink">"Founding Artist"</strong> badge. The first 50 Founding Artists receive a lifetime <strong className="text-ink">0% Platform Fee</strong> guarantee!
                   </p>
 
-                  {/* Massive WhatsApp Share Button */}
-                  <div className="mb-6">
-                    <a 
-                      href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Hey! I just locked my booking handle on Artistant. It lets you take direct client bookings, handles your contracts, and secures your money in escrow before you even perform. Claim your name before someone else takes it: artistant.in/?ref=${reservation.username}`)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center justify-center gap-3 h-14 rounded-2xl bg-[#25D366] hover:bg-[#1EBE57] text-white font-mono text-xs uppercase tracking-[0.15em] font-extrabold shadow-[0_10px_25px_-5px_rgba(37,211,102,0.35)] w-full transition-all active:scale-95 text-center"
-                    >
-                      <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-                        <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.49-3.232l.41.244c1.51.897 3.254 1.371 5.041 1.373 5.768 0 10.457-4.694 10.46-10.463.002-2.796-1.085-5.422-3.06-7.397C17.382 2.548 14.76 1.46 11.967 1.46c-5.772 0-10.462 4.693-10.465 10.463-.001 1.815.48 3.59 1.391 5.116l.272.455-1.012 3.693 3.791-.994zM16.52 14.18c-.247-.124-1.463-.72-1.69-.802-.226-.083-.392-.124-.556.124-.165.247-.64.802-.784.966-.143.166-.288.187-.535.063-.247-.125-1.045-.385-1.99-1.23-.736-.656-1.233-1.466-1.378-1.714-.144-.247-.015-.38.109-.504.112-.112.247-.288.371-.432.124-.144.165-.247.247-.412.083-.165.042-.31-.02-.432-.063-.124-.556-1.339-.763-1.833-.201-.484-.406-.418-.556-.426-.144-.008-.31-.008-.475-.008-.165 0-.433.062-.66.309-.227.247-.866.845-.866 2.06 0 1.216.886 2.39 1.01 2.554.124.165 1.744 2.663 4.224 3.732.59.255 1.05.407 1.41.52.592.188 1.13.162 1.557.098.475-.072 1.463-.598 1.67-1.175.206-.577.206-1.071.144-1.175-.062-.103-.227-.165-.475-.29z"/>
-                      </svg>
-                      Share via WhatsApp
-                    </a>
-                  </div>
-                  
-                  {/* Copier Terminal Input */}
-                  <div className="flex items-center gap-3 bg-black/40 border border-white/5 p-1.5 rounded-2xl shadow-inner mb-6">
-                    <div className="flex-1 px-4 py-2 text-[#9BA4B8] font-mono text-xs truncate select-all">
-                      artistant.in/?ref={reservation.username}
-                    </div>
-                    <button 
-                      onClick={copyReferralLink} 
-                      className="h-10 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-white font-mono text-[10px] uppercase font-bold tracking-widest shadow-md active:scale-95 transition-all shrink-0 flex items-center gap-1.5 border border-white/10"
-                    >
-                      {copied ? (
-                        <>
-                          <Check className="w-3.5 h-3.5" /> Copied
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5" /> Copy Link
-                        </>
-                      )}
-                    </button>
-                  </div>
-
-                  {/* Copy Share Message Block */}
-                  <div className="border-t border-white/5 pt-6 mb-6">
-                    <span className="font-mono text-[9px] text-[#5C6680] uppercase tracking-widest block mb-3">Copy Raw Share Text</span>
-                    <div className="flex items-start gap-3 bg-black/40 border border-white/5 p-3.5 rounded-2xl shadow-inner">
-                      <p className="flex-1 text-[11px] font-mono text-[#9BA4B8] leading-relaxed select-all font-mono">
-                        Hey! I just locked my booking handle on Artistant. It lets you take direct client bookings, handles your contracts, and secures your money in escrow before you even perform. Claim your name before someone else takes it: artistant.in/?ref={reservation.username}
-                      </p>
+                  {/* Share Tools */}
+                  <div className="space-y-4 mb-6">
+                    {/* Copy Link Input Bar */}
+                    <div className="flex items-center gap-3 bg-black/5 dark:bg-black/40 border border-line-soft p-1.5 rounded-2xl shadow-inner">
+                      <div className="flex-1 px-4 py-2 text-ink-2 font-mono text-xs truncate select-all">
+                        artistant.in/?ref={reservation.username}
+                      </div>
                       <button 
-                        onClick={() => {
-                          const shareText = `Hey! I just locked my booking handle on Artistant. It lets you take direct client bookings, handles your contracts, and secures your money in escrow before you even perform. Claim your name before someone else takes it: artistant.in/?ref=${reservation.username}`;
-                          navigator.clipboard.writeText(shareText);
-                          showToast("Invite text copied!");
-                        }}
-                        className="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white shadow-md active:scale-95 transition-all shrink-0"
+                        onClick={copyReferralLink} 
+                        className="h-10 px-4 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 border border-black/10 dark:border-white/10 text-ink font-mono text-[10px] uppercase font-bold tracking-widest shadow-md active:scale-95 transition-all shrink-0 flex items-center gap-1.5"
                       >
-                        <Copy className="w-3.5 h-3.5" />
+                        {copied ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-400" /> Copied
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" /> Copy Link
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Quick-Share Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <button 
+                        onClick={() => handleShareStory('whatsapp')}
+                        className="flex items-center justify-center gap-2.5 h-12 rounded-xl bg-[#25D366]/8 hover:bg-[#25D366]/18 border border-[#25D366]/30 text-[#25D366] font-mono text-[10px] uppercase tracking-wider font-bold transition-all duration-300 active:scale-95 cursor-pointer"
+                      >
+                        <span>Share via</span>
+                        <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 448 512">
+                          <path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/>
+                        </svg>
+                      </button>
+                      <button 
+                        onClick={() => handleShareStory('instagram')}
+                        className="flex items-center justify-center gap-2.5 h-12 rounded-xl bg-[#E1306C]/8 hover:bg-[#E1306C]/18 border border-[#E1306C]/30 text-[#E1306C] font-mono text-[10px] uppercase tracking-wider font-bold transition-all duration-300 active:scale-95 cursor-pointer"
+                      >
+                        <span>Share via</span>
+                        <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.333 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
+                        </svg>
+                      </button>
+                      <button 
+                        onClick={() => handleShareStory('x')}
+                        className={`flex items-center justify-center gap-2.5 h-12 rounded-xl font-mono text-[10px] uppercase tracking-wider font-bold transition-all duration-300 active:scale-95 cursor-pointer flex-1 sm:flex-none ${
+                          isLight 
+                            ? 'bg-black/[0.04] hover:bg-black/[0.08] border border-black/15 text-black' 
+                            : 'bg-white/[0.03] hover:bg-white/[0.08] border border-white/20 text-white'
+                        }`}
+                      >
+                        <span>Share via</span>
+                        <svg className="w-3.5 h-3.5 fill-current shrink-0" viewBox="0 0 24 24">
+                          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                        </svg>
                       </button>
                     </div>
                   </div>
 
-                  {/* Active Nodes Grid */}
-                  <div className="mb-4">
-                    <span className="font-mono text-[9px] text-[#5C6680] uppercase tracking-widest block mb-4.5">Vouch Nodes ({referrals} verified)</span>
-                    <div className="grid grid-cols-3 gap-3">
-                      {Array.from({ length: 3 }).map((_, idx) => {
-                        const active = idx < referrals;
-                        return (
-                          <div 
-                            key={idx} 
-                            className={`flex flex-col justify-between p-3.5 rounded-2xl border h-20 transition-all ${
-                              active 
-                                ? 'bg-[#F25A2B]/5 border-[#F25A2B]/20 shadow-[inset_0_1px_15px_rgba(242,90,43,0.05)]' 
-                                : 'bg-white/[0.01] border-white/5 opacity-40'
-                            }`}
-                          >
-                            <div className="flex justify-between items-center">
-                              <span className="font-mono text-[8px] text-[#5C6680] font-bold">NODE 0{idx + 1}</span>
-                              {active ? (
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#F25A2B] shadow-[0_0_8px_#F25A2B] animate-pulse" />
-                              ) : (
-                                <Lock className="w-2.5 h-2.5 text-[#5C6680]" />
-                              )}
-                            </div>
-                            <span className={`font-mono text-[9px] uppercase tracking-wider font-extrabold ${active ? 'text-white' : 'text-[#5C6680]'}`}>
-                              {active ? 'CONNECTED' : 'STANDBY'}
-                            </span>
+                  {/* Expandable Message Box */}
+                  <div className="border-t border-line-soft pt-4">
+                    <button 
+                      onClick={() => setRawTextOpen(!rawTextOpen)}
+                      className="w-full flex items-center justify-between text-[9px] font-mono uppercase text-ink-3 hover:text-ink transition-colors py-1"
+                    >
+                      <span>Show Invite Copywriting Template</span>
+                      <span>{rawTextOpen ? '[-]' : '[+]'}</span>
+                    </button>
+                    
+                    <AnimatePresence>
+                      {rawTextOpen && (
+                        <motion.div 
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="overflow-hidden mt-3"
+                        >
+                          <div className="flex items-start gap-3 bg-black/5 dark:bg-black/50 border border-line-soft p-4 rounded-2xl shadow-inner text-left relative group/raw">
+                            <p className="flex-1 text-[11px] font-mono text-ink-2 leading-relaxed select-all">
+                              Hey! I just locked my booking handle on Artistant. It lets you take direct client bookings, handles your contracts, and secures your money in escrow before you even perform. Claim your name before someone else takes it: artistant.in/?ref={reservation.username}
+                            </p>
+                            <button 
+                              onClick={() => {
+                                const shareText = `Hey! I just locked my booking handle on Artistant. It lets you take direct client bookings, handles your contracts, and secures your money in escrow before you even perform. Claim your name before someone else takes it: artistant.in/?ref=${reservation.username}`;
+                                navigator.clipboard.writeText(shareText);
+                                showToast("Invite template copied!");
+                              }}
+                              className="p-2.5 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 border border-black/10 dark:border-white/10 text-ink-2 hover:text-ink transition-colors"
+                              title="Copy raw text"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
                           </div>
-                        );
-                      })}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              </div>
+
+
+            </div>
+
+            {/* RIGHT COLUMN: INSTAGRAM STORY STUDIO (5 Cols) */}
+            <div className="lg:col-span-5 space-y-6">
+               
+              <div className="rounded-[2.5rem] p-[1.5px] bg-gradient-to-b from-[var(--line)] to-transparent shadow-2xl relative overflow-hidden group">
+                <div className="bg-bg-card/95 rounded-[2.4rem] p-6 md:p-8 backdrop-blur-xl border border-line-soft flex flex-col items-center">
+                  
+                  {/* Header */}
+                  <div className="flex justify-between items-center w-full mb-2">
+                    <h3 className="font-mono text-[10px] font-bold text-ink-2 uppercase tracking-[0.2em]">
+                      Story Generator
+                    </h3>
+                    <div>
+                      {storyShared ? (
+                        <span className="font-mono text-[9px] uppercase font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full select-none">
+                          +80 PTS Earned
+                        </span>
+                      ) : (
+                        <span className="font-mono text-[9px] uppercase font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full select-none animate-pulse">
+                          Pending Share
+                        </span>
+                      )}
                     </div>
                   </div>
 
-                  {/* Verified Performers Fine Print */}
-                  <div className="font-mono text-[8px] text-[#5C6680] leading-normal uppercase tracking-wider text-center border-t border-white/5 pt-4 mt-4">
-                    * Invites only count when the referred user is a verified, gigging performer.
-                  </div>
-                </div>
-              </div>
-
-              {/* Reward Drop Panel */}
-              <div className="rounded-[2.5rem] p-[1.5px] bg-gradient-to-b from-white/10 to-transparent shadow-xl relative overflow-hidden group">
-                <div className="bg-[#06060A]/95 rounded-[2.4rem] p-6 md:p-8 backdrop-blur-xl border border-white/5 border-l-[3px] border-l-[#D4567A]">
-                  <h3 className="font-mono text-[10px] font-bold text-[#9BA4B8] uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                    <Gift className="w-3.5 h-3.5 text-[#D4567A]" /> The All-Access Pass (Reward Drop)
-                  </h3>
-                  <p className="text-xs text-[#9BA4B8]/80 font-sans leading-relaxed">
+                  <p className="text-[11px] text-ink-2 leading-relaxed self-start mb-5">
+                    Generate and share your Founding Card as an Instagram or WhatsApp story. <strong className="text-ink">To claim points, you must mention @artistant and put your referral link: `artistant.in/?ref={reservation.username}` on your Story!</strong>
                   </p>
-                  
-                  {/* Live Status Badge */}
-                  <div className="mt-5 flex items-center gap-2 bg-[#D4567A]/5 border border-[#D4567A]/15 rounded-xl px-4 py-2.5 font-mono text-[9px] uppercase tracking-wider text-[#D4567A]">
-                    <Sparkles className="w-3 h-3 animate-spin" style={{ animationDuration: '4s' }} />
-                    <span>Active prize pool // Hardware drops en-route</span>
-                  </div>
-                </div>
-              </div>
 
-           </div>
-
-           {/* RIGHT COLUMN: INSTAGRAM STORY STUDIO (5 Cols) */}
-           <div className="lg:col-span-5 space-y-6">
-              
-              <div className="rounded-[2.5rem] p-[1.5px] bg-gradient-to-b from-white/10 to-transparent shadow-2xl relative overflow-hidden group h-full">
-                <div className="bg-[#06060A]/95 rounded-[2.4rem] p-6 md:p-8 backdrop-blur-xl border border-white/5 flex flex-col items-center h-full">
-                  
-                  <h3 className="font-mono text-[10px] font-bold text-[#9BA4B8] uppercase tracking-[0.2em] mb-6 self-start flex items-center gap-2">
-                    <Sparkles className="w-3.5 h-3.5 text-[#F25A2B]" /> IG Story Studio
-                  </h3>
-
-                  {/* Glass preview Phone hardware bezel */}
-                  <div className="relative w-full max-w-[230px] aspect-[9/16] rounded-[2.4rem] p-2 bg-[#0C0C12] border-4 border-white/10 shadow-[0_25px_60px_rgba(0,0,0,0.85)] flex flex-col justify-between mb-6 overflow-hidden">
-                    
-                    {/* Camera notch cutout */}
-                    <div className="absolute top-3.5 left-1/2 -translate-x-1/2 w-14 h-3.5 rounded-full bg-black/80 border border-white/5 z-20" />
-
-                    <div className="relative w-full h-full rounded-[2rem] overflow-hidden flex flex-col justify-between p-5 text-left transition-all duration-300" 
-                         style={{ 
-                           background: activeStoryTemplate === 0 ? 'linear-gradient(180deg, #101015, #050507)' : 
-                                      activeStoryTemplate === 1 ? 'linear-gradient(135deg, #F25A2B, #7C5CFF)' : 
-                                      '#FFFFFF',
-                           color: activeStoryTemplate === 2 ? '#0F0F14' : '#FFFFFF'
-                         }}>
-                      
-                      {/* Mini pass card inside preview */}
-                      <div className="w-full aspect-[1.58/1] rounded-xl p-3 flex flex-col justify-between relative overflow-hidden border shadow-inner transition-all duration-300"
+                  {/* ── Template Selector Tabs ── */}
+                  <div className="flex w-full gap-1.5 mb-5">
+                    {[
+                      { name: 'Dark Noir', bg: '#0A0A10' },
+                      { name: 'Gradient', bg: '' },
+                      { name: 'Light', bg: '#FAFAFA' }
+                    ].map((tmpl, idx) => (
+                      <button 
+                        key={idx}
+                        onClick={() => setActiveStoryTemplate(idx)}
+                        className={`flex-1 h-9 rounded-lg font-mono text-[8px] uppercase tracking-wider font-bold transition-all duration-300 cursor-pointer border ${
+                          activeStoryTemplate === idx 
+                            ? 'border-[#F25A2B]/50 shadow-[0_0_12px_rgba(242,90,43,0.15)] scale-[1.02]' 
+                            : 'border-line-soft hover:border-line opacity-60 hover:opacity-100'
+                        }`}
                         style={{
-                          background: activeStoryTemplate === 1 
-                            ? 'linear-gradient(135deg, rgba(25,25,30,0.85), rgba(10,10,12,0.95))' 
-                            : activeStoryTemplate === 2 
-                              ? 'rgba(124, 92, 255, 0.03)' 
-                              : 'rgba(255, 255, 255, 0.02)',
-                          borderColor: activeStoryTemplate === 2 ? 'rgba(124, 92, 255, 0.15)' : 'rgba(255, 255, 255, 0.08)',
-                          transform: 'rotate(-4deg) skewX(-4deg) scale(0.95)'
+                          background: idx === 1 ? 'linear-gradient(135deg, #7C5CFF, #D4567A, #F25A2B)' : tmpl.bg,
+                          color: idx === 2 ? '#0F0F14' : '#FFFFFF'
                         }}
                       >
-                        <div className="flex justify-between items-center text-[5px] font-mono font-bold">
-                          <span className={activeStoryTemplate === 2 ? 'text-[#7C5CFF]' : 'text-white/60'}>PASSPORT</span>
-                          <span className="opacity-80">COHORT {cohort}</span>
-                        </div>
-                        <div className="text-center my-auto flex flex-col items-center">
-                          <span className="text-xl font-display font-black leading-none">#{waitlistPos || '---'}</span>
-                          <span className="text-[4px] font-mono tracking-widest opacity-40">WAITLIST POSITION</span>
-                        </div>
-                        <div className="flex justify-between items-end text-[6px] font-bold">
-                          <span className="font-display">@{reservation.username}</span>
-                          <span className="opacity-20 text-[4px]">|||||</span>
-                        </div>
-                      </div>
-
-                      {/* Copy Statement */}
-                      <div className="text-center flex-1 flex flex-col justify-center my-3">
-                        {activeStoryTemplate === 0 && (
-                          <>
-                            <h4 className="font-display font-black text-[11px] uppercase tracking-tight leading-snug text-white">
-                              I HAVE OPTED FOR<br />NO MIDDLEMEN.
-                            </h4>
-                            <p className="text-[5px] font-mono tracking-widest uppercase text-[#F25A2B] mt-1.5">
-                              • commission-free direct booking •
-                            </p>
-                          </>
-                        )}
-                        {activeStoryTemplate === 1 && (
-                          <>
-                            <h4 className="font-display font-black text-[12px] uppercase tracking-tight leading-snug text-white">
-                              NO COMMISSIONS.<br />ARTIST FIRST.
-                            </h4>
-                            <p className="text-[5px] font-mono tracking-widest uppercase text-white/60 mt-1.5">
-                              • RECLAIMING CREATIVE VALUE •
-                            </p>
-                          </>
-                        )}
-                        {activeStoryTemplate === 2 && (
-                          <>
-                            <h4 className="font-display font-black text-[10px] uppercase tracking-tight leading-snug text-[#7C5CFF]">
-                              CREATIVE INFRASTRUCTURE
-                            </h4>
-                            <p className="text-[5px] font-mono tracking-widest uppercase text-[#0F0F14] mt-1.5">
-                              • NODE UNLOCKED // COHORT {cohort} •
-                            </p>
-                          </>
-                        )}
-                      </div>
-
-                      {/* Bullet points */}
-                      <div className="space-y-0.5 text-[6px] font-mono text-left opacity-75">
-                        {activeStoryTemplate === 0 && (
-                          <>
-                            <div>[✔] Direct client-to-artist routing</div>
-                            <div>[✔] GigSafe security deposit escrow</div>
-                            <div>[✔] Auto-synced availability booking</div>
-                          </>
-                        )}
-                        {activeStoryTemplate === 1 && (
-                          <>
-                            <div>[✔] Direct bookings (0% fees)</div>
-                            <div>[✔] GigSafe escrow guarantees</div>
-                            <div>[✔] Custom portfolio @handle</div>
-                          </>
-                        )}
-                        {activeStoryTemplate === 2 && (
-                          <>
-                            <div className="text-[#7C5CFF]">[✔] DIRECT GIG BOOKING SYSTEM</div>
-                            <div className="text-[#7C5CFF]">[✔] ESCROW PAYMENT INFRASTRUCTURE</div>
-                            <div className="text-[#7C5CFF]">[✔] VERIFIED AVAILABILITY STATES</div>
-                          </>
-                        )}
-                      </div>
-
-                      {/* Brand Link */}
-                      <div className="text-center text-[7px] font-mono font-bold tracking-widest opacity-35 uppercase mt-3">
-                        artistant.in
-                      </div>
-                    </div>
+                        {tmpl.name}
+                      </button>
+                    ))}
                   </div>
 
-                  {/* Secondary Theme Selector (Capsule Switches) */}
-                  <div className="flex items-center gap-2.5 mb-6 mt-4 z-10">
-                    <span className="font-mono text-[8px] text-[#5C6680] uppercase tracking-wider font-bold">Preset Theme:</span>
-                    <div className="flex bg-black/60 border border-white/5 p-0.5 rounded-lg">
-                      {["01", "02", "03"].map((name, idx) => (
-                        <button 
-                          key={idx} 
-                          onClick={() => setActiveStoryTemplate(idx)}
-                          className={`w-7 h-7 flex items-center justify-center text-[9px] font-mono font-bold rounded-md transition-all ${
-                            activeStoryTemplate === idx 
-                              ? 'bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] text-white shadow-sm' 
-                              : 'text-[#5C6680] hover:text-white bg-transparent'
-                          }`}
-                        >
-                          {name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Shifting Gradient Action button */}
-                  <button 
-                    onClick={() => handleDownloadStory()}
-                    className="w-full flex items-center justify-center gap-2.5 h-12 rounded-xl text-xs font-mono uppercase tracking-widest font-bold bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF] hover:opacity-90 active:scale-95 transition-all text-white shadow-[0_10px_25px_-5px_rgba(242,90,43,0.35)] shrink-0 mt-6"
+                  {/* ── Story Preview Card ── */}
+                  <div className="relative w-full max-w-[260px] aspect-[9/16] rounded-2xl overflow-hidden shadow-[0_20px_50px_var(--shadow-heavy)] border border-line-soft mb-5 transition-all duration-500"
+                    style={{
+                      background: activeStoryTemplate === 0 
+                        ? 'linear-gradient(180deg, #0A0A10, #04040A)' 
+                        : activeStoryTemplate === 1 
+                          ? 'linear-gradient(135deg, #7C5CFF, #D4567A, #F25A2B)' 
+                          : '#FAFAFA',
+                    }}
                   >
-                    <DownloadCloud className="w-4 h-4" /> Download IG Pass
+                    {/* Dark overlay for template 1 */}
+                    {activeStoryTemplate === 1 && (
+                      <div className="absolute inset-0 bg-black/20 z-[1]" />
+                    )}
+
+                    {/* Dot grid for template 2 */}
+                    {activeStoryTemplate === 2 && (
+                      <div className="absolute inset-0 z-[1]" style={{
+                        backgroundImage: 'radial-gradient(circle, rgba(124,92,255,0.08) 1px, transparent 1px)',
+                        backgroundSize: '12px 12px'
+                      }} />
+                    )}
+
+                    {/* Grid lines for template 0 */}
+                    {activeStoryTemplate === 0 && (
+                      <div className="absolute inset-0 z-[1]" style={{
+                        backgroundImage: 'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)',
+                        backgroundSize: '28px 28px'
+                      }} />
+                    )}
+
+                    {/* Glow for template 0 */}
+                    {activeStoryTemplate === 0 && (
+                      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full z-[1]" style={{
+                        background: 'radial-gradient(circle, rgba(242,90,43,0.1) 0%, rgba(124,92,255,0.05) 50%, transparent 100%)'
+                      }} />
+                    )}
+
+                    <div className="relative z-[2] flex flex-col items-center justify-between h-full px-4 py-5">
+                      {/* Logo */}
+                      <div className="text-center flex flex-col items-center gap-0.5 select-none">
+                        <img 
+                          src="/logo_wordmark.png" 
+                          alt="Artistant" 
+                          className={`h-5 w-auto object-contain transition-all ${
+                            activeStoryTemplate === 2 ? 'invert' : ''
+                          }`} 
+                        />
+                        <span className={`text-[4px] font-mono tracking-widest uppercase ${activeStoryTemplate === 2 ? 'text-[#0F0F14]/35' : 'text-white/30'} mt-0.5`}>
+                          FOUNDING MEMBER PASSPORT
+                        </span>
+                      </div>
+
+                      {/* Mini Pass Card */}
+                      <div className="w-full rounded-lg p-2.5 flex flex-col gap-1 border transition-all duration-300"
+                        style={{
+                          background: activeStoryTemplate === 0 
+                            ? 'rgba(255,255,255,0.02)' 
+                            : activeStoryTemplate === 1 
+                              ? 'rgba(10,10,15,0.75)' 
+                              : '#FFFFFF',
+                          borderColor: activeStoryTemplate === 2 ? 'rgba(124,92,255,0.12)' : 'rgba(255,255,255,0.08)',
+                          boxShadow: activeStoryTemplate === 2 ? '0 4px 20px rgba(124,92,255,0.06)' : 'none'
+                        }}
+                      >
+                        <div className="flex justify-between items-center text-[4px] font-mono font-bold">
+                          <span style={{ color: activeStoryTemplate === 0 ? '#F25A2B' : activeStoryTemplate === 1 ? '#F25A2B' : '#7C5CFF' }}>FOUNDING CARD</span>
+                          <span style={{ color: activeStoryTemplate === 2 ? '#0F0F14' : '#FFFFFF', opacity: 0.5 }}>FOUNDING ARTIST</span>
+                        </div>
+                        <div className="w-full h-px" style={{ background: activeStoryTemplate === 2 ? 'rgba(124,92,255,0.1)' : 'rgba(255,255,255,0.06)' }} />
+                        <div className="text-center py-2">
+                          <div className="text-2xl font-display font-black leading-none" style={{ color: activeStoryTemplate === 2 ? '#0F0F14' : '#FFFFFF' }}>
+                            #{waitlistPos || '---'}
+                          </div>
+                          <div className="text-[3.5px] font-mono tracking-widest mt-0.5" style={{ color: activeStoryTemplate === 2 ? '#0F0F14' : '#FFFFFF', opacity: 0.35 }}>
+                            WAITLIST POSITION
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-end">
+                          <div>
+                            <div className="text-[7px] font-bold" style={{ color: activeStoryTemplate === 2 ? '#0F0F14' : '#FFFFFF', fontFamily: '"Space Grotesk", sans-serif' }}>
+                              @{reservation.username}
+                            </div>
+                            <div className="text-[3px] font-mono" style={{ color: activeStoryTemplate === 2 ? '#0F0F14' : '#FFFFFF', opacity: 0.3 }}>
+                              VERIFIED ARTIST
+                            </div>
+                          </div>
+                          <div className="text-[4px] font-mono" style={{ color: activeStoryTemplate === 2 ? '#7C5CFF' : '#FFFFFF', opacity: 0.2 }}>
+                            ||||| | ||||
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Headline */}
+                      <div className="text-center">
+                        {activeStoryTemplate === 0 && (
+                          <>
+                            <h4 className="font-display font-black text-[11px] uppercase tracking-tight leading-snug text-white">I CHOSE ZERO<br />MIDDLEMEN.</h4>
+                            <p className="text-[4.5px] font-mono tracking-widest uppercase mt-1" style={{ background: 'linear-gradient(90deg, #F25A2B, #7C5CFF)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>DIRECT BOOKING ECOSYSTEM</p>
+                          </>
+                        )}
+                        {activeStoryTemplate === 1 && (
+                          <>
+                            <h4 className="font-display font-black text-[12px] uppercase tracking-tight leading-snug text-white">BUILT FOR STAGE.<br />ARTIST FIRST.</h4>
+                            <p className="text-[4.5px] font-mono tracking-widest uppercase text-white/50 mt-1">RECLAIMING CREATIVE VALUE</p>
+                          </>
+                        )}
+                        {activeStoryTemplate === 2 && (
+                          <>
+                            <h4 className="font-display font-black text-[11px] uppercase tracking-tight leading-snug text-[#0F0F14]">BUILT FOR ARTISTS.<br />NOT PLATFORMS.</h4>
+                            <p className="text-[4.5px] font-mono tracking-widest uppercase text-[#7C5CFF] mt-1">COHORT {cohort} · FOUNDING ARTIST</p>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Features */}
+                      <div className="space-y-0.5 text-[5px] font-mono text-center" style={{ color: activeStoryTemplate === 2 ? '#7C5CFF' : 'rgba(255,255,255,0.5)' }}>
+                        {activeStoryTemplate === 0 && (<><div>✓ Direct client-to-artist routing</div><div>✓ GigSafe escrow payment security</div><div>✓ Auto-synced availability booking</div></>)}
+                        {activeStoryTemplate === 1 && (<><div>✓ Direct client bookings</div><div>✓ GigSafe escrow guarantees</div><div>✓ Custom portfolio @handle</div></>)}
+                        {activeStoryTemplate === 2 && (<><div>✓ Direct gig booking system</div><div>✓ Escrow payment infrastructure</div><div>✓ Verified availability sync</div></>)}
+                      </div>
+
+                      {/* Bottom branding */}
+                      <div className="text-[5px] font-mono font-bold tracking-widest uppercase" style={{ color: activeStoryTemplate === 2 ? '#7C5CFF' : '#FFFFFF', opacity: 0.25 }}>
+                        ARTISTANT.IN
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dot indicators */}
+                  <div className="flex gap-2 mb-5">
+                    {[0, 1, 2].map(idx => (
+                      <button
+                        key={idx}
+                        onClick={() => setActiveStoryTemplate(idx)}
+                        className={`rounded-full transition-all duration-300 cursor-pointer ${
+                          activeStoryTemplate === idx 
+                            ? 'w-5 h-1.5 bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF]' 
+                            : 'w-1.5 h-1.5 bg-ink-3/30 hover:bg-ink-3/50'
+                        }`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Share via Instagram Story Button */}
+                  <button 
+                    onClick={() => handleShareStory('instagram')}
+                    className="w-full flex items-center justify-center gap-2.5 h-12 rounded-xl text-xs font-mono uppercase tracking-widest font-bold bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF] hover:opacity-90 active:scale-95 transition-all text-white shadow-[0_10px_25px_-5px_rgba(242,90,43,0.35)] shrink-0 cursor-pointer"
+                  >
+                    <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
+                    </svg>
+                    <span>Share via Instagram Story</span>
                   </button>
                 </div>
-
-             </div>
-
+              </div>
+            </div>
           </div>
 
-        </div>
+          {/* ── LEADERBOARD & FOUNDING ARTISTS SHOWCASE ── */}
+          <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-12 text-left relative z-20">
+            
+            {/* LEADERBOARD (7 Columns) */}
+            <div className="lg:col-span-7 space-y-6">
+              <div className="rounded-[2.5rem] p-[1.5px] bg-gradient-to-b from-[var(--line)] to-transparent shadow-2xl relative overflow-hidden group">
+                <div className="bg-bg-card/95 rounded-[2.4rem] p-6 md:p-8 backdrop-blur-xl border border-line-soft">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="font-mono text-[10px] font-bold text-ink-2 uppercase tracking-[0.2em] flex items-center gap-2">
+                      <Trophy className="w-3.5 h-3.5 text-[#F25A2B]" /> Founding Leaderboard
+                    </h3>
+                  </div>
 
+                  <h4 className="text-xl font-display font-black text-ink uppercase tracking-tight mb-4">
+                    Top Standing Artists
+                  </h4>
+
+                  <div className="overflow-hidden border border-line-soft rounded-2xl bg-black/5 dark:bg-black/25">
+                    <div className="max-h-[380px] overflow-y-auto custom-scrollbar">
+                      <table className="w-full text-left border-collapse text-[11px] font-mono">
+                        <thead>
+                          <tr className="border-b border-line-soft bg-black/10 dark:bg-white/[0.02] text-ink-3">
+                            <th className="py-2.5 px-4 font-bold uppercase tracking-wider text-[8px]">Rank</th>
+                            <th className="py-2.5 px-4 font-bold uppercase tracking-wider text-[8px]">Artist Handle</th>
+                            <th className="py-2.5 px-4 font-bold uppercase tracking-wider text-[8px] hidden sm:table-cell">Role</th>
+                            <th className="py-2.5 px-4 font-bold uppercase tracking-wider text-[8px] text-right">Points</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {leaderboard.length === 0 ? (
+                            <tr>
+                              <td colSpan={4} className="py-8 text-center text-ink-3">No registrations found</td>
+                            </tr>
+                          ) : (
+                            leaderboard.map((entry, idx) => {
+                              const isSelf = entry.username === reservation.username;
+                              const rankNum = idx + 1;
+                              return (
+                                <tr 
+                                  key={idx} 
+                                  className={`border-b border-line-soft/40 hover:bg-white/[0.02] transition-colors ${
+                                    isSelf ? 'bg-gradient-to-r from-[#7C5CFF]/10 to-transparent font-bold text-[var(--ink)]' : 'text-ink-2'
+                                  }`}
+                                >
+                                  <td className="py-3 px-4 flex items-center gap-1.5">
+                                    {rankNum === 1 ? '🥇' : rankNum === 2 ? '🥈' : rankNum === 3 ? '🥉' : `#${rankNum}`}
+                                    {entry.is_verified && (
+                                      <Award className="w-3 h-3 text-[#7C5CFF]" title="Founding Artist" />
+                                    )}
+                                  </td>
+                                  <td className="py-3 px-4 font-display font-bold text-ink">
+                                    @{entry.username} {isSelf && <span className="text-[8px] font-mono text-[#7C5CFF] uppercase ml-1">(You)</span>}
+                                  </td>
+                                  <td className="py-3 px-4 hidden sm:table-cell uppercase text-[9px] opacity-70">
+                                    {entry.role || 'Artist'}
+                                  </td>
+                                  <td className="py-3 px-4 text-right font-bold text-ink">
+                                    {entry.points} <span className="text-[9px] text-[#7C5CFF] font-normal">PTS</span>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* FOUNDING ARTISTS SHOWCASE (5 Columns) */}
+            <div className="lg:col-span-5 space-y-6">
+              <div className="rounded-[2.5rem] p-[1.5px] bg-gradient-to-b from-[var(--line)] to-transparent shadow-2xl relative overflow-hidden group">
+                <div className="bg-bg-card/95 rounded-[2.4rem] p-6 md:p-8 backdrop-blur-xl border border-line-soft">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-mono text-[10px] font-bold text-ink-2 uppercase tracking-[0.2em] flex items-center gap-2">
+                      <Award className="w-3.5 h-3.5 text-[#7C5CFF]" /> Founding Artists
+                    </h3>
+                    <span className="font-mono text-[9px] uppercase font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-[0_0_10px_rgba(16,185,129,0.1)]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      {totalArtistsCount} / {foundingLimit} Claimed
+                    </span>
+                  </div>
+
+                  <h4 className="text-xl font-display font-black text-ink uppercase tracking-tight mb-2.5">
+                    Founding Cohort
+                  </h4>
+                  
+                  <p className="text-[11px] text-ink-2 leading-relaxed mb-5">
+                    Lifetime 0% Platform Fee bookings are reserved for the first 50 Founding Artists who reach 500 PTS. 
+                    Once reached 50, the Founding slot limit will raise to 100!
+                  </p>
+
+                  {/* Premium Progress Bar */}
+                  <div className="mb-6 space-y-1.5">
+                    <div className="flex justify-between items-center text-[9px] font-mono text-ink-3 uppercase tracking-wider">
+                      <span>Cohort Progress</span>
+                      <span className="font-bold text-ink">{Math.round((totalArtistsCount / foundingLimit) * 100)}% Filled</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-black/10 dark:bg-white/5 rounded-full overflow-hidden border border-line-soft relative">
+                      <motion.div 
+                        className="h-full rounded-full bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF]"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min(100, Math.max(0, (totalArtistsCount / foundingLimit) * 100))}%` }}
+                        transition={{ duration: 1, ease: "easeOut" }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Showcase Grid of Founding Artists */}
+                  <div className="relative overflow-hidden border border-line-soft rounded-2xl bg-black/5 dark:bg-black/20 p-4 min-h-[240px] flex flex-col justify-center">
+                    {foundingArtists.length === 0 ? (
+                      <div className="relative flex flex-col items-center justify-center py-6 text-center z-10">
+                        {/* Glowing aura */}
+                        <div className="absolute w-44 h-44 rounded-full bg-gradient-to-br from-[#7C5CFF]/15 to-[#F25A2B]/5 blur-2xl -z-10 pointer-events-none" />
+                        
+                        {/* Floating Lock Icon Container */}
+                        <motion.div 
+                          animate={{ y: [0, -6, 0] }}
+                          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                          className="w-14 h-14 rounded-2xl bg-white/[0.03] dark:bg-white/[0.02] border border-white/10 flex items-center justify-center shadow-lg backdrop-blur-md relative mb-4"
+                        >
+                          {/* Inner pulse */}
+                          <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#7C5CFF]/20 to-transparent animate-pulse -z-10" />
+                          <Lock className="w-6 h-6 text-[#7C5CFF] drop-shadow-[0_0_8px_rgba(124,92,255,0.5)]" />
+                        </motion.div>
+                        
+                        <h5 className="font-display font-black text-xs uppercase text-ink tracking-wider mb-1">
+                          Vault is Sealed
+                        </h5>
+                        <span className="font-mono text-[9px] uppercase tracking-wider text-ink-3 max-w-[240px] mb-6 leading-relaxed">
+                          No artists have claimed a founding slot yet. Be the first!
+                        </span>
+
+                        {/* Preview of Locked Slots */}
+                        <div className="w-full grid grid-cols-2 gap-2 max-w-[320px]">
+                          {[1, 2, 3, 4].map((num) => (
+                            <div 
+                              key={num}
+                              className="py-2 px-3 rounded-xl border border-dashed border-line-soft bg-transparent hover:border-[#7C5CFF]/30 hover:bg-white/[0.01] transition-all duration-300 flex items-center gap-2 group cursor-help text-left"
+                              title="Reach 500 PTS to unlock this slot"
+                            >
+                              <div className="w-5 h-5 rounded-full border border-dashed border-line-soft text-[8px] font-mono text-ink-3 flex items-center justify-center group-hover:border-[#7C5CFF]/50 group-hover:text-[#7C5CFF] transition-colors shrink-0">
+                                #{num}
+                              </div>
+                              <div className="truncate">
+                                <div className="text-[9px] font-mono text-ink-3 font-semibold group-hover:text-ink-2 transition-colors">
+                                  Empty Slot
+                                </div>
+                                <div className="text-[7px] font-mono text-ink-3 opacity-60">
+                                  500 PTS Required
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2 max-h-[260px] overflow-y-auto custom-scrollbar">
+                        {foundingArtists.map((artist, idx) => (
+                          <motion.div 
+                            key={idx}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.05 }}
+                            whileHover={{ scale: 1.02, translateY: -2 }}
+                            className="p-3 rounded-xl border border-line-soft bg-bg-card hover:bg-bg-card-hover hover:border-[#7C5CFF]/30 flex items-center gap-3 text-left overflow-hidden transition-all duration-200 shadow-sm relative group"
+                          >
+                            {/* Avatar container with rotating-gradient hover border */}
+                            <div className="relative shrink-0">
+                              <div className="absolute -inset-0.5 bg-gradient-to-tr from-[#7C5CFF] to-[#F25A2B] rounded-full opacity-40 group-hover:opacity-100 transition-opacity duration-300 blur-[1px]" />
+                              <div className="relative w-8 h-8 rounded-full bg-bg flex items-center justify-center font-display font-black text-[10px] text-ink shrink-0 shadow-inner">
+                                {artist.username.slice(0, 2).toUpperCase()}
+                              </div>
+                            </div>
+                            
+                            <div className="truncate flex-1">
+                              <div className="flex items-center gap-1">
+                                <span className="font-display font-bold text-[10.5px] text-ink truncate">
+                                  @{artist.username}
+                                </span>
+                                <Award className="w-2.5 h-2.5 text-[#7C5CFF] shrink-0" />
+                              </div>
+                              <div className="text-[7.5px] font-mono text-ink-3 uppercase tracking-wider">
+                                {artist.role || 'Artist'}
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Call-to-action foot note */}
+                  <div className="mt-5 p-3.5 rounded-xl bg-gradient-to-r from-[#7C5CFF]/5 to-[#F25A2B]/5 border-l-2 border-[#7C5CFF] text-[9.5px] font-mono text-ink-2 leading-relaxed flex items-start gap-2.5 shadow-sm">
+                    <Sparkles className="w-3.5 h-3.5 text-[#7C5CFF] shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-ink font-bold">Want to join the showcase?</strong> Refer peers to earn <span className="text-[#F25A2B] font-bold">+50 PTS</span> per approved invite and complete tasks to unlock your verified stamp!
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </section>
+
+          {/* ── THE ECOSYSTEM ACCESS (STATIC MOCKUP SHOWCASE) ── */}
+          <StaticModulesShowcase cohort={cohort} />
       </main>
 
-      {/* ── FULL WIDTH: THE ECOSYSTEM ACCESS (STATIC MOCKUP SHOWCASE) ── */}
-      <StaticModulesShowcase cohort={cohort} />
-
       {/* ═══ FOOTER BAR ═══ */}
-      <footer className="w-full px-8 md:px-16 py-10 flex flex-col sm:flex-row items-center justify-between gap-6 bg-[#020202] border-t border-white/5 relative z-10">
-        <div className="flex items-center gap-3">
-          <img src="/logo_a.png" alt="Artistant" className="w-6 h-6 opacity-60" />
-          <span className="font-mono text-[9px] text-[#5C6680] uppercase tracking-widest font-bold">artistant.in // waitlist</span>
+      <footer className="w-full px-8 md:px-16 pt-10 pb-20 md:pb-24 flex flex-col sm:flex-row items-center justify-between gap-6 bg-bg-soft border-t border-line-soft text-ink-2 relative z-10">
+        <div className="flex items-center">
+          <a href="/" className="inline-block transition-transform duration-300 hover:scale-105 hover:opacity-90 -ml-4 md:-ml-6 -mt-18 -mb-18 md:-mt-24 md:-mb-24">
+            <img src="/logo_wordmark.png" alt="ArtisTant" className="w-[180px] md:w-[220px] h-auto object-contain object-left pointer-events-none dark:invert-0 invert" />
+          </a>
         </div>
         <div className="flex items-center gap-6">
-          <a href="/terms" className="font-mono text-[9px] text-[#5C6680] uppercase tracking-widest font-bold hover:text-white transition-colors">Terms</a>
-          <a href="/privacy" className="font-mono text-[9px] text-[#5C6680] uppercase tracking-widest font-bold hover:text-white transition-colors">Privacy</a>
-          <a href="/" className="font-mono text-[9px] text-[#5C6680] uppercase tracking-widest font-bold hover:text-white transition-colors flex items-center gap-1.5">
+          <a href="/terms" className="font-mono text-[9px] text-[var(--ink-3)] uppercase tracking-widest font-bold hover:text-[var(--ink)] transition-colors">Terms</a>
+          <a href="/privacy" className="font-mono text-[9px] text-[var(--ink-3)] uppercase tracking-widest font-bold hover:text-[var(--ink)] transition-colors">Privacy</a>
+          <a href="/" className="font-mono text-[9px] text-[var(--ink-3)] uppercase tracking-widest font-bold hover:text-[var(--ink)] transition-colors flex items-center gap-1.5">
             Home <ExternalLink className="w-3 h-3 text-[#F25A2B]" />
           </a>
-          <div className="w-px h-4 bg-white/10" />
-          <a href="https://linkedin.com" target="_blank" rel="noreferrer" className="text-[#5C6680] hover:text-white transition-colors font-mono text-[9px] uppercase tracking-widest font-bold">
-             LinkedIn
+          <div className="w-px h-4 bg-[var(--line-soft)]" />
+          <a href="https://instagram.com/artistant.in" target="_blank" rel="noopener noreferrer" className="font-mono text-[9px] text-[var(--ink-3)] uppercase tracking-widest font-bold hover:text-[var(--ink)] transition-colors flex items-center gap-1.5">
+            <InstagramIcon className="w-3 h-3 text-[#F25A2B]" /> Instagram
+          </a>
+          <a href="https://linkedin.com/company/artistant" target="_blank" rel="noopener noreferrer" className="font-mono text-[9px] text-[var(--ink-3)] uppercase tracking-widest font-bold hover:text-[var(--ink)] transition-colors flex items-center gap-1.5">
+            <LinkedinIcon className="w-3 h-3 text-[#7C5CFF]" /> LinkedIn
           </a>
         </div>
       </footer>
 
       {/* ── STICKY CINEMATIC BANNER ── */}
-      <div className="fixed bottom-0 left-0 w-full h-10 md:h-12 z-50 flex items-center justify-center border-t border-white/10 bg-[#0a0a0a]/80 backdrop-blur-md overflow-hidden">
+      <div className="fixed bottom-0 left-0 w-full h-12 md:h-14 z-50 flex items-center justify-center border-t border-[var(--line-soft)] bg-bg/80 backdrop-blur-md overflow-hidden">
         <AnimatePresence mode="wait">
           <motion.div
             key={textIndex}
@@ -1010,7 +1726,7 @@ export default function ProfilePage() {
             className="absolute w-full text-center flex items-center justify-center gap-2"
           >
             {CINEMATIC_FEATURES[textIndex].isLogo ? (
-              <img src="/logo_wordmark.png" alt="ArtisTant" className="h-6 md:h-8 w-auto object-contain opacity-90 drop-shadow-lg" />
+              <img src="/logo_wordmark.png" alt="ArtisTant" className="h-8 md:h-10 w-auto object-contain opacity-90 drop-shadow-lg dark:invert-0 invert" />
             ) : (
               <div className="flex items-center gap-2 md:gap-3 px-4">
                 <span className="font-display text-[10px] md:text-xs font-black tracking-widest uppercase text-transparent bg-clip-text whitespace-nowrap" style={{ 
@@ -1018,8 +1734,8 @@ export default function ProfilePage() {
                 }}>
                   {CINEMATIC_FEATURES[textIndex].title}
                 </span>
-                <span className="hidden md:inline-block w-1 h-1 rounded-full bg-white/30" />
-                <span className="hidden md:inline-block text-[#9BA4B8] font-mono text-[10px] uppercase tracking-wider whitespace-nowrap opacity-70">
+                <span className="hidden md:inline-block w-1 h-1 rounded-full bg-[var(--ink)]/30" />
+                <span className="hidden md:inline-block text-[var(--ink-2)] font-mono text-[10px] uppercase tracking-wider whitespace-nowrap opacity-70">
                   {CINEMATIC_FEATURES[textIndex].desc}
                 </span>
               </div>
@@ -1027,6 +1743,178 @@ export default function ProfilePage() {
           </motion.div>
         </AnimatePresence>
       </div>
+
+      <AnimatePresence>
+        {activeInfo && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setActiveInfo(null)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md overflow-hidden rounded-[2rem] border border-[var(--line-soft)] bg-[var(--bg-elevated)] p-6 shadow-2xl relative text-left"
+            >
+              <button 
+                onClick={() => setActiveInfo(null)}
+                className="absolute top-4 right-4 text-[var(--ink-3)] hover:text-[var(--ink)] transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              {activeInfo === 'why-refer' && (
+                <div className="space-y-4">
+                  <div className="w-12 h-12 rounded-2xl bg-[#F25A2B]/10 flex items-center justify-center border border-[#F25A2B]/20">
+                    <Users className="w-6 h-6 text-[#F25A2B]" />
+                  </div>
+                  <h4 className="font-display font-black text-xl text-[var(--ink)] uppercase tracking-tight">Why Refer Peers?</h4>
+                  <p className="text-xs text-[var(--ink-2)] leading-relaxed">
+                    Inviting active performers is the single best way to fast-track your priority standing. When verified peers join using your referral link:
+                  </p>
+                  <ul className="space-y-2.5">
+                    <li className="flex items-start gap-2 text-xs text-[var(--ink)]">
+                      <span className="text-[#F25A2B] font-bold font-mono">✔</span>
+                      <span><strong>Dynamic Waitlist Boost:</strong> Earn +50 PTS per verified peer to climb ranks and secure Cohort 1.</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-xs text-[var(--ink)]">
+                      <span className="text-[#F25A2B] font-bold font-mono">✔</span>
+                      <span><strong>0% Platform Fee:</strong> Secure lifetime 0% platform fee bookings (exclusive to the first 50 Founding Artists who reach 500 PTS).</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-xs text-[var(--ink)]">
+                      <span className="text-[#F25A2B] font-bold font-mono">✔</span>
+                      <span><strong>Founding Badge:</strong> Get a verified Founding Artist stamp on your profile at 500 PTS.</span>
+                    </li>
+                  </ul>
+                </div>
+              )}
+              {activeInfo === 'why-stories' && (
+                <div className="space-y-4">
+                  <div className="w-12 h-12 rounded-2xl bg-[#7C5CFF]/10 flex items-center justify-center border border-[#7C5CFF]/20">
+                    <Sparkles className="w-6 h-6 text-[#7C5CFF]" />
+                  </div>
+                  <h4 className="font-display font-black text-xl text-[var(--ink)] uppercase tracking-tight">Why Share Stories?</h4>
+                  <p className="text-xs text-[var(--ink-2)] leading-relaxed">
+                    Sharing your Founding Member Card visual on Instagram/WhatsApp works as a highly engaging invite certificate:
+                  </p>
+                  <ul className="space-y-2.5">
+                    <li className="flex items-start gap-2 text-xs text-[var(--ink)]">
+                      <span className="text-[#7C5CFF] font-bold font-mono">✔</span>
+                      <span><strong>Earn 80 PTS:</strong> Complete the task to jump up the waitlist ranks instantly.</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-xs text-[var(--ink)]">
+                      <span className="text-[#7C5CFF] font-bold font-mono">✔</span>
+                      <span><strong>Tag Requirement:</strong> Tag/mention **@artistant** and include your referral link so peers can sign up.</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-xs text-[var(--ink)]">
+                      <span className="text-[#7C5CFF] font-bold font-mono">✔</span>
+                      <span><strong>Establish Social Authority:</strong> Showcase your exclusive Founding Waitlist rank position.</span>
+                    </li>
+                  </ul>
+                </div>
+              )}
+              {activeInfo === 'vouch-points' && (
+                <div className="space-y-4">
+                  <div className="w-12 h-12 rounded-2xl bg-[#D4567A]/10 flex items-center justify-center border border-[#D4567A]/20">
+                    <Trophy className="w-6 h-6 text-[#D4567A]" />
+                  </div>
+                  <h4 className="font-display font-black text-xl text-[var(--ink)] uppercase tracking-tight">How Founding Points Work</h4>
+                  <p className="text-xs text-[var(--ink-2)] leading-relaxed">
+                    Your Founding Points represent your network standing:
+                  </p>
+                  <ul className="space-y-2.5">
+                    <li className="flex items-start gap-2 text-xs text-[var(--ink)]">
+                      <span className="text-[#D4567A] font-bold font-mono">✔</span>
+                      <span><strong>100 PTS Base:</strong> Automatically unlocked upon reserving your handle.</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-xs text-[var(--ink)]">
+                      <span className="text-[#D4567A] font-bold font-mono">✔</span>
+                      <span><strong>+50 PTS Per Verified Referral:</strong> Earned when a referred peer artist is verified by our team.</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-xs text-[var(--ink)]">
+                      <span className="text-[#D4567A] font-bold font-mono">✔</span>
+                      <span><strong>+80 PTS Story Share Task:</strong> Earned by sharing your founding visual on social media.</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-xs text-[var(--ink)]">
+                      <span className="text-[#D4567A] font-bold font-mono">✔</span>
+                      <span><strong>250 PTS Cohort 1 Eligibility:</strong> Hit 250 points to qualify for Cohort 1 consideration (includes first gig platform fee waived).</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-xs text-[var(--ink)]">
+                      <span className="text-[#D4567A] font-bold font-mono">✔</span>
+                      <span><strong>500 PTS Founding Artist Badge:</strong> Unlocks the verified Founding Artist Badge permanently.</span>
+                    </li>
+                  </ul>
+                </div>
+              )}
+              {activeInfo === 'how-cohorts' && (
+                <div className="space-y-4">
+                  <div className="w-12 h-12 rounded-2xl bg-[#7C5CFF]/10 flex items-center justify-center border border-[#7C5CFF]/20">
+                    <Lock className="w-6 h-6 text-[#7C5CFF]" />
+                  </div>
+                  <h4 className="font-display font-black text-xl text-[var(--ink)] uppercase tracking-tight">How Cohorts Work</h4>
+                  <p className="text-xs text-[var(--ink-2)] leading-relaxed">
+                    Cohorts represent rollout phases based on your points leaderboard ranking:
+                  </p>
+                  <ul className="space-y-2.5">
+                    <li className="flex items-start gap-2 text-xs text-[var(--ink)]">
+                      <span className="text-[#7C5CFF] font-bold font-mono">✔</span>
+                      <span><strong>Cohort 001 (Immediate Access):</strong> Assigned to the top 100 rank holders. Includes early beta entry and first gig platform fee waived.</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-xs text-[var(--ink)]">
+                      <span className="text-[#7C5CFF] font-bold font-mono">✔</span>
+                      <span><strong>Cohort 002 & 003:</strong> Access is unlocked sequentially (Cohort 2 for ranks 101-300; Cohort 3 for ranks 301+).</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-xs text-[var(--ink)]">
+                      <span className="text-[#7C5CFF] font-bold font-mono">✔</span>
+                      <span><strong>Dynamic Competition:</strong> Since other users are earning points, they can surpass you. **To stay in Cohort 1, you must keep referring and accumulating points!**</span>
+                    </li>
+                  </ul>
+                </div>
+              )}
+              {activeInfo === 'founding-artist-badge' && (
+                <div className="space-y-4">
+                  <div className="w-12 h-12 rounded-2xl bg-[#7C5CFF]/10 flex items-center justify-center border border-[#7C5CFF]/20">
+                    <Award className="w-6 h-6 text-[#7C5CFF]" />
+                  </div>
+                  <h4 className="font-display font-black text-xl text-[var(--ink)] uppercase tracking-tight">Founding Artist Badge</h4>
+                  <p className="text-xs text-[var(--ink-2)] leading-relaxed">
+                    Reach **500 PTS** (via verified referrals and tasks) to unlock the permanent verified **Founding Artist** tier.
+                  </p>
+ 
+                  <div className="bg-black/5 dark:bg-white/[0.02] border border-line-soft rounded-2xl p-4 space-y-3">
+                    <h5 className="font-mono text-[9px] uppercase tracking-wider text-ink-3 font-bold">Acquisition Benefits:</h5>
+                    <ul className="space-y-2.5">
+                      <li className="flex items-start gap-2 text-xs text-[var(--ink)]">
+                        <span className="text-[#34D399] font-bold font-mono">✔</span>
+                        <span><strong>Permanent Profile Badge:</strong> Carries over directly to your public profile in the live app at launch.</span>
+                      </li>
+                      <li className="flex items-start gap-2 text-xs text-[var(--ink)]">
+                        <span className="text-[#34D399] font-bold font-mono">✔</span>
+                        <span><strong>0% Platform Fee Bookings:</strong> Pay zero platform fees forever (exclusive to the first 50 Founding Artists who reach 500 PTS!).</span>
+                      </li>
+                      <li className="flex items-start gap-2 text-xs text-[var(--ink)]">
+                        <span className="text-[#34D399] font-bold font-mono">✔</span>
+                        <span><strong>Priority Search Visibility:</strong> High-priority placement in client discovery match feeds.</span>
+                      </li>
+                      <li className="flex items-start gap-2 text-xs text-[var(--ink)]">
+                        <span className="text-[#34D399] font-bold font-mono">✔</span>
+                        <span><strong>Beta Backstage Access:</strong> First-dibs access keys to test & use the premium software.</span>
+                      </li>
+                      <li className="flex items-start gap-2 text-xs text-[var(--ink)]">
+                        <span className="text-[#34D399] font-bold font-mono">✔</span>
+                        <span><strong>Founding Welcome Kit:</strong> Unlocks a custom welcome pack with event tickets/passes.</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

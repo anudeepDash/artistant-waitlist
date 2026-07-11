@@ -56,20 +56,20 @@ export default function FeaturesSection() {
   });
 
   return (
-    <section id="features" className="relative py-32 px-6 md:px-12 bg-black min-h-[150vh]" ref={containerRef}>
+    <section id="features" className="relative py-20 md:py-32 px-6 md:px-12 bg-black min-h-[120vh] md:min-h-[150vh]" ref={containerRef}>
       
       {/* Sticky Header */}
-      <div className="sticky top-32 z-10 mb-32 mix-blend-difference">
+      <div className="sticky top-20 md:top-32 z-10 mb-16 md:mb-32 mix-blend-difference">
         <h2 className="text-4xl md:text-6xl font-display font-medium text-white tracking-tight">
           The Ecosystem.
         </h2>
-        <p className="text-neutral-500 mt-4 text-lg max-w-md">
+        <p className="text-neutral-500 mt-4 text-base md:text-lg max-w-md">
           A comprehensive suite of tools designed to elevate the live performance industry into a seamless, high-end experience.
         </p>
       </div>
 
       {/* Feature List Container */}
-      <div className="relative z-20 max-w-6xl mx-auto flex flex-col gap-24 mt-48 pb-32">
+      <div className="relative z-20 max-w-6xl mx-auto flex flex-col gap-12 md:gap-24 mt-20 md:mt-48 pb-32">
         {FEATURES.map((feature, index) => {
           return (
             <motion.div

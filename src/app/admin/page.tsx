@@ -6,7 +6,12 @@ import {
 } from "@/lib/waitlist";
 import {
   adminGetRegistrationsAction,
-  adminUpdateRegistrationAction
+  adminUpdateRegistrationAction,
+  checkIsAdminAction,
+  adminGetActivityLogsAction,
+  adminGetAdminsAction,
+  adminAddAdminAction,
+  adminRemoveAdminAction
 } from "@/lib/admin-actions";
 import { 
   sendWelcomeEmailAction, 
@@ -49,7 +54,11 @@ import {
   FileText,
   Briefcase,
   Megaphone,
-  Mail as MailIcon
+  Mail as MailIcon,
+  Menu,
+  Trash2,
+  Globe,
+  Activity
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -209,6 +218,37 @@ const SOCIAL_CALENDAR: SocialPost[] = [
   }
 ];
 
+const MOCK_ACTIVITY_LOGS: any[] = [
+  {
+    id: "act-1",
+    user_id: "uid-m1",
+    email: "shreya@voice.in",
+    username: "shreya.voice",
+    action_type: "waitlist_register",
+    user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+    referrer: "https://google.com",
+    created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "act-2",
+    user_id: "anonymous",
+    email: null,
+    username: null,
+    action_type: "visit",
+    user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+    referrer: "https://instagram.com",
+    created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString()
+  }
+];
+
+const MOCK_ADMINS: any[] = [
+  {
+    id: "adm-1",
+    email: "anudeepdash2004@gmail.com",
+    added_by: "system",
+    created_at: new Date("2026-07-01T00:00:00.000Z").toISOString()
+  }
+];
 
 /* ── Glowing Admin Card Component ── */
 function GlowingAdminCard({ children, className, style, idx = 0, ...props }: any) {
@@ -264,9 +304,7 @@ function GlowingAdminCard({ children, className, style, idx = 0, ...props }: any
             left: coords.x - 120,
             width: '240px',
             height: '240px',
-            background: idx % 2 === 0
-              ? 'radial-gradient(circle, rgba(242, 90, 43, 0.08) 0%, rgba(124, 92, 255, 0.02) 50%, transparent 100%)' // Orange focused
-              : 'radial-gradient(circle, rgba(124, 92, 255, 0.10) 0%, rgba(242, 90, 43, 0.02) 50%, transparent 100%)', // Purple focused
+            background: 'radial-gradient(circle, rgba(255, 255, 255, 0.04) 0%, transparent 70%)',
             borderRadius: '50%',
             pointerEvents: 'none',
             mixBlendMode: "var(--glow-blend, screen)" as any,
@@ -282,12 +320,33 @@ function GlowingAdminCard({ children, className, style, idx = 0, ...props }: any
   );
 }
 
+/* ── Parse User Agent Helper ── */
+function parseUserAgent(ua: string | null): string {
+  if (!ua) return "Unknown Device";
+  const lower = ua.toLowerCase();
+  let os = "Unknown OS";
+  if (lower.includes("macintosh") || lower.includes("mac os")) os = "macOS";
+  else if (lower.includes("windows")) os = "Windows";
+  else if (lower.includes("android")) os = "Android";
+  else if (lower.includes("iphone") || lower.includes("ipad")) os = "iOS";
+  else if (lower.includes("linux")) os = "Linux";
+  let browser = "Unknown Browser";
+  if (lower.includes("chrome") || lower.includes("chromium")) browser = "Chrome";
+  else if (lower.includes("firefox")) browser = "Firefox";
+  else if (lower.includes("safari") && !lower.includes("chrome")) browser = "Safari";
+  else if (lower.includes("edge")) browser = "Edge";
+
+  return `${browser} on ${os}`;
+}
+
 export default function AdminPage() {
   // ---------------------------------------------------------------------------
   // Security & Core State
   // ---------------------------------------------------------------------------
   const { user, loading: authLoading } = useAuth();
-  const isAdmin = user && user.email === "anudeepdash2004@gmail.com";
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checkingAdmin, setCheckingAdmin] = useState(true);
+  
   // We keep a pseudo-passcode for the server actions, as they currently require it.
   const passcode = "ARTISTANT_ADMIN_2026";
   const [isUnlocked, setIsUnlocked] = useState(false);
@@ -297,8 +356,16 @@ export default function AdminPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [dbError, setDbError] = useState<string | null>(null);
   
-  // Tabs: registrations | graphics | calendar | emailing | leaderboards
-  const [activeTab, setActiveTab] = useState<"registrations" | "leaderboards" | "graphics" | "calendar" | "emailing">("registrations");
+  // Visitor Activities and Admin List States
+  const [activityLogs, setActivityLogs] = useState<any[]>(MOCK_ACTIVITY_LOGS);
+  const [adminUsers, setAdminUsers] = useState<any[]>(MOCK_ADMINS);
+  const [newAdminEmail, setNewAdminEmail] = useState("");
+  const [activityFilter, setActivityFilter] = useState("all");
+  const [activitySearch, setActivitySearch] = useState("");
+  
+  // Tabs: registrations | leaderboards | members | admins | graphics | calendar | emailing
+  const [activeTab, setActiveTab] = useState<"registrations" | "leaderboards" | "members" | "admins" | "graphics" | "calendar" | "emailing">("registrations");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   
   // Notification Toast
   const [successToast, setSuccessToast] = useState<string | null>(null);
@@ -345,11 +412,34 @@ export default function AdminPage() {
   // ---------------------------------------------------------------------------
   // Persistence & Initial Validation
   // ---------------------------------------------------------------------------
+  // Verify Admin Access dynamically
   useEffect(() => {
-    if (isAdmin && !isUnlocked && !isLoading) {
-      verifyAndLoad(passcode);
+    if (authLoading) return;
+    if (!user) {
+      setIsAdmin(false);
+      setCheckingAdmin(false);
+      setIsUnlocked(false);
+      return;
     }
-  }, [isAdmin, isUnlocked, isLoading]);
+    
+    const checkAccess = async () => {
+      setCheckingAdmin(true);
+      try {
+        const isAuth = await checkIsAdminAction(user.email || "");
+        setIsAdmin(isAuth);
+        if (isAuth && !isUnlocked && !isLoading) {
+          await verifyAndLoad(passcode);
+        }
+      } catch (e) {
+        console.error("Error verifying admin access:", e);
+        setIsAdmin(false);
+      } finally {
+        setCheckingAdmin(false);
+      }
+    };
+    
+    checkAccess();
+  }, [user, authLoading, isUnlocked]);
 
   // Redraw Canvas on change
   useEffect(() => {
@@ -381,38 +471,57 @@ export default function AdminPage() {
     setSuccessToast(msg);
   };
 
+  // Auto-sync polling every 10 seconds
+  useEffect(() => {
+    if (!isUnlocked || !isAdmin || !isLiveMode) return;
+
+    const interval = setInterval(() => {
+      verifyAndLoad(passcode, true);
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [isUnlocked, isAdmin, isLiveMode]);
+
   // ---------------------------------------------------------------------------
   // API Fetch & Authentication
   // ---------------------------------------------------------------------------
-  const verifyAndLoad = async (pass: string) => {
-    setIsLoading(true);
+  const verifyAndLoad = async (pass: string, isSilent = false) => {
+    if (!isSilent) setIsLoading(true);
     setAuthError("");
     setDbError(null);
     try {
-      const data = await adminGetRegistrationsAction(pass);
-      setRegistrations(data);
+      const [regs, logs, admins] = await Promise.all([
+        adminGetRegistrationsAction(pass),
+        adminGetActivityLogsAction(pass),
+        adminGetAdminsAction(pass)
+      ]);
+      setRegistrations(regs);
+      setActivityLogs(logs);
+      setAdminUsers(admins);
       setIsLiveMode(true);
       setIsUnlocked(true);
-      showToast("Live Database Connected.");
+      if (!isSilent) showToast("Connected to Live Database.");
     } catch (err: any) {
-      console.warn("Supabase fetch failed. Falling back to Sandbox LocalStorage.", err);
+      console.warn("Supabase fetch failed. Falling back to Sandbox LocalStorage / Mock Data.", err);
       if (err.message?.includes("Invalid admin passcode") || err.code === "PGRST301") {
         setAuthError("Server Access Credential Invalid.");
         setIsUnlocked(false);
       } else {
-        // Fallback Sandbox silently without ugly alerts
-        const sandbox = localStorage.getItem("artistant_sandbox_registrations");
-        if (sandbox) {
-          setRegistrations(JSON.parse(sandbox));
-        } else {
-          setRegistrations(MOCK_REGISTRATIONS);
-          localStorage.setItem("artistant_sandbox_registrations", JSON.stringify(MOCK_REGISTRATIONS));
-        }
+        // Fallback Sandbox
+        const sandboxRegs = localStorage.getItem("artistant_sandbox_registrations");
+        setRegistrations(sandboxRegs ? JSON.parse(sandboxRegs) : MOCK_REGISTRATIONS);
+        
+        const sandboxLogs = localStorage.getItem("artistant_sandbox_logs");
+        setActivityLogs(sandboxLogs ? JSON.parse(sandboxLogs) : MOCK_ACTIVITY_LOGS);
+        
+        const sandboxAdmins = localStorage.getItem("artistant_sandbox_admins");
+        setAdminUsers(sandboxAdmins ? JSON.parse(sandboxAdmins) : MOCK_ADMINS);
+        
         setIsLiveMode(false);
         setIsUnlocked(true);
       }
     } finally {
-      setIsLoading(false);
+      if (!isSilent) setIsLoading(false);
     }
   };
 
@@ -430,9 +539,66 @@ export default function AdminPage() {
     try {
       await firebaseSignOut();
       setIsUnlocked(false);
+      setIsAdmin(false);
       setAuthError("");
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // Action Handlers: Admin membership management
+  // ---------------------------------------------------------------------------
+  const handleAddAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAdminEmail) return;
+    const targetEmail = newAdminEmail.trim().toLowerCase();
+    
+    try {
+      if (isLiveMode) {
+        await adminAddAdminAction(passcode, targetEmail, user?.email || "system");
+        const admins = await adminGetAdminsAction(passcode);
+        setAdminUsers(admins);
+      } else {
+        const newAdmin = {
+          id: `mock-admin-${Date.now()}`,
+          email: targetEmail,
+          added_by: user?.email || "sandbox_user",
+          created_at: new Date().toISOString()
+        };
+        const updated = [newAdmin, ...adminUsers];
+        setAdminUsers(updated);
+        localStorage.setItem("artistant_sandbox_admins", JSON.stringify(updated));
+      }
+      setNewAdminEmail("");
+      showToast(`Admin ${targetEmail} added successfully!`);
+    } catch (err: any) {
+      console.error(err);
+      showToast(`Failed to add admin: ${err.message}`);
+    }
+  };
+
+  const handleRemoveAdmin = async (emailToRemove: string) => {
+    const normalised = emailToRemove.trim().toLowerCase();
+    if (normalised === "anudeepdash2004@gmail.com") {
+      showToast("Cannot remove super-admin.");
+      return;
+    }
+    
+    try {
+      if (isLiveMode) {
+        await adminRemoveAdminAction(passcode, normalised);
+        const admins = await adminGetAdminsAction(passcode);
+        setAdminUsers(admins);
+      } else {
+        const updated = adminUsers.filter(a => a.email.toLowerCase() !== normalised);
+        setAdminUsers(updated);
+        localStorage.setItem("artistant_sandbox_admins", JSON.stringify(updated));
+      }
+      showToast(`Admin ${normalised} access revoked.`);
+    } catch (err: any) {
+      console.error(err);
+      showToast(`Failed to remove admin: ${err.message}`);
     }
   };
 
@@ -519,8 +685,15 @@ export default function AdminPage() {
 
   const handleToggleDbMode = () => {
     if (isLiveMode) {
-      const sandbox = localStorage.getItem("artistant_sandbox_registrations");
-      setRegistrations(sandbox ? JSON.parse(sandbox) : MOCK_REGISTRATIONS);
+      const sandboxRegs = localStorage.getItem("artistant_sandbox_registrations");
+      setRegistrations(sandboxRegs ? JSON.parse(sandboxRegs) : MOCK_REGISTRATIONS);
+      
+      const sandboxLogs = localStorage.getItem("artistant_sandbox_logs");
+      setActivityLogs(sandboxLogs ? JSON.parse(sandboxLogs) : MOCK_ACTIVITY_LOGS);
+      
+      const sandboxAdmins = localStorage.getItem("artistant_sandbox_admins");
+      setAdminUsers(sandboxAdmins ? JSON.parse(sandboxAdmins) : MOCK_ADMINS);
+      
       setIsLiveMode(false);
       setDbError("Switched manually to Sandbox Environment.");
       showToast("Switched to Sandbox Mode");
@@ -1007,12 +1180,10 @@ export default function AdminPage() {
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           className="relative z-10 max-w-md w-full"
         >
-          {/* Brand gradient icon */}
+          {/* Brand clean icon */}
           <div className="flex justify-center mb-8">
-            <div className="w-20 h-20 rounded-[22px] flex items-center justify-center shadow-[0_8px_24px_-6px_rgba(242,90,43,0.45)]" style={{
-              background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)'
-            }}>
-              <Lock className="w-9 h-9 text-[#0B1120]" />
+            <div className="w-20 h-20 rounded-[22px] flex items-center justify-center bg-bg-soft border border-line-soft shadow-[0_8px_24px_-6px_rgba(0,0,0,0.2)]">
+              <Lock className="w-9 h-9 text-ink" />
             </div>
           </div>
 
@@ -1041,9 +1212,9 @@ export default function AdminPage() {
             </div>
 
             <div className="space-y-5 relative z-10">
-              {authLoading ? (
+              {authLoading || checkingAdmin ? (
                 <div className="flex justify-center items-center py-6">
-                  <RefreshCw className="w-8 h-8 animate-spin" style={{ color: 'var(--brand-3)' }} />
+                  <RefreshCw className="w-8 h-8 animate-spin text-ink-3" />
                 </div>
               ) : user ? (
                 !isAdmin ? (
@@ -1054,13 +1225,13 @@ export default function AdminPage() {
                     </div>
                     <button
                       onClick={handleLogout}
-                      className="text-xs text-ink-2 hover:text-ink underline underline-offset-4 transition-colors"
+                      className="text-xs text-ink-2 hover:text-ink underline underline-offset-4 transition-colors cursor-pointer"
                     >
                       Sign out of {user.email}
                     </button>
                   </div>
                 ) : (
-                  <div className="flex justify-center items-center py-6 text-sm font-mono animate-pulse" style={{ color: 'var(--brand-3)' }}>
+                  <div className="flex justify-center items-center py-6 text-sm font-mono animate-pulse text-ink-3">
                     Verifying Credentials...
                   </div>
                 )
@@ -1068,11 +1239,7 @@ export default function AdminPage() {
                 <button
                   onClick={handleLoginSubmit}
                   disabled={isLoading || authLoading}
-                  className="w-full text-white font-display font-bold tracking-wider py-4 rounded-2xl flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
-                  style={{
-                    background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
-                    boxShadow: '0 4px 16px -4px rgba(242,90,43,0.4)',
-                  }}
+                  className="w-full bg-ink text-bg border border-line-soft font-display font-bold tracking-wider py-4 rounded-2xl flex items-center justify-center gap-2 transition-all hover:opacity-90 disabled:opacity-50 cursor-pointer"
                 >
                   Sign In with Google
                   <ChevronRight className="w-4 h-4" />
@@ -1130,10 +1297,8 @@ export default function AdminPage() {
           exit={{ opacity: 0, y: 20 }}
           className="fixed bottom-8 right-8 z-50 bg-bg-card border border-line-soft text-ink text-sm px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3"
         >
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{
-            background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)'
-          }}>
-            <Sparkles className="w-4 h-4 text-[#0B1120]" />
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-bg-soft border border-line-soft">
+            <Sparkles className="w-4 h-4 text-brand" />
           </div>
           <span>{successToast}</span>
         </motion.div>
@@ -1144,12 +1309,20 @@ export default function AdminPage() {
           =================================================================== */}
       <div className="flex h-screen overflow-hidden relative z-10">
         
+        {/* Mobile Sidebar Backdrop */}
+        {sidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-35 md:hidden cursor-pointer"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
         {/* ─── Sidebar ─── */}
         <motion.aside 
           initial={{ x: -300, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="w-[280px] bg-bg border-r border-line-soft flex flex-col flex-shrink-0 z-20"
+          className={`fixed md:relative top-0 bottom-0 left-0 w-[280px] bg-bg border-r border-line-soft flex flex-col flex-shrink-0 z-40 transition-transform duration-300 md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
         >
           {/* Brand Logo — exact homepage logo-typo */}
           <div className="px-8 pt-8 pb-6">
@@ -1174,10 +1347,12 @@ export default function AdminPage() {
             {([
               { id: "registrations", label: "Waitlist", icon: Users, accent: 'var(--brand-1)' },
               { id: "leaderboards", label: "Leaderboards", icon: Trophy, accent: 'var(--brand-2)' },
+              { id: "members", label: "Visitor Activity", icon: Eye, accent: 'var(--brand-3)' },
+              { id: "admins", label: "Manage Admins", icon: Settings, accent: 'var(--brand-4)' },
             ] as const).map(item => (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all text-[14px] ${
                   activeTab === item.id 
                     ? "bg-bg-soft text-ink" 
@@ -1185,12 +1360,11 @@ export default function AdminPage() {
                 }`}
               >
                 <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${
-                  activeTab === item.id ? 'shadow-sm' : ''
-                }`} style={activeTab === item.id ? {
-                  background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)',
-                  boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)'
-                } : { background: 'var(--bg-2)' }}>
-                  <item.icon className="w-4 h-4" style={{ color: activeTab === item.id ? '#0B1120' : 'var(--ink-3)' }} />
+                  activeTab === item.id 
+                    ? 'bg-brand shadow-[0_4px_12px_-4px_rgba(242,90,43,0.25)]' 
+                    : 'bg-bg-soft'
+                }`}>
+                  <item.icon className="w-4 h-4" style={{ color: activeTab === item.id ? '#ffffff' : 'var(--ink-3)' }} />
                 </div>
                 <span className="font-medium">{item.label}</span>
               </button>
@@ -1209,7 +1383,7 @@ export default function AdminPage() {
             ] as const).map(item => (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all text-[14px] ${
                   activeTab === item.id 
                     ? "bg-bg-soft text-ink" 
@@ -1217,12 +1391,11 @@ export default function AdminPage() {
                 }`}
               >
                 <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${
-                  activeTab === item.id ? 'shadow-sm' : ''
-                }`} style={activeTab === item.id ? {
-                  background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)',
-                  boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)'
-                } : { background: 'var(--bg-2)' }}>
-                  <item.icon className="w-4 h-4" style={{ color: activeTab === item.id ? '#0B1120' : 'var(--ink-3)' }} />
+                  activeTab === item.id 
+                    ? 'bg-brand shadow-[0_4px_12px_-4px_rgba(242,90,43,0.25)]' 
+                    : 'bg-bg-soft'
+                }`}>
+                  <item.icon className="w-4 h-4" style={{ color: activeTab === item.id ? '#ffffff' : 'var(--ink-3)' }} />
                 </div>
                 <span className="font-medium">{item.label}</span>
               </button>
@@ -1234,8 +1407,8 @@ export default function AdminPage() {
             <div className="bg-bg-soft border border-line-soft rounded-[20px] p-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-[14px] flex items-center justify-center text-white font-display font-bold text-sm" style={{
-                  background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)',
-                  boxShadow: '0 4px 12px -4px rgba(242,90,43,0.35)'
+                  background: 'var(--brand-3)',
+                  boxShadow: '0 4px 12px -4px rgba(124,92,255,0.35)'
                 }}>
                   A
                 </div>
@@ -1258,17 +1431,26 @@ export default function AdminPage() {
         {/* ─── Main Content Canvas ─── */}
         <main className="flex-1 overflow-y-auto relative scroll-smooth">
           {/* Top bar */}
-          <header className="sticky top-0 z-30 backdrop-blur-xl border-b border-line-soft px-8 py-5 flex items-center justify-between" style={{ background: 'color-mix(in srgb, var(--bg) 80%, transparent)' }}>
-            <div>
+          <header className="sticky top-0 z-30 backdrop-blur-xl border-b border-line-soft px-4 md:px-8 py-5 flex items-center justify-between" style={{ background: 'color-mix(in srgb, var(--bg) 80%, transparent)' }}>
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => setSidebarOpen(true)}
+                className="md:hidden p-2 rounded-xl border border-line-soft bg-bg-soft text-ink-2 hover:text-ink cursor-pointer hover:bg-bg-card transition-all"
+                aria-label="Open sidebar"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
               <h2 className="text-xl font-display font-bold tracking-tight text-ink uppercase">
                 {activeTab === "registrations" && "Waitlist"}
                 {activeTab === "leaderboards" && "Leaderboards"}
+                {activeTab === "members" && "Visitor Activity"}
+                {activeTab === "admins" && "Manage Admins"}
                 {activeTab === "graphics" && "Content Wall"}
                 {activeTab === "calendar" && "Calendar"}
                 {activeTab === "emailing" && "Broadcasts"}
               </h2>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <a href="/" target="_blank" className="nav-cta text-xs" style={{ padding: '8px 16px' }}>
                 View Site <span className="arrow">↗</span>
               </a>
@@ -1317,11 +1499,8 @@ export default function AdminPage() {
                           }}>{String(i + 1).padStart(2, '0')}</div>
 
                           <div className="flex justify-between items-start mb-6">
-                            <div className="w-14 h-14 rounded-[18px] flex items-center justify-center" style={{
-                              background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)',
-                              boxShadow: '0 8px 24px -6px rgba(242,90,43,0.45)'
-                            }}>
-                              <card.Icon className="w-6 h-6 text-[#0B1120]" />
+                            <div className="w-14 h-14 rounded-[18px] flex items-center justify-center bg-bg-card border border-line-soft shadow-sm">
+                              <card.Icon className="w-6 h-6 text-brand" />
                             </div>
                           </div>
 
@@ -1341,11 +1520,8 @@ export default function AdminPage() {
                       >
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                           <div className="flex items-start gap-4">
-                            <div className="w-14 h-14 rounded-[18px] flex items-center justify-center flex-shrink-0" style={{
-                              background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)',
-                              boxShadow: '0 8px 24px -6px rgba(242,90,43,0.45)'
-                            }}>
-                              <Sparkles className="w-6 h-6 text-[#0B1120]" />
+                            <div className="w-14 h-14 rounded-[18px] flex items-center justify-center flex-shrink-0 bg-bg-card border border-line-soft shadow-sm">
+                              <Sparkles className="w-6 h-6 text-brand" />
                             </div>
                             <div>
                               <h4 className="font-display font-bold text-ink text-lg uppercase tracking-tight">
@@ -1631,19 +1807,12 @@ export default function AdminPage() {
 
                         {/* Top: Icon + Status badges */}
                         <div className="flex justify-between items-start mb-5 z-10">
-                          <div className="w-14 h-14 rounded-[18px] flex items-center justify-center text-white font-display font-bold text-xl" style={{
-                            background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)',
-                            boxShadow: '0 8px 24px -6px rgba(242,90,43,0.45)'
-                          }}>
+                          <div className="w-14 h-14 rounded-[18px] flex items-center justify-center bg-bg-card border border-line-soft shadow-sm text-brand font-display font-bold text-xl">
                             {initials}
                           </div>
                           <div className="flex flex-col gap-1.5 items-end">
                             {reg.is_verified && (
-                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-mono font-bold tracking-[0.08em]" style={{
-                                background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
-                                color: 'white',
-                                boxShadow: '0 4px 12px -4px rgba(242,90,43,0.35)',
-                              }}>
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-mono font-bold tracking-[0.08em] bg-brand text-white shadow-[0_4px_12px_-4px_rgba(242,90,43,0.25)]">
                                 VERIFIED
                               </span>
                             )}
@@ -1781,11 +1950,8 @@ export default function AdminPage() {
               {/* Points Leaderboard */}
               <GlowingAdminCard idx={0} className="bg-bg-soft border border-line-soft rounded-[28px] overflow-hidden flex flex-col h-[600px]">
                 <div className="p-8 flex items-center gap-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div className="w-12 h-12 rounded-[16px] flex items-center justify-center flex-shrink-0" style={{
-                    background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)',
-                    boxShadow: '0 8px 24px -6px rgba(242,90,43,0.45)'
-                  }}>
-                    <Trophy className="w-5 h-5 text-[#0B1120]" />
+                  <div className="w-12 h-12 rounded-[16px] flex items-center justify-center flex-shrink-0 bg-bg-card border border-line-soft shadow-sm">
+                    <Trophy className="w-5 h-5 text-brand" />
                   </div>
                   <div>
                     <h3 className="font-display font-bold text-ink text-lg uppercase tracking-tight">Points Ranking</h3>
@@ -1827,11 +1993,8 @@ export default function AdminPage() {
               {/* Referrals Leaderboard */}
               <GlowingAdminCard idx={1} className="bg-bg-soft border border-line-soft rounded-[28px] overflow-hidden flex flex-col h-[600px]">
                 <div className="p-8 flex items-center gap-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div className="w-12 h-12 rounded-[16px] flex items-center justify-center flex-shrink-0" style={{
-                    background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)',
-                    boxShadow: '0 8px 24px -6px rgba(242,90,43,0.45)'
-                  }}>
-                    <Users className="w-5 h-5 text-[#0B1120]" />
+                  <div className="w-12 h-12 rounded-[16px] flex items-center justify-center flex-shrink-0 bg-bg-card border border-line-soft shadow-sm">
+                    <Users className="w-5 h-5 text-brand" />
                   </div>
                   <div>
                     <h3 className="font-display font-bold text-ink text-lg uppercase tracking-tight">Network Builders</h3>
@@ -1877,6 +2040,261 @@ export default function AdminPage() {
         )}
 
         {/* ===================================================================
+            TAB: VISITOR ACTIVITY (MEMBERS)
+            =================================================================== */}
+        {activeTab === "members" && (
+          <div className="space-y-8 animate-in fade-in duration-200">
+            {/* Overview cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-bg-soft border border-line-soft rounded-[24px] p-6 relative overflow-hidden">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-[11px] font-mono text-ink-3 uppercase tracking-wider">Total Traffic (Visits)</p>
+                    <h3 className="text-3xl font-display font-bold mt-2 text-ink">
+                      {activityLogs.filter(l => l.action_type === 'visit').length}
+                    </h3>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-bg-card border border-line-soft flex items-center justify-center">
+                    <Globe className="w-5 h-5 text-ink-2" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-bg-soft border border-line-soft rounded-[24px] p-6 relative overflow-hidden">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-[11px] font-mono text-ink-3 uppercase tracking-wider">Distinct Logins</p>
+                    <h3 className="text-3xl font-display font-bold mt-2 text-ink">
+                      {new Set(activityLogs.filter(l => l.action_type === 'login').map(l => l.email || l.user_id)).size}
+                    </h3>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-bg-card border border-line-soft flex items-center justify-center">
+                    <Lock className="w-5 h-5 text-ink-2" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-bg-soft border border-line-soft rounded-[24px] p-6 relative overflow-hidden">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-[11px] font-mono text-ink-3 uppercase tracking-wider">Total Waitlisted</p>
+                    <h3 className="text-3xl font-display font-bold mt-2 text-ink">
+                      {registrations.length}
+                    </h3>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-bg-card border border-line-soft flex items-center justify-center">
+                    <Users className="w-5 h-5 text-ink-2" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Filter and Table Card */}
+            <div className="bg-bg-soft border border-line-soft rounded-[28px] p-8 space-y-6">
+              <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+                <div>
+                  <h3 className="text-lg font-display font-bold text-ink">Recent Session Actions</h3>
+                  <p className="text-xs text-ink-3 mt-1">Real-time interactions on the Artistant platform</p>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                  {/* Search */}
+                  <div className="relative flex-1 sm:w-64">
+                    <Search className="w-4 h-4 text-ink-3 absolute left-4 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Search email, user..."
+                      value={activitySearch}
+                      onChange={(e) => setActivitySearch(e.target.value)}
+                      className="w-full bg-bg-card border border-line-soft text-ink rounded-2xl pl-10 pr-4 py-2.5 text-xs font-mono focus:outline-none focus:border-ink transition-all"
+                    />
+                  </div>
+
+                  {/* Filter Select */}
+                  <select
+                    value={activityFilter}
+                    onChange={(e) => setActivityFilter(e.target.value)}
+                    className="bg-bg-card border border-line-soft text-ink rounded-2xl px-4 py-2.5 text-xs focus:outline-none focus:border-ink transition-all cursor-pointer"
+                  >
+                    <option value="all">All Events</option>
+                    <option value="visit">Visits Only</option>
+                    <option value="login">Logins Only</option>
+                    <option value="waitlist_register">Waitlist Registrations</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Logs Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b border-line-soft text-[10px] font-mono text-ink-3 uppercase tracking-wider text-left">
+                      <th className="pb-3 font-semibold">Time</th>
+                      <th className="pb-3 font-semibold">Event</th>
+                      <th className="pb-3 font-semibold">User Ident</th>
+                      <th className="pb-3 font-semibold">Browser / OS</th>
+                      <th className="pb-3 font-semibold">Referrer</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line-soft/50">
+                    {activityLogs
+                      .filter(log => {
+                        if (activityFilter !== "all" && log.action_type !== activityFilter) return false;
+                        if (activitySearch) {
+                          const query = activitySearch.toLowerCase();
+                          const emailMatch = log.email?.toLowerCase().includes(query);
+                          const usernameMatch = log.username?.toLowerCase().includes(query);
+                          const refMatch = log.referrer?.toLowerCase().includes(query);
+                          return emailMatch || usernameMatch || refMatch;
+                        }
+                        return true;
+                      })
+                      .map((log) => (
+                        <tr key={log.id} className="text-xs font-mono hover:bg-bg-card/30 transition-colors">
+                          <td className="py-4 text-ink-2">{new Date(log.created_at).toLocaleString()}</td>
+                          <td className="py-4">
+                            {log.action_type === 'visit' && (
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-zinc-800/50 text-zinc-300 border border-zinc-700/50">
+                                Visit
+                              </span>
+                            )}
+                            {log.action_type === 'login' && (
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-blue-950/40 text-blue-300 border border-blue-900/50">
+                                Login
+                              </span>
+                            )}
+                            {log.action_type === 'waitlist_register' && (
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-amber-950/40 text-amber-300 border border-amber-900/50">
+                                Waitlist
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-4 font-semibold text-ink">
+                            {log.username ? `@${log.username}` : (log.email || "Anonymous Visitor")}
+                          </td>
+                          <td className="py-4 text-ink-3 truncate max-w-[200px]" title={log.user_agent}>
+                            {parseUserAgent(log.user_agent)}
+                          </td>
+                          <td className="py-4 text-ink-2">{log.referrer || "Direct"}</td>
+                        </tr>
+                      ))}
+                    {activityLogs.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="py-8 text-center text-ink-3">No activity logs captured yet.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===================================================================
+            TAB: ADMIN CLEARANCE (ADMINS)
+            =================================================================== */}
+        {activeTab === "admins" && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-200">
+            {/* Left form column */}
+            <div className="lg:col-span-1 space-y-6">
+              <div className="bg-bg-soft border border-line-soft p-8 rounded-[28px] space-y-6">
+                <div className="border-b border-line-soft pb-5">
+                  <h3 className="text-lg font-display font-bold text-ink">Grant Clearance</h3>
+                  <p className="text-xs text-ink-3 mt-1">Authorize a team member to access this console.</p>
+                </div>
+
+                <form onSubmit={handleAddAdmin} className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-mono uppercase tracking-[0.08em] text-ink-3">Google Account Email</label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="developer@artistant.in"
+                      value={newAdminEmail}
+                      onChange={(e) => setNewAdminEmail(e.target.value)}
+                      className="w-full bg-bg-card border border-line-soft text-ink rounded-2xl px-4 py-3.5 text-xs font-mono focus:outline-none focus:border-ink transition-all"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full bg-ink text-bg font-display font-bold tracking-wider py-3.5 rounded-2xl flex items-center justify-center gap-2 hover:opacity-90 transition-all cursor-pointer text-xs uppercase"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Grant Admin Role
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            {/* Right table list column */}
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-bg-soft border border-line-soft p-8 rounded-[28px] space-y-6">
+                <div className="border-b border-line-soft pb-5">
+                  <h3 className="text-lg font-display font-bold text-ink">Authorized Administrators</h3>
+                  <p className="text-xs text-ink-3 mt-1">Active console credentials with full table write privileges.</p>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b border-line-soft text-[10px] font-mono text-ink-3 uppercase tracking-wider text-left">
+                        <th className="pb-3 font-semibold">User Email</th>
+                        <th className="pb-3 font-semibold">Granted By</th>
+                        <th className="pb-3 font-semibold">Access Date</th>
+                        <th className="pb-3 text-right font-semibold">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-line-soft/50">
+                      {/* Seed default hardcoded super admin display */}
+                      <tr className="text-xs font-mono hover:bg-bg-card/30 transition-colors">
+                        <td className="py-4 flex items-center gap-3 font-semibold text-ink">
+                          <div className="w-8 h-8 rounded-lg bg-indigo-950/30 text-indigo-300 flex items-center justify-center font-display font-bold">
+                            S
+                          </div>
+                          <span>anudeepdash2004@gmail.com</span>
+                        </td>
+                        <td className="py-4 text-ink-2">system</td>
+                        <td className="py-4 text-ink-3">Jul 1, 2026</td>
+                        <td className="py-4 text-right">
+                          <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-zinc-800 text-zinc-400 border border-zinc-700">
+                            Super-Admin
+                          </span>
+                        </td>
+                      </tr>
+
+                      {adminUsers
+                        .filter(admin => admin.email !== 'anudeepdash2004@gmail.com')
+                        .map((admin) => (
+                          <tr key={admin.id} className="text-xs font-mono hover:bg-bg-card/30 transition-colors">
+                            <td className="py-4 flex items-center gap-3 font-semibold text-ink">
+                              <div className="w-8 h-8 rounded-lg bg-bg-card border border-line-soft text-ink flex items-center justify-center font-display font-bold">
+                                {admin.email.substring(0, 1).toUpperCase()}
+                              </div>
+                              <span>{admin.email}</span>
+                            </td>
+                            <td className="py-4 text-ink-2">{admin.added_by || "unknown"}</td>
+                            <td className="py-4 text-ink-3">{new Date(admin.created_at).toLocaleDateString()}</td>
+                            <td className="py-4 text-right">
+                              <button
+                                onClick={() => handleRemoveAdmin(admin.email)}
+                                className="p-2 bg-red-950/20 text-red-400 hover:text-red-300 rounded-lg border border-red-900/30 hover:border-red-900 transition-colors cursor-pointer"
+                                title="Revoke access"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===================================================================
             TAB 2: MARKETING CONTENT WALL
             =================================================================== */}
         {activeTab === "graphics" && (
@@ -1888,11 +2306,8 @@ export default function AdminPage() {
               {/* Studio Settings */}
               <div className="bg-bg-soft border border-line-soft p-8 rounded-[28px] space-y-6">
                 <div className="flex items-center gap-4 border-b border-line-soft pb-5">
-                  <div className="w-12 h-12 rounded-[16px] flex items-center justify-center flex-shrink-0" style={{
-                    background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)',
-                    boxShadow: '0 8px 24px -6px rgba(242,90,43,0.45)'
-                  }}>
-                    <Settings className="w-5 h-5 text-[#0B1120]" />
+                  <div className="w-12 h-12 rounded-[16px] flex items-center justify-center flex-shrink-0 bg-bg-card border border-line-soft shadow-sm">
+                    <Settings className="w-5 h-5 text-brand" />
                   </div>
                   <div>
                     <h3 className="font-display font-bold text-ink text-lg uppercase tracking-tight">Graphics Parameters</h3>
@@ -2202,11 +2617,8 @@ export default function AdminPage() {
         {activeTab === "calendar" && (
           <div className="space-y-8 animate-in fade-in duration-200">
             <div className="bg-bg-soft border border-line-soft p-8 rounded-[28px] flex items-center gap-4">
-              <div className="w-12 h-12 rounded-[16px] flex items-center justify-center flex-shrink-0" style={{
-                background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)',
-                boxShadow: '0 8px 24px -6px rgba(242,90,43,0.45)'
-              }}>
-                <CalendarIcon className="w-5 h-5 text-[#0B1120]" />
+              <div className="w-12 h-12 rounded-[16px] flex items-center justify-center flex-shrink-0 bg-bg-card border border-line-soft shadow-sm">
+                <CalendarIcon className="w-5 h-5 text-brand" />
               </div>
               <div>
                 <h3 className="font-display font-bold text-ink text-lg uppercase tracking-tight">Launch Post Schedule</h3>
@@ -2307,11 +2719,8 @@ export default function AdminPage() {
             <div className="lg:col-span-6 space-y-6">
               <div className="bg-bg-soft border border-line-soft p-8 rounded-[28px] space-y-6">
                 <div className="flex items-center gap-4 border-b border-line-soft pb-5">
-                  <div className="w-12 h-12 rounded-[16px] flex items-center justify-center flex-shrink-0" style={{
-                    background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)',
-                    boxShadow: '0 8px 24px -6px rgba(242,90,43,0.45)'
-                  }}>
-                    <Mail className="w-5 h-5 text-[#0B1120]" />
+                  <div className="w-12 h-12 rounded-[16px] flex items-center justify-center flex-shrink-0 bg-bg-card border border-line-soft shadow-sm">
+                    <Mail className="w-5 h-5 text-brand" />
                   </div>
                   <div>
                     <h3 className="font-display font-bold text-ink text-lg uppercase tracking-tight">Campaign Composer</h3>
@@ -2469,7 +2878,7 @@ export default function AdminPage() {
                       <span className="font-bold text-lg tracking-widest text-ink font-display">ARTISTANT</span>
                     </div>
 
-                    <div className="p-0.5 rounded-xl" style={{ background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)' }}>
+                    <div className="p-px bg-line-soft rounded-xl">
                       <div className="bg-[#0B1120] p-5 rounded-lg space-y-4">
                         <p className="text-ink font-bold text-sm">Hey username,</p>
                         
@@ -2485,10 +2894,9 @@ export default function AdminPage() {
                             <a 
                               href={emailCtaUrl} 
                               target="_blank" 
-                              className="inline-block px-5 py-2.5 text-white font-bold text-xs rounded-full transition-all"
+                              className="inline-block px-5 py-2.5 text-white font-bold text-xs rounded-full transition-all bg-brand"
                               style={{ 
-                                textDecoration: 'none',
-                                background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)'
+                                textDecoration: 'none'
                               }}
                             >
                               {emailCtaText}

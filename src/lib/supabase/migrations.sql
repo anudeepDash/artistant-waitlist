@@ -139,3 +139,30 @@ GRANT SELECT (username) ON public.waitlist_users TO anon, authenticated;
 -- 4. Add referred_by column to waitlist_users to support the points & viral referral system
 ALTER TABLE waitlist_users ADD COLUMN IF NOT EXISTS referred_by TEXT;
 
+-- 5. Create admin_users table to track authorized admins
+CREATE TABLE IF NOT EXISTS public.admin_users (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  email text UNIQUE NOT NULL,
+  created_at timestamptz DEFAULT now(),
+  added_by text
+);
+
+-- Seed initial default super-admin
+INSERT INTO public.admin_users (email, added_by)
+VALUES ('anudeepdash2004@gmail.com', 'system')
+ON CONFLICT (email) DO NOTHING;
+
+-- 6. Create activity_logs table to track website traffic, logins, and registrations
+CREATE TABLE IF NOT EXISTS public.activity_logs (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id text, -- Firebase UID
+  email text,
+  username text,
+  action_type text NOT NULL, -- 'visit' | 'login' | 'waitlist_register'
+  user_agent text,
+  referrer text,
+  created_at timestamptz DEFAULT now()
+);
+
+-- 7. Add story_shared column to waitlist_users to track story sharing task
+ALTER TABLE waitlist_users ADD COLUMN IF NOT EXISTS story_shared BOOLEAN DEFAULT false;

@@ -51,7 +51,7 @@ export default function HeroSection({ onClick }: HeroSectionProps) {
         {/* ── Main Typography ── */}
         <motion.h1
           variants={itemVariants}
-          className="font-display font-medium text-6xl sm:text-7xl md:text-8xl lg:text-[110px] tracking-tight leading-[0.95] text-white select-none mb-8 max-w-[1000px]"
+          className="font-display font-medium text-[42px] sm:text-6xl md:text-7xl lg:text-8xl xl:text-[110px] tracking-tight leading-[0.95] text-white select-none mb-8 max-w-[1000px]"
         >
           Book <span className="text-neutral-500 italic font-serif">Brilliance.</span><br />
           Experience <span className="text-neutral-500 italic font-serif">More.</span>
@@ -60,7 +60,7 @@ export default function HeroSection({ onClick }: HeroSectionProps) {
         {/* ── Supporting Copy ── */}
         <motion.p
           variants={itemVariants}
-          className="text-neutral-400 text-lg md:text-xl font-light tracking-wide max-w-2xl mx-auto mb-16 leading-relaxed"
+          className="text-neutral-400 text-base md:text-xl font-light tracking-wide max-w-2xl mx-auto mb-10 md:mb-16 leading-relaxed px-4"
         >
           Artistant seamlessly connects independent talent with event organizers.
           Discovering, evaluating, and booking an artist is now as effortless as booking a ride.
@@ -70,7 +70,7 @@ export default function HeroSection({ onClick }: HeroSectionProps) {
         <motion.div variants={itemVariants} className="flex flex-col items-center gap-6">
           <button
             onClick={onClick}
-            className="group relative px-10 py-4 bg-brand-orange text-white font-medium text-sm tracking-widest uppercase rounded-full transition-all duration-500 hover:bg-white hover:text-black hover:scale-105 active:scale-95 overflow-hidden"
+            className="group relative px-8 py-3.5 md:px-10 md:py-4 bg-brand-orange text-white font-medium text-xs md:text-sm tracking-widest uppercase rounded-full transition-all duration-500 hover:bg-white hover:text-black hover:scale-105 active:scale-95 overflow-hidden"
           >
             <span className="relative z-10">Join the Waitlist</span>
           </button>

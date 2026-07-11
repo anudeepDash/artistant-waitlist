@@ -25,7 +25,7 @@ export function ThemeToggle() {
       onClick={() => {
         setTheme(resolvedTheme === "light" ? "dark" : "light");
       }}
-      className="relative w-9 h-9 flex items-center justify-center rounded-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:bg-black/10 dark:hover:bg-white/10 transition-colors text-ink-2 hover:text-ink overflow-hidden"
+      className="relative w-9 h-9 flex items-center justify-center rounded-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:bg-black/10 dark:hover:bg-white/10 transition-colors text-ink-2 hover:text-ink overflow-hidden before:absolute before:inset-[-6px] before:content-['']"
       aria-label="Toggle theme"
       title={`Current theme: ${resolvedTheme}`}
     >

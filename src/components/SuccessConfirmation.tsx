@@ -169,25 +169,13 @@ export default function SuccessConfirmation({
         {/* ── Reserved username pill ── */}
         <motion.div variants={itemVariants} className="mb-6">
           <div
-            style={{
-              display: 'inline-block',
-              padding: '10px 28px',
-              borderRadius: '999px',
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.12)',
-              backdropFilter: 'blur(8px)',
-            }}
+            className="inline-block px-5 py-2.5 sm:px-7 sm:py-3 rounded-full bg-white/5 border border-white/10 backdrop-blur-md"
           >
             <span
+              className="text-lg sm:text-xl md:text-22px font-extrabold bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF] bg-clip-text text-transparent inline-block"
               style={{
-                fontSize: '22px',
-                fontWeight: 800,
-                background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
                 fontFamily: 'var(--font-display, sans-serif)',
-                display: 'inline-block',
+                lineHeight: '1.2'
               }}
             >
               @{username}

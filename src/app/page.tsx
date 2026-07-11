@@ -8,11 +8,14 @@ import AuthModal from '@/components/AuthModal';
 import RoleWaitlistModal from '@/components/RoleWaitlistModal';
 import InteractiveTeaser from '@/components/InteractiveTeaser';
 import UIMockupSequence from '@/components/UIMockupSequence';
+import Navbar from '@/components/Navbar';
 import { isUsernameAvailable, getUserReservation, type WaitlistEntry } from '@/lib/waitlist';
 import { signInWithGoogle, signOut } from '@/lib/auth';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { useTheme } from 'next-themes';
+import { logActivityAction } from '@/lib/admin-actions';
+
 
 /* ── Sleek SVG Icons for features ── */
 const ICONS = [
@@ -441,9 +444,12 @@ function ScatterPhoto({
   };
   priority?: boolean;
 }) {
+  const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const { resolvedTheme } = useTheme();
 
   useEffect(() => {
+    setMounted(true);
     const checkMobile = () => setIsMobile(window.innerWidth <= 768);
     checkMobile();
     window.addEventListener('resize', checkMobile, { passive: true });
@@ -459,12 +465,17 @@ function ScatterPhoto({
     [layout.startRotZ, layout.endRotZ]
   );
 
-  const startOpacity = isMobile ? 0.46 : 0.26;
-  const brightness = isMobile ? 0.65 : 0.4;
+  const isLight = mounted && resolvedTheme === 'light';
+  const startOpacity = isLight ? (isMobile ? 0.75 : 0.6) : (isMobile ? 0.46 : 0.26);
+  const brightness = isLight ? (isMobile ? 0.95 : 0.8) : (isMobile ? 0.65 : 0.4);
   const size = isMobile ? layout.size * 2.2 : layout.size;
 
   const opacity = useTransform(progress, [0, 0.9, 1], [startOpacity, startOpacity, 0]);
   const scale = useTransform(progress, [0, 1], [0.92, 1.06]);
+
+  const filter = isLight
+    ? `grayscale(0.4) contrast(1.15) brightness(${brightness})`
+    : `grayscale(1) contrast(1.2) brightness(${brightness})`;
 
   return (
     <motion.div
@@ -487,11 +498,11 @@ function ScatterPhoto({
         alt={alt}
         loading={priority ? "eager" : "lazy"}
         className="h-full w-full object-cover"
-        style={{ filter: `grayscale(1) contrast(1.2) brightness(${brightness})` }}
+        style={{ filter }}
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-white/10"
+        className={`pointer-events-none absolute inset-0 rounded-2xl ring-1 ${isLight ? 'ring-black/10' : 'ring-white/10'}`}
       />
       <div
         aria-hidden="true"
@@ -538,6 +549,79 @@ const staggerHeadlineWords = {
   }
 };
 
+const getCandidateUsernames = (raw: string): string[] => {
+  const cleanInput = raw.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+  if (cleanInput.length === 0) return [];
+
+  const reservedUsernames = new Set([
+    'admin', 'administrator', 'support', 'official', 'artistant', 'artist', 'tant',
+    'mod', 'moderator', 'help', 'api', 'auth', 'login', 'logout', 'signin', 'signup',
+    'register', 'user', 'username', 'null', 'undefined', 'root', 'system', 'security',
+    'events', 'event', 'booking', 'bookings', 'gig', 'gigs', 'host', 'venue', 'fan',
+    'developer', 'dev', 'webmaster', 'privacy', 'terms', 'about', 'contact', 'blog',
+    'news', 'careers', 'jobs', 'faq', 'payment', 'billing', 'checkout', 'test',
+    'demo', 'example'
+  ]);
+
+  const premiumUsernames = new Set([
+    'ai', 'india', 'dj', 'genre', 'genres', 'music', 'singer', 'band', 'comedian',
+    'dancer', 'rapper', 'hiphop', 'rock', 'pop', 'jazz', 'techno', 'edm', 'live',
+    'show', 'bangalore', 'mumbai', 'goa', 'delhi'
+  ]);
+
+  const suffixes = ['_live', '_official', '_music', '_art', '_sound', '_hq', '_show'];
+  const prefixes = ['the_', 'iam_', 'real_'];
+  
+  const candidates: string[] = [];
+  
+  const isValidCandidate = (name: string) => {
+    return (
+      name.length >= 3 &&
+      name.length <= 20 &&
+      /^[a-z]/.test(name) &&
+      /^[a-z0-9_]+$/.test(name) &&
+      !reservedUsernames.has(name) &&
+      !premiumUsernames.has(name)
+    );
+  };
+
+  if (!/^[a-z]/.test(cleanInput)) {
+    for (const pref of prefixes) {
+      const candidate = `${pref}${cleanInput}`;
+      if (isValidCandidate(candidate)) {
+        candidates.push(candidate);
+      }
+    }
+  }
+
+  for (const pref of prefixes) {
+    const candidate = `${pref}${cleanInput}`;
+    if (isValidCandidate(candidate)) {
+      candidates.push(candidate);
+    }
+  }
+  
+  for (const suff of suffixes) {
+    const candidate = `${cleanInput}${suff}`;
+    if (isValidCandidate(candidate)) {
+      candidates.push(candidate);
+    }
+  }
+  
+  const currentYear = new Date().getFullYear();
+  const yearCandidate = `${cleanInput}_${currentYear}`;
+  if (isValidCandidate(yearCandidate)) {
+    candidates.push(yearCandidate);
+  }
+  
+  const numCandidate = `${cleanInput}99`;
+  if (isValidCandidate(numCandidate)) {
+    candidates.push(numCandidate);
+  }
+
+  return Array.from(new Set(candidates)).filter(c => c !== cleanInput);
+};
+
 export default function Home() {
   const sectionRef = useRef<HTMLElement | null>(null);
   const frequenciesRef = useRef<HTMLElement | null>(null);
@@ -550,14 +634,8 @@ export default function Home() {
     }
   };
 
-  const [scrollRef, setScrollRef] = useState<React.RefObject<HTMLElement | null>>({ current: null });
-  useEffect(() => {
-    setScrollRef(sectionRef);
-  }, []);
-
   const { user } = useAuth();
   const router = useRouter();
-  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [claimMessageIdx, setClaimMessageIdx] = useState(0);
 
   useEffect(() => {
@@ -567,17 +645,9 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    if (!profileDropdownOpen) return;
-    const handleClose = () => setProfileDropdownOpen(false);
-    window.addEventListener('click', handleClose);
-    return () => window.removeEventListener('click', handleClose);
-  }, [profileDropdownOpen]);
-
   const handleSignOut = async () => {
     try {
       await signOut();
-      setProfileDropdownOpen(false);
     } catch (err) {
       console.error("Error signing out:", err);
     }
@@ -586,12 +656,21 @@ export default function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<'organizer' | 'attendee' | null>(null);
-  const [navScrolled, setNavScrolled] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
   const [availStatus, setAvailStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'locked'>('idle');
   const [validationError, setValidationError] = useState<string | null>(null);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [userReservation, setUserReservation] = useState<WaitlistEntry | null>(null);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+
+  const handleSuggestionClick = (name: string) => {
+    setUsernameInput(name);
+    const input = document.getElementById('username-waitlist-input');
+    if (input) {
+      setTimeout(() => (input as HTMLInputElement).focus(), 50);
+    }
+  };
 
   // Fetch the current user's reservation when they sign in
   useEffect(() => {
@@ -599,10 +678,37 @@ export default function Home() {
     getUserReservation(user.uid).then(setUserReservation).catch(() => setUserReservation(null));
   }, [user]);
 
+  // Log visitor activity
+  useEffect(() => {
+    const hasLoggedVisit = sessionStorage.getItem("artistant_visit_logged");
+    if (!hasLoggedVisit) {
+      const logVisit = async () => {
+        try {
+          await logActivityAction({
+            userId: user?.uid || undefined,
+            email: user?.email || undefined,
+            username: userReservation?.username || undefined,
+            actionType: "visit",
+            userAgent: typeof window !== "undefined" ? window.navigator.userAgent : undefined,
+            referrer: typeof document !== "undefined" ? document.referrer : undefined,
+          });
+          sessionStorage.setItem("artistant_visit_logged", "true");
+        } catch (e) {
+          console.warn("Failed to log visit activity", e);
+        }
+      };
+      logVisit();
+    }
+  }, [user, userReservation]);
+
+
+  const [isMobile, setIsMobile] = useState(false);
+
   useEffect(() => {
     const mediaQueryMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const checkMotion = () => {
       setReduceMotion(mediaQueryMotion.matches || window.innerWidth < 768);
+      setIsMobile(window.innerWidth < 768);
     };
     checkMotion();
     window.addEventListener('resize', checkMotion, { passive: true });
@@ -630,29 +736,79 @@ export default function Home() {
 
   useEffect(() => {
     const raw = usernameInput.trim().toLowerCase();
+    
     if (raw.length === 0) {
       setAvailStatus('idle');
       setValidationError(null);
+      setSuggestions([]);
+      setSuggestionsLoading(false);
       return;
     }
+    
     if (raw.length < 3) {
       setAvailStatus('invalid');
       setValidationError('Must be at least 3 characters');
+      if (raw.length >= 2) {
+        setSuggestionsLoading(true);
+        const timer = setTimeout(async () => {
+          try {
+            const candidates = getCandidateUsernames(raw);
+            const results = await Promise.all(
+              candidates.map(async (candidate) => {
+                const free = await isUsernameAvailable(candidate);
+                return { candidate, free };
+              })
+            );
+            const available = results.filter(r => r.free).map(r => r.candidate).slice(0, 4);
+            setSuggestions(available);
+          } catch {
+            setSuggestions([]);
+          } finally {
+            setSuggestionsLoading(false);
+          }
+        }, 500);
+        return () => clearTimeout(timer);
+      } else {
+        setSuggestions([]);
+        setSuggestionsLoading(false);
+      }
       return;
     }
     if (raw.length > 20) {
       setAvailStatus('invalid');
       setValidationError('Must be 20 characters or fewer');
+      setSuggestions([]);
+      setSuggestionsLoading(false);
       return;
     }
     if (!/^[a-z]/.test(raw)) {
       setAvailStatus('invalid');
       setValidationError('Must start with a letter');
-      return;
+      setSuggestionsLoading(true);
+      const timer = setTimeout(async () => {
+        try {
+          const candidates = getCandidateUsernames(raw);
+          const results = await Promise.all(
+            candidates.map(async (candidate) => {
+              const free = await isUsernameAvailable(candidate);
+              return { candidate, free };
+            })
+          );
+          const available = results.filter(r => r.free).map(r => r.candidate).slice(0, 4);
+          setSuggestions(available);
+        } catch {
+          setSuggestions([]);
+        } finally {
+          setSuggestionsLoading(false);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
     }
     if (!/^[a-z0-9_]+$/.test(raw)) {
       setAvailStatus('invalid');
       setValidationError('Letters, numbers, and underscores only');
+      setSuggestions([]);
+      setSuggestionsLoading(false);
       return;
     }
 
@@ -669,7 +825,25 @@ export default function Home() {
     if (reservedUsernames.has(raw)) {
       setAvailStatus('invalid');
       setValidationError('This username is reserved');
-      return;
+      setSuggestionsLoading(true);
+      const timer = setTimeout(async () => {
+        try {
+          const candidates = getCandidateUsernames(raw);
+          const results = await Promise.all(
+            candidates.map(async (candidate) => {
+              const free = await isUsernameAvailable(candidate);
+              return { candidate, free };
+            })
+          );
+          const available = results.filter(r => r.free).map(r => r.candidate).slice(0, 4);
+          setSuggestions(available);
+        } catch {
+          setSuggestions([]);
+        } finally {
+          setSuggestionsLoading(false);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
     }
 
     const premiumUsernames = new Set([
@@ -681,22 +855,54 @@ export default function Home() {
     if (premiumUsernames.has(raw)) {
       setAvailStatus('locked');
       setValidationError('This premium username is locked');
-      return;
+      setSuggestionsLoading(true);
+      const timer = setTimeout(async () => {
+        try {
+          const candidates = getCandidateUsernames(raw);
+          const results = await Promise.all(
+            candidates.map(async (candidate) => {
+              const free = await isUsernameAvailable(candidate);
+              return { candidate, free };
+            })
+          );
+          const available = results.filter(r => r.free).map(r => r.candidate).slice(0, 4);
+          setSuggestions(available);
+        } catch {
+          setSuggestions([]);
+        } finally {
+          setSuggestionsLoading(false);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
     }
 
     setAvailStatus('checking');
     setValidationError(null);
+    setSuggestionsLoading(true);
 
     const timer = setTimeout(async () => {
       try {
         const free = await isUsernameAvailable(raw);
         if (free) {
           setAvailStatus('available');
+          setSuggestions([]);
+          setSuggestionsLoading(false);
         } else {
           setAvailStatus('taken');
+          const candidates = getCandidateUsernames(raw);
+          const results = await Promise.all(
+            candidates.map(async (candidate) => {
+              const free = await isUsernameAvailable(candidate);
+              return { candidate, free };
+            })
+          );
+          const available = results.filter(r => r.free).map(r => r.candidate).slice(0, 4);
+          setSuggestions(available);
+          setSuggestionsLoading(false);
         }
       } catch (err) {
         setAvailStatus('idle');
+        setSuggestionsLoading(false);
       }
     }, 500);
 
@@ -713,25 +919,7 @@ export default function Home() {
     }
   }, []);
 
-  const [showNav, setShowNav] = useState(true);
-  const [lastScrollY, setLastScrollY] = useState(0);
   const [activePhase, setActivePhase] = useState('core');
-
-  useEffect(() => {
-    const onScroll = () => {
-      const currentScrollY = window.scrollY;
-      setNavScrolled(currentScrollY > 60);
-      
-      if (currentScrollY <= 60) {
-        setShowNav(true);
-      } else {
-        setShowNav(false);
-      }
-      setLastScrollY(currentScrollY);
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, [lastScrollY]);
 
   // Framer motion scroll Hook for Parallax Background effects
   const { scrollY, scrollYProgress } = useScroll();
@@ -740,8 +928,8 @@ export default function Home() {
   const yOrbParallax = useTransform(scrollY, [0, 1000], [0, -180]);
 
   const sectionScroll = useScroll({
-    target: scrollRef,
-    offset: ["start start", "end start"],
+    target: sectionRef,
+    offset: ["start start", "end end"],
   });
   const smoothSectionProgress = useSpring(sectionScroll.scrollYProgress, {
     stiffness: 85,
@@ -811,9 +999,7 @@ export default function Home() {
   const c6CombinedX = useTransform([c6X, c6ScrollX], ([mX, sX]) => (mX as number) + (sX as number));
   const c6CombinedY = useTransform([c6Y, c6ScrollY], ([mY, sY]) => (mY as number) + (sY as number));
 
-  // Background Bento transforms for Problem section
-  const problemBentoScale = useTransform(scrollY, [200, 1200], [0.9, 1.05]);
-  const problemBentoY = useTransform(scrollY, [200, 1200], [50, -50]);
+
 
 
 
@@ -860,155 +1046,13 @@ export default function Home() {
 
 
       {/* ──────────────────────── NAV ──────────────────────── */}
-      <motion.nav 
-        className={`nav ${navScrolled ? 'scrolled' : ''}`}
-        initial={{ opacity: 0, y: -140 }}
-        animate={{ y: showNav ? 0 : -140, opacity: showNav ? 1 : 0 }}
-        transition={{ duration: 0.3, ease: 'easeInOut' }}
-      >
-        <a className="nav-logo" href="#top">
-          <img src="/logo_wordmark.png" alt="ArtisTant" style={{ height: '180px', width: 'auto', display: 'block' }} />
-        </a>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <ThemeToggle />
-          {user ? (
-            <div style={{ position: 'relative' }}>
-              <button 
-                onClick={(e) => { e.stopPropagation(); setProfileDropdownOpen(!profileDropdownOpen); }} 
-                className="nav-cta" 
-                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-              >
-                <div style={{
-                  width: '26px',
-                  height: '26px',
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)',
-                  color: '#FFFFFF',
-                  display: 'grid',
-                  placeItems: 'center',
-                  fontSize: '11px',
-                  fontWeight: '800',
-                  fontFamily: 'var(--font-mono)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.02em',
-                  flexShrink: 0,
-                }}>
-                  {userReservation?.username?.[0] ?? user.displayName?.[0] ?? user.email?.[0] ?? 'U'}
-                </div>
-                <span>{userReservation ? `@${userReservation.username}` : 'Profile'}</span>
-              </button>
-              
-              <AnimatePresence>
-                {profileDropdownOpen && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    transition={{ duration: 0.2, ease: 'easeOut' }}
-                    onClick={(e) => e.stopPropagation()} 
-                    style={{
-                      position: 'absolute',
-                      top: 'calc(100% + 16px)',
-                      right: 0,
-                      width: '280px',
-                      borderRadius: '20px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      zIndex: 100,
-                      boxShadow: "0 20px 40px -10px var(--shadow-heavy)", border: "1px solid var(--glass-border)",
-                      background: "var(--glass-bg)",
-                      backdropFilter: 'blur(24px)',
-                      overflow: 'hidden'
-                    }}
-                  >
-                    {/* User Info Section */}
-                    <div style={{ padding: '20px 20px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '50%',
-                          background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)',
-                          color: '#FFFFFF',
-                          display: 'grid',
-                          placeItems: 'center',
-                          fontSize: '16px',
-                          fontWeight: '800',
-                          fontFamily: 'var(--font-mono)',
-                          textTransform: 'uppercase',
-                        }}>
-                          {userReservation?.username?.[0] ?? user.displayName?.[0] ?? user.email?.[0] ?? 'U'}
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontSize: '15px', fontWeight: '600', color: '#FFFFFF', letterSpacing: '-0.01em' }}>
-                            {userReservation ? `@${userReservation.username}` : (user.displayName || 'Creator')}
-                          </span>
-                          <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>
-                            {user?.email || user?.phoneNumber}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={{ height: '1px', background: "var(--line)" }} />
-
-                    {/* Actions Section */}
-                    <div style={{ padding: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <button
-                        onClick={() => {
-                          setProfileDropdownOpen(false);
-                          router.push(`/${userReservation?.username || 'profile'}`);
-                        }}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: '12px',
-                          padding: '12px 16px', borderRadius: '12px',
-                          background: 'transparent', border: 'none',
-                          color: 'var(--ink-1)', fontSize: '14px', fontWeight: '500',
-                          cursor: 'pointer', transition: 'all 0.2s',
-                          textAlign: 'left', width: '100%'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--brand-1)' }}>
-                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                          <circle cx="12" cy="7" r="4"></circle>
-                        </svg>
-                        View My Profile
-                      </button>
-                      
-                      <button
-                        onClick={handleSignOut}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: '12px',
-                          padding: '12px 16px', borderRadius: '12px',
-                          background: 'transparent', border: 'none',
-                          color: '#FF5A5F', fontSize: '14px', fontWeight: '500',
-                          cursor: 'pointer', transition: 'all 0.2s',
-                          textAlign: 'left', width: '100%'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 90, 95, 0.08)'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                          <polyline points="16 17 21 12 16 7"></polyline>
-                          <line x1="21" y1="12" x2="9" y2="12"></line>
-                        </svg>
-                        Sign Out
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          ) : (
-            <button onClick={openModal} className="nav-cta">
-              Sign In <span className="arrow">↗</span>
-            </button>
-          )}
-        </div>
-      </motion.nav>
+      <Navbar
+        user={user}
+        userReservation={userReservation}
+        onSignInClick={openModal}
+        onSignOut={handleSignOut}
+        onProfileClick={() => router.push(`/${userReservation?.username || 'profile'}`)}
+      />
 
       {/* ──────────────────────── SCROLL-DRIVEN 3D SCATTER HERO ──────────────────────── */}
       <section
@@ -1017,7 +1061,7 @@ export default function Home() {
         className="relative"
         style={{
           // Reserve scroll room for the fly-away bento scatter animation to play out
-          height: "220vh",
+          height: "140vh",
           background: "var(--bg)",
         }}
       >
@@ -1027,7 +1071,7 @@ export default function Home() {
           className="pointer-events-none absolute inset-0 z-0"
           style={{
             background:
-              "radial-gradient(ellipse 70% 50% at 50% 50%, rgba(124,92,255,0.08), transparent 60%), radial-gradient(ellipse 60% 40% at 20% 80%, rgba(242,90,43,0.06), transparent 55%)",
+              "radial-gradient(ellipse 70% 50% at 50% 50%, var(--hero-glow-1), transparent 60%), radial-gradient(ellipse 60% 40% at 20% 80%, var(--hero-glow-2), transparent 55%)",
           }}
         />
         <div
@@ -1035,7 +1079,7 @@ export default function Home() {
           className="pointer-events-none absolute inset-0 z-0 opacity-40"
           style={{
             backgroundImage:
-              "linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)",
+              "linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px)",
             backgroundSize: "80px 80px",
             maskImage: "radial-gradient(ellipse 80% 70% at 50% 40%, black 30%, transparent 80%)",
             WebkitMaskImage: "radial-gradient(ellipse 80% 70% at 50% 40%, black 30%, transparent 80%)",
@@ -1137,18 +1181,18 @@ export default function Home() {
               transition={{ duration: 0.6, delay: 0.2, ease: 'easeOut' }}
             >
               <MagneticButton 
-                disabled={true}
+                onClick={scrollToWaitlist} 
                 className="btn-primary"
                 style={{
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  color: 'rgba(255, 255, 255, 0.3)',
+                  background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)',
+                  color: '#FFFFFF',
                   fontWeight: '700',
                   border: 'none',
-                  cursor: 'not-allowed',
-                  opacity: 0.6
+                  cursor: 'pointer',
+                  opacity: 1
                 }}
               >
-                Starting Soon
+                Reserve Username
               </MagneticButton>
             </motion.div>
           </div>
@@ -1157,25 +1201,7 @@ export default function Home() {
 
       {/* ──────────────────────── THE PROBLEM (REAL VOICES) ──────────────────────── */}
       <section id="problem-voices" className="section" style={{ borderTop: '1px solid var(--line-soft)', paddingBottom: '40px', position: 'relative', overflow: 'hidden' }}>
-        {/* Scattered Background Bento Image Gallery for Problem Section */}
-        <motion.div 
-          className="bento-bg-card" 
-          style={{ 
-            bottom: '10%', left: '-80px', width: '260px', height: '180px', transform: 'rotate(12deg)',
-            scale: problemBentoScale, y: problemBentoY, opacity: 0.08
-          }}
-        >
-          <img src="/gallery_2.png" alt="A stage setup" />
-        </motion.div>
-        <motion.div 
-          className="bento-bg-card" 
-          style={{ 
-            top: '15%', right: '-80px', width: '240px', height: '200px', transform: 'rotate(-8deg)',
-            scale: problemBentoScale, y: problemBentoY, opacity: 0.08
-          }}
-        >
-          <img src="/gallery_3.png" alt="Crowd at show" />
-        </motion.div>
+
 
         <div className="section-inner">
           <motion.div 
@@ -1326,7 +1352,7 @@ export default function Home() {
                   <span className="comparison-icon" style={{ color: '#555555' }}>●</span>
                   <div>
                     <strong style={{ color: "var(--ink-2)" }}>3x Middleman Agent Markups</strong>
-                    Brokers adding opaque commission markups that inflate client pricing.
+                    Brokers adding opaque platform fee markups that inflate client pricing.
                   </div>
                 </li>
                 <li className="comparison-item" style={{ opacity: 0.7 }}>
@@ -1630,7 +1656,7 @@ export default function Home() {
         `}} />
 
         {/* Horizontal Carousel */}
-        <div ref={roadmapScrollRef} className="w-full overflow-x-auto snap-x snap-mandatory flex gap-6 px-6 pb-12 hide-scrollbar scroll-smooth">
+        <div ref={roadmapScrollRef} className="w-full overflow-x-auto overflow-y-hidden snap-x snap-mandatory flex gap-6 px-6 pt-6 pb-12 -mt-6 hide-scrollbar scroll-smooth">
           {ROADMAP_PHASES.flatMap((phase) => 
             phase.features.map((feature, fIdx) => (
               <motion.div 
@@ -1805,7 +1831,7 @@ export default function Home() {
                 background: 'rgba(10, 10, 10, 0.8)',
                 border: '1px solid rgba(255, 255, 255, 0.08)',
                 borderRadius: '32px',
-                padding: '40px',
+                padding: isMobile ? '24px 20px' : '40px',
                 textAlign: 'left',
                 position: 'relative',
                 overflow: 'hidden',
@@ -1937,7 +1963,7 @@ export default function Home() {
                            availStatus === 'invalid' ? '0 0 15px rgba(255, 199, 44, 0.12)' :
                            'none',
                 borderRadius: '24px',
-                padding: '16px 50px 16px 44px',
+                padding: isMobile ? '14px 44px 14px 38px' : '16px 50px 16px 44px',
                 color: '#FFFFFF',
                 fontSize: '16px',
                 outline: 'none',
@@ -1946,8 +1972,8 @@ export default function Home() {
                 transition: 'all 0.25s ease'
               }}
             />
-            {/* Inline validation status icons (HIDDEN AS PER REQUEST) */}
-            <div style={{ position: 'absolute', right: '20px', display: 'none', alignItems: 'center', pointerEvents: 'none' }}>
+            {/* Inline validation status icons */}
+            <div style={{ position: 'absolute', right: '20px', display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
               {availStatus === 'checking' && (
                 <div className="status-spinner-small" />
               )}
@@ -1966,8 +1992,8 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Real-time status feedback (HIDDEN AS PER REQUEST) */}
-          <div style={{ minHeight: '40px', display: 'none', justifyContent: 'center', alignItems: 'center', margin: '2px 0' }}>
+          {/* Real-time status feedback */}
+          <div style={{ minHeight: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '2px 0' }}>
             {availStatus !== 'idle' && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.96, y: -4 }}
@@ -2009,23 +2035,103 @@ export default function Home() {
             )}
           </div>
 
+          {/* Username Suggestions Engine */}
+          <AnimatePresence>
+            {(suggestionsLoading || suggestions.length > 0) && (
+              <motion.div
+                initial={{ opacity: 0, y: -10, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: 'auto' }}
+                exit={{ opacity: 0, y: -10, height: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  alignItems: 'center',
+                  marginBottom: '16px',
+                  overflow: 'hidden',
+                  width: '100%',
+                }}
+              >
+                {suggestionsLoading ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0' }}>
+                    <div className="status-spinner-small" style={{ borderLeftColor: 'transparent' }} />
+                    <span style={{ fontSize: '11px', color: 'var(--ink-3)', fontFamily: 'var(--font-mono)', letterSpacing: '0.05em' }}>
+                      Finding available options...
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    <span style={{ fontSize: '11px', color: 'var(--ink-3)', fontFamily: 'var(--font-mono)', fontWeight: '600', letterSpacing: '0.05em' }}>
+                      SUGGESTED AVAILABLE USERNAMES
+                    </span>
+                    <div style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '8px',
+                      justifyContent: 'center',
+                      width: '100%',
+                      padding: '4px 0'
+                    }}>
+                      {suggestions.map((suggestion) => (
+                        <motion.button
+                          key={suggestion}
+                          type="button"
+                          onClick={() => handleSuggestionClick(suggestion)}
+                          whileHover={{ scale: 1.05, borderColor: 'var(--brand-1)', background: 'rgba(242, 90, 43, 0.08)' }}
+                          whileTap={{ scale: 0.95 }}
+                          style={{
+                            padding: '6px 14px',
+                            background: 'rgba(255, 255, 255, 0.02)',
+                            border: '1px solid rgba(255, 255, 255, 0.08)',
+                            borderRadius: '99px',
+                            color: 'var(--brand-1)',
+                            fontSize: '13px',
+                            fontFamily: 'var(--font-mono)',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            transition: 'color 0.2s, border-color 0.2s, background-color 0.2s',
+                          }}
+                        >
+                          @{suggestion}
+                        </motion.button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <MagneticButton 
-            type="button"
+            type="submit"
             className="cta-btn"
-            disabled={true}
+            disabled={availStatus !== 'available' && availStatus !== 'locked'}
             style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              color: 'rgba(255, 255, 255, 0.3)',
+              background: availStatus === 'available'
+                ? 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)'
+                : availStatus === 'locked'
+                  ? '#D4AF37'
+                  : 'rgba(255, 255, 255, 0.05)',
+              color: availStatus === 'available' || availStatus === 'locked'
+                ? '#ffffff'
+                : 'rgba(255, 255, 255, 0.3)',
               fontWeight: '700',
               border: 'none',
               marginTop: '4px',
               padding: '16px 28px',
               borderRadius: '24px',
-              cursor: 'not-allowed',
-              opacity: 0.6
+              cursor: availStatus === 'available' || availStatus === 'locked' ? 'pointer' : 'not-allowed',
+              opacity: availStatus === 'available' || availStatus === 'locked' ? 1 : 0.6,
+              boxShadow: availStatus === 'available'
+                ? '0 8px 24px rgba(242, 90, 43, 0.25)'
+                : availStatus === 'locked'
+                  ? '0 8px 24px rgba(212, 175, 55, 0.25)'
+                  : 'none',
+              transition: 'all 0.25s ease'
             }}
           >
-            Starting Soon
+            {availStatus === 'locked' ? 'REQUEST PREMIUM NAME' : 'CLAIM USERNAME'}
           </MagneticButton>
         </motion.form>
           )}
@@ -2039,25 +2145,27 @@ export default function Home() {
         
         {/* Sleek Segmented Role Waitlists */}
         <div style={{ marginTop: '48px', margin: '48px auto 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', zIndex: 10, position: 'relative', width: '100%', maxWidth: '1200px', padding: '0 20px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', width: '100%' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(auto-fit, minmax(260px, 1fr))' : 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', width: '100%' }}>
             
             {/* Host Option Card */}
             <motion.div 
+              onClick={() => { setSelectedRole('organizer'); setIsRoleModalOpen(true); }}
+              whileHover={{ scale: 1.02, borderColor: 'rgba(124, 92, 255, 0.4)' }}
+              whileTap={{ scale: 0.98 }}
               style={{
                 background: 'rgba(10, 10, 10, 0.8)',
                 border: '1px solid rgba(255, 255, 255, 0.08)',
                 borderRadius: '16px',
-                padding: '40px',
+                padding: isMobile ? '24px 20px' : '40px',
                 textAlign: 'left',
-                cursor: 'not-allowed',
+                cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 backdropFilter: 'blur(10px)',
                 position: 'relative',
                 overflow: 'hidden',
                 boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)',
                 display: 'flex',
-                flexDirection: 'column',
-                opacity: 0.6
+                flexDirection: 'column'
               }}
             >
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '150px', background: 'radial-gradient(ellipse at top left, rgba(124, 92, 255, 0.15), transparent 70%)', pointerEvents: 'none' }} />
@@ -2065,35 +2173,37 @@ export default function Home() {
                 <div style={{ fontSize: '12px', color: '#7C5CFF', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '16px', fontWeight: 600 }}>
                   FOR HOSTS
                 </div>
-                <h3 style={{ fontSize: '32px', fontWeight: '800', color: '#FFFFFF', marginBottom: '20px', letterSpacing: '-0.02em', textTransform: 'uppercase', lineHeight: '1.1' }}>
+                <h3 style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: '800', color: '#FFFFFF', marginBottom: '20px', letterSpacing: '-0.02em', textTransform: 'uppercase', lineHeight: '1.1' }}>
                   YOU <span className="brand-text">HIRE</span> ARTISTS.
                 </h3>
                 <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.7)', lineHeight: '1.5', marginBottom: '32px', fontWeight: 400 }}>
                   Festivals. Cafes. Brands. Weddings. Find verified talent. Pay through escrow. Sleep at night.
                 </p>
-                <div style={{ marginTop: 'auto', fontSize: '12px', color: '#FFFFFF', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.5 }}>
-                  STARTING SOON
+                <div style={{ marginTop: 'auto', fontSize: '12px', color: '#FFFFFF', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  JOIN AS HOST <span>→</span>
                 </div>
               </div>
             </motion.div>
 
             {/* Fan Option Card */}
             <motion.div 
+              onClick={() => { setSelectedRole('attendee'); setIsRoleModalOpen(true); }}
+              whileHover={{ scale: 1.02, borderColor: 'rgba(212, 86, 122, 0.4)' }}
+              whileTap={{ scale: 0.98 }}
               style={{
                 background: 'rgba(10, 10, 10, 0.8)',
                 border: '1px solid rgba(255, 255, 255, 0.08)',
                 borderRadius: '16px',
-                padding: '40px',
+                padding: isMobile ? '24px 20px' : '40px',
                 textAlign: 'left',
-                cursor: 'not-allowed',
+                cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 backdropFilter: 'blur(10px)',
                 position: 'relative',
                 overflow: 'hidden',
                 boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)',
                 display: 'flex',
-                flexDirection: 'column',
-                opacity: 0.6
+                flexDirection: 'column'
               }}
             >
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '150px', background: 'radial-gradient(ellipse at top right, rgba(212, 86, 122, 0.15), transparent 70%)', pointerEvents: 'none' }} />
@@ -2101,14 +2211,14 @@ export default function Home() {
                 <div style={{ fontSize: '12px', color: '#D4567A', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '16px', fontWeight: 600 }}>
                   FOR FANS
                 </div>
-                <h3 style={{ fontSize: '32px', fontWeight: '800', color: '#FFFFFF', marginBottom: '20px', letterSpacing: '-0.02em', textTransform: 'uppercase', lineHeight: '1.1' }}>
+                <h3 style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: '800', color: '#FFFFFF', marginBottom: '20px', letterSpacing: '-0.02em', textTransform: 'uppercase', lineHeight: '1.1' }}>
                   YOU <span className="brand-text">LOVE</span> ART.
                 </h3>
                 <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.7)', lineHeight: '1.5', marginBottom: '32px', fontWeight: 400 }}>
                   Request custom works, tip directly, and buy tickets. Experience live performances and exhibitions like never before.
                 </p>
-                <div style={{ marginTop: 'auto', fontSize: '12px', color: '#FFFFFF', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.5 }}>
-                  STARTING SOON
+                <div style={{ marginTop: 'auto', fontSize: '12px', color: '#FFFFFF', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  JOIN AS FAN <span>→</span>
                 </div>
               </div>
             </motion.div>

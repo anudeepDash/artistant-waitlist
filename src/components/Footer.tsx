@@ -3,18 +3,18 @@ import { QrCode } from 'lucide-react';
 
 export default function Footer() {
   return (
-    <footer className="relative bg-bg border-t border-line-soft py-20 px-[var(--gutter)] overflow-hidden z-10">
+    <footer className="relative bg-bg border-t border-line-soft py-12 md:py-20 px-[var(--gutter)] overflow-hidden z-10">
       
       {/* Background Orbs */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-30 dark:opacity-100">
         <div className="absolute -bottom-48 -left-48 w-96 h-96 rounded-full bg-[#F25A2B]/10 blur-[80px]"></div>
         <div className="absolute -bottom-48 -right-48 w-96 h-96 rounded-full bg-[#7C5CFF]/10 blur-[80px]"></div>
       </div>
-
+ 
       <div className="max-w-[1360px] mx-auto relative z-10">
         
         {/* Top Section */}
-        <div className="flex flex-col lg:flex-row justify-between items-start gap-16 mb-20">
+        <div className="flex flex-col lg:flex-row justify-between items-start gap-10 md:gap-16 mb-12 md:mb-20">
           
           {/* Brand Column */}
           <div className="flex flex-col items-start gap-1 lg:w-[45%]">
@@ -56,7 +56,7 @@ export default function Footer() {
               <h3 className="text-ink font-semibold text-xs tracking-[0.15em] uppercase opacity-90">Quick Links</h3>
               <div className="flex flex-col gap-4">
                 <Link href="/#join" className="text-ink-2 hover:text-ink transition-colors duration-300 relative group w-fit text-[15px] cursor-pointer">
-                  Starting Soon
+                  Reserve Username
                   <span className="absolute -bottom-1 left-0 w-0 h-[1px] bg-ink transition-all duration-300 group-hover:w-full opacity-50"></span>
                 </Link>
                 <Link href="/#problem-voices" className="text-ink-2 hover:text-ink transition-colors duration-300 relative group w-fit text-[15px] cursor-pointer">

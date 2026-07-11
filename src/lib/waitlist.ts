@@ -279,3 +279,49 @@ export async function getReferralCount(username: string): Promise<number> {
   }
 }
 
+/**
+ * Fetches the count of verified users referred by a given username.
+ */
+export async function getVerifiedReferralCount(username: string): Promise<number> {
+  const supabase = createClient();
+  try {
+    const { count, error } = await supabase
+      .from("waitlist_users")
+      .select("id", { count: "exact", head: true })
+      .eq("referred_by", username.trim().toLowerCase())
+      .eq("is_verified", true);
+
+    if (error) {
+      console.warn("Error getting verified referral count:", error.message);
+      return 0;
+    }
+    return count || 0;
+  } catch (e) {
+    console.error("Failed to fetch verified referrals:", e);
+    return 0;
+  }
+}
+
+/**
+ * Fetches the count of unverified/pending users referred by a given username.
+ */
+export async function getUnverifiedReferralCount(username: string): Promise<number> {
+  const supabase = createClient();
+  try {
+    const { count, error } = await supabase
+      .from("waitlist_users")
+      .select("id", { count: "exact", head: true })
+      .eq("referred_by", username.trim().toLowerCase())
+      .eq("is_verified", false);
+
+    if (error) {
+      console.warn("Error getting unverified referral count:", error.message);
+      return 0;
+    }
+    return count || 0;
+  } catch (e) {
+    console.error("Failed to fetch unverified referrals:", e);
+    return 0;
+  }
+}
+

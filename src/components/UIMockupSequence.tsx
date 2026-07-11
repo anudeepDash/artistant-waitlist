@@ -123,21 +123,22 @@ export default function UIMockupSequence() {
               </motion.div>
             </AnimatePresence>
 
-            {/* Progress Indicators */}
-            <div className="flex items-center gap-2 mt-4">
+            <div className="flex items-center gap-1.5 mt-4">
               {SEQUENCE_DATA.map((item, idx) => {
                 const isActive = idx === activeIndex;
                 return (
                   <button
                     key={item.id}
                     onClick={() => setActiveIndex(idx)}
-                    className={`h-1 transition-all duration-500 rounded-full ${
+                    className="py-3 px-1.5 cursor-pointer flex items-center"
+                    aria-label={`Go to slide ${idx + 1}`}
+                  >
+                    <span className={`h-1 transition-all duration-500 rounded-full ${
                       isActive 
                         ? 'w-8 bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF]' 
                         : 'w-2 bg-ink/10 dark:bg-white/20 hover:bg-ink/30 dark:hover:bg-white/40'
-                    }`}
-                    aria-label={`Go to slide ${idx + 1}`}
-                  />
+                    }`} />
+                  </button>
                 );
               })}
             </div>
