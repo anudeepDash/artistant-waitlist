@@ -20,6 +20,7 @@ export interface WaitlistEntry {
   reserved_at: string;
   position_override?: number | null;
   referred_by?: string | null;
+  story_shared?: boolean | null;
 }
 
 /** Artist category options */

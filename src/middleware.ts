@@ -21,7 +21,7 @@ const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const MAX_ATTEMPTS = 5;
 
 export default function middleware(req: NextRequest) {
-  const ip = req.headers.get('x-forwarded-for') || req.ip || '127.0.0.1';
+  const ip = req.headers.get('x-forwarded-for') || '127.0.0.1';
   
   if (req.method === 'POST') {
     const now = Date.now();
