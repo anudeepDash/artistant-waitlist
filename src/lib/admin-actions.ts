@@ -504,25 +504,26 @@ export async function checkUsernameAvailableAction(username: string): Promise<bo
   }
 
   // Directly check the waitlist_users table
-  const { count, error } = await client
+  const { data, error } = await client
     .from('waitlist_users')
-    .select('id', { count: 'exact', head: true })
-    .eq('username', normalised);
+    .select('id')
+    .eq('username', normalised)
+    .limit(1);
 
   if (error) {
     console.error('Error checking username availability directly, falling back:', error);
     // Fallback to the RPC function in case table structure or permissions have issues
-    const { data, error: rpcError } = await client.rpc('check_username_available', {
+    const { data: rpcData, error: rpcError } = await client.rpc('check_username_available', {
       p_username: normalised,
     });
     if (rpcError) {
       console.error('Fallback RPC check also failed:', rpcError);
       throw new Error('Could not verify username availability due to database error.');
     }
-    return data === true;
+    return rpcData === true;
   }
 
-  return count === 0;
+  return !data || data.length === 0;
 }
 
 /**

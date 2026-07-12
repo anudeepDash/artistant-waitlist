@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { type User } from 'firebase/auth';
 import { type WaitlistEntry } from '@/lib/waitlist';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { deleteAccountDataAction } from '@/lib/account-actions';
 
 /* ──────────────────────────────────────────────
    Navbar Props
@@ -40,9 +41,43 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [hoveredLink, setHoveredLink] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const pathname = usePathname();
+  const router = useRouter();
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Reset settings view when dropdown is closed
+  useEffect(() => {
+    if (!profileDropdownOpen) {
+      setShowSettings(false);
+    }
+  }, [profileDropdownOpen]);
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    const confirmDelete = window.confirm("Are you sure you want to permanently delete your account and all data? This action cannot be undone.");
+    if (!confirmDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const idToken = await user.getIdToken();
+      await deleteAccountDataAction(idToken);
+      await user.delete();
+      setProfileDropdownOpen(false);
+      router.push('/');
+    } catch (err: any) {
+      console.error(err);
+      if (err.message && err.message.includes('requires-recent-login')) {
+        alert("Please sign out and sign in again before deleting your account.");
+      } else {
+        alert("Failed to delete account. Please try again or contact support.");
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // Close profile dropdown when clicking outside
   useEffect(() => {
@@ -199,7 +234,11 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
                   "
                   style={{ background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)' }}
                   >
-                    {userReservation?.username?.[0] ?? user.displayName?.[0] ?? user.email?.[0] ?? 'U'}
+                    {userReservation?.profile_photo_url ? (
+                      <img src={userReservation.profile_photo_url} alt="" className="w-full h-full object-cover rounded-full" />
+                    ) : (
+                      userReservation?.username?.[0] ?? user.displayName?.[0] ?? user.email?.[0] ?? 'U'
+                    )}
                   </div>
                   <span className="hidden sm:inline font-mono tracking-wide text-xs">
                     {userReservation ? `@${userReservation.username}` : 'Profile'}
@@ -231,66 +270,123 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
                         shadow-2xl shadow-black/40 flex flex-col
                       "
                     >
-                      {/* User metadata */}
-                      <div className="p-5 pb-4 flex flex-col gap-2.5">
-                        <div className="flex items-center gap-3">
-                          <div 
-                            className="w-10 h-10 rounded-full text-white font-mono font-extrabold text-base grid place-items-center"
-                            style={{ background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)' }}
-                          >
-                            {userReservation?.username?.[0] ?? user.displayName?.[0] ?? user.email?.[0] ?? 'U'}
+                      {showSettings ? (
+                        <div className="flex flex-col text-left">
+                          {/* Header with back button */}
+                          <div className="p-4 flex items-center gap-2 border-b border-glass-border">
+                            <button
+                              onClick={() => setShowSettings(false)}
+                              className="p-1 rounded-lg hover:bg-ink/5 dark:hover:bg-white/5 text-ink transition-colors cursor-pointer"
+                              aria-label="Back"
+                            >
+                              <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                              </svg>
+                            </button>
+                            <span className="text-xs font-mono uppercase tracking-wider text-ink font-bold">
+                              Settings
+                            </span>
                           </div>
-                          <div className="flex flex-col min-w-0">
-                            <span className="text-sm font-bold text-ink truncate leading-tight">
-                              {userReservation ? `@${userReservation.username}` : (user.displayName || 'Creator')}
-                            </span>
-                            <span className="text-xs text-ink-2 truncate leading-tight">
-                              {user.email || user.phoneNumber || 'Authenticated User'}
-                            </span>
+
+                          {/* Danger Zone */}
+                          <div className="p-4 flex flex-col gap-3">
+                            <div className="rounded-xl p-3.5 border border-red-500/25 bg-red-500/5">
+                              <h4 className="text-[11px] font-mono font-bold text-red-500 uppercase tracking-wider mb-1.5">
+                                Danger Zone
+                              </h4>
+                              <p className="text-[10px] text-ink-2 leading-relaxed mb-3">
+                                Permanently delete your account and all waitlist data. This action is irreversible.
+                              </p>
+                              <button
+                                onClick={handleDeleteAccount}
+                                disabled={isDeleting}
+                                className="w-full py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 font-bold font-mono text-[10px] uppercase tracking-wider rounded-lg border border-red-500/20 transition-colors cursor-pointer disabled:opacity-50"
+                              >
+                                {isDeleting ? 'Deleting...' : 'Delete Account'}
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      ) : (
+                        <>
+                          {/* User metadata - Clickable to open Settings */}
+                          <div 
+                            onClick={() => setShowSettings(true)}
+                            className="p-5 pb-4 flex flex-col gap-2.5 cursor-pointer hover:bg-ink/5 dark:hover:bg-white/5 transition-all duration-200 group"
+                            title="Click to open settings"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div 
+                                className="w-10 h-10 rounded-full text-white font-mono font-extrabold text-base grid place-items-center"
+                                style={{ background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)' }}
+                              >
+                                {userReservation?.profile_photo_url ? (
+                                  <img src={userReservation.profile_photo_url} alt="" className="w-full h-full object-cover rounded-full" />
+                                ) : (
+                                  userReservation?.username?.[0] ?? user.displayName?.[0] ?? user.email?.[0] ?? 'U'
+                                )}
+                              </div>
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-sm font-bold text-ink truncate leading-tight group-hover:text-brand transition-colors">
+                                  {userReservation ? `@${userReservation.username}` : (user.displayName || 'Creator')}
+                                </span>
+                                <span className="text-xs text-ink-2 truncate leading-tight flex items-center gap-1">
+                                  {user.email || user.phoneNumber || 'Authenticated User'}
+                                  <svg className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                                  </svg>
+                                </span>
+                              </div>
+                            </div>
+                          </div>
 
-                      <div className="h-[1px] bg-glass-border" />
+                          <div className="h-[1px] bg-glass-border" />
 
-                      {/* Dropdown actions */}
-                      <div className="p-2 flex flex-col gap-1">
-                        <button
-                          onClick={() => {
-                            setProfileDropdownOpen(false);
-                            if (onProfileClick) {
-                              onProfileClick();
-                            }
-                          }}
-                          className="
-                            flex items-center gap-3 w-full px-4 py-3 rounded-xl
-                            text-left text-sm font-semibold text-ink cursor-pointer
-                            hover:bg-ink/5 dark:hover:bg-white/5 transition-all duration-200
-                          "
-                        >
-                          <svg className="w-4 h-4 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                          </svg>
-                          View My Profile
-                        </button>
+                          {/* Dropdown actions */}
+                          <div className="p-2 flex flex-col gap-1">
+                            <button
+                              onClick={() => {
+                                setProfileDropdownOpen(false);
+                                if (onProfileClick) {
+                                  onProfileClick();
+                                } else {
+                                  router.push('/dashboard');
+                                }
+                              }}
+                              className="
+                                flex items-center gap-3 w-full px-4 py-3 rounded-xl
+                                text-left text-sm font-semibold text-ink cursor-pointer
+                                hover:bg-ink/5 dark:hover:bg-white/5 transition-all duration-200
+                              "
+                            >
+                              <svg className="w-4 h-4 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="3" width="7" height="9" rx="1" />
+                                <rect x="14" y="3" width="7" height="5" rx="1" />
+                                <rect x="14" y="12" width="7" height="9" rx="1" />
+                                <rect x="3" y="16" width="7" height="5" rx="1" />
+                              </svg>
+                              {userReservation?.username ? `@${userReservation.username}'s Dashboard` : 'My Dashboard'}
+                            </button>
 
-                        <button
-                          onClick={async () => {
-                            setProfileDropdownOpen(false);
-                            await onSignOut();
-                          }}
-                          className="
-                            flex items-center gap-3 w-full px-4 py-3 rounded-xl
-                            text-left text-sm font-semibold text-rose-500 cursor-pointer
-                            hover:bg-rose-500/10 transition-all duration-200
-                          "
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                          </svg>
-                          Sign Out
-                        </button>
-                      </div>
+                            <button
+                              onClick={async () => {
+                                setProfileDropdownOpen(false);
+                                await onSignOut();
+                              }}
+                              className="
+                                flex items-center gap-3 w-full px-4 py-3 rounded-xl
+                                text-left text-sm font-semibold text-rose-500 cursor-pointer
+                                hover:bg-rose-500/10 transition-all duration-200
+                              "
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                              </svg>
+                              Sign Out
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>

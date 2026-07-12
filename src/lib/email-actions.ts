@@ -1,7 +1,8 @@
 'use server';
 
-import { sendWelcomeEmail, sendCustomEmail } from './mailer';
-import { verifyIdToken, verifyAdminToken } from './firebase/admin';
+import { sendWelcomeEmail, sendCustomEmail, sendPasswordResetEmail } from './mailer';
+import { verifyIdToken, verifyAdminToken, generatePasswordResetLink, auth } from './firebase/admin';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 interface SendWelcomeEmailActionParams {
   idToken: string;
@@ -53,6 +54,7 @@ interface SendMassEmailActionParams {
   messageBody: string;
   ctaText?: string;
   ctaUrl?: string;
+  senderAlias?: string;
 }
 
 /**
@@ -66,6 +68,7 @@ export async function sendMassEmailAction({
   messageBody,
   ctaText,
   ctaUrl,
+  senderAlias,
 }: SendMassEmailActionParams) {
   try {
     await verifyAdminToken(idToken);
@@ -86,6 +89,7 @@ export async function sendMassEmailAction({
         messageBody,
         ctaText,
         ctaUrl,
+        senderAlias,
       });
       
       if (res.success) {
@@ -106,6 +110,60 @@ export async function sendMassEmailAction({
     };
   } catch (error: any) {
     console.error('Failed to trigger sendMassEmailAction server action:', error);
+    return { success: false, message: error?.message || 'Server action error.' };
+  }
+}
+
+/**
+ * Next.js Server Action to securely trigger password reset email dispatch.
+ * Generates the reset link via Firebase Admin SDK and sends it via Nodemailer with custom theme.
+ */
+export async function sendPasswordResetEmailAction(email: string) {
+  try {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return { success: false, message: 'A valid email address is required.' };
+    }
+
+    // Generate Firebase password reset link
+    const resetLink = await generatePasswordResetLink(email);
+
+    // Try to find the user's name from Firebase Admin or Supabase to personalize the greeting
+    let name = 'ArtisTant Member';
+    try {
+      const userRecord = await auth.getUserByEmail(email);
+      if (userRecord.displayName) {
+        name = userRecord.displayName;
+      } else {
+        // Fallback to searching waitlist in Supabase if exists
+        const supabase = createSupabaseClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          {
+            auth: {
+              persistSession: false,
+              autoRefreshToken: false,
+            },
+          }
+        );
+        const { data } = await supabase
+          .from('waitlist_users')
+          .select('display_name')
+          .eq('email', email)
+          .maybeSingle();
+        if (data && data.display_name) {
+          name = data.display_name;
+        }
+      }
+    } catch (e) {
+      console.warn('Could not retrieve user displayName for reset email:', e);
+    }
+
+    return await sendPasswordResetEmail({ email, name, resetLink });
+  } catch (error: any) {
+    console.error('Failed to trigger sendPasswordResetEmail action:', error);
+    if (error.code === 'auth/user-not-found') {
+      return { success: false, message: 'There is no user record corresponding to this identifier. The user may have been deleted.' };
+    }
     return { success: false, message: error?.message || 'Server action error.' };
   }
 }

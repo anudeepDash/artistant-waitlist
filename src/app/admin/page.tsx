@@ -358,6 +358,7 @@ export default function AdminPage() {
   const [isLiveMode, setIsLiveMode] = useState(false);
   const [registrations, setRegistrations] = useState<AdminWaitlistEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSigningIn, setIsSigningIn] = useState(false);
   const [dbError, setDbError] = useState<string | null>(null);
   
   // Visitor Activities and Admin List States
@@ -531,11 +532,16 @@ export default function AdminPage() {
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSigningIn) return;
+    setIsSigningIn(true);
+    setAuthError("");
     try {
       await signInWithGoogle();
     } catch (err) {
       console.error("[REDACTED_ERROR] PII stripped from client log.");
       setAuthError("Failed to sign in with Google.");
+    } finally {
+      setIsSigningIn(false);
     }
   };
 
@@ -1095,7 +1101,8 @@ export default function AdminPage() {
         subject: emailSubject,
         messageBody: emailBody,
         ctaText: emailCtaText,
-        ctaUrl: emailCtaUrl
+        ctaUrl: emailCtaUrl,
+        senderAlias: emailAlias,
       });
 
       if (res.success) {
@@ -1266,10 +1273,10 @@ export default function AdminPage() {
                 <div className="space-y-4">
                   <button
                     onClick={handleLoginSubmit}
-                    disabled={isLoading || authLoading}
+                    disabled={isLoading || authLoading || isSigningIn}
                     className="w-full bg-ink text-bg border border-line-soft font-display font-bold tracking-wider py-4 rounded-2xl flex items-center justify-center gap-2 transition-all hover:opacity-90 disabled:opacity-50 cursor-pointer"
                   >
-                    Sign In with Google
+                    {isSigningIn ? 'Signing In...' : 'Sign In with Google'}
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>

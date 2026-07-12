@@ -35,7 +35,22 @@ function getOrInitApp(): App {
 }
 
 const app = getOrInitApp();
-const auth = getAuth(app);
+export const auth = getAuth(app);
+
+// ---------------------------------------------------------------------------
+// Link Generation helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Generates a password reset link for the given email.
+ */
+export async function generatePasswordResetLink(email: string): Promise<string> {
+  const actionCodeSettings = {
+    url: 'https://artistant.in',
+    handleCodeInApp: false,
+  };
+  return auth.generatePasswordResetLink(email, actionCodeSettings);
+}
 
 // ---------------------------------------------------------------------------
 // Token verification helpers

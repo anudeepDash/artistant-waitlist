@@ -9,6 +9,7 @@ import RoleWaitlistModal from '@/components/RoleWaitlistModal';
 import InteractiveTeaser from '@/components/InteractiveTeaser';
 import UIMockupSequence from '@/components/UIMockupSequence';
 import Navbar from '@/components/Navbar';
+import FeatureDetailsModal from '@/components/FeatureDetailsModal';
 import { getUserReservation, type WaitlistEntry } from '@/lib/waitlist';
 import { signInWithGoogle, signOut } from '@/lib/auth';
 import { useAuth } from '@/hooks/useAuth';
@@ -71,6 +72,9 @@ const ROADMAP_PHASES = [
         title: 'Your Free Portfolio Website',
         desc: 'The custom @username link. It serves as a professional booking identity, housing media showreels, riders, and contact parameters in one centralized hub.',
         timeline: 'Launch Active',
+        whatIsIt: 'A professional, custom-crafted digital portfolio hosted under your own custom @username link (e.g. artistant.in/username) that serves as your single source of truth.',
+        benefit: 'Eliminates the chaos of scattered PDFs, Google Drive folders, and unoptimized social profiles. Send one clean, fast, and gorgeous link that immediately builds trust and lets clients book you.',
+        about: 'Fully responsive, optimized for both desktop and mobile layouts. It dynamically aggregates your press kits, media showreels, tech riders, and social proofs, giving clients a seamless booking experience.',
         icon: (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
@@ -81,6 +85,9 @@ const ROADMAP_PHASES = [
         title: 'Live Calendar & Availability',
         desc: 'Automated calendar management. Clients see open dates instantly, entirely eliminating the back-and-forth availability checks.',
         timeline: 'Launch Active',
+        whatIsIt: 'A real-time, read-only view of your booking calendar synced directly with your primary calendar.',
+        benefit: 'Ends the frustrating "Are you free on Friday?" WhatsApp back-and-forth. Organizers can check your real-time availability instantly and request holds on open dates.',
+        about: 'Privacy-first architecture. It hides booking details, show names, or personal meetings, displaying only "Busy" or "Available" slots. Integrates seamlessly with timezone conversion for international clients.',
         icon: (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -94,6 +101,9 @@ const ROADMAP_PHASES = [
         title: 'Direct 1-on-1 Booking Engine',
         desc: '100% direct client-to-artist workflow. No agents, no massive broker cuts, and no communication filters.',
         timeline: 'Launch Active',
+        whatIsIt: 'A streamlined, frictionless booking workflow that allows event organizers to send formal gig offers directly to your inbox.',
+        benefit: 'Zero agency middlemen, zero hidden fees, and zero communication delays. You negotiate and finalize deals directly, retaining 100% of your performance fees.',
+        about: 'Comes with standardized contract templates, automatically generated booking sheets, and integrated chat features that log agreed terms to ensure both parties stay aligned.',
         icon: (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -115,6 +125,9 @@ const ROADMAP_PHASES = [
         title: 'Verified Live Reviews',
         desc: 'Automated, Gigsafe escrow-verified review prompts sent to organizers post-gig to build defensible, data-backed reputations.',
         timeline: 'Launching Soon',
+        whatIsIt: 'A reviews system that only allows verified event organizers who completed a booking through the platform to leave feedback.',
+        benefit: 'Creates a bulletproof, authentic, data-backed reputation that cannot be falsified, protecting your credibility and setting you apart from unverified artists.',
+        about: 'Post-gig review prompts are triggered automatically. Feedback scores contribute directly to your Bookability Score™, improving your search visibility and overall booking rate.',
         icon: (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
@@ -125,6 +138,9 @@ const ROADMAP_PHASES = [
         title: 'Replacement Guarantee',
         desc: 'If a performer cancels due to an emergency, the platform sources and secures a verified, equivalent replacement for the organizer.',
         timeline: 'Launching Soon',
+        whatIsIt: 'An automated safety net for organizers. In the rare event of a cancellation, our platform immediately alerts equivalent, verified acts.',
+        benefit: 'Gives corporate clients and major organizers complete peace of mind, making booking independent acts through Artistant far less risky than traditional methods.',
+        about: 'Uses intelligent matchmaking to recommend performers with similar genres, price ranges, and technical riders, ensuring event continuity without extra overhead.',
         icon: (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 11l2 2 4-4"/>
@@ -135,6 +151,9 @@ const ROADMAP_PHASES = [
         title: 'Smart Tech Riders',
         desc: 'Matches performer technical requirements against venue inventory to eliminate day-of-show hardware surprises.',
         timeline: 'Launching Soon',
+        whatIsIt: 'An interactive specifications builder that maps your technical rider requirements directly against the venue\'s inventory list.',
+        benefit: 'No day-of-show hardware surprises. Sound engineers and artists align instantly on gear compatibility long before the soundcheck begins.',
+        about: 'Includes built-in validation checks. If a venue lacks a specific console or monitor brand, it automatically alerts both the venue manager and your technical crew to arrange rentals.',
         icon: (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
@@ -145,6 +164,9 @@ const ROADMAP_PHASES = [
         title: 'NewBi Concierge',
         desc: 'White-glove booking management for VIP and large-scale corporate event organizers requiring end-to-end execution.',
         timeline: 'Launching Soon',
+        whatIsIt: 'A premium, white-glove event production and booking support service for high-budget corporate gigs and VIP organizers.',
+        benefit: 'Ensures seamless execution of complex, multi-artist events by pairing organizers with dedicated Artistant production specialists.',
+        about: 'Covers contract compliance, on-ground logistics supervision, stage management support, and priority vendor coordination for flagship events.',
         icon: (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
@@ -164,6 +186,9 @@ const ROADMAP_PHASES = [
         title: 'Artistant Backstage™',
         desc: 'An internal industry network for performers to book backing acts, source last-minute talent, and manage crew logistics.',
         timeline: 'Exploring',
+        whatIsIt: 'A private, peer-to-peer professional networking space built exclusively for verified performers on the platform.',
+        benefit: 'Allows you to easily hire session musicians, back-up dancers, or last-minute tour crew, and exchange peer recommendations within a trusted circle.',
+        about: 'Includes dynamic sub-boards by region and role, enabling swift crew communication and collaboration without cluttering public socials.',
         icon: (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -177,6 +202,9 @@ const ROADMAP_PHASES = [
         title: 'Artistant Exclusives',
         desc: 'Curated premium gigs accessible exclusively to top-tier, high-performing artists on the platform.',
         timeline: 'Exploring',
+        whatIsIt: 'A curated selection of high-profile corporate gigs, brand campaigns, and festival lineups open only to qualified artists.',
+        benefit: 'Unlocks high-paying, verified opportunities directly from top agencies and brands without requiring personal connections or pitch presentations.',
+        about: 'Monitors platform metrics (e.g. response times, client feedback, past successful transactions) to automatically grant eligible performers access to private audition boards.',
         icon: (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
@@ -187,6 +215,9 @@ const ROADMAP_PHASES = [
         title: 'The Vendor & Venue Ecosystem',
         desc: 'An integrated network connecting performers with trusted local sound vendors, lighting crews, and partner venues.',
         timeline: 'Exploring',
+        whatIsIt: 'A vetted directory of premier rental partners, sound/light equipment vendors, and live-friendly venues across India.',
+        benefit: 'Drastically simplifies the logistics of touring and local gig production by letting you book verified equipment and venues side-by-side with talent.',
+        about: 'Partners are continuously rated for punctuality, equipment maintenance, and technician expertise, reducing technical errors on stage.',
         icon: (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
@@ -198,6 +229,9 @@ const ROADMAP_PHASES = [
         title: 'Direct Fan Ticketing',
         desc: 'Allowing performers to ticket and manage their own live shows directly through the Artistant infrastructure.',
         timeline: 'Exploring',
+        whatIsIt: 'A zero-commission, white-label ticketing system that lets you sell tickets directly to your fan base from your Artistant profile.',
+        benefit: 'Reclaims control over your audience data and ticket revenue, bypassing massive markups from commercial ticketing platforms.',
+        about: 'Supports instant UPI payouts, customizable RSVP forms, guest list management, and digital ticket verification at the venue doors.',
         icon: (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -211,6 +245,9 @@ const ROADMAP_PHASES = [
         title: 'Brand Collab Hub',
         desc: 'A portal for sponsorship integration, allowing brands to discover and fund independent tours and live IPs.',
         timeline: 'Exploring',
+        whatIsIt: 'A dedicated matching portal connecting indie performers with brands seeking influencer integrations, tour sponsorships, and custom IPs.',
+        benefit: 'Creates stable secondary revenue streams by facilitating direct, transparent partnerships with brands aligned with your values.',
+        about: 'Offers standardized deliverables tracking, proof-of-performance uploads, and escrowed milestone payments for corporate campaigns.',
         icon: (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
@@ -221,6 +258,9 @@ const ROADMAP_PHASES = [
         title: 'Audience Favorites & Live Requests',
         desc: "Real-time digital requests and tip jars routed straight to the performer's dashboard during live performances.",
         timeline: 'Exploring',
+        whatIsIt: 'An interactive, real-time requests dashboard that audience members can access via a QR code at your live gigs.',
+        benefit: 'Boosts crowd engagement and opens up direct tipping channels, letting fans request songs, dedicate shoutouts, and support you financially in real-time.',
+        about: 'Features a modern web interface that filters requests, handles instant UPI/card transactions, and alerts the performer\'s monitor/tablet on stage.',
         icon: (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="12" y1="1" x2="12" y2="23"></line>
@@ -657,7 +697,7 @@ export default function Home() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<'organizer' | 'attendee' | null>(null);
+  const [selectedRole, setSelectedRole] = useState<'organizer' | 'attendee' | 'venue' | null>(null);
   const [usernameInput, setUsernameInput] = useState('');
   const [availStatus, setAvailStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'locked'>('idle');
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -665,6 +705,24 @@ export default function Home() {
   const [userReservation, setUserReservation] = useState<WaitlistEntry | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  
+  // Roadmap feature detail popup state
+  const [selectedFeature, setSelectedFeature] = useState<{
+    title: string;
+    desc: string;
+    timeline: string;
+    icon: React.ReactNode;
+    whatIsIt?: string;
+    benefit?: string;
+    about?: string;
+  } | null>(null);
+  const [selectedPhase, setSelectedPhase] = useState<{
+    phase: string;
+    label: string;
+    timeline: string;
+    accentColor: string;
+  } | null>(null);
+  const [isFeatureModalOpen, setIsFeatureModalOpen] = useState(false);
 
   const handleSuggestionClick = (name: string) => {
     setUsernameInput(name);
@@ -877,8 +935,9 @@ export default function Home() {
           setSuggestions(available);
           setSuggestionsLoading(false);
         }
-      } catch (err) {
-        setAvailStatus('idle');
+      } catch (err: any) {
+        setAvailStatus('invalid');
+        setValidationError(err?.message || 'Error checking availability');
         setSuggestionsLoading(false);
       }
     }, 500);
@@ -1028,7 +1087,7 @@ export default function Home() {
         userReservation={userReservation}
         onSignInClick={openModal}
         onSignOut={handleSignOut}
-        onProfileClick={() => router.push(`/${userReservation?.username || 'profile'}`)}
+        onProfileClick={() => router.push('/dashboard')}
       />
 
       {/* ──────────────────────── SCROLL-DRIVEN 3D SCATTER HERO ──────────────────────── */}
@@ -1638,9 +1697,19 @@ export default function Home() {
             phase.features.map((feature, fIdx) => (
               <motion.div 
                 key={`${phase.phase}-${fIdx}`}
-                whileHover={{ y: -10, scale: 1.02 }}
+                whileHover={{ y: -12, scale: 1.02 }}
+                onClick={() => {
+                  setSelectedFeature(feature);
+                  setSelectedPhase({
+                    phase: phase.phase,
+                    label: phase.label,
+                    timeline: phase.timeline,
+                    accentColor: phase.accentColor
+                  });
+                  setIsFeatureModalOpen(true);
+                }}
                 transition={{ type: "spring", stiffness: 100, damping: 20 }}
-                className="snap-center shrink-0 w-[300px] md:w-[380px] h-[480px] rounded-[2.5rem] p-8 relative overflow-hidden bg-bg-card border border-line shadow-2xl flex flex-col justify-between group cursor-grab active:cursor-grabbing"
+                className="snap-center shrink-0 w-[300px] md:w-[380px] h-[480px] rounded-[2.5rem] p-8 relative overflow-hidden bg-bg-card border border-line shadow-2xl flex flex-col justify-between group cursor-pointer hover:border-white/20 hover:shadow-2xl transition-all duration-300"
               >
                 {/* Dynamic Card Backgrounds based on phase */}
                 <div className="absolute inset-0 opacity-20 group-hover:opacity-40 transition-opacity duration-500" style={{
@@ -1665,28 +1734,34 @@ export default function Home() {
                 </div>
 
                 <div className="relative z-10">
-                  <p className="text-ink-2 text-sm leading-relaxed mb-6">
+                  <p className="text-ink-2 text-sm leading-relaxed mb-6 group-hover:text-ink transition-colors duration-300">
                     {feature.desc}
                   </p>
                   
-                  {/* Status Pill */}
-                  <div className="inline-flex items-center gap-2 bg-black/5 dark:bg-black/50 border border-line px-4 py-2 rounded-full backdrop-blur-md">
-                    {phase.phase === '01' ? (
-                      <>
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        <span className="font-mono text-[9px] uppercase tracking-widest text-emerald-400 font-bold">Ready for Beta</span>
-                      </>
-                    ) : phase.phase === '02' ? (
-                      <>
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                        <span className="font-mono text-[9px] uppercase tracking-widest text-amber-400 font-bold">Coming Soon</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
-                        <span className="font-mono text-[9px] uppercase tracking-widest text-purple-400 font-bold">Planned</span>
-                      </>
-                    )}
+                  <div className="flex items-center justify-between">
+                    {/* Status Pill */}
+                    <div className="inline-flex items-center gap-2 bg-black/5 dark:bg-black/50 border border-line px-4 py-2 rounded-full backdrop-blur-md">
+                      {phase.phase === '01' ? (
+                        <>
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          <span className="font-mono text-[9px] uppercase tracking-widest text-emerald-400 font-bold">Ready for Beta</span>
+                        </>
+                      ) : phase.phase === '02' ? (
+                        <>
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                          <span className="font-mono text-[9px] uppercase tracking-widest text-amber-400 font-bold">Coming Soon</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                          <span className="font-mono text-[9px] uppercase tracking-widest text-purple-400 font-bold">Planned</span>
+                        </>
+                      )}
+                    </div>
+                    {/* Learn More link */}
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-ink-2 group-hover:text-white transition-colors duration-300 flex items-center gap-1.5">
+                      Learn More <svg className="w-3.5 h-3.5 transform group-hover:translate-x-1.5 transition-transform duration-300" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
+                    </span>
                   </div>
                 </div>
               </motion.div>
@@ -2122,6 +2197,13 @@ export default function Home() {
         
         {/* Sleek Segmented Role Waitlists */}
         <div style={{ marginTop: '48px', margin: '48px auto 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', zIndex: 10, position: 'relative', width: '100%', maxWidth: '1200px', padding: '0 20px' }}>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%', maxWidth: '800px', marginBottom: '8px' }}>
+            <div style={{ height: '1px', flex: 1, background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.1))' }} />
+            <h2 className="font-display" style={{ fontSize: '18px', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.2em', fontWeight: 600 }}>Starting Soon</h2>
+            <div style={{ height: '1px', flex: 1, background: 'linear-gradient(to left, transparent, rgba(255,255,255,0.1))' }} />
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(auto-fit, minmax(260px, 1fr))' : 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', width: '100%' }}>
             
             {/* Host Option Card */}
@@ -2157,15 +2239,15 @@ export default function Home() {
                   Festivals. Cafes. Brands. Weddings. Find verified talent. Pay through escrow. Sleep at night.
                 </p>
                 <div style={{ marginTop: 'auto', fontSize: '12px', color: '#FFFFFF', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  JOIN AS HOST <span>→</span>
+                  REGISTER INTEREST <span>→</span>
                 </div>
               </div>
             </motion.div>
 
-            {/* Fan Option Card */}
+            {/* Venue Option Card */}
             <motion.div 
-              onClick={() => { setSelectedRole('attendee'); setIsRoleModalOpen(true); }}
-              whileHover={{ scale: 1.02, borderColor: 'rgba(212, 86, 122, 0.4)' }}
+              onClick={() => { setSelectedRole('venue'); setIsRoleModalOpen(true); }}
+              whileHover={{ scale: 1.02, borderColor: 'rgba(242, 90, 43, 0.4)' }}
               whileTap={{ scale: 0.98 }}
               style={{
                 background: 'rgba(10, 10, 10, 0.8)',
@@ -2183,19 +2265,19 @@ export default function Home() {
                 flexDirection: 'column'
               }}
             >
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '150px', background: 'radial-gradient(ellipse at top right, rgba(212, 86, 122, 0.15), transparent 70%)', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '150px', background: 'radial-gradient(ellipse at top right, rgba(242, 90, 43, 0.15), transparent 70%)', pointerEvents: 'none' }} />
               <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
-                <div style={{ fontSize: '12px', color: '#D4567A', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '16px', fontWeight: 600 }}>
-                  FOR FANS
+                <div style={{ fontSize: '12px', color: '#F25A2B', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '16px', fontWeight: 600 }}>
+                  FOR VENUES
                 </div>
                 <h3 style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: '800', color: '#FFFFFF', marginBottom: '20px', letterSpacing: '-0.02em', textTransform: 'uppercase', lineHeight: '1.1' }}>
-                  YOU <span className="brand-text">LOVE</span> ART.
+                  YOU <span className="brand-text">HAVE</span> SPACE.
                 </h3>
                 <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.7)', lineHeight: '1.5', marginBottom: '32px', fontWeight: 400 }}>
-                  Request custom works, tip directly, and buy tickets. Experience live performances and exhibitions like never before.
+                  Turn your venue into a creative hub. Host verified artists, manage bookings, and create unforgettable experiences.
                 </p>
                 <div style={{ marginTop: 'auto', fontSize: '12px', color: '#FFFFFF', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  JOIN AS FAN <span>→</span>
+                  REGISTER INTEREST <span>→</span>
                 </div>
               </div>
             </motion.div>
@@ -2223,6 +2305,16 @@ export default function Home() {
 
       <AuthModal isOpen={isModalOpen} onClose={closeModal} initialUsername={usernameInput} />
       <RoleWaitlistModal isOpen={isRoleModalOpen} onClose={() => setIsRoleModalOpen(false)} role={selectedRole} />
+      <FeatureDetailsModal 
+        isOpen={isFeatureModalOpen} 
+        onClose={() => setIsFeatureModalOpen(false)} 
+        feature={selectedFeature} 
+        phase={selectedPhase}
+        onReserveClick={() => {
+          setIsFeatureModalOpen(false);
+          scrollToWaitlist();
+        }}
+      />
     </main>
   );
 }

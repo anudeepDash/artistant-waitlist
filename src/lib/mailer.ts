@@ -44,6 +44,52 @@ function getTransporter() {
   });
 }
 
+export function getSenderHeader(aliasKey?: string): string {
+  const defaultUser = EMAIL_USER || 'hello@artistant.in';
+  if (!defaultUser.includes('@')) {
+    return `"ArtisTant" <${defaultUser}>`;
+  }
+  const domain = defaultUser.split('@')[1];
+  const isGmail = domain === 'gmail.com' || domain.startsWith('googlemail.');
+
+  let displayName = 'ArtisTant';
+  let localPart = 'hello';
+
+  switch (aliasKey) {
+    case 'official':
+    case 'info':
+      displayName = 'ArtisTant Official';
+      localPart = 'info';
+      break;
+    case 'support':
+      displayName = 'ArtisTant Support';
+      localPart = 'support';
+      break;
+    case 'founder':
+      displayName = 'ArtisTant Founder';
+      localPart = 'founder';
+      break;
+    case 'welcome':
+      displayName = 'ArtisTant Welcome';
+      localPart = 'welcome';
+      break;
+    case 'security':
+      displayName = 'ArtisTant Security';
+      localPart = 'security';
+      break;
+    case 'hello':
+    default:
+      displayName = 'ArtisTant';
+      localPart = 'hello';
+      break;
+  }
+
+  if (isGmail) {
+    return `"${displayName}" <${defaultUser}>`;
+  }
+  return `"${displayName}" <${localPart}@${domain}>`;
+}
+
 interface WelcomeEmailParams {
   email: string;
   name: string;
@@ -69,12 +115,12 @@ export async function sendWelcomeEmail({ email, name, username }: WelcomeEmailPa
     }
 
     // Set up default parameters for the dynamic template
-    const ctaText = 'Go to Command Center';
-    const ctaUrl = 'https://artistant.in';
-    const emailSubject = `You're in! Your ArtisTant username @${username} is secured. 🚀`;
+    const ctaText = 'Open Your Dashboard';
+    const ctaUrl = `https://artistant.in/dashboard`;
+    const emailSubject = `Your ArtisTant username @${username} is secured! 🚀`;
 
     // The premium hype body copy
-    const bodyText = `It's official. You've secured your username <strong>@${username}</strong> on ArtisTant! You are now part of an exclusive group of artists, clients, and industry leaders getting first-dibs on the future of live entertainment booking and coordination.<br><br>You automatically received <strong>100 base points</strong> for claiming your handle early.<br><br>Here's what happens next:<br><br>1. <strong>Secure Cohort 1 Access</strong>: You need <strong>250 Points</strong> to secure your spot in Cohort 1. Share your unique referral link to earn more points and move up the waitlist: <br><a href="https://artistant.in/?ref=${username}" style="color: #F25A2B; font-weight: bold; word-break: break-all;">https://artistant.in/?ref=${username}</a><br><br>2. <strong>App Features & Bookability Score™</strong>: We are preparing your early dashboard. Soon you'll be able to build your professional profile, calculate your custom bookability rating, set up secure escrow payments, and manage your live performance bookings all in one unified ecosystem.<br><br>3. <strong>Share the Hype</strong>: Show the community you're locked in. Tag us on Instagram <strong>@artistant.in</strong> or LinkedIn and let your network know your official handle.<br><br>4. <strong>Early Access Keys</strong>: Watch your inbox for your unique access credentials to the command center.<br><br>We're building the ultimate creative link-up. Stay tuned, because the stage is being set.`;
+    const bodyText = `It's official. You've successfully claimed your premium username <strong>@${username}</strong> on ArtisTant!<br><br>Your professional <strong>portfolio page</strong> is now live at <a href="https://artistant.in/${username}" style="color: #7C5CFF; font-weight: bold; text-decoration: none;">artistant.in/${username}</a>. This is your single source of truth—a gorgeous, fast-loading booking hub designed to showcase your bio, target location, category/genres, media showreels, and social proof (linked via Spotify, YouTube, and Instagram).<br><br>Promoters and clients can visit your portfolio to view your profile photo, listen to your previews, inspect your details, and request direct bookings. You can customize, update, or complete all these details at any time by logging into your <a href="https://artistant.in/dashboard" style="color: #F25A2B; font-weight: bold; text-decoration: none;">ArtisTant Dashboard</a>.<br><br>By securing your handle early, you have received <strong>100 base points</strong> on your Founding Card. Here is how you can level up:<br><ul><li><strong>Cohort 1 Priority Access (250 PTS)</strong>: Earn 250 points to guarantee priority rollout access and waive your first gig's platform fee.</li><li><strong>Founding Artist Badge & Lifetime 0% Fee (500 PTS)</strong>: Reach 500 points to lock in a permanent verified "Founding Artist" badge. The first 50 artists to reach this status receive a lifetime <strong>0% platform fee guarantee</strong>!</li></ul><br>To climb the leaderboard and unlock rewards, share your referral link: <a href="https://artistant.in/?ref=${username}" style="color: #F25A2B; font-weight: bold;">https://artistant.in/?ref=${username}</a> or generate your Founding Card image on social media directly from your dashboard.`;
 
     // Process and substitute placeholders in the HTML
     const watermarkStyle = "background-image: url('https://artistant.in/logo_a_watermark.png'); background-image: url('https://raw.githubusercontent.com/anudeepDash/artistant-waitlist/main/public/logo_a_watermark.png'), url('https://artistant.in/logo_a_watermark.png'); background-repeat: no-repeat; background-position: center center; background-size: 280px 280px;";
@@ -89,7 +135,7 @@ export async function sendWelcomeEmail({ email, name, username }: WelcomeEmailPa
 
     // Configure mail options
     const mailOptions = {
-      from: `"ArtisTant" <${EMAIL_USER}>`,
+      from: getSenderHeader('welcome'),
       to: email,
       subject: emailSubject,
       html: compiledHtml,
@@ -113,6 +159,7 @@ interface CustomEmailParams {
   messageBody: string;
   ctaText?: string;
   ctaUrl?: string;
+  senderAlias?: string;
 }
 
 /**
@@ -125,6 +172,7 @@ export async function sendCustomEmail({
   messageBody,
   ctaText = 'Visit ArtisTant',
   ctaUrl = 'https://artistant.in',
+  senderAlias,
 }: CustomEmailParams): Promise<{ success: boolean; message: string }> {
   try {
     const transporter = getTransporter();
@@ -152,7 +200,7 @@ export async function sendCustomEmail({
 
     // Configure mail options
     const mailOptions = {
-      from: `"ArtisTant" <${EMAIL_USER}>`,
+      from: getSenderHeader(senderAlias),
       to: toEmail,
       subject: subject,
       html: compiledHtml,
@@ -166,5 +214,64 @@ export async function sendCustomEmail({
   } catch (error: any) {
     console.error('Error in sendCustomEmail service:', error);
     return { success: false, message: error.message || 'Unknown error occurred while sending custom email.' };
+  }
+}
+
+interface PasswordResetEmailParams {
+  email: string;
+  name: string;
+  resetLink: string;
+}
+
+/**
+ * Sends a password reset email using the Artistant normal HTML template.
+ */
+export async function sendPasswordResetEmail({
+  email,
+  name,
+  resetLink,
+}: PasswordResetEmailParams): Promise<{ success: boolean; message: string }> {
+  try {
+    const transporter = getTransporter();
+    
+    // Read the normal HTML email template
+    const templatePath = path.join(process.cwd(), 'src/templates/artistant-normal-mail-template.html');
+    let htmlContent = '';
+    
+    try {
+      htmlContent = fs.readFileSync(templatePath, 'utf8');
+    } catch (readError: any) {
+      console.error('Error reading normal email template file:', readError);
+      return { success: false, message: `Failed to load normal email template: ${readError.message}` };
+    }
+
+    const emailSubject = 'Reset your ArtisTant password 🔒';
+    const bodyText = `We received a request to reset the password for your ArtisTant account.<br><br>Click the button below to choose a new password. If you did not make this request, you can safely ignore this email; your password will remain secure.<br><br>This link is valid for 1 hour.`;
+
+    const watermarkStyle = "background-image: url('https://raw.githubusercontent.com/anudeepDash/artistant-waitlist/main/public/logo_a_watermark.png'), url('https://artistant.in/logo_a_watermark.png'); background-repeat: no-repeat; background-position: center center; background-size: 280px 280px;";
+    
+    let compiledHtml = htmlContent;
+    compiledHtml = compiledHtml.replace('{{watermark_style}}', watermarkStyle);
+    compiledHtml = compiledHtml.replaceAll('{{name}}', escapeHtml(name || 'ArtisTant Member'));
+    compiledHtml = compiledHtml.replaceAll('{{message}}', bodyText);
+    compiledHtml = compiledHtml.replaceAll('{{cta_text}}', 'Reset Password');
+    compiledHtml = compiledHtml.replaceAll('{{cta_url}}', resetLink);
+
+    // Configure mail options
+    const mailOptions = {
+      from: getSenderHeader('security'),
+      to: email,
+      subject: emailSubject,
+      html: compiledHtml,
+    };
+
+    // Send the email
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`Password reset email successfully sent to ${email}. Message ID: ${info.messageId}`);
+    return { success: true, message: `Password reset email sent. Message ID: ${info.messageId}` };
+
+  } catch (error: any) {
+    console.error('Error in sendPasswordResetEmail service:', error);
+    return { success: false, message: error.message || 'Unknown error occurred while sending password reset email.' };
   }
 }

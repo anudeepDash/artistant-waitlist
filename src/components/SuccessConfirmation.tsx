@@ -206,7 +206,7 @@ export default function SuccessConfirmation({
         <motion.button
           variants={itemVariants}
           onClick={() => {
-            router.push(`/${username}`);
+            router.push('/dashboard');
             onClose();
           }}
           whileHover={{ scale: 1.04 }}

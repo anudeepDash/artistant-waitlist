@@ -232,18 +232,22 @@ const SCENARIOS: Scenario[] = [
 export default function InteractiveTeaser() {
   const [scenarioIdx, setScenarioIdx] = useState(0);
   const [phase, setPhase] = useState<'chaos' | 'cure'>('chaos');
-  const [isMobile, setIsMobile] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [isMobileState, setIsMobileState] = useState(false);
   const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === 'dark';
 
   useEffect(() => {
+    setMounted(true);
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 640);
+      setIsMobileState(window.innerWidth < 640);
     };
     handleResize();
     window.addEventListener('resize', handleResize, { passive: true });
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  const isDark = mounted ? resolvedTheme === 'dark' : false;
+  const isMobile = mounted ? isMobileState : false;
 
   useEffect(() => {
     let phaseTimeout: NodeJS.Timeout;

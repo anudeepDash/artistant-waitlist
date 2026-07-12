@@ -9,7 +9,6 @@ import { checkUsernameAvailableAction } from "./admin-actions";
 /** The set of roles a waitlist member can self-select. */
 export type WaitlistRole = "artist" | "venue" | "vendor" | "fan";
 
-/** Document stored in `waitlist_users` table. */
 export interface WaitlistEntry {
   id: string;
   user_id: string;
@@ -21,6 +20,22 @@ export interface WaitlistEntry {
   position_override?: number | null;
   referred_by?: string | null;
   story_shared?: boolean | null;
+  // Base Artist Profile Fields
+  category?: ArtistCategory | null;
+  genres?: string[] | null;
+  phone?: string | null;
+  city?: string | null;
+  event_types?: string[] | null;
+  spotify_url?: string | null;
+  instagram_url?: string | null;
+  youtube_url?: string | null;
+  bio?: string | null;
+  profile_photo_url?: string | null;
+  profile_visitors_count?: number;
+  custom_status_message?: string | null;
+  section_order?: string[] | null;
+  contact_email_enabled?: boolean | null;
+  contact_phone_enabled?: boolean | null;
 }
 
 /** Artist category options */
@@ -48,6 +63,14 @@ export interface ReserveUsernameInput {
   /** Phone number (E.164 format, e.g. +919900000000) */
   phone?: string;
   referredBy?: string;
+  /** Base Artist Profile fields */
+  city?: string;
+  eventTypes?: string[];
+  spotifyUrl?: string;
+  instagramUrl?: string;
+  youtubeUrl?: string;
+  bio?: string;
+  profilePhotoUrl?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -91,7 +114,10 @@ export async function reserveUsername(
 
 
 
-  const { uid, username, email, displayName, role, category, genres, phone, referredBy } = input;
+  const { 
+    uid, username, email, displayName, role, category, genres, phone, referredBy,
+    city, eventTypes, spotifyUrl, instagramUrl, youtubeUrl, bio, profilePhotoUrl 
+  } = input;
   const normalisedUsername = normalise(username);
 
   // Validate username format
@@ -115,6 +141,13 @@ export async function reserveUsername(
     ...(genres && genres.length > 0 ? { genres } : {}),
     ...(phone ? { phone } : {}),
     ...(referredBy ? { referred_by: referredBy.trim().toLowerCase() } : {}),
+    ...(city ? { city } : {}),
+    ...(eventTypes && eventTypes.length > 0 ? { event_types: eventTypes } : {}),
+    ...(spotifyUrl ? { spotify_url: spotifyUrl } : {}),
+    ...(instagramUrl ? { instagram_url: instagramUrl } : {}),
+    ...(youtubeUrl ? { youtube_url: youtubeUrl } : {}),
+    ...(bio ? { bio } : {}),
+    ...(profilePhotoUrl ? { profile_photo_url: profilePhotoUrl } : {}),
   });
 
   if (error) {
@@ -147,18 +180,36 @@ export async function getUserReservation(
   return data as WaitlistEntry;
 }
 
+/**
+ * Retrieves the waitlist entry for a given username, for public profiles.
+ *
+ * @returns The {@link WaitlistEntry} or `null` when the user has no reservation.
+ */
+export async function getWaitlistEntryByUsername(
+  username: string,
+): Promise<WaitlistEntry | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("waitlist_users")
+    .select("*")
+    .eq("username", normalise(username))
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data as WaitlistEntry;
+}
+
 // ---------------------------------------------------------------------------
 // Admin APIs
 // ---------------------------------------------------------------------------
 
 /** Extended waitlist entry structure returned for administration reviews. */
 export interface AdminWaitlistEntry extends WaitlistEntry {
-  category?: string | null;
-  genres?: string[] | null;
-  phone?: string | null;
   is_verified: boolean;
   is_blocked: boolean;
-  position_override?: number | null;
 }
 
 /**
