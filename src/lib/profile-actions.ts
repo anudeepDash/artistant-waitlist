@@ -230,3 +230,210 @@ export async function updateProfileDetailsAction(
 
   return true;
 }
+
+export async function updateFeatureFoundingCardAction(
+  idToken: string,
+  feature: boolean
+): Promise<boolean> {
+  const decodedToken = await verifyIdToken(idToken);
+  const client = createAdminClient();
+
+  const { error } = await client
+    .from('waitlist_users')
+    .update({ feature_founding_card: feature })
+    .eq('user_id', decodedToken.uid);
+
+  if (error) {
+    console.error("Error updating feature founding card setting:", error);
+    throw new Error('Failed to update feature founding card setting');
+  }
+
+  return true;
+}
+
+export async function getPublicProfileDataAction(username: string): Promise<{
+  reservation: any;
+  points: number;
+  waitlistPos: number;
+  cohortVal: string;
+} | null> {
+  const client = createAdminClient();
+  
+  // 1. Fetch waitlist entry
+  const { data: reservation, error } = await client
+    .from('waitlist_users')
+    .select('*')
+    .eq('username', username.trim().toLowerCase())
+    .maybeSingle();
+    
+  if (error || !reservation) {
+    return null;
+  }
+  
+  // 2. Fetch referral count (verified)
+  const { count: referralCount } = await client
+    .from('waitlist_users')
+    .select('id', { count: 'exact', head: true })
+    .eq('referred_by', username.trim().toLowerCase())
+    .eq('is_verified', true);
+    
+  const verifiedRefs = referralCount || 0;
+  const calculatedPoints = 100 + verifiedRefs * 50 + (reservation.story_shared === true ? 80 : 0);
+  
+  // 3. Fetch waitlist position
+  let pos = reservation.position_override;
+  if (pos === undefined || pos === null) {
+    const { count } = await client
+      .from('waitlist_users')
+      .select('id', { count: 'exact', head: true })
+      .lte('reserved_at', reservation.reserved_at);
+    pos = count;
+  }
+  
+  const waitlistPos = pos || 120;
+  const cohortVal = waitlistPos ? Math.ceil(waitlistPos / 100).toString().padStart(3, '0') : '003';
+  
+  return {
+    reservation,
+    points: calculatedPoints,
+    waitlistPos,
+    cohortVal
+  };
+}
+
+export async function getWaitlistEntryByUsernameAction(username: string) {
+  const client = createAdminClient();
+  const { data, error } = await client
+    .from('waitlist_users')
+    .select('*')
+    .eq('username', username.trim().toLowerCase())
+    .maybeSingle();
+  if (error || !data) return null;
+  return data;
+}
+
+export async function uploadGalleryPhotoAction(
+  idToken: string,
+  base64DataUrl: string,
+  fileExtension: string
+): Promise<string[]> {
+  const decodedToken = await verifyIdToken(idToken);
+  const uid = decodedToken.uid;
+  const client = createAdminClient();
+
+  // Decode the base64 data URL into a buffer
+  const base64Data = base64DataUrl.split(',')[1];
+  if (!base64Data) {
+    throw new Error('Invalid image data');
+  }
+  const buffer = Buffer.from(base64Data, 'base64');
+
+  // Determine content type
+  const mimeMatch = base64DataUrl.match(/^data:(image\/\w+);/);
+  const contentType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+
+  const fileName = `gallery_${uid}_${Date.now()}.${fileExtension || 'jpg'}`;
+
+  // Ensure the 'profiles' bucket exists (service role can create buckets)
+  const { data: buckets } = await client.storage.listBuckets();
+  const bucketExists = buckets?.some(b => b.name === 'profiles');
+  if (!bucketExists) {
+    await client.storage.createBucket('profiles', { public: true });
+  }
+
+  // Upload to storage (upsert to handle re-uploads)
+  const { error: uploadError } = await client.storage
+    .from('profiles')
+    .upload(fileName, buffer, {
+      contentType,
+      upsert: true,
+    });
+
+  if (uploadError) {
+    console.error('Storage upload error:', uploadError);
+    throw new Error(`Failed to upload gallery photo: ${uploadError.message}`);
+  }
+
+  // Get the public URL
+  const { data: publicUrlData } = client.storage
+    .from('profiles')
+    .getPublicUrl(fileName);
+  
+  const publicUrl = publicUrlData.publicUrl;
+
+  // Retrieve current user data
+  const { data: userData, error: fetchError } = await client
+    .from('waitlist_users')
+    .select('gallery_photos')
+    .eq('user_id', uid)
+    .single();
+
+  if (fetchError) {
+    console.error('Database fetch error:', fetchError);
+    throw new Error('Failed to retrieve user profile');
+  }
+
+  const currentPhotos = userData?.gallery_photos || [];
+  const updatedPhotos = [...currentPhotos, publicUrl];
+
+  // Update the user's record with the new gallery photos array
+  const { error: updateError } = await client
+    .from('waitlist_users')
+    .update({ gallery_photos: updatedPhotos })
+    .eq('user_id', uid);
+
+  if (updateError) {
+    console.error('DB update error:', updateError);
+    throw new Error('Failed to save gallery photo URL to database');
+  }
+
+  return updatedPhotos;
+}
+
+export async function deleteGalleryPhotoAction(
+  idToken: string,
+  photoUrl: string
+): Promise<string[]> {
+  const decodedToken = await verifyIdToken(idToken);
+  const uid = decodedToken.uid;
+  const client = createAdminClient();
+
+  // Retrieve current user data
+  const { data: userData, error: fetchError } = await client
+    .from('waitlist_users')
+    .select('gallery_photos')
+    .eq('user_id', uid)
+    .single();
+
+  if (fetchError) {
+    console.error('Database fetch error:', fetchError);
+    throw new Error('Failed to retrieve user profile');
+  }
+
+  const currentPhotos: string[] = userData?.gallery_photos || [];
+  const updatedPhotos = currentPhotos.filter(url => url !== photoUrl);
+
+  // Update the user's record with the filtered array
+  const { error: updateError } = await client
+    .from('waitlist_users')
+    .update({ gallery_photos: updatedPhotos })
+    .eq('user_id', uid);
+
+  if (updateError) {
+    console.error('DB update error:', updateError);
+    throw new Error('Failed to update gallery list in database');
+  }
+
+  // Attempt to delete from Supabase storage
+  try {
+    const fileName = photoUrl.split('/').pop();
+    if (fileName) {
+      await client.storage.from('profiles').remove([fileName]);
+    }
+  } catch (err) {
+    console.warn('Failed to clean up image from storage bucket:', err);
+  }
+
+  return updatedPhotos;
+}
+

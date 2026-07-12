@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getWaitlistEntryByUsername } from "@/lib/waitlist";
+import { getWaitlistEntryByUsernameAction } from "@/lib/profile-actions";
 
 interface ProfileLayoutProps {
   children: React.ReactNode;
@@ -12,7 +12,8 @@ export async function generateMetadata({
   params: Promise<{ username: string }>;
 }): Promise<Metadata> {
   const { username } = await params;
-  const entry = await getWaitlistEntryByUsername(username);
+  const entry = await getWaitlistEntryByUsernameAction(username);
+
 
   const artistName = entry?.display_name || `@${username}`;
 

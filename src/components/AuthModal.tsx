@@ -13,6 +13,7 @@ import { reserveUsername, type ArtistCategory } from '@/lib/waitlist';
 import { sendWelcomeEmailAction } from '@/lib/email-actions';
 import { logActivityAction } from '@/lib/admin-actions';
 import { uploadProfilePhotoAction } from '@/lib/profile-actions';
+import { compressImage } from '@/lib/image-utils';
 
 import { auth, isFirebaseConfigured } from '@/lib/firebase/client';
 import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
@@ -70,7 +71,7 @@ const CATEGORY_GENRES: Record<ArtistCategory, string[]> = {
   other:           ['Corporate', 'Wedding', 'Live Events', 'Experimental', 'Variety', 'Ambient', 'World Music'],
 };
 
-const CITIES = ['Bangalore', 'Chennai', 'Delhi', 'Goa', 'Hyderabad', 'Kolkata', 'Mumbai', 'Pune'];
+const CITIES = ['Bangalore', 'Mumbai', 'Delhi NCR', 'Goa', 'Hyderabad', 'Pune', 'Kolkata', 'Chennai', 'Kochi', 'Jaipur', 'Chandigarh', 'Ahmedabad', 'Indore', 'Lucknow', 'Guwahati'];
 const EVENT_TYPES = ['College fest', 'Cafe / pub', 'Wedding', 'Corporate', 'Private party', 'Club night'];
 
 
@@ -169,9 +170,78 @@ function friendlyError(err: any): string {
   return 'Something went wrong. Please try again.';
 }
 
+// Custom SVG Icons for Socials
+const InstagramIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+  </svg>
+);
+
+const SpotifyIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+    <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.587 14.424c-.18.295-.573.398-.87.204-2.365-1.446-5.352-1.772-8.84-1.026-.34.074-.68-.142-.752-.482-.072-.34.142-.68.482-.752 3.825-.82 7.126-.445 9.775 1.176.293.18.397.575.205.88zM17.81 13.7c-.226.367-.716.485-1.08.26-2.73-1.674-6.903-2.18-9.87-1.272-.416.126-.84-.112-.968-.527-.127-.417.11-.843.528-.966 3.42-1.042 8.026-.47 11.21 1.482.365.225.485.716.262 1.082zm.12-2.915C14.48 8.74 8.41 8.52 4.908 9.58c-.496.15-1.015-.13-1.165-.625-.15-.494.13-1.015.626-1.165 4.02-1.216 10.744-.972 14.73 1.393.447.265.597.842.33 1.29-.265.447-.842.597-1.29.33z" />
+  </svg>
+);
+
+const YouTubeIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+    <path d="M21.582 6.186a2.506 2.506 0 0 0-1.762-1.766C18.265 4 12 4 12 4s-6.265 0-7.82.42a2.506 2.506 0 0 0-1.762 1.766C2 7.74 2 12 2 12s0 4.26.418 5.814a2.506 2.506 0 0 0 1.762 1.766C5.735 20 12 20 12 20s6.265 0 7.82-.42a2.506 2.506 0 0 0 1.762-1.766C22 16.26 22 12 22 12s0-4.26-.418-5.814zM10 15.464V8.536L16 12l-6 3.464z" />
+  </svg>
+);
+
+const getInstagramHandle = (url: string) => {
+  if (!url) return '';
+  let clean = url.trim().split('?')[0].replace(/\/$/, '');
+  if (clean.includes('instagram.com/')) {
+    return clean.split('instagram.com/').pop() || '';
+  }
+  return clean;
+};
+
+const getSpotifyHandle = (url: string) => {
+  if (!url) return '';
+  let clean = url.trim().split('?')[0].replace(/\/$/, '');
+  if (clean.includes('spotify.com/artist/')) {
+    return clean.split('spotify.com/artist/').pop() || '';
+  }
+  return clean;
+};
+
+const getYoutubeHandle = (url: string) => {
+  if (!url) return '';
+  let clean = url.trim().split('?')[0].replace(/\/$/, '');
+  if (clean.includes('youtube.com/@')) {
+    return clean.split('youtube.com/@').pop() || '';
+  }
+  if (clean.includes('youtube.com/')) {
+    const match = clean.match(/youtube\.com\/(?:c\/|user\/|channel\/)?@?([^/]+)/);
+    if (match && match[1]) return match[1];
+    return clean.split('youtube.com/').pop() || '';
+  }
+  return clean.startsWith('@') ? clean.slice(1) : clean;
+};
+
+const makeInstagramUrl = (input: string) => {
+  const handle = getInstagramHandle(input);
+  return handle ? `https://instagram.com/${handle}` : '';
+};
+
+const makeSpotifyUrl = (input: string) => {
+  const handle = getSpotifyHandle(input);
+  return handle ? `https://open.spotify.com/artist/${handle}` : '';
+};
+
+const makeYoutubeUrl = (input: string) => {
+  const handle = getYoutubeHandle(input);
+  return handle ? `https://youtube.com/@${handle}` : '';
+};
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
+
 
 export default function AuthModal({ isOpen, onClose, initialEmail, initialUsername, defaultTab }: AuthModalProps) {
   const { user } = useAuth();
@@ -214,6 +284,8 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
   
   // Artist Wizard fields
   const [city, setCity] = useState('');
+  const [customCity, setCustomCity] = useState('');
+  const [isOtherCity, setIsOtherCity] = useState(false);
   const [eventTypes, setEventTypes] = useState<string[]>([]);
   const [spotifyUrl, setSpotifyUrl] = useState('');
   const [instagramUrl, setInstagramUrl] = useState('');
@@ -364,6 +436,8 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
       
       // Reset Wizard state
       setCity('');
+      setCustomCity('');
+      setIsOtherCity(false);
       setEventTypes([]);
       setSpotifyUrl('');
       setInstagramUrl('');
@@ -1253,24 +1327,75 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                           <div className="mb-6">
                             <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-3">Base City</label>
                             <div className="flex flex-wrap gap-2">
-                              {CITIES.map(c => (
-                                <button
-                                  key={c}
-                                  type="button"
-                                  onClick={() => setCity(c)}
-                                  className="px-4 py-2 rounded-full text-xs font-bold transition-all duration-200"
-                                  style={{
-                                    background: city === c ? 'linear-gradient(135deg, rgba(242,90,43,0.15), rgba(124,92,255,0.15))' : 'rgba(255,255,255,0.05)',
-                                    border: `1px solid ${city === c ? 'rgba(124,92,255,0.4)' : 'rgba(255,255,255,0.08)'}`,
-                                    color: city === c ? '#C4AEFF' : 'rgba(255,255,255,0.7)',
-                                    cursor: 'pointer',
-                                    transform: city === c ? 'scale(1.05)' : 'scale(1)',
-                                  }}
-                                >
-                                  {c}
-                                </button>
-                              ))}
+                              {CITIES.map(c => {
+                                const active = !isOtherCity && city === c;
+                                return (
+                                  <button
+                                    key={c}
+                                    type="button"
+                                    onClick={() => {
+                                      setIsOtherCity(false);
+                                      setCity(c);
+                                    }}
+                                    className="px-4 py-2 rounded-full text-xs font-bold transition-all duration-200"
+                                    style={{
+                                      background: active ? 'linear-gradient(135deg, rgba(242,90,43,0.15), rgba(124,92,255,0.15))' : 'rgba(255,255,255,0.05)',
+                                      border: `1px solid ${active ? 'rgba(124,92,255,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                                      color: active ? '#C4AEFF' : 'rgba(255,255,255,0.7)',
+                                      cursor: 'pointer',
+                                      transform: active ? 'scale(1.05)' : 'scale(1)',
+                                    }}
+                                  >
+                                    {c}
+                                  </button>
+                                );
+                              })}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsOtherCity(true);
+                                  setCity(customCity);
+                                }}
+                                className="px-4 py-2 rounded-full text-xs font-bold transition-all duration-200"
+                                style={{
+                                  background: isOtherCity ? 'linear-gradient(135deg, rgba(242,90,43,0.15), rgba(124,92,255,0.15))' : 'rgba(255,255,255,0.05)',
+                                  border: `1px solid ${isOtherCity ? 'rgba(124,92,255,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                                  color: isOtherCity ? '#C4AEFF' : 'rgba(255,255,255,0.7)',
+                                  cursor: 'pointer',
+                                  transform: isOtherCity ? 'scale(1.05)' : 'scale(1)',
+                                }}
+                              >
+                                Other
+                              </button>
                             </div>
+
+                            <AnimatePresence>
+                              {isOtherCity && (
+                                <motion.div
+                                  initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                                  animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
+                                  exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                                  transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                                  style={{ overflow: 'hidden' }}
+                                >
+                                  <label className="block text-[10px] font-mono uppercase tracking-wider text-white/50 mb-1.5">
+                                    Specify City
+                                  </label>
+                                  <input
+                                    type="text"
+                                    required
+                                    placeholder="Enter your city name"
+                                    value={customCity}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      setCustomCity(val);
+                                      setCity(val);
+                                    }}
+                                    className="w-full px-4 py-3 text-sm rounded-xl text-white bg-black/40 border border-white/10 focus:border-[#7C5CFF] outline-none transition-all duration-200"
+                                  />
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
                           </div>
 
                           <div className="mb-8">
@@ -1342,34 +1467,46 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
 
                           <div className="space-y-4 mb-8">
                             <div>
-                              <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-2">Spotify</label>
-                              <input
-                                type="url"
-                                value={spotifyUrl}
-                                onChange={e => setSpotifyUrl(e.target.value)}
-                                placeholder="open.spotify.com/artist/..."
-                                className="w-full px-4 py-3 bg-black/40 border border-white/5 rounded-xl text-white placeholder-white/30 text-sm focus:border-[#7C5CFF] focus:ring-1 focus:ring-[#7C5CFF] outline-none"
-                              />
+                              <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-2">Instagram <span className="text-[#F25A2B]">*</span></label>
+                              <div className="w-full flex items-center bg-black/40 border border-white/5 rounded-xl px-4 py-3 focus-within:border-[#7C5CFF] focus-within:ring-1 focus-within:ring-[#7C5CFF] transition-all">
+                                <InstagramIcon className="w-5 h-5 text-[#E1306C] shrink-0 mr-3" />
+                                <span className="text-white/30 text-sm select-none font-mono mr-0.5 shrink-0">instagram.com/</span>
+                                <input
+                                  type="text"
+                                  value={getInstagramHandle(instagramUrl)}
+                                  onChange={e => setInstagramUrl(makeInstagramUrl(e.target.value))}
+                                  placeholder="username"
+                                  className="flex-1 bg-transparent border-none p-0 text-white placeholder-white/20 text-sm focus:ring-0 focus:outline-none"
+                                />
+                              </div>
                             </div>
                             <div>
-                              <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-2">Instagram <span className="text-[#F25A2B]">*</span></label>
-                              <input
-                                type="text"
-                                value={instagramUrl}
-                                onChange={e => setInstagramUrl(e.target.value)}
-                                placeholder="instagram.com/yourhandle"
-                                className="w-full px-4 py-3 bg-black/40 border border-white/5 rounded-xl text-white placeholder-white/30 text-sm focus:border-[#7C5CFF] focus:ring-1 focus:ring-[#7C5CFF] outline-none"
-                              />
+                              <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-2">Spotify</label>
+                              <div className="w-full flex items-center bg-black/40 border border-white/5 rounded-xl px-4 py-3 focus-within:border-[#7C5CFF] focus-within:ring-1 focus-within:ring-[#7C5CFF] transition-all">
+                                <SpotifyIcon className="w-5 h-5 text-[#1DB954] shrink-0 mr-3" />
+                                <span className="text-white/30 text-sm select-none font-mono mr-0.5 shrink-0">open.spotify.com/artist/</span>
+                                <input
+                                  type="text"
+                                  value={getSpotifyHandle(spotifyUrl)}
+                                  onChange={e => setSpotifyUrl(makeSpotifyUrl(e.target.value))}
+                                  placeholder="artist_id"
+                                  className="flex-1 bg-transparent border-none p-0 text-white placeholder-white/20 text-sm focus:ring-0 focus:outline-none"
+                                />
+                              </div>
                             </div>
                             <div>
                               <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-2">YouTube</label>
-                              <input
-                                type="url"
-                                value={youtubeUrl}
-                                onChange={e => setYoutubeUrl(e.target.value)}
-                                placeholder="youtube.com/@yourchannel"
-                                className="w-full px-4 py-3 bg-black/40 border border-white/5 rounded-xl text-white placeholder-white/30 text-sm focus:border-[#7C5CFF] focus:ring-1 focus:ring-[#7C5CFF] outline-none"
-                              />
+                              <div className="w-full flex items-center bg-black/40 border border-white/5 rounded-xl px-4 py-3 focus-within:border-[#7C5CFF] focus-within:ring-1 focus-within:ring-[#7C5CFF] transition-all">
+                                <YouTubeIcon className="w-5 h-5 text-[#FF0000] shrink-0 mr-3" />
+                                <span className="text-white/30 text-sm select-none font-mono mr-0.5 shrink-0">youtube.com/@</span>
+                                <input
+                                  type="text"
+                                  value={getYoutubeHandle(youtubeUrl)}
+                                  onChange={e => setYoutubeUrl(makeYoutubeUrl(e.target.value))}
+                                  placeholder="channel"
+                                  className="flex-1 bg-transparent border-none p-0 text-white placeholder-white/20 text-sm focus:ring-0 focus:outline-none"
+                                />
+                              </div>
                             </div>
                           </div>
 
@@ -1473,15 +1610,21 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                                 type="file" 
                                 className="hidden" 
                                 accept="image/*"
-                                onChange={(e) => {
+                                onChange={async (e) => {
                                   const file = e.target.files?.[0];
                                   if (file) {
                                     setProfilePhotoFile(file);
-                                    const reader = new FileReader();
-                                    reader.onload = (e) => {
-                                      setProfilePhotoPreview(e.target?.result as string);
-                                    };
-                                    reader.readAsDataURL(file);
+                                    try {
+                                      const compressedBase64 = await compressImage(file, 600, 600, 0.75);
+                                      setProfilePhotoPreview(compressedBase64);
+                                    } catch (err) {
+                                      console.error("Compression failed, falling back to original:", err);
+                                      const reader = new FileReader();
+                                      reader.onload = (ev) => {
+                                        setProfilePhotoPreview(ev.target?.result as string);
+                                      };
+                                      reader.readAsDataURL(file);
+                                    }
                                   }
                                 }}
                               />

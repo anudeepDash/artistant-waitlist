@@ -62,15 +62,25 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
 
     setIsDeleting(true);
     try {
-      const idToken = await user.getIdToken();
-      await deleteAccountDataAction(idToken);
+      // 1. Get a fresh ID token while user is authenticated
+      const idToken = await user.getIdToken(true);
+      
+      // 2. Delete from Firebase first. If stale, throws and stops before deleting DB record.
       await user.delete();
+      
+      // 3. Delete DB record using the pre-generated cryptographically valid token
+      await deleteAccountDataAction(idToken);
+      
       setProfileDropdownOpen(false);
       router.push('/');
     } catch (err: any) {
       console.error(err);
-      if (err.message && err.message.includes('requires-recent-login')) {
-        alert("Please sign out and sign in again before deleting your account.");
+      const isRecentLoginError = 
+        (err.code && err.code.includes('recent-login')) || 
+        (err.message && err.message.includes('requires-recent-login'));
+        
+      if (isRecentLoginError) {
+        alert("For security reasons, this sensitive action requires recent authentication. Please sign out, sign in again, and retry account deletion.");
       } else {
         alert("Failed to delete account. Please try again or contact support.");
       }

@@ -699,6 +699,7 @@ export default function Home() {
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<'organizer' | 'attendee' | 'venue' | null>(null);
   const [usernameInput, setUsernameInput] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
   const [availStatus, setAvailStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'locked'>('idle');
   const [validationError, setValidationError] = useState<string | null>(null);
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -1972,7 +1973,6 @@ export default function Home() {
             margin: '0 auto',
             display: 'flex',
             flexDirection: 'column',
-            gap: '12px',
             position: 'relative',
             zIndex: 10
           }}
@@ -1999,21 +1999,34 @@ export default function Home() {
               required 
               value={usernameInput}
               onChange={(e) => setUsernameInput(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck="false"
+              data-lpignore="true"
+              data-1p-ignore="true"
               style={{
-                background: '#0E1524',
+                background: 'rgba(255, 255, 255, 0.02)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
                 border: '1px solid ' + (
-                  availStatus === 'available' ? '#34D399' :
-                  availStatus === 'taken' ? '#FF5A5F' :
-                  availStatus === 'locked' ? '#D4AF37' :
-                  availStatus === 'invalid' ? '#FFC72C' :
-                  availStatus === 'checking' ? '#7C5CFF' :
-                  'var(--line)'
+                  availStatus === 'available' ? 'rgba(52, 211, 153, 0.4)' :
+                  availStatus === 'taken' ? 'rgba(255, 90, 95, 0.4)' :
+                  availStatus === 'locked' ? 'rgba(212, 175, 55, 0.4)' :
+                  availStatus === 'invalid' ? 'rgba(255, 199, 44, 0.4)' :
+                  availStatus === 'checking' ? 'rgba(124, 92, 255, 0.4)' :
+                  isFocused ? 'rgba(124, 92, 255, 0.4)' :
+                  'rgba(255, 255, 255, 0.08)'
                 ),
-                boxShadow: availStatus === 'available' ? '0 0 15px rgba(52, 211, 153, 0.12)' :
-                           availStatus === 'taken' ? '0 0 15px rgba(255, 90, 95, 0.12)' :
-                           availStatus === 'locked' ? '0 0 15px rgba(212, 175, 55, 0.18)' :
-                           availStatus === 'invalid' ? '0 0 15px rgba(255, 199, 44, 0.12)' :
-                           'none',
+                boxShadow: availStatus === 'available' ? '0 0 20px rgba(52, 211, 153, 0.15), inset 0 2px 4px rgba(255, 255, 255, 0.02)' :
+                           availStatus === 'taken' ? '0 0 20px rgba(255, 90, 95, 0.15), inset 0 2px 4px rgba(255, 255, 255, 0.02)' :
+                           availStatus === 'locked' ? '0 0 20px rgba(212, 175, 55, 0.18), inset 0 2px 4px rgba(255, 255, 255, 0.02)' :
+                           availStatus === 'invalid' ? '0 0 20px rgba(255, 199, 44, 0.15), inset 0 2px 4px rgba(255, 255, 255, 0.02)' :
+                           availStatus === 'checking' ? '0 0 20px rgba(124, 92, 255, 0.15), inset 0 2px 4px rgba(255, 255, 255, 0.02)' :
+                           isFocused ? '0 0 20px rgba(124, 92, 255, 0.15), inset 0 2px 4px rgba(255, 255, 255, 0.02)' :
+                           'inset 0 2px 4px rgba(255, 255, 255, 0.02)',
                 borderRadius: '24px',
                 padding: isMobile ? '14px 44px 14px 38px' : '16px 50px 16px 44px',
                 color: '#FFFFFF',
@@ -2025,82 +2038,344 @@ export default function Home() {
               }}
             />
             {/* Inline validation status icons */}
-            <div style={{ position: 'absolute', right: '20px', display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
-              {availStatus === 'checking' && (
-                <div className="status-spinner-small" />
-              )}
-              {availStatus === 'available' && (
-                <span style={{ color: '#34D399', fontSize: '18px', fontWeight: 'bold' }}>✓</span>
-              )}
-              {availStatus === 'taken' && (
-                <span style={{ color: '#FF5A5F', fontSize: '18px', fontWeight: 'bold' }}>✗</span>
-              )}
-              {availStatus === 'locked' && (
-                <span style={{ color: '#D4AF37', fontSize: '18px', fontWeight: 'bold' }}>🔒</span>
-              )}
-              {availStatus === 'invalid' && (
-                <span style={{ color: '#FFC72C', fontSize: '18px', fontWeight: 'bold' }}>⚠️</span>
-              )}
+            <div style={{ position: 'absolute', right: '20px', display: 'flex', alignItems: 'center', height: '100%', pointerEvents: 'none' }}>
+              <AnimatePresence mode="wait">
+                {availStatus === 'checking' && (
+                  <motion.div
+                    key="checking"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <motion.svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      strokeWidth="3"
+                      animate={{ rotate: 360 }}
+                      transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                    >
+                      <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.08)" />
+                      <path d="M12 2a10 10 0 0 1 10 10" stroke="#7C5CFF" strokeLinecap="round" />
+                    </motion.svg>
+                  </motion.div>
+                )}
+                {availStatus === 'available' && (
+                  <motion.div
+                    key="available"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ type: "spring", stiffness: 350, damping: 20 }}
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#34D399"
+                      strokeWidth="3.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <motion.path
+                        d="M20 6L9 17L4 12"
+                        initial={{ pathLength: 0 }}
+                        animate={{ pathLength: 1 }}
+                        transition={{ duration: 0.35, ease: "easeOut" }}
+                      />
+                    </svg>
+                  </motion.div>
+                )}
+                {availStatus === 'taken' && (
+                  <motion.div
+                    key="taken"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ type: "spring", stiffness: 350, damping: 20 }}
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#FF5A5F"
+                      strokeWidth="3.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <motion.path
+                        d="M18 6L6 18"
+                        initial={{ pathLength: 0 }}
+                        animate={{ pathLength: 1 }}
+                        transition={{ duration: 0.25, ease: "easeOut" }}
+                      />
+                      <motion.path
+                        d="M6 6l12 12"
+                        initial={{ pathLength: 0 }}
+                        animate={{ pathLength: 1 }}
+                        transition={{ duration: 0.25, delay: 0.08, ease: "easeOut" }}
+                      />
+                    </svg>
+                  </motion.div>
+                )}
+                {availStatus === 'locked' && (
+                  <motion.div
+                    key="locked"
+                    initial={{ opacity: 0, scale: 0.8, y: 2 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.8, y: 2 }}
+                    transition={{ type: "spring", stiffness: 350, damping: 20 }}
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#D4AF37"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <rect x="5" y="11" width="14" height="10" rx="2" ry="2" />
+                      <motion.path 
+                        d="M12 2a4 4 0 0 0-4 4v5h8V6a4 4 0 0 0-4-4z" 
+                        initial={{ pathLength: 0 }}
+                        animate={{ pathLength: 1 }}
+                        transition={{ duration: 0.35, ease: "easeOut" }}
+                      />
+                    </svg>
+                  </motion.div>
+                )}
+                {availStatus === 'invalid' && (
+                  <motion.div
+                    key="invalid"
+                    initial={{ opacity: 0, scale: 0.8, rotate: -10 }}
+                    animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                    exit={{ opacity: 0, scale: 0.8, rotate: -10 }}
+                    transition={{ type: "spring", stiffness: 350, damping: 20 }}
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#FFC72C"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                      <line x1="12" y1="9" x2="12" y2="13" />
+                      <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
 
           {/* Real-time status feedback */}
-          <div style={{ minHeight: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '2px 0' }}>
+          <AnimatePresence initial={false}>
             {availStatus !== 'idle' && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.96, y: -4 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
+                initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                animate={{ 
+                  height: 'auto', 
+                  opacity: 1, 
+                  marginTop: 12,
+                  transition: {
+                    height: { type: 'spring', stiffness: 350, damping: 30 },
+                    opacity: { duration: 0.2 }
+                  }
+                }}
+                exit={{ 
+                  height: 0, 
+                  opacity: 0, 
+                  marginTop: 0,
+                  transition: {
+                    height: { type: 'spring', stiffness: 350, damping: 30 },
+                    opacity: { duration: 0.15 }
+                  }
+                }}
                 style={{
-                  display: 'inline-flex',
+                  display: 'flex',
+                  justifyContent: 'center',
                   alignItems: 'center',
-                  gap: '8px',
-                  padding: '6px 16px',
-                  borderRadius: '99px',
-                  fontSize: '12px',
-                  fontFamily: 'var(--font-mono)',
-                  fontWeight: '600',
-                  background: availStatus === 'available' ? 'rgba(52, 211, 153, 0.06)' :
-                              availStatus === 'taken' ? 'rgba(255, 90, 95, 0.06)' :
-                              availStatus === 'locked' ? 'rgba(212, 175, 55, 0.06)' :
-                              availStatus === 'invalid' ? 'rgba(255, 199, 44, 0.06)' :
-                              'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid ' + (
-                    availStatus === 'available' ? 'rgba(52, 211, 153, 0.18)' :
-                    availStatus === 'taken' ? 'rgba(255, 90, 95, 0.18)' :
-                    availStatus === 'locked' ? 'rgba(212, 175, 55, 0.18)' :
-                    availStatus === 'invalid' ? 'rgba(255, 199, 44, 0.18)' :
-                    'rgba(255, 255, 255, 0.08)'
-                  ),
-                  color: availStatus === 'available' ? '#34D399' :
-                         availStatus === 'taken' ? '#FF5A5F' :
-                         availStatus === 'locked' ? '#D4AF37' :
-                         availStatus === 'invalid' ? '#FFC72C' :
-                         'var(--ink-2)'
+                  overflow: 'hidden'
                 }}
               >
-                {availStatus === 'checking' && 'Checking availability...'}
-                {availStatus === 'available' && 'Username available!'}
-                {availStatus === 'taken' && 'Username already taken — try another'}
-                {availStatus === 'locked' && 'This premium username is locked'}
-                {availStatus === 'invalid' && validationError}
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 16px',
+                    borderRadius: '99px',
+                    fontSize: '13px',
+                    fontFamily: 'var(--font-body)',
+                    fontWeight: '500',
+                    background: availStatus === 'available' ? 'rgba(52, 211, 153, 0.03)' :
+                                availStatus === 'taken' ? 'rgba(255, 90, 95, 0.03)' :
+                                availStatus === 'locked' ? 'rgba(212, 175, 55, 0.03)' :
+                                availStatus === 'invalid' ? 'rgba(255, 199, 44, 0.03)' :
+                                'rgba(124, 92, 255, 0.03)',
+                    border: '1px solid ' + (
+                      availStatus === 'available' ? 'rgba(52, 211, 153, 0.12)' :
+                      availStatus === 'taken' ? 'rgba(255, 90, 95, 0.12)' :
+                      availStatus === 'locked' ? 'rgba(212, 175, 55, 0.12)' :
+                      availStatus === 'invalid' ? 'rgba(255, 199, 44, 0.12)' :
+                      'rgba(124, 92, 255, 0.12)'
+                    ),
+                    color: availStatus === 'available' ? '#34D399' :
+                           availStatus === 'taken' ? '#FF5A5F' :
+                           availStatus === 'locked' ? '#D4AF37' :
+                           availStatus === 'invalid' ? '#FFC72C' :
+                           '#7C5CFF',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
+                  }}
+                >
+                  {availStatus === 'checking' && (
+                    <motion.div
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 18 }}
+                    >
+                      <motion.svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="3.5"
+                        animate={{ rotate: 360 }}
+                        transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
+                      >
+                        <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.15)" />
+                        <path d="M12 2a10 10 0 0 1 10 10" stroke="#7C5CFF" strokeLinecap="round" />
+                      </motion.svg>
+                    </motion.div>
+                  )}
+                  {availStatus === 'available' && (
+                    <motion.div
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 18 }}
+                    >
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#34D399"
+                        strokeWidth="4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M20 6L9 17L4 12" />
+                      </svg>
+                    </motion.div>
+                  )}
+                  {availStatus === 'taken' && (
+                    <motion.div
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 18 }}
+                    >
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#FF5A5F"
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                    </motion.div>
+                  )}
+                  {availStatus === 'locked' && (
+                    <motion.div
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 18 }}
+                    >
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#D4AF37"
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <rect x="5" y="11" width="14" height="10" rx="2" ry="2" />
+                        <path d="M12 2a4 4 0 0 0-4 4v5h8V6a4 4 0 0 0-4-4z" />
+                      </svg>
+                    </motion.div>
+                  )}
+                  {availStatus === 'invalid' && (
+                    <motion.div
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 18 }}
+                    >
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#FFC72C"
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                        <line x1="12" y1="9" x2="12" y2="13" />
+                        <line x1="12" y1="17" x2="12.01" y2="17" />
+                      </svg>
+                    </motion.div>
+                  )}
+                  <span>
+                    {availStatus === 'checking' && 'Checking availability...'}
+                    {availStatus === 'available' && 'Username available!'}
+                    {availStatus === 'taken' && 'Username already taken — try another'}
+                    {availStatus === 'locked' && 'This premium username is locked'}
+                    {availStatus === 'invalid' && validationError}
+                  </span>
+                </div>
               </motion.div>
             )}
-          </div>
+          </AnimatePresence>
 
           {/* Username Suggestions Engine */}
           <AnimatePresence>
             {(suggestionsLoading || suggestions.length > 0) && (
               <motion.div
-                initial={{ opacity: 0, y: -10, height: 0 }}
-                animate={{ opacity: 1, y: 0, height: 'auto' }}
-                exit={{ opacity: 0, y: -10, height: 0 }}
+                initial={{ opacity: 0, y: -10, height: 0, marginTop: 0 }}
+                animate={{ opacity: 1, y: 0, height: 'auto', marginTop: 16 }}
+                exit={{ opacity: 0, y: -10, height: 0, marginTop: 0 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 25 }}
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '8px',
                   alignItems: 'center',
-                  marginBottom: '16px',
                   overflow: 'hidden',
                   width: '100%',
                 }}
@@ -2160,17 +2435,13 @@ export default function Home() {
             className="cta-btn"
             disabled={availStatus !== 'available' && availStatus !== 'locked'}
             style={{
-              background: availStatus === 'available'
-                ? 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)'
-                : availStatus === 'locked'
-                  ? '#D4AF37'
-                  : 'rgba(255, 255, 255, 0.05)',
+              background: 'rgba(255, 255, 255, 0.05)',
               color: availStatus === 'available' || availStatus === 'locked'
                 ? '#ffffff'
                 : 'rgba(255, 255, 255, 0.3)',
               fontWeight: '700',
               border: 'none',
-              marginTop: '4px',
+              marginTop: '12px',
               padding: '16px 28px',
               borderRadius: '24px',
               cursor: availStatus === 'available' || availStatus === 'locked' ? 'pointer' : 'not-allowed',
@@ -2180,10 +2451,38 @@ export default function Home() {
                 : availStatus === 'locked'
                   ? '0 8px 24px rgba(212, 175, 55, 0.25)'
                   : 'none',
-              transition: 'all 0.25s ease'
+              transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+              position: 'relative',
+              overflow: 'hidden'
             }}
           >
-            {availStatus === 'locked' ? 'REQUEST PREMIUM NAME' : 'CLAIM USERNAME'}
+            <motion.div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)',
+                zIndex: 1,
+                pointerEvents: 'none',
+              }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: availStatus === 'available' ? 1 : 0 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+            />
+            <motion.div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: '#D4AF37',
+                zIndex: 1,
+                pointerEvents: 'none',
+              }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: availStatus === 'locked' ? 1 : 0 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+            />
+            <span style={{ position: 'relative', zIndex: 2 }}>
+              {availStatus === 'locked' ? 'REQUEST PREMIUM NAME' : 'CLAIM USERNAME'}
+            </span>
           </MagneticButton>
         </motion.form>
           )}

@@ -10,7 +10,8 @@ import {
   uploadProfilePhotoAction, 
   updateSectionOrderAction, 
   updateContactSettingsAction, 
-  updateProfileDetailsAction 
+  updateProfileDetailsAction,
+  updateFeatureFoundingCardAction
 } from '@/lib/profile-actions';
 import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
@@ -57,6 +58,66 @@ const InstagramIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
   </svg>
 );
+
+const SpotifyIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+    <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.587 14.424c-.18.295-.573.398-.87.204-2.365-1.446-5.352-1.772-8.84-1.026-.34.074-.68-.142-.752-.482-.072-.34.142-.68.482-.752 3.825-.82 7.126-.445 9.775 1.176.293.18.397.575.205.88zM17.81 13.7c-.226.367-.716.485-1.08.26-2.73-1.674-6.903-2.18-9.87-1.272-.416.126-.84-.112-.968-.527-.127-.417.11-.843.528-.966 3.42-1.042 8.026-.47 11.21 1.482.365.225.485.716.262 1.082zm.12-2.915C14.48 8.74 8.41 8.52 4.908 9.58c-.496.15-1.015-.13-1.165-.625-.15-.494.13-1.015.626-1.165 4.02-1.216 10.744-.972 14.73 1.393.447.265.597.842.33 1.29-.265.447-.842.597-1.29.33z" />
+  </svg>
+);
+
+const YouTubeIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+    <path d="M21.582 6.186a2.506 2.506 0 0 0-1.762-1.766C18.265 4 12 4 12 4s-6.265 0-7.82.42a2.506 2.506 0 0 0-1.762 1.766C2 7.74 2 12 2 12s0 4.26.418 5.814a2.506 2.506 0 0 0 1.762 1.766C5.735 20 12 20 12 20s6.265 0 7.82-.42a2.506 2.506 0 0 0 1.762-1.766C22 16.26 22 12 22 12s0-4.26-.418-5.814zM10 15.464V8.536L16 12l-6 3.464z" />
+  </svg>
+);
+
+const getInstagramHandle = (url: string) => {
+  if (!url) return '';
+  let clean = url.trim().split('?')[0].replace(/\/$/, '');
+  if (clean.includes('instagram.com/')) {
+    return clean.split('instagram.com/').pop() || '';
+  }
+  return clean;
+};
+
+const getSpotifyHandle = (url: string) => {
+  if (!url) return '';
+  let clean = url.trim().split('?')[0].replace(/\/$/, '');
+  if (clean.includes('spotify.com/artist/')) {
+    return clean.split('spotify.com/artist/').pop() || '';
+  }
+  return clean;
+};
+
+const getYoutubeHandle = (url: string) => {
+  if (!url) return '';
+  let clean = url.trim().split('?')[0].replace(/\/$/, '');
+  if (clean.includes('youtube.com/@')) {
+    return clean.split('youtube.com/@').pop() || '';
+  }
+  if (clean.includes('youtube.com/')) {
+    const match = clean.match(/youtube\.com\/(?:c\/|user\/|channel\/)?@?([^/]+)/);
+    if (match && match[1]) return match[1];
+    return clean.split('youtube.com/').pop() || '';
+  }
+  return clean.startsWith('@') ? clean.slice(1) : clean;
+};
+
+const makeInstagramUrl = (input: string) => {
+  const handle = getInstagramHandle(input);
+  return handle ? `https://instagram.com/${handle}` : '';
+};
+
+const makeSpotifyUrl = (input: string) => {
+  const handle = getSpotifyHandle(input);
+  return handle ? `https://open.spotify.com/artist/${handle}` : '';
+};
+
+const makeYoutubeUrl = (input: string) => {
+  const handle = getYoutubeHandle(input);
+  return handle ? `https://youtube.com/@${handle}` : '';
+};
+
 
 const LinkedinIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -210,6 +271,7 @@ export default function ProfilePage() {
   const [contactEmailEnabled, setContactEmailEnabled] = useState(true);
   const [contactPhoneEnabled, setContactPhoneEnabled] = useState(false);
   const [sectionOrder, setSectionOrder] = useState<string[]>(['gallery', 'video', 'audio']);
+  const [featureFoundingCard, setFeatureFoundingCard] = useState(false);
   const [newGenreInput, setNewGenreInput] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -371,6 +433,7 @@ export default function ProfilePage() {
         setContactEmailEnabled(res.contact_email_enabled !== false);
         setContactPhoneEnabled(res.contact_phone_enabled === true);
         setSectionOrder(res.section_order || ['gallery', 'video', 'audio']);
+        setFeatureFoundingCard(res.feature_founding_card === true);
         await loadDashboardData(res);
         setLoading(false);
       })
@@ -442,6 +505,26 @@ export default function ProfilePage() {
       showToast(err.message || "Failed to update contact settings");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleToggleFeatureFoundingCard = async (val: boolean) => {
+    if (!user) return;
+    setFeatureFoundingCard(val);
+    try {
+      const idToken = await user.getIdToken();
+      await updateFeatureFoundingCardAction(idToken, val);
+      showToast(val ? "Founding Card featured on portfolio!" : "Founding Card hidden from portfolio!");
+      if (reservation) {
+        setReservation({
+          ...reservation,
+          feature_founding_card: val,
+        });
+      }
+    } catch (err: any) {
+      console.error(err);
+      showToast("Migration required! Run supabase_migration_feature_founding_card.sql in Supabase SQL editor.");
+      setFeatureFoundingCard(!val);
     }
   };
 
@@ -2507,38 +2590,50 @@ export default function ProfilePage() {
 
                     {/* Social Instagram */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">Instagram Link</label>
-                      <input
-                        type="text"
-                        value={instagramUrl}
-                        onChange={(e) => setInstagramUrl(e.target.value)}
-                        placeholder="e.g. https://instagram.com/profile"
-                        className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF]"
-                      />
+                      <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">Instagram</label>
+                      <div className="flex items-center bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 focus-within:border-[#7C5CFF] transition-all">
+                        <InstagramIcon className="w-4 h-4 text-[#E1306C] shrink-0 mr-2" />
+                        <span className="text-[var(--ink-3)] text-xs select-none font-mono mr-0.5 shrink-0">instagram.com/</span>
+                        <input
+                          type="text"
+                          value={getInstagramHandle(instagramUrl)}
+                          onChange={(e) => setInstagramUrl(makeInstagramUrl(e.target.value))}
+                          placeholder="username"
+                          className="flex-1 bg-transparent border-none p-0 text-xs text-[var(--ink)] placeholder-[var(--ink-3)]/50 focus:ring-0 focus:outline-none"
+                        />
+                      </div>
                     </div>
 
                     {/* Social Spotify */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">Spotify Link</label>
-                      <input
-                        type="text"
-                        value={spotifyUrl}
-                        onChange={(e) => setSpotifyUrl(e.target.value)}
-                        placeholder="e.g. https://open.spotify.com/artist/..."
-                        className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF]"
-                      />
+                      <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">Spotify</label>
+                      <div className="flex items-center bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 focus-within:border-[#7C5CFF] transition-all">
+                        <SpotifyIcon className="w-4 h-4 text-[#1DB954] shrink-0 mr-2" />
+                        <span className="text-[var(--ink-3)] text-xs select-none font-mono mr-0.5 shrink-0">open.spotify.com/artist/</span>
+                        <input
+                          type="text"
+                          value={getSpotifyHandle(spotifyUrl)}
+                          onChange={(e) => setSpotifyUrl(makeSpotifyUrl(e.target.value))}
+                          placeholder="artist_id"
+                          className="flex-1 bg-transparent border-none p-0 text-xs text-[var(--ink)] placeholder-[var(--ink-3)]/50 focus:ring-0 focus:outline-none"
+                        />
+                      </div>
                     </div>
 
                     {/* Social YouTube */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">YouTube Link</label>
-                      <input
-                        type="text"
-                        value={youtubeUrl}
-                        onChange={(e) => setYoutubeUrl(e.target.value)}
-                        placeholder="e.g. https://youtube.com/channel/..."
-                        className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF]"
-                      />
+                      <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">YouTube</label>
+                      <div className="flex items-center bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 focus-within:border-[#7C5CFF] transition-all">
+                        <YouTubeIcon className="w-4 h-4 text-[#FF0000] shrink-0 mr-2" />
+                        <span className="text-[var(--ink-3)] text-xs select-none font-mono mr-0.5 shrink-0">youtube.com/@</span>
+                        <input
+                          type="text"
+                          value={getYoutubeHandle(youtubeUrl)}
+                          onChange={(e) => setYoutubeUrl(makeYoutubeUrl(e.target.value))}
+                          placeholder="channel"
+                          className="flex-1 bg-transparent border-none p-0 text-xs text-[var(--ink)] placeholder-[var(--ink-3)]/50 focus:ring-0 focus:outline-none"
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -2651,6 +2746,24 @@ export default function ProfilePage() {
                         </div>
                       );
                     })}
+                  </div>
+                </div>
+
+                {/* Founding Card Toggle Card */}
+                <div className={`p-6 rounded-3xl border ${isLight ? 'bg-white border-[#7C5CFF]/10 shadow-[0_8px_30px_rgba(124,92,255,0.08)]' : 'bg-[#0A0A0F] border-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.4)]'} space-y-4 text-left`}>
+                  <div className="flex items-center gap-2 pb-2">
+                    <h3 className="text-base font-bold text-[var(--ink)]">Founding Card Feature</h3>
+                  </div>
+                  <p className="text-[11px] text-[var(--ink-2)]">Showcase your digital Founding Artist Pass certificate directly on your public portfolio page.</p>
+                  
+                  <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.01] border border-white/[0.03]">
+                    <span className="text-xs font-bold text-white/80">Feature Founding Card</span>
+                    <button
+                      onClick={() => handleToggleFeatureFoundingCard(!featureFoundingCard)}
+                      className={`w-10 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none ${featureFoundingCard ? 'bg-[#7C5CFF]' : 'bg-white/10'}`}
+                    >
+                      <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-200 ${featureFoundingCard ? 'translate-x-4' : 'translate-x-0'}`} />
+                    </button>
                   </div>
                 </div>
 

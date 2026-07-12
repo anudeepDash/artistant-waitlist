@@ -31,11 +31,13 @@ export interface WaitlistEntry {
   youtube_url?: string | null;
   bio?: string | null;
   profile_photo_url?: string | null;
+  gallery_photos?: string[] | null;
   profile_visitors_count?: number;
   custom_status_message?: string | null;
   section_order?: string[] | null;
   contact_email_enabled?: boolean | null;
   contact_phone_enabled?: boolean | null;
+  feature_founding_card?: boolean | null;
 }
 
 /** Artist category options */
