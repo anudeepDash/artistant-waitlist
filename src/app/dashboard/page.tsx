@@ -219,9 +219,31 @@ export default function ProfilePage() {
   const isLight = mounted && resolvedTheme === 'light';
   const [isHelpExpanded, setIsHelpExpanded] = useState(false);
   const [hasPoppedOut, setHasPoppedOut] = useState(false);
+  const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isCustomizerOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isCustomizerOpen]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsCustomizerOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   useEffect(() => {
@@ -997,6 +1019,139 @@ export default function ProfilePage() {
     }
   };
 
+  const renderMobilePreview = () => {
+    if (!reservation) return null;
+    return (
+      <div 
+        onClick={() => window.open(`/${reservation.username}`, '_blank')}
+        className="relative w-[300px] h-[600px] rounded-[3rem] border-[6px] border-[#1C1C1E] bg-[#050508] shadow-[0_25px_60px_rgba(0,0,0,0.8)] overflow-hidden cursor-pointer group hover:scale-[1.01] transition-transform duration-300 select-none"
+      >
+        {/* Notch */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-4 bg-[#1C1C1E] rounded-b-xl z-40 flex items-center justify-center">
+          <div className="w-10 h-1 bg-black/40 rounded-full" />
+        </div>
+
+        {/* Scrollable Mobile Content */}
+        <div className="w-full h-full overflow-y-auto px-4 pt-6 pb-12 text-left space-y-5 scrollbar-none">
+          
+          {/* Hero Profile Mock */}
+          <div className="relative pt-6 pb-4 flex flex-col items-center text-center border-b border-white/[0.04]">
+            {/* Photo or initial letter */}
+            <div className="w-16 h-16 rounded-2xl overflow-hidden bg-gradient-to-br from-[#7C5CFF]/20 to-[#D4567A]/20 flex items-center justify-center border border-white/10 mb-2 shadow-lg">
+              {reservation.profile_photo_url ? (
+                <img src={reservation.profile_photo_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-xl font-black text-white/50">{displayName[0]?.toUpperCase() || 'A'}</span>
+              )}
+            </div>
+            <h4 className="text-sm font-black text-white truncate max-w-full leading-tight">{displayName || 'Artist'}</h4>
+            <p className="text-[9px] font-mono text-white/40">@{reservation.username}</p>
+            
+            {/* Category & City */}
+            <div className="flex flex-wrap items-center justify-center gap-1 mt-2.5">
+              <span className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider bg-[#7C5CFF]/15 text-[#B49FFF] border border-[#7C5CFF]/20">
+                {categoryLabels[category] || category || 'Artist'}
+              </span>
+              {city && (
+                <span className="px-1.5 py-0.5 rounded-full text-[8px] font-medium text-white/50 bg-white/[0.05] border border-white/[0.06]">
+                  📍 {city}
+                </span>
+              )}
+            </div>
+
+            {/* Genres */}
+            {genres.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-1 mt-2">
+                {genres.map(g => (
+                  <span key={g} className="px-1.5 py-0.5 rounded-full text-[7px] text-white/40 bg-white/[0.03] border border-white/[0.05]">{g}</span>
+                ))}
+              </div>
+            )}
+
+            {/* Bio */}
+            {bio && <p className="text-[9px] text-white/50 leading-relaxed mt-2.5 max-w-[200px]">{bio}</p>}
+
+            {/* Contact Button */}
+            {(contactEmailEnabled || contactPhoneEnabled) && (
+              <div className="mt-3 w-full">
+                <div className="w-full text-center py-1.5 rounded-lg text-[9px] font-bold bg-white text-black flex items-center justify-center gap-1">
+                  <Mail className="w-2.5 h-2.5" />
+                  <span>Contact {displayName || 'Artist'}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Ordered Sections */}
+          <div className="space-y-4">
+            {sectionOrder.map((sec) => {
+              if (sec === 'gallery') {
+                return (
+                  <div key="gallery" className="space-y-1.5">
+                    <div className="flex items-center gap-1">
+                      <ImageGridIcon className="w-2.5 h-2.5 text-[#7C5CFF]" />
+                      <span className="text-[9px] font-bold text-white/80">Gig Gallery</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1">
+                      {[1, 2, 3].map(i => (
+                        <div key={i} className="aspect-square rounded-lg bg-white/[0.02] border border-white/[0.05] flex items-center justify-center">
+                          <ImageGridIcon className="w-2.5 h-2.5 text-white/5" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+              if (sec === 'video') {
+                return (
+                  <div key="video" className="space-y-1.5">
+                    <div className="flex items-center gap-1">
+                      <VideoIcon className="w-2.5 h-2.5 text-[#D4567A]" />
+                      <span className="text-[9px] font-bold text-white/80">Featured Video</span>
+                    </div>
+                    <div className="w-full aspect-video rounded-xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-center">
+                      <PlayIcon className="w-3.5 h-3.5 text-white/10" />
+                    </div>
+                  </div>
+                );
+              }
+              if (sec === 'audio') {
+                return (
+                  <div key="audio" className="space-y-1.5">
+                    <div className="flex items-center gap-1">
+                      <MusicNoteIcon className="w-2.5 h-2.5 text-[#F25A2B]" />
+                      <span className="text-[9px] font-bold text-white/80">Audio Samples</span>
+                    </div>
+                    <div className="space-y-1">
+                      {[1, 2].map(i => (
+                        <div key={i} className="flex items-center gap-2 p-1.5 rounded-lg bg-white/[0.01] border border-white/[0.03]">
+                          <PlayIcon className="w-2 h-2 text-[#F25A2B]/40" />
+                          <div className="flex-1">
+                            <div className="h-1 w-10 bg-white/10 rounded-full" />
+                          </div>
+                          <span className="text-[7px] font-mono text-white/20">--:--</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })}
+          </div>
+        </div>
+
+        {/* Open page hover banner */}
+        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center gap-2 z-50">
+          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white border border-white/25">
+            <ExternalLink className="w-4 h-4" />
+          </div>
+          <span className="text-[10px] font-bold text-white/80 font-mono tracking-wider">OPEN LIVE PROFILE</span>
+        </div>
+      </div>
+    );
+  };
+
   /* ── Loading State ── */
   if (loading) {
     return (
@@ -1082,133 +1237,16 @@ export default function ProfilePage() {
               </button>
             </div>
             
-            <div 
-              onClick={() => window.open(`/${reservation.username}`, '_blank')}
-              className="relative w-[300px] h-[600px] rounded-[3rem] border-[6px] border-[#1C1C1E] bg-[#050508] shadow-[0_25px_60px_rgba(0,0,0,0.8)] overflow-hidden cursor-pointer group hover:scale-[1.01] transition-transform duration-300 select-none"
+            {renderMobilePreview()}
+
+            {/* Customize Profile Button */}
+            <button
+              onClick={() => setIsCustomizerOpen(true)}
+              className="mt-6 w-full max-w-[300px] py-3.5 px-6 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF] hover:scale-[1.02] active:scale-95 transition-all shadow-[0_10px_25px_rgba(124,92,255,0.25)] flex items-center justify-center gap-2 group cursor-pointer"
             >
-              {/* Notch */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-4 bg-[#1C1C1E] rounded-b-xl z-40 flex items-center justify-center">
-                <div className="w-10 h-1 bg-black/40 rounded-full" />
-              </div>
-
-              {/* Scrollable Mobile Content */}
-              <div className="w-full h-full overflow-y-auto px-4 pt-6 pb-12 text-left space-y-5 scrollbar-none">
-                
-                {/* Hero Profile Mock */}
-                <div className="relative pt-6 pb-4 flex flex-col items-center text-center border-b border-white/[0.04]">
-                  {/* Photo or initial letter */}
-                  <div className="w-16 h-16 rounded-2xl overflow-hidden bg-gradient-to-br from-[#7C5CFF]/20 to-[#D4567A]/20 flex items-center justify-center border border-white/10 mb-2 shadow-lg">
-                    {reservation.profile_photo_url ? (
-                      <img src={reservation.profile_photo_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-xl font-black text-white/50">{displayName[0]?.toUpperCase() || 'A'}</span>
-                    )}
-                  </div>
-                  <h4 className="text-sm font-black text-white truncate max-w-full leading-tight">{displayName || 'Artist'}</h4>
-                  <p className="text-[9px] font-mono text-white/40">@{reservation.username}</p>
-                  
-                  {/* Category & City */}
-                  <div className="flex flex-wrap items-center justify-center gap-1 mt-2.5">
-                    <span className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider bg-[#7C5CFF]/15 text-[#B49FFF] border border-[#7C5CFF]/20">
-                      {categoryLabels[category] || category || 'Artist'}
-                    </span>
-                    {city && (
-                      <span className="px-1.5 py-0.5 rounded-full text-[8px] font-medium text-white/50 bg-white/[0.05] border border-white/[0.06]">
-                        📍 {city}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Genres */}
-                  {genres.length > 0 && (
-                    <div className="flex flex-wrap justify-center gap-1 mt-2">
-                      {genres.map(g => (
-                        <span key={g} className="px-1.5 py-0.5 rounded-full text-[7px] text-white/40 bg-white/[0.03] border border-white/[0.05]">{g}</span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Bio */}
-                  {bio && <p className="text-[9px] text-white/50 leading-relaxed mt-2.5 max-w-[200px]">{bio}</p>}
-
-                  {/* Contact Button */}
-                  {(contactEmailEnabled || contactPhoneEnabled) && (
-                    <div className="mt-3 w-full">
-                      <div className="w-full text-center py-1.5 rounded-lg text-[9px] font-bold bg-white text-black flex items-center justify-center gap-1">
-                        <Mail className="w-2.5 h-2.5" />
-                        <span>Contact {displayName || 'Artist'}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Ordered Sections */}
-                <div className="space-y-4">
-                  {sectionOrder.map((sec) => {
-                    if (sec === 'gallery') {
-                      return (
-                        <div key="gallery" className="space-y-1.5">
-                          <div className="flex items-center gap-1">
-                            <ImageGridIcon className="w-2.5 h-2.5 text-[#7C5CFF]" />
-                            <span className="text-[9px] font-bold text-white/80">Gig Gallery</span>
-                          </div>
-                          <div className="grid grid-cols-3 gap-1">
-                            {[1, 2, 3].map(i => (
-                              <div key={i} className="aspect-square rounded-lg bg-white/[0.02] border border-white/[0.05] flex items-center justify-center">
-                                <ImageGridIcon className="w-2.5 h-2.5 text-white/5" />
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    }
-                    if (sec === 'video') {
-                      return (
-                        <div key="video" className="space-y-1.5">
-                          <div className="flex items-center gap-1">
-                            <VideoIcon className="w-2.5 h-2.5 text-[#D4567A]" />
-                            <span className="text-[9px] font-bold text-white/80">Featured Video</span>
-                          </div>
-                          <div className="w-full aspect-video rounded-xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-center">
-                            <PlayIcon className="w-3.5 h-3.5 text-white/10" />
-                          </div>
-                        </div>
-                      );
-                    }
-                    if (sec === 'audio') {
-                      return (
-                        <div key="audio" className="space-y-1.5">
-                          <div className="flex items-center gap-1">
-                            <MusicNoteIcon className="w-2.5 h-2.5 text-[#F25A2B]" />
-                            <span className="text-[9px] font-bold text-white/80">Audio Samples</span>
-                          </div>
-                          <div className="space-y-1">
-                            {[1, 2].map(i => (
-                              <div key={i} className="flex items-center gap-2 p-1.5 rounded-lg bg-white/[0.01] border border-white/[0.03]">
-                                <PlayIcon className="w-2 h-2 text-[#F25A2B]/40" />
-                                <div className="flex-1">
-                                  <div className="h-1 w-10 bg-white/10 rounded-full" />
-                                </div>
-                                <span className="text-[7px] font-mono text-white/20">--:--</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })}
-                </div>
-              </div>
-
-              {/* Open page hover banner */}
-              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center gap-2 z-50">
-                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white border border-white/25">
-                  <ExternalLink className="w-4 h-4" />
-                </div>
-                <span className="text-[10px] font-bold text-white/80 font-mono tracking-wider">OPEN LIVE PROFILE</span>
-              </div>
-            </div>
+              <Sparkles className="w-4 h-4 group-hover:rotate-12 transition-transform duration-300" />
+              <span>Customize Profile</span>
+            </button>
           </div>
 
           {/* RIGHT COLUMN: CONTROLS & FORM (7 Cols) */}
@@ -1358,311 +1396,6 @@ export default function ProfilePage() {
                     </button>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* PROFILE CUSTOMIZER CARD PANEL */}
-            <div className={`p-6 rounded-3xl border ${isLight ? 'bg-white border-[#7C5CFF]/10 shadow-[0_8px_30px_rgba(124,92,255,0.08)]' : 'bg-[#0A0A0F] border-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.4)]'} space-y-6 text-left`}>
-              <div className="flex items-center gap-2 pb-4 border-b border-[var(--line-soft)]">
-                <Sparkles className="w-4 h-4 text-[#7C5CFF]" />
-                <h3 className="text-base font-bold text-[var(--ink)]">Customize Portfolio</h3>
-              </div>
-
-              {/* Profile Photo */}
-              <div className="flex items-center gap-4">
-                <div className="relative group">
-                  <div className={`w-16 h-16 rounded-xl overflow-hidden border ${reservation.profile_photo_url ? 'border-[#7C5CFF]/20' : 'border-dashed border-[var(--ink-3)]/30'} flex items-center justify-center shrink-0 bg-white/[0.02]`}>
-                    {reservation.profile_photo_url ? (
-                      <img src={reservation.profile_photo_url} alt="Profile" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-xl font-black text-[var(--ink-3)]">{displayName[0]?.toUpperCase() || reservation.username[0].toUpperCase()}</span>
-                    )}
-                  </div>
-                  <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                    <Camera className="w-4 h-4 text-white" />
-                    <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file || !user) return;
-                      try {
-                        const reader = new FileReader();
-                        reader.onload = async (ev) => {
-                          const base64 = ev.target?.result as string;
-                          if (!base64) return;
-                          showToast('Uploading photo...');
-                          const idToken = await user.getIdToken();
-                          const ext = file.name.split('.').pop() || 'jpg';
-                          const publicUrl = await uploadProfilePhotoAction(idToken, base64, ext);
-                          setReservation({ ...reservation, profile_photo_url: publicUrl });
-                          showToast('Profile photo updated!');
-                        };
-                        reader.readAsDataURL(file);
-                      } catch (err) { console.error(err); showToast('Upload failed'); }
-                    }} />
-                  </label>
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-[var(--ink)]">Artist Photo</h4>
-                  <p className="text-[10px] text-[var(--ink-2)] mt-0.5">Hover & click to upload/change photo</p>
-                </div>
-              </div>
-
-              {/* Details inputs */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Display Name */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">Display Name</label>
-                  <input
-                    type="text"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="e.g. Anudeep Dash"
-                    className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF] font-sans"
-                  />
-                </div>
-
-                {/* Category dropdown */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">Artist Type / Category</label>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF]"
-                  >
-                    <option value="singer">Singer</option>
-                    <option value="dj">DJ</option>
-                    <option value="band">Band</option>
-                    <option value="comedian">Comedian</option>
-                    <option value="dancer">Dancer</option>
-                    <option value="mc_rapper">MC / Rapper</option>
-                    <option value="instrumentalist">Instrumentalist</option>
-                    <option value="other">Other / Custom</option>
-                  </select>
-                </div>
-
-                {/* City */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">Base City</label>
-                  <input
-                    type="text"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    placeholder="e.g. Pune, India"
-                    className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF]"
-                  />
-                </div>
-
-                {/* Social Instagram */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">Instagram Link</label>
-                  <input
-                    type="text"
-                    value={instagramUrl}
-                    onChange={(e) => setInstagramUrl(e.target.value)}
-                    placeholder="e.g. https://instagram.com/profile"
-                    className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF]"
-                  />
-                </div>
-
-                {/* Social Spotify */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">Spotify Link</label>
-                  <input
-                    type="text"
-                    value={spotifyUrl}
-                    onChange={(e) => setSpotifyUrl(e.target.value)}
-                    placeholder="e.g. https://open.spotify.com/artist/..."
-                    className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF]"
-                  />
-                </div>
-
-                {/* Social YouTube */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">YouTube Link</label>
-                  <input
-                    type="text"
-                    value={youtubeUrl}
-                    onChange={(e) => setYoutubeUrl(e.target.value)}
-                    placeholder="e.g. https://youtube.com/channel/..."
-                    className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF]"
-                  />
-                </div>
-              </div>
-
-              {/* Bio */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">Artist Bio</label>
-                <textarea
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value.slice(0, 150))}
-                  placeholder="Tell clients about your work, instruments, performance packages..."
-                  rows={3}
-                  className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF] font-sans"
-                />
-                <span className="text-[9px] text-[var(--ink-3)] text-right">{bio.length}/150 characters</span>
-              </div>
-
-              {/* Genres Tag editor */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">Genre Tags (Max 3)</label>
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {genres.map((g) => (
-                    <span key={g} className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-[#7C5CFF]/15 text-[#B49FFF] border border-[#7C5CFF]/20 flex items-center gap-1 font-mono">
-                      {g}
-                      <button onClick={() => setGenres(genres.filter(genre => genre !== g))} className="text-[10px] hover:text-white">&times;</button>
-                    </span>
-                  ))}
-                </div>
-                {genres.length < 3 && (
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newGenreInput}
-                      onChange={(e) => setNewGenreInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          const val = newGenreInput.trim();
-                          if (val && !genres.includes(val)) {
-                            setGenres([...genres, val]);
-                            setNewGenreInput('');
-                          }
-                        }
-                      }}
-                      placeholder="Type tag & press enter"
-                      className="flex-1 bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF] font-sans"
-                    />
-                    <button
-                      onClick={() => {
-                        const val = newGenreInput.trim();
-                        if (val && !genres.includes(val)) {
-                          setGenres([...genres, val]);
-                          setNewGenreInput('');
-                        }
-                      }}
-                      className="bg-[var(--ink)] text-[var(--bg)] px-3 py-2 rounded-xl text-xs font-bold hover:scale-105 transition-transform"
-                    >
-                      Add
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-end pt-2">
-                <button
-                  disabled={isSaving}
-                  onClick={handleSaveProfileDetails}
-                  className="px-6 py-2.5 rounded-xl text-xs font-bold bg-white text-black hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
-                >
-                  {isSaving ? 'Saving...' : 'Save Profile details'}
-                </button>
-              </div>
-            </div>
-
-            {/* Section Reordering Card */}
-            <div className={`p-6 rounded-3xl border ${isLight ? 'bg-white border-[#7C5CFF]/10 shadow-[0_8px_30px_rgba(124,92,255,0.08)]' : 'bg-[#0A0A0F] border-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.4)]'} space-y-4 text-left`}>
-              <div className="flex items-center gap-2 pb-2">
-                <TrendingUp className="w-4 h-4 text-[#F25A2B]" />
-                <h3 className="text-base font-bold text-[var(--ink)]">Section Reordering</h3>
-              </div>
-              <p className="text-[11px] text-[var(--ink-2)]">Shift sections up or down to re-arrange how they appear on your public portfolio page.</p>
-              
-              <div className="space-y-2">
-                {sectionOrder.map((section, idx) => {
-                  const sectionNames: Record<string, string> = {
-                    gallery: 'Gig Gallery',
-                    video: 'Featured Video',
-                    audio: 'Audio Samples',
-                  };
-                  return (
-                    <div 
-                      key={section} 
-                      className="flex items-center justify-between p-3.5 rounded-xl bg-white/[0.01] border border-white/[0.03]"
-                    >
-                      <span className="text-xs font-bold text-white/80">{sectionNames[section] || section}</span>
-                      <div className="flex items-center gap-1">
-                        <button
-                          disabled={idx === 0}
-                          onClick={() => moveSection(idx, 'up')}
-                          className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors text-xs"
-                        >
-                          &uarr;
-                        </button>
-                        <button
-                          disabled={idx === sectionOrder.length - 1}
-                          onClick={() => moveSection(idx, 'down')}
-                          className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors text-xs"
-                        >
-                          &darr;
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Contact Settings Card */}
-            <div className={`p-6 rounded-3xl border ${isLight ? 'bg-white border-[#7C5CFF]/10 shadow-[0_8px_30px_rgba(124,92,255,0.08)]' : 'bg-[#0A0A0F] border-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.4)]'} space-y-4 text-left`}>
-              <div className="flex items-center gap-2 pb-2">
-                <Users className="w-4 h-4 text-[#D4567A]" />
-                <h3 className="text-base font-bold text-[var(--ink)]">Contact Options</h3>
-              </div>
-              <p className="text-[11px] text-[var(--ink-2)]">Enable buttons on your public profile so clients can call, message, or email you directly.</p>
-
-              <div className="space-y-4">
-                {/* Email settings */}
-                <div className="flex flex-col gap-2 p-3.5 rounded-2xl bg-white/[0.01] border border-white/[0.03]">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold">Email Contact Button</span>
-                    <button
-                      onClick={() => setContactEmailEnabled(!contactEmailEnabled)}
-                      className={`w-10 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none ${contactEmailEnabled ? 'bg-[#7C5CFF]' : 'bg-white/10'}`}
-                    >
-                      <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-200 ${contactEmailEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
-                    </button>
-                  </div>
-                  {contactEmailEnabled && (
-                    <input
-                      type="email"
-                      value={contactEmail}
-                      onChange={(e) => setContactEmail(e.target.value)}
-                      placeholder="Verify contact email"
-                      className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF] mt-1 font-sans"
-                    />
-                  )}
-                </div>
-
-                {/* Phone settings */}
-                <div className="flex flex-col gap-2 p-3.5 rounded-2xl bg-white/[0.01] border border-white/[0.03]">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold">Phone Contact Button</span>
-                    <button
-                      onClick={() => setContactPhoneEnabled(!contactPhoneEnabled)}
-                      className={`w-10 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none ${contactPhoneEnabled ? 'bg-[#7C5CFF]' : 'bg-white/10'}`}
-                    >
-                      <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-200 ${contactPhoneEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
-                    </button>
-                  </div>
-                  {contactPhoneEnabled && (
-                    <input
-                      type="text"
-                      value={contactPhone}
-                      onChange={(e) => setContactPhone(e.target.value)}
-                      placeholder="Verify phone number (e.g. +919900000000)"
-                      className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF] mt-1 font-sans"
-                    />
-                  )}
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <button
-                  disabled={isSaving}
-                  onClick={handleSaveContactSettings}
-                  className="px-6 py-2.5 rounded-xl text-xs font-bold bg-white text-black hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
-                >
-                  {isSaving ? 'Saving...' : 'Save Contact settings'}
-                </button>
               </div>
             </div>
 
@@ -2620,6 +2353,372 @@ export default function ProfilePage() {
                   </div>
                 </div>
               )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isCustomizerOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsCustomizerOpen(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 20, opacity: 0 }}
+              transition={{ type: 'spring', duration: 0.5 }}
+              onClick={(e) => e.stopPropagation()}
+              className={`relative w-full max-w-6xl h-[90vh] md:h-[85vh] rounded-[2.5rem] overflow-hidden flex flex-col md:flex-row shadow-[0_30px_90px_rgba(0,0,0,0.8)] border ${
+                isLight ? 'bg-[#F9F9FB] border-[#7C5CFF]/15' : 'bg-[#050508] border-white/10'
+              }`}
+            >
+              {/* Close Button */}
+              <button 
+                onClick={() => setIsCustomizerOpen(false)}
+                className={`absolute top-6 right-6 z-50 p-2.5 rounded-xl border transition-all cursor-pointer ${
+                  isLight 
+                    ? 'bg-black/5 border-black/10 text-black/70 hover:text-black hover:bg-black/10' 
+                    : 'bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* LEFT SIDE: LIVE PREVIEW */}
+              <div className={`w-full md:w-[45%] flex flex-col items-center justify-center p-8 select-none relative ${
+                isLight ? 'bg-[#F0EFF4] border-r border-[#7C5CFF]/10' : 'bg-[#020204] border-r border-white/5'
+              }`}>
+                <div className="absolute top-6 left-8">
+                  <h3 className={`text-xs font-bold uppercase font-mono tracking-widest ${isLight ? 'text-[#7C5CFF]' : 'text-transparent bg-clip-text bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF]'}`}>
+                    Live Preview
+                  </h3>
+                  <p className={`text-[9px] font-mono mt-0.5 ${isLight ? 'text-black/40' : 'text-white/40'}`}>Real-time portfolio rendering</p>
+                </div>
+                
+                <div className="scale-[0.8] sm:scale-[0.85] md:scale-95 lg:scale-100 transition-all mt-6">
+                  {renderMobilePreview()}
+                </div>
+              </div>
+
+              {/* RIGHT SIDE: SETTINGS FORM (Scrollable) */}
+              <div className="w-full md:w-[55%] h-full overflow-y-auto p-6 md:p-10 space-y-8 text-left scrollbar-none">
+                <div className="pb-2 border-b border-[var(--line-soft)]">
+                  <h2 className={`text-2xl font-black uppercase font-display tracking-tight ${isLight ? 'text-black' : 'text-white'}`}>
+                    Edit Portfolio Profile
+                  </h2>
+                  <p className={`text-xs mt-1 ${isLight ? 'text-black/50' : 'text-white/50'}`}>
+                    Customize your public page, reorder sections, and configure contact options.
+                  </p>
+                </div>
+
+                {/* 1. PROFILE CUSTOMIZER CARD PANEL (Without icon) */}
+                <div className={`p-6 rounded-3xl border ${isLight ? 'bg-white border-[#7C5CFF]/10 shadow-[0_8px_30px_rgba(124,92,255,0.08)]' : 'bg-[#0A0A0F] border-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.4)]'} space-y-6 text-left`}>
+                  <div className="flex items-center gap-2 pb-4 border-b border-[var(--line-soft)]">
+                    <h3 className="text-base font-bold text-[var(--ink)]">Customize Portfolio</h3>
+                  </div>
+
+                  {/* Profile Photo */}
+                  <div className="flex items-center gap-4">
+                    <div className="relative group">
+                      <div className={`w-16 h-16 rounded-xl overflow-hidden border ${reservation.profile_photo_url ? 'border-[#7C5CFF]/20' : 'border-dashed border-[var(--ink-3)]/30'} flex items-center justify-center shrink-0 bg-white/[0.02]`}>
+                        {reservation.profile_photo_url ? (
+                          <img src={reservation.profile_photo_url} alt="Profile" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-xl font-black text-[var(--ink-3)]">{displayName[0]?.toUpperCase() || reservation.username[0].toUpperCase()}</span>
+                        )}
+                      </div>
+                      <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                        <Camera className="w-4 h-4 text-white" />
+                        <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file || !user) return;
+                          try {
+                            const reader = new FileReader();
+                            reader.onload = async (ev) => {
+                              const base64 = ev.target?.result as string;
+                              if (!base64) return;
+                              showToast('Uploading photo...');
+                              const idToken = await user.getIdToken();
+                              const ext = file.name.split('.').pop() || 'jpg';
+                              const publicUrl = await uploadProfilePhotoAction(idToken, base64, ext);
+                              setReservation({ ...reservation, profile_photo_url: publicUrl });
+                              showToast('Profile photo updated!');
+                            };
+                            reader.readAsDataURL(file);
+                          } catch (err) { console.error(err); showToast('Upload failed'); }
+                        }} />
+                      </label>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-[var(--ink)]">Artist Photo</h4>
+                      <p className="text-[10px] text-[var(--ink-2)] mt-0.5">Hover & click to upload/change photo</p>
+                    </div>
+                  </div>
+
+                  {/* Details inputs */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Display Name */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">Display Name</label>
+                      <input
+                        type="text"
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        placeholder="e.g. Anudeep Dash"
+                        className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF] font-sans"
+                      />
+                    </div>
+
+                    {/* Category dropdown */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">Artist Type / Category</label>
+                      <select
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF]"
+                      >
+                        <option value="singer">Singer</option>
+                        <option value="dj">DJ</option>
+                        <option value="band">Band</option>
+                        <option value="comedian">Comedian</option>
+                        <option value="dancer">Dancer</option>
+                        <option value="mc_rapper">MC / Rapper</option>
+                        <option value="instrumentalist">Instrumentalist</option>
+                        <option value="other">Other / Custom</option>
+                      </select>
+                    </div>
+
+                    {/* City */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">Base City</label>
+                      <input
+                        type="text"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        placeholder="e.g. Pune, India"
+                        className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF]"
+                      />
+                    </div>
+
+                    {/* Social Instagram */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">Instagram Link</label>
+                      <input
+                        type="text"
+                        value={instagramUrl}
+                        onChange={(e) => setInstagramUrl(e.target.value)}
+                        placeholder="e.g. https://instagram.com/profile"
+                        className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF]"
+                      />
+                    </div>
+
+                    {/* Social Spotify */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">Spotify Link</label>
+                      <input
+                        type="text"
+                        value={spotifyUrl}
+                        onChange={(e) => setSpotifyUrl(e.target.value)}
+                        placeholder="e.g. https://open.spotify.com/artist/..."
+                        className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF]"
+                      />
+                    </div>
+
+                    {/* Social YouTube */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">YouTube Link</label>
+                      <input
+                        type="text"
+                        value={youtubeUrl}
+                        onChange={(e) => setYoutubeUrl(e.target.value)}
+                        placeholder="e.g. https://youtube.com/channel/..."
+                        className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Bio */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">Artist Bio</label>
+                    <textarea
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value.slice(0, 150))}
+                      placeholder="Tell clients about your work, instruments, performance packages..."
+                      rows={3}
+                      className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF] font-sans"
+                    />
+                    <span className="text-[9px] text-[var(--ink-3)] text-right">{bio.length}/150 characters</span>
+                  </div>
+
+                  {/* Genres Tag editor */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">Genre Tags (Max 3)</label>
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {genres.map((g) => (
+                        <span key={g} className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-[#7C5CFF]/15 text-[#B49FFF] border border-[#7C5CFF]/20 flex items-center gap-1 font-mono">
+                          {g}
+                          <button onClick={() => setGenres(genres.filter(genre => genre !== g))} className="text-[10px] hover:text-white">&times;</button>
+                        </span>
+                      ))}
+                    </div>
+                    {genres.length < 3 && (
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newGenreInput}
+                          onChange={(e) => setNewGenreInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              const val = newGenreInput.trim();
+                              if (val && !genres.includes(val)) {
+                                setGenres([...genres, val]);
+                                setNewGenreInput('');
+                              }
+                            }
+                          }}
+                          placeholder="Type tag & press enter"
+                          className="flex-1 bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF] font-sans"
+                        />
+                        <button
+                          onClick={() => {
+                            const val = newGenreInput.trim();
+                            if (val && !genres.includes(val)) {
+                              setGenres([...genres, val]);
+                              setNewGenreInput('');
+                            }
+                          }}
+                          className="bg-[var(--ink)] text-[var(--bg)] px-3 py-2 rounded-xl text-xs font-bold hover:scale-105 transition-transform"
+                        >
+                          Add
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end pt-2">
+                    <button
+                      disabled={isSaving}
+                      onClick={handleSaveProfileDetails}
+                      className="px-6 py-2.5 rounded-xl text-xs font-bold bg-white text-black hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                    >
+                      {isSaving ? 'Saving...' : 'Save Profile details'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. Section Reordering Card (Without icon) */}
+                <div className={`p-6 rounded-3xl border ${isLight ? 'bg-white border-[#7C5CFF]/10 shadow-[0_8px_30px_rgba(124,92,255,0.08)]' : 'bg-[#0A0A0F] border-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.4)]'} space-y-4 text-left`}>
+                  <div className="flex items-center gap-2 pb-2">
+                    <h3 className="text-base font-bold text-[var(--ink)]">Section Reordering</h3>
+                  </div>
+                  <p className="text-[11px] text-[var(--ink-2)]">Shift sections up or down to re-arrange how they appear on your public portfolio page.</p>
+                  
+                  <div className="space-y-2">
+                    {sectionOrder.map((section, idx) => {
+                      const sectionNames: Record<string, string> = {
+                        gallery: 'Gig Gallery',
+                        video: 'Featured Video',
+                        audio: 'Audio Samples',
+                      };
+                      return (
+                        <div 
+                          key={section} 
+                          className="flex items-center justify-between p-3.5 rounded-xl bg-white/[0.01] border border-white/[0.03]"
+                        >
+                          <span className="text-xs font-bold text-white/80">{sectionNames[section] || section}</span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              disabled={idx === 0}
+                              onClick={() => moveSection(idx, 'up')}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors text-xs"
+                            >
+                              &uarr;
+                            </button>
+                            <button
+                              disabled={idx === sectionOrder.length - 1}
+                              onClick={() => moveSection(idx, 'down')}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors text-xs"
+                            >
+                              &darr;
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 3. Contact Settings Card (Without icon) */}
+                <div className={`p-6 rounded-3xl border ${isLight ? 'bg-white border-[#7C5CFF]/10 shadow-[0_8px_30px_rgba(124,92,255,0.08)]' : 'bg-[#0A0A0F] border-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.4)]'} space-y-4 text-left`}>
+                  <div className="flex items-center gap-2 pb-2">
+                    <h3 className="text-base font-bold text-[var(--ink)]">Contact Options</h3>
+                  </div>
+                  <p className="text-[11px] text-[var(--ink-2)]">Enable buttons on your public profile so clients can call, message, or email you directly.</p>
+
+                  <div className="space-y-4">
+                    {/* Email settings */}
+                    <div className="flex flex-col gap-2 p-3.5 rounded-2xl bg-white/[0.01] border border-white/[0.03]">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold">Email Contact Button</span>
+                        <button
+                          onClick={() => setContactEmailEnabled(!contactEmailEnabled)}
+                          className={`w-10 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none ${contactEmailEnabled ? 'bg-[#7C5CFF]' : 'bg-white/10'}`}
+                        >
+                          <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-200 ${contactEmailEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                        </button>
+                      </div>
+                      {contactEmailEnabled && (
+                        <input
+                          type="email"
+                          value={contactEmail}
+                          onChange={(e) => setContactEmail(e.target.value)}
+                          placeholder="Verify contact email"
+                          className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF] mt-1 font-sans"
+                        />
+                      )}
+                    </div>
+
+                    {/* Phone settings */}
+                    <div className="flex flex-col gap-2 p-3.5 rounded-2xl bg-white/[0.01] border border-white/[0.03]">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold">Phone Contact Button</span>
+                        <button
+                          onClick={() => setContactPhoneEnabled(!contactPhoneEnabled)}
+                          className={`w-10 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none ${contactPhoneEnabled ? 'bg-[#7C5CFF]' : 'bg-white/10'}`}
+                        >
+                          <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-200 ${contactPhoneEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                        </button>
+                      </div>
+                      {contactPhoneEnabled && (
+                        <input
+                          type="text"
+                          value={contactPhone}
+                          onChange={(e) => setContactPhone(e.target.value)}
+                          placeholder="Verify phone number (e.g. +919900000000)"
+                          className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF] mt-1 font-sans"
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <button
+                      disabled={isSaving}
+                      onClick={handleSaveContactSettings}
+                      className="px-6 py-2.5 rounded-xl text-xs font-bold bg-white text-black hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                    >
+                      {isSaving ? 'Saving...' : 'Save Contact settings'}
+                    </button>
+                  </div>
+                </div>
+
+              </div>
             </motion.div>
           </motion.div>
         )}
