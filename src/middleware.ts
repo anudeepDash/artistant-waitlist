@@ -18,12 +18,14 @@ export const config = {
 // Basic in-memory rate limiter for serverless environments.
 const rateLimitMap = new Map<string, { count: number; timestamp: number }>();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
-const MAX_ATTEMPTS = 5;
+const MAX_ATTEMPTS = 30;
 
 export default function middleware(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for') || '127.0.0.1';
+  const isLocal = ip === '127.0.0.1' || ip === '::1';
+  const isDev = process.env.NODE_ENV === 'development';
   
-  if (req.method === 'POST') {
+  if (req.method === 'POST' && !isLocal && !isDev) {
     const now = Date.now();
     const windowStart = now - RATE_LIMIT_WINDOW_MS;
     const record = rateLimitMap.get(ip);

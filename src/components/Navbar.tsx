@@ -240,12 +240,12 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
                 >
                   <div className="
                     w-6 h-6 rounded-full text-white font-mono font-bold text-xs uppercase
-                    grid place-items-center flex-shrink-0
+                    grid place-items-center flex-shrink-0 overflow-hidden aspect-square
                   "
                   style={{ background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)' }}
                   >
                     {userReservation?.profile_photo_url ? (
-                      <img src={userReservation.profile_photo_url} alt="" className="w-full h-full object-cover rounded-full" />
+                      <img src={userReservation.profile_photo_url} alt="" className="w-full h-full object-cover" />
                     ) : (
                       userReservation?.username?.[0] ?? user.displayName?.[0] ?? user.email?.[0] ?? 'U'
                     )}
@@ -327,11 +327,11 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
                           >
                             <div className="flex items-center gap-3">
                               <div 
-                                className="w-10 h-10 rounded-full text-white font-mono font-extrabold text-base grid place-items-center"
+                                className="w-10 h-10 rounded-full text-white font-mono font-extrabold text-base grid place-items-center overflow-hidden aspect-square"
                                 style={{ background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)' }}
                               >
                                 {userReservation?.profile_photo_url ? (
-                                  <img src={userReservation.profile_photo_url} alt="" className="w-full h-full object-cover rounded-full" />
+                                  <img src={userReservation.profile_photo_url} alt="" className="w-full h-full object-cover" />
                                 ) : (
                                   userReservation?.username?.[0] ?? user.displayName?.[0] ?? user.email?.[0] ?? 'U'
                                 )}

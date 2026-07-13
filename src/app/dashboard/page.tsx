@@ -11,16 +11,23 @@ import {
   updateSectionOrderAction, 
   updateContactSettingsAction, 
   updateProfileDetailsAction,
-  updateFeatureFoundingCardAction
+  updateFeatureFoundingCardAction,
+  uploadGalleryPhotoAction,
+  deleteGalleryPhotoAction,
+  uploadShowreelVideoAction,
+  deleteShowreelVideoAction
 } from '@/lib/profile-actions';
+import { compressImage } from '@/lib/image-utils';
 import { signOut } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import Navbar from '@/components/Navbar';
+import ImageCropperModal from '@/components/ImageCropperModal';
 import {
   Lock, LockKeyhole, Check, LogOut, CheckCircle, Copy, Sparkles, Award, Shield, Zap,
-  Star, Calendar, Users, MessageSquare, TrendingUp, Gift, ChevronRight,
-  ExternalLink, DownloadCloud, Smartphone, HelpCircle, Trophy, X, Camera, Mail
+  Star, Calendar, Users, MessageSquare, TrendingUp, Gift, ChevronRight, ChevronDown,
+  ExternalLink, DownloadCloud, Smartphone, HelpCircle, Trophy, X, Camera, Mail,
+  Phone, MapPin, Play, Music, Heart, Share2, LayoutGrid, Globe
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════════════════
@@ -259,6 +266,7 @@ export default function ProfilePage() {
 
   // Profile customization form states
   const [displayName, setDisplayName] = useState('');
+  const [galleryPhotos, setGalleryPhotos] = useState<string[]>([]);
   const [category, setCategory] = useState('');
   const [genres, setGenres] = useState<string[]>([]);
   const [city, setCity] = useState('');
@@ -275,6 +283,15 @@ export default function ProfilePage() {
   const [newGenreInput, setNewGenreInput] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [mounted, setMounted] = useState(false);
+  
+  // Category dropdown state & ref
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Profile photo cropping states
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [cropperImageSrc, setCropperImageSrc] = useState('');
+  const [pendingFileExt, setPendingFileExt] = useState('jpg');
   const [activeInfo, setActiveInfo] = useState<string | null>(null);
   const [rawTextOpen, setRawTextOpen] = useState(false);
   const { resolvedTheme } = useTheme();
@@ -282,9 +299,23 @@ export default function ProfilePage() {
   const [isHelpExpanded, setIsHelpExpanded] = useState(false);
   const [hasPoppedOut, setHasPoppedOut] = useState(false);
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
+  const [previewContactOpen, setPreviewContactOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'portfolio' | 'leaderboard'>('dashboard');
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
+        setIsCategoryDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   useEffect(() => {
@@ -420,7 +451,8 @@ export default function ProfilePage() {
       .then(async (res) => {
         if (!res) { router.push('/'); return; }
         setReservation(res);
-        setDisplayName(res.display_name || '');
+         setDisplayName(res.display_name || '');
+        setGalleryPhotos(res.gallery_photos || []);
         setCategory(res.category || '');
         setGenres(res.genres || []);
         setCity(res.city || '');
@@ -610,13 +642,30 @@ export default function ProfilePage() {
     showToast("Preparing your founding pass...");
     
     try {
-      // Preload the official wordmark logo image
+      // Preload the official wordmark logo, A watermark, and logo_a images
       const logoImg = new Image();
       logoImg.src = '/logo_wordmark.png';
-      await new Promise((resolve) => {
-        logoImg.onload = resolve;
-        logoImg.onerror = resolve;
-      });
+
+      const watermarkImg = new Image();
+      watermarkImg.src = '/logo_a_watermark.png';
+
+      const cardLogoImg = new Image();
+      cardLogoImg.src = '/logo_a.png';
+
+      await Promise.all([
+        new Promise((resolve) => {
+          logoImg.onload = resolve;
+          logoImg.onerror = resolve;
+        }),
+        new Promise((resolve) => {
+          watermarkImg.onload = resolve;
+          watermarkImg.onerror = resolve;
+        }),
+        new Promise((resolve) => {
+          cardLogoImg.onload = resolve;
+          cardLogoImg.onerror = resolve;
+        })
+      ]);
 
       const canvas = document.createElement('canvas');
       canvas.width = 1080;
@@ -641,12 +690,24 @@ export default function ProfilePage() {
         ctx.stroke();
       };
 
-      // ── Helper: draw the Artistant wordmark logo image ──
-      const drawLogo = (cx: number, y: number, width: number, invertColor: boolean) => {
-        if (!logoImg.complete || logoImg.naturalWidth === 0) return;
+      // ── Helper: draw the background A watermark image ──
+      const drawWatermark = (cx: number, cy: number, size: number, opacity: number, invertColor: boolean) => {
+        if (!watermarkImg.complete || watermarkImg.naturalWidth === 0) return;
         ctx.save();
+        ctx.globalAlpha = opacity;
         if (invertColor) {
           ctx.filter = 'invert(1)';
+        }
+        ctx.drawImage(watermarkImg, cx - size / 2, cy - size / 2, size, size);
+        ctx.restore();
+      };
+
+      // ── Helper: draw the Artistant wordmark logo image ──
+      const drawLogo = (cx: number, y: number, width: number, makeBlack: boolean) => {
+        if (!logoImg.complete || logoImg.naturalWidth === 0) return;
+        ctx.save();
+        if (makeBlack) {
+          ctx.filter = 'brightness(0)';
         }
         const aspect = logoImg.naturalHeight / logoImg.naturalWidth;
         const height = width * aspect;
@@ -655,17 +716,39 @@ export default function ProfilePage() {
       };
 
       // ── Helper: draw the pass card (flat, clean, no skew) ──
-      const drawPassCard = (x: number, y: number, w: number, h: number, cardBg: string | CanvasGradient, borderColor: string, textColor: string, accentColor: string) => {
+      const drawPassCard = (
+        x: number, 
+        y: number, 
+        w: number, 
+        h: number, 
+        cardBg: string | CanvasGradient, 
+        borderColor: string, 
+        textColor: string, 
+        accentColor: string,
+        invertLogo: boolean
+      ) => {
         ctx.save();
         // Card background
         fillRoundRect(x, y, w, h, 32, cardBg);
         strokeRoundRect(x, y, w, h, 32, borderColor, 2);
 
-        // Top label row
+        // Top label row with logo_a icon
+        let textXOffset = 40;
+        if (cardLogoImg.complete && cardLogoImg.naturalWidth > 0) {
+          ctx.save();
+          if (invertLogo) {
+            ctx.filter = 'brightness(0)';
+          }
+          ctx.drawImage(cardLogoImg, x + 40, y + 32, 26, 26);
+          ctx.restore();
+          textXOffset = 76;
+        }
+
         ctx.font = 'bold 20px monospace';
         ctx.fillStyle = accentColor;
         ctx.textAlign = 'left';
-        ctx.fillText('FOUNDING CARD', x + 40, y + 52);
+        ctx.fillText('FOUNDING CARD', x + textXOffset, y + 52);
+        
         ctx.textAlign = 'right';
         ctx.fillStyle = textColor;
         ctx.globalAlpha = 0.5;
@@ -713,18 +796,52 @@ export default function ProfilePage() {
         ctx.restore();
       };
 
-      // ── Helper: draw feature list ──
-      const drawFeatures = (cx: number, startY: number, features: string[], color: string, checkColor: string) => {
-        ctx.textAlign = 'center';
+      // ── Helper: draw feature list as capsule pills ──
+      const drawFeatures = (
+        cx: number, 
+        startY: number, 
+        features: string[], 
+        textColor: string, 
+        checkColor: string,
+        isLightTheme: boolean
+      ) => {
         features.forEach((feat, idx) => {
-          ctx.font = 'bold 26px monospace';
+          ctx.save();
+          ctx.font = 'bold 20px monospace';
+          const textWidth = ctx.measureText(feat).width;
+          const checkText = "✓ ";
+          const checkWidth = ctx.measureText(checkText).width;
+          
+          // Pill dimensions
+          const pillH = 64;
+          const pillW = textWidth + checkWidth + 60; // 30px padding on each side
+          const pillX = cx - pillW / 2;
+          const pillY = startY + idx * 82; // 82px vertical spacing between features
+          
+          const pillBg = isLightTheme ? 'rgba(124, 92, 255, 0.03)' : 'rgba(255, 255, 255, 0.03)';
+          const pillBorder = isLightTheme ? 'rgba(124, 92, 255, 0.08)' : 'rgba(255, 255, 255, 0.06)';
+          fillRoundRect(pillX, pillY, pillW, pillH, 32, pillBg);
+          strokeRoundRect(pillX, pillY, pillW, pillH, 32, pillBorder, 1);
+          
+          // Draw checkmark & text (centered inside the pill)
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          const contentX = cx - (checkWidth + textWidth) / 2;
+          const contentY = pillY + pillH / 2;
+          
+          // Draw Checkmark
           ctx.fillStyle = checkColor;
-          const text = `✓  ${feat}`;
-          ctx.fillStyle = color;
-          ctx.fillText(text, cx, startY + idx * 60);
+          ctx.fillText(checkText, contentX, contentY);
+          
+          // Draw Feature Text
+          ctx.fillStyle = textColor;
+          ctx.fillText(feat, contentX + checkWidth, contentY);
+          ctx.restore();
         });
       };
-
+      // ═════════════════════════════════════════
+      // TEMPLATE 0: DARK NOIR
+      // ═════════════════════════════════════════
       // ═════════════════════════════════════════
       // TEMPLATE 0: DARK NOIR
       // ═════════════════════════════════════════
@@ -754,25 +871,24 @@ export default function ProfilePage() {
           ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(1080, i); ctx.stroke();
         }
 
-        // Logo
-        drawLogo(540, 95, 460, false);
-        ctx.textAlign = 'center';
-        ctx.font = 'bold 14px monospace';
-        ctx.fillStyle = 'rgba(255,255,255,0.3)';
-        ctx.fillText('FOUNDING MEMBER PASSPORT', 540, 240);
+        // Watermark background
+        drawWatermark(540, 960, 750, 0.05, false);
 
-        // Card
-        const cardGrad = ctx.createLinearGradient(100, 350, 980, 750);
+        // Logo
+        drawLogo(540, 60, 460, false);
+
+        // Card (shifted slightly down to y=240 to balance whitespace)
+        const cardGrad = ctx.createLinearGradient(100, 250, 980, 630);
         cardGrad.addColorStop(0, 'rgba(255,255,255,0.03)');
         cardGrad.addColorStop(1, 'rgba(255,255,255,0.01)');
-        drawPassCard(100, 340, 880, 380, cardGrad, 'rgba(255,255,255,0.08)', '#FFFFFF', '#F25A2B');
+        drawPassCard(100, 240, 880, 380, cardGrad, 'rgba(255,255,255,0.08)', '#FFFFFF', '#F25A2B', false);
 
-        // Headline
+        // Headline (distributed spacing)
         ctx.textAlign = 'center';
         ctx.fillStyle = '#FFFFFF';
         ctx.font = `900 56px "Space Grotesk", sans-serif`;
-        ctx.fillText('I CHOSE ZERO', 540, 920);
-        ctx.fillText('MIDDLEMEN.', 540, 990);
+        ctx.fillText('I CHOSE ZERO', 540, 800);
+        ctx.fillText('MIDDLEMEN.', 540, 870);
 
         // Accent subtitle
         ctx.font = 'bold 22px monospace';
@@ -780,7 +896,7 @@ export default function ProfilePage() {
         accentGrad.addColorStop(0, '#F25A2B');
         accentGrad.addColorStop(1, '#7C5CFF');
         ctx.fillStyle = accentGrad;
-        ctx.fillText('DIRECT BOOKING ECOSYSTEM', 540, 1060);
+        ctx.fillText('DIRECT BOOKING ECOSYSTEM', 540, 940);
 
         // Divider
         const divGrad = ctx.createLinearGradient(240, 0, 840, 0);
@@ -789,27 +905,27 @@ export default function ProfilePage() {
         divGrad.addColorStop(0.7, 'rgba(255,255,255,0.1)');
         divGrad.addColorStop(1, 'transparent');
         ctx.fillStyle = divGrad;
-        ctx.fillRect(240, 1110, 600, 1);
+        ctx.fillRect(240, 990, 600, 1);
 
-        // Features
-        drawFeatures(540, 1200, [
+        // Features (distributed spacing)
+        drawFeatures(540, 1060, [
           'DIRECT CLIENT-TO-ARTIST ROUTING',
           'GIGSAFE ESCROW PAYMENT SECURITY',
           'AUTO-SYNCED AVAILABILITY BOOKING'
-        ], 'rgba(255,255,255,0.5)', '#F25A2B');
+        ], 'rgba(255,255,255,0.5)', '#F25A2B', false);
 
-        // CTA box
-        fillRoundRect(240, 1440, 600, 90, 20, 'rgba(255,255,255,0.04)');
-        strokeRoundRect(240, 1440, 600, 90, 20, 'rgba(255,255,255,0.08)', 1);
+        // CTA box (highlighted & distributed spacing)
+        fillRoundRect(240, 1380, 600, 90, 45, 'rgba(255,255,255,0.06)');
+        strokeRoundRect(240, 1380, 600, 90, 45, '#F25A2B', 2);
         ctx.textAlign = 'center';
         ctx.font = `bold 18px monospace`;
-        ctx.fillStyle = 'rgba(255,255,255,0.4)';
-        ctx.fillText('SECURE YOUR NAME BEFORE SOMEONE ELSE DOES', 540, 1495);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText('SECURE YOUR NAME BEFORE SOMEONE ELSE DOES', 540, 1435);
 
-        // Bottom branding
+        // Bottom branding (pushed up to leave room for Link sticker)
         ctx.fillStyle = 'rgba(255,255,255,0.15)';
         ctx.font = 'bold 16px monospace';
-        ctx.fillText('ARTISTANT.IN', 540, 1780);
+        ctx.fillText('ARTISTANT.IN', 540, 1580);
 
       // ═════════════════════════════════════════
       // TEMPLATE 1: GRADIENT EDITORIAL
@@ -831,53 +947,52 @@ export default function ProfilePage() {
         ctx.fillStyle = overlay;
         ctx.fillRect(0, 0, 1080, 1920);
 
-        // Logo
-        drawLogo(540, 95, 460, false);
-        ctx.textAlign = 'center';
-        ctx.font = 'bold 14px monospace';
-        ctx.fillStyle = 'rgba(255,255,255,0.5)';
-        ctx.fillText('FOUNDING MEMBER PASSPORT', 540, 240);
+        // Watermark background
+        drawWatermark(540, 960, 750, 0.05, false);
 
-        // Card (dark glass)
-        const cardBg = ctx.createLinearGradient(100, 340, 980, 720);
+        // Logo
+        drawLogo(540, 60, 460, false);
+
+        // Card (dark glass, y=240)
+        const cardBg = ctx.createLinearGradient(100, 240, 980, 620);
         cardBg.addColorStop(0, 'rgba(10,10,15,0.8)');
         cardBg.addColorStop(1, 'rgba(5,5,8,0.9)');
-        drawPassCard(100, 340, 880, 380, cardBg, 'rgba(255,255,255,0.12)', '#FFFFFF', '#F25A2B');
+        drawPassCard(100, 240, 880, 380, cardBg, 'rgba(255,255,255,0.12)', '#FFFFFF', '#F25A2B', false);
 
         // Headline
         ctx.textAlign = 'center';
         ctx.fillStyle = '#FFFFFF';
         ctx.font = `900 60px "Space Grotesk", sans-serif`;
-        ctx.fillText('BUILT FOR STAGE.', 540, 930);
-        ctx.fillText('ARTIST FIRST.', 540, 1005);
+        ctx.fillText('BUILT FOR STAGE.', 540, 810);
+        ctx.fillText('ARTIST FIRST.', 540, 885);
 
         ctx.font = 'bold 22px monospace';
         ctx.fillStyle = 'rgba(255,255,255,0.65)';
-        ctx.fillText('RECLAIMING CREATIVE VALUE', 540, 1075);
+        ctx.fillText('RECLAIMING CREATIVE VALUE', 540, 955);
 
         // Divider
         ctx.fillStyle = 'rgba(255,255,255,0.15)';
-        ctx.fillRect(340, 1120, 400, 1);
+        ctx.fillRect(340, 1000, 400, 1);
 
         // Features
-        drawFeatures(540, 1210, [
+        drawFeatures(540, 1070, [
           'DIRECT CLIENT BOOKINGS',
           'GIGSAFE ESCROW GUARANTEES',
           'CUSTOM PORTFOLIO @HANDLE'
-        ], 'rgba(255,255,255,0.6)', '#FFFFFF');
+        ], 'rgba(255,255,255,0.6)', '#FFFFFF', false);
 
-        // CTA box
-        fillRoundRect(240, 1440, 600, 90, 20, 'rgba(0,0,0,0.2)');
-        strokeRoundRect(240, 1440, 600, 90, 20, 'rgba(255,255,255,0.15)', 1);
+        // CTA box (highlighted)
+        fillRoundRect(240, 1380, 600, 90, 45, 'rgba(255,255,255,0.15)');
+        strokeRoundRect(240, 1380, 600, 90, 45, 'rgba(255,255,255,0.4)', 2);
         ctx.textAlign = 'center';
         ctx.font = `bold 18px monospace`;
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
-        ctx.fillText('CLAIM YOUR @HANDLE NOW', 540, 1495);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText('CLAIM YOUR @HANDLE NOW', 540, 1435);
 
         // Bottom branding
         ctx.fillStyle = 'rgba(255,255,255,0.25)';
         ctx.font = 'bold 16px monospace';
-        ctx.fillText('ARTISTANT.IN', 540, 1780);
+        ctx.fillText('ARTISTANT.IN', 540, 1580);
 
       // ═════════════════════════════════════════
       // TEMPLATE 2: CLEAN LIGHT MINIMAL
@@ -897,36 +1012,33 @@ export default function ProfilePage() {
           }
         }
 
+        // Watermark background
+        drawWatermark(540, 960, 750, 0.04, true);
+
         // Logo
-        drawLogo(540, 95, 460, true);
-        ctx.textAlign = 'center';
-        ctx.font = 'bold 14px monospace';
-        ctx.fillStyle = 'rgba(15,15,20,0.35)';
-        ctx.fillText('FOUNDING MEMBER PASSPORT', 540, 240);
+        drawLogo(540, 60, 460, true);
 
-        // Card (light glass)
-        drawPassCard(100, 340, 880, 380, '#FFFFFF', 'rgba(124, 92, 255, 0.12)', '#0F0F14', '#7C5CFF');
-
-        // Outer card shadow
+        // Outer card shadow (y=240)
         ctx.save();
         ctx.shadowColor = 'rgba(124, 92, 255, 0.08)';
         ctx.shadowBlur = 40;
         ctx.shadowOffsetY = 12;
-        fillRoundRect(100, 340, 880, 380, 32, '#FFFFFF');
+        fillRoundRect(100, 240, 880, 380, 32, '#FFFFFF');
         ctx.restore();
+        
         // Redraw the card cleanly on top of shadow
-        drawPassCard(100, 340, 880, 380, '#FFFFFF', 'rgba(124, 92, 255, 0.12)', '#0F0F14', '#7C5CFF');
+        drawPassCard(100, 240, 880, 380, '#FFFFFF', 'rgba(124, 92, 255, 0.12)', '#0F0F14', '#7C5CFF', true);
 
         // Headline
         ctx.textAlign = 'center';
         ctx.fillStyle = '#0F0F14';
         ctx.font = `900 56px "Space Grotesk", sans-serif`;
-        ctx.fillText('BUILT FOR ARTISTS.', 540, 930);
-        ctx.fillText('NOT PLATFORMS.', 540, 1000);
+        ctx.fillText('BUILT FOR ARTISTS.', 540, 810);
+        ctx.fillText('NOT PLATFORMS.', 540, 880);
 
         ctx.font = 'bold 22px monospace';
         ctx.fillStyle = '#7C5CFF';
-        ctx.fillText(`COHORT ${cohort} · FOUNDING ARTIST`, 540, 1070);
+        ctx.fillText(`COHORT ${cohort} · FOUNDING ARTIST`, 540, 950);
 
         // Divider
         const divGrad2 = ctx.createLinearGradient(240, 0, 840, 0);
@@ -935,28 +1047,28 @@ export default function ProfilePage() {
         divGrad2.addColorStop(0.7, 'rgba(124,92,255,0.15)');
         divGrad2.addColorStop(1, 'transparent');
         ctx.fillStyle = divGrad2;
-        ctx.fillRect(240, 1120, 600, 1);
+        ctx.fillRect(240, 1000, 600, 1);
 
         // Features
-        drawFeatures(540, 1210, [
+        drawFeatures(540, 1070, [
           'DIRECT GIG BOOKING SYSTEM',
           'ESCROW PAYMENT INFRASTRUCTURE',
           'VERIFIED AVAILABILITY SYNC'
-        ], '#7C5CFF', '#7C5CFF');
+        ], '#7C5CFF', '#7C5CFF', true);
 
-        // CTA box
-        fillRoundRect(240, 1440, 600, 90, 20, 'rgba(124, 92, 255, 0.05)');
-        strokeRoundRect(240, 1440, 600, 90, 20, 'rgba(124, 92, 255, 0.12)', 1);
+        // CTA box (highlighted)
+        fillRoundRect(240, 1380, 600, 90, 45, 'rgba(124, 92, 255, 0.06)');
+        strokeRoundRect(240, 1380, 600, 90, 45, '#7C5CFF', 2);
         ctx.textAlign = 'center';
         ctx.font = `bold 18px monospace`;
-        ctx.fillStyle = 'rgba(15,15,20,0.4)';
-        ctx.fillText('SECURE YOUR NAME BEFORE IT\'S TAKEN', 540, 1495);
+        ctx.fillStyle = '#7C5CFF';
+        ctx.fillText('SECURE YOUR NAME BEFORE IT\'S TAKEN', 540, 1435);
 
         // Bottom branding
         ctx.fillStyle = '#7C5CFF';
         ctx.globalAlpha = 0.35;
         ctx.font = 'bold 16px monospace';
-        ctx.fillText('ARTISTANT.IN', 540, 1780);
+        ctx.fillText('ARTISTANT.IN', 540, 1580);
         ctx.globalAlpha = 1;
 
       // ═════════════════════════════════════════
@@ -988,53 +1100,52 @@ export default function ProfilePage() {
           ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(1080, i); ctx.stroke();
         }
 
-        // Logo
-        drawLogo(540, 95, 460, false);
-        ctx.textAlign = 'center';
-        ctx.font = 'bold 14px monospace';
-        ctx.fillStyle = 'rgba(255,255,255,0.35)';
-        ctx.fillText('FOUNDING MEMBER PASSPORT', 540, 240);
+        // Watermark background
+        drawWatermark(540, 960, 750, 0.06, false);
 
-        // Card (dark semi-transparent)
-        const cardBg = ctx.createLinearGradient(100, 340, 980, 720);
+        // Logo
+        drawLogo(540, 60, 460, false);
+
+        // Card (dark semi-transparent, y=240)
+        const cardBg = ctx.createLinearGradient(100, 240, 980, 620);
         cardBg.addColorStop(0, 'rgba(255,255,255,0.04)');
         cardBg.addColorStop(1, 'rgba(255,255,255,0.01)');
-        drawPassCard(100, 340, 880, 380, cardBg, 'rgba(255,255,255,0.1)', '#FFFFFF', '#F25A2B');
+        drawPassCard(100, 240, 880, 380, cardBg, 'rgba(255,255,255,0.1)', '#FFFFFF', '#F25A2B', false);
 
         // Headline
         ctx.textAlign = 'center';
         ctx.fillStyle = '#FFFFFF';
         ctx.font = `900 56px "Space Grotesk", sans-serif`;
-        ctx.fillText('I AM ON ARTISTANT.', 540, 920);
+        ctx.fillText('I AM ON ARTISTANT.', 540, 800);
         
         ctx.font = `900 50px "Space Grotesk", sans-serif`;
         ctx.fillStyle = 'rgba(255,255,255,0.85)';
-        ctx.fillText("THEY ARE REBUILDING INDIA'S", 540, 990);
-        ctx.fillText('LIVE ECONOMY.', 540, 1055);
+        ctx.fillText("THEY ARE REBUILDING INDIA'S", 540, 870);
+        ctx.fillText('LIVE ECONOMY.', 540, 935);
 
         // Divider
         ctx.fillStyle = 'rgba(255,255,255,0.12)';
-        ctx.fillRect(240, 1120, 600, 1);
+        ctx.fillRect(240, 990, 600, 1);
 
         // Features or details
-        drawFeatures(540, 1210, [
+        drawFeatures(540, 1060, [
           'DIRECT ARTIST-TO-CLIENT CONNECTIONS',
           'SECURE ESCROW INFRASTRUCTURE',
           `PROFILE: ARTISTANT.IN/${reservation.username.toUpperCase()}`
-        ], 'rgba(255,255,255,0.65)', '#7C5CFF');
+        ], 'rgba(255,255,255,0.65)', '#7C5CFF', false);
 
-        // CTA box with the profile link
-        fillRoundRect(180, 1440, 720, 90, 20, 'rgba(124, 92, 255, 0.08)');
-        strokeRoundRect(180, 1440, 720, 90, 20, 'rgba(124, 92, 255, 0.2)', 1);
+        // CTA box with the profile link (highlighted)
+        fillRoundRect(180, 1380, 720, 90, 45, 'rgba(124, 92, 255, 0.12)');
+        strokeRoundRect(180, 1380, 720, 90, 45, '#7C5CFF', 2);
         ctx.textAlign = 'center';
         ctx.font = `bold 18px monospace`;
-        ctx.fillStyle = '#A391FF';
-        ctx.fillText(`GO CHECK MY PROFILE OUT ON ARTISTANT.IN/${reservation.username.toUpperCase()}`, 540, 1495);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText(`GO CHECK MY PROFILE OUT ON ARTISTANT.IN/${reservation.username.toUpperCase()}`, 540, 1435);
 
         // Bottom branding
         ctx.fillStyle = 'rgba(255,255,255,0.25)';
         ctx.font = 'bold 16px monospace';
-        ctx.fillText('ARTISTANT.IN', 540, 1780);
+        ctx.fillText('ARTISTANT.IN', 540, 1580);
       }
 
       // 2. Share / Download Flow (Only creative, no text)
@@ -1104,133 +1215,442 @@ export default function ProfilePage() {
 
   const renderMobilePreview = () => {
     if (!reservation) return null;
+
+    const getYouTubeEmbedId = (url: string) => {
+      if (!url) return null;
+      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+      const match = url.match(regExp);
+      return (match && match[2].length === 11) ? match[2] : null;
+    };
+
+    const getInstagramEmbedId = (url: string) => {
+      if (!url) return null;
+      const match = url.match(/instagram\.com\/(?:p|reel|tv)\/([^/?#&]+)/i);
+      return match ? match[1] : null;
+    };
+
+    const displayGallery = galleryPhotos.map((url, i) => ({ url, caption: `Gig Performance ${i + 1}` }));
+    const hasContact = (contactEmailEnabled && contactEmail) || (contactPhoneEnabled && contactPhone);
+    const hasSocials = !!instagramUrl || !!spotifyUrl || !!youtubeUrl;
+
     return (
       <div 
         onClick={() => window.open(`/${reservation.username}`, '_blank')}
-        className="relative w-[300px] h-[600px] rounded-[3rem] border-[6px] border-[#1C1C1E] bg-[#050508] shadow-[0_25px_60px_rgba(0,0,0,0.8)] overflow-hidden cursor-pointer group hover:scale-[1.01] transition-transform duration-300 select-none"
+        className={`relative w-[300px] h-[600px] rounded-[3rem] border-[6px] transition-all duration-300 overflow-hidden cursor-pointer group hover:scale-[1.01] select-none ${isLight ? 'border-zinc-300 bg-[#FAF9FD] shadow-[0_20px_50px_rgba(124,92,255,0.06)]' : 'border-[#1C1C1E] bg-[#050508] shadow-[0_25px_60px_rgba(0,0,0,0.8)]'}`}
       >
         {/* Notch */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-4 bg-[#1C1C1E] rounded-b-xl z-40 flex items-center justify-center">
+        <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-28 h-4 transition-colors duration-300 rounded-b-xl z-40 flex items-center justify-center ${isLight ? 'bg-zinc-300' : 'bg-[#1C1C1E]'}`}>
           <div className="w-10 h-1 bg-black/40 rounded-full" />
         </div>
 
         {/* Scrollable Mobile Content */}
-        <div className="w-full h-full overflow-y-auto px-4 pt-6 pb-12 text-left space-y-5 scrollbar-none">
+        <div className={`w-full h-full overflow-y-auto pb-12 text-left scrollbar-none flex flex-col relative transition-colors duration-300 ${isLight ? 'bg-[#FAF9FD]' : 'bg-[#050508]'}`}>
           
-          {/* Hero Profile Mock */}
-          <div className="relative pt-6 pb-4 flex flex-col items-center text-center border-b border-white/[0.04]">
-            {/* Photo or initial letter */}
-            <div className="w-16 h-16 rounded-2xl overflow-hidden bg-gradient-to-br from-[#7C5CFF]/20 to-[#D4567A]/20 flex items-center justify-center border border-white/10 mb-2 shadow-lg">
+          {/* Hero Section Mockup */}
+          <div className="relative w-full h-[220px] overflow-hidden shrink-0">
+            {/* Background Image / Placeholder */}
+            <div className="absolute inset-0 w-full h-full">
               {reservation.profile_photo_url ? (
-                <img src={reservation.profile_photo_url} alt="" className="w-full h-full object-cover" />
+                <img src={reservation.profile_photo_url} alt="" className="w-full h-full object-cover object-top" />
               ) : (
-                <span className="text-xl font-black text-white/50">{displayName[0]?.toUpperCase() || 'A'}</span>
-              )}
-            </div>
-            <h4 className="text-sm font-black text-white truncate max-w-full leading-tight">{displayName || 'Artist'}</h4>
-            <p className="text-[9px] font-mono text-white/40">@{reservation.username}</p>
-            
-            {/* Category & City */}
-            <div className="flex flex-wrap items-center justify-center gap-1 mt-2.5">
-              <span className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider bg-[#7C5CFF]/15 text-[#B49FFF] border border-[#7C5CFF]/20">
-                {categoryLabels[category] || category || 'Artist'}
-              </span>
-              {city && (
-                <span className="px-1.5 py-0.5 rounded-full text-[8px] font-medium text-white/50 bg-white/[0.05] border border-white/[0.06]">
-                  📍 {city}
-                </span>
+                <div className="w-full h-full bg-gradient-to-br from-[#1a0d2e] via-[#0d0d1a] to-[#0a0a0f]">
+                  <div className="absolute inset-0 opacity-20" style={{
+                    backgroundImage: `radial-gradient(circle at 20% 50%, #7C5CFF 0%, transparent 50%), radial-gradient(circle at 80% 20%, #F25A2B 0%, transparent 50%)`,
+                  }} />
+                </div>
               )}
             </div>
 
-            {/* Genres */}
-            {genres.length > 0 && (
-              <div className="flex flex-wrap justify-center gap-1 mt-2">
-                {genres.map(g => (
-                  <span key={g} className="px-1.5 py-0.5 rounded-full text-[7px] text-white/40 bg-white/[0.03] border border-white/[0.05]">{g}</span>
-                ))}
+            {/* Gradient Overlay */}
+            <div className={`absolute inset-0 transition-colors duration-300 ${isLight ? 'bg-gradient-to-b from-black/15 via-transparent via-55% to-[#FAF9FD]' : 'bg-gradient-to-b from-black/35 via-transparent via-55% to-[#050508]'}`} />
+
+            {/* Top Controls Bar (Mobile version mockup) */}
+            <div className="absolute top-4 left-0 right-0 px-3 z-30 flex items-center justify-between w-full">
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center backdrop-blur-md text-[10px] ${isLight ? 'bg-white/75 border border-black/10 text-zinc-900 shadow-sm' : 'bg-black/40 border border-white/10 text-white'}`}>
+                &larr;
               </div>
-            )}
+              <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full backdrop-blur-md shadow-sm select-none ${isLight ? 'bg-white/80 border border-black/10' : 'bg-black/45 border border-white/10'}`}>
+                <span className={`text-[5px] font-mono font-bold tracking-[0.25em] ${isLight ? 'text-zinc-600' : 'text-white'}`}>PORTFOLIO</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center backdrop-blur-md flex items-center justify-center ${isLight ? 'bg-white/75 border border-black/10 text-zinc-900 shadow-sm' : 'bg-black/40 border border-white/10 text-white'}`}>
+                  <Heart className={`w-2.5 h-2.5 ${isLight ? 'text-zinc-800' : 'text-white'}`} />
+                </div>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center backdrop-blur-md flex items-center justify-center ${isLight ? 'bg-white/75 border border-black/10 text-zinc-900 shadow-sm' : 'bg-black/40 border border-white/10 text-white'}`}>
+                  <Share2 className={`w-2.5 h-2.5 ${isLight ? 'text-zinc-800' : 'text-white'}`} />
+                </div>
+              </div>
+            </div>
 
-            {/* Bio */}
-            {bio && <p className="text-[9px] text-white/50 leading-relaxed mt-2.5 max-w-[200px]">{bio}</p>}
+            {/* Bottom Hero Overlay Details (Category, Location, Name, Genres) */}
+            <div className="absolute bottom-0 left-0 right-0 p-3.5 flex flex-col gap-1 z-20">
+              <div className="flex flex-wrap items-center gap-1">
+                <span className={`px-1.5 py-0.5 rounded-full text-[6px] font-bold backdrop-blur-sm uppercase tracking-wider font-mono ${isLight ? 'text-zinc-800 bg-white/90 border border-black/10 shadow-sm' : 'text-white/85 bg-black/45 border border-white/10'}`}>
+                  {categoryLabels[category] || category || 'Artist'}
+                </span>
+                {city && (
+                  <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[6px] font-bold backdrop-blur-sm uppercase tracking-wider font-mono ${isLight ? 'text-zinc-800 bg-white/90 border border-black/10 shadow-sm' : 'text-white/85 bg-black/45 border border-white/10'}`}>
+                    <MapPin className="w-1.5 h-1.5 text-[#F25A2B]" /> {city}
+                  </span>
+                )}
+              </div>
 
-            {/* Contact Button */}
-            {(contactEmailEnabled || contactPhoneEnabled) && (
-              <div className="mt-3 w-full">
-                <div className="w-full text-center py-1.5 rounded-lg text-[9px] font-bold bg-white text-black flex items-center justify-center gap-1">
-                  <Mail className="w-2.5 h-2.5" />
-                  <span>Contact {displayName || 'Artist'}</span>
+              <h1 className={`text-xs font-black leading-tight font-serif ${isLight ? 'text-zinc-950' : 'text-white'}`}>
+                {displayName || 'Artist'}
+              </h1>
+
+              {genres.length > 0 && (
+                <p className={`text-[6px] font-mono tracking-wider ${isLight ? 'text-zinc-600' : 'text-white/50'}`}>
+                  {genres.join(' · ')}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Main Content Area */}
+          <div className={`px-3.5 py-4 space-y-6 flex-1 relative z-10 transition-colors duration-300 ${isLight ? 'bg-[#FAF9FD]' : 'bg-[#050508]'}`}>
+            {/* About Section */}
+            {(bio || city || genres.length > 0) && (
+              <div className="space-y-2 text-left">
+                <h2 className={`text-[10px] font-serif font-bold ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>About</h2>
+                {bio && (
+                  <p className={`text-[8px] leading-relaxed whitespace-pre-wrap ${isLight ? 'text-zinc-700' : 'text-white/60'}`}>{bio}</p>
+                )}
+                
+                {/* Metadata Grid */}
+                <div className="grid grid-cols-2 gap-1 pt-1">
+                  {city && (
+                    <div className={`p-1.5 rounded-lg border transition-all ${isLight ? 'bg-white border-black/10 shadow-sm' : 'bg-white/[0.01] border border-white/[0.03]'}`}>
+                      <span className={`text-[5px] font-mono font-bold uppercase tracking-widest block ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>Location</span>
+                      <span className={`text-[7px] font-bold mt-0.5 block truncate flex items-center gap-0.5 ${isLight ? 'text-zinc-800' : 'text-white/80'}`}>
+                        <MapPin className="w-1.5 h-1.5 text-[#F25A2B]" /> {city}
+                      </span>
+                    </div>
+                  )}
+                  <div className={`p-1.5 rounded-lg border transition-all ${isLight ? 'bg-white border-black/10 shadow-sm' : 'bg-white/[0.01] border-white/[0.03]'}`}>
+                    <span className={`text-[5px] font-mono font-bold uppercase tracking-widest block ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>Type</span>
+                    <span className={`text-[7px] font-bold mt-0.5 block truncate ${isLight ? 'text-zinc-800' : 'text-white/80'}`}>{categoryLabels[category] || category || 'Artist'}</span>
+                  </div>
+                  {genres.length > 0 && (
+                    <div className={`col-span-2 p-1.5 rounded-lg border transition-all ${isLight ? 'bg-white border-black/10 shadow-sm' : 'bg-white/[0.01] border-white/[0.03]'}`}>
+                      <span className={`text-[5px] font-mono font-bold uppercase tracking-widest block ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>Genres</span>
+                      <span className={`text-[7px] font-bold mt-0.5 block whitespace-normal break-words ${isLight ? 'text-[#7C5CFF]' : 'text-[#c0b3ff]'}`}>{genres.join(', ')}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
-          </div>
 
-          {/* Ordered Sections */}
-          <div className="space-y-4">
-            {sectionOrder.map((sec) => {
-              if (sec === 'gallery') {
-                return (
-                  <div key="gallery" className="space-y-1.5">
-                    <div className="flex items-center gap-1">
-                      <ImageGridIcon className="w-2.5 h-2.5 text-[#7C5CFF]" />
-                      <span className="text-[9px] font-bold text-white/80">Gig Gallery</span>
+            {/* Connect Section */}
+            {(hasContact || hasSocials) && (
+              <div className={`space-y-2 text-left border-t pt-4 ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`}>
+                <h2 className={`text-[10px] font-serif font-bold ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Connect</h2>
+                
+                <div className="grid grid-cols-2 gap-1.5">
+                  {/* Contact options card (opens drawer) */}
+                  {hasContact && (
+                    <div 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPreviewContactOpen(true);
+                      }}
+                      className={`p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between min-h-[90px] group shadow-sm ${isLight ? 'bg-white border-black/10 hover:border-[#7C5CFF]/30' : 'bg-white/[0.01] border-white/[0.03] hover:bg-white/[0.02] hover:border-white/10'}`}
+                    >
+                      <div className="flex flex-col gap-0.5 text-left">
+                        <span className={`text-[6px] font-mono font-bold uppercase tracking-widest flex items-center gap-0.5 ${isLight ? 'text-zinc-500' : 'text-white/35'}`}>
+                          <Mail className="w-2.5 h-2.5 text-[#7C5CFF]" /> Contact Artist
+                        </span>
+                        <span className={`text-[8px] font-bold mt-0.5 ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Get in Touch</span>
+                        <p className={`text-[6px] mt-0.5 leading-relaxed ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>Reach out via email, mobile, or WhatsApp.</p>
+                      </div>
+                      <div className={`mt-1.5 text-center py-1 px-2.5 rounded font-bold text-[6px] max-w-[70px] shadow-sm ${isLight ? 'bg-[#7C5CFF] text-white' : 'bg-white text-black'}`}>
+                        Open Details
+                      </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-1">
-                      {[1, 2, 3].map(i => (
-                        <div key={i} className="aspect-square rounded-lg bg-white/[0.02] border border-white/[0.05] flex items-center justify-center">
-                          <ImageGridIcon className="w-2.5 h-2.5 text-white/5" />
+                  )}
+
+                  {instagramUrl && (
+                    <div className={`p-2.5 rounded-xl border flex flex-col justify-between min-h-[90px] shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/[0.01] border-white/[0.03]'}`}>
+                      <div className="flex flex-col gap-0.5">
+                        <span className={`text-[6px] font-mono font-bold uppercase tracking-widest flex items-center gap-0.5 ${isLight ? 'text-zinc-500' : 'text-white/30'}`}>
+                          <InstagramIcon className="w-2.5 h-2.5 text-[#E1306C]" /> Instagram
+                        </span>
+                        <span className={`text-[7px] font-bold truncate ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>@{getInstagramHandle(instagramUrl) || reservation.username}</span>
+                      </div>
+                      <span className={`text-[6px] font-bold mt-1 block ${isLight ? 'text-zinc-400' : 'text-white/40'}`}>View Page &rsaquo;</span>
+                    </div>
+                  )}
+
+                  {spotifyUrl && (
+                    <div className={`p-2.5 rounded-xl border flex flex-col justify-between min-h-[90px] shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/[0.01] border-white/[0.03]'}`}>
+                      <div className="flex flex-col gap-0.5">
+                        <span className={`text-[6px] font-mono font-bold uppercase tracking-widest flex items-center gap-0.5 ${isLight ? 'text-zinc-500' : 'text-white/30'}`}>
+                          <SpotifyIcon className="w-2.5 h-2.5 text-[#1DB954]" /> Spotify
+                        </span>
+                        <span className={`text-[7px] font-bold truncate ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Artist Profile</span>
+                      </div>
+                      <span className={`text-[6px] font-bold mt-1 block ${isLight ? 'text-zinc-400' : 'text-white/40'}`}>Open Spotify &rsaquo;</span>
+                    </div>
+                  )}
+
+                  {youtubeUrl && (
+                    <div className={`p-2.5 rounded-xl border flex flex-col justify-between min-h-[90px] shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/[0.01] border-white/[0.03]'}`}>
+                      <div className="flex flex-col gap-0.5">
+                        <span className={`text-[6px] font-mono font-bold uppercase tracking-widest flex items-center gap-0.5 ${isLight ? 'text-zinc-500' : 'text-white/30'}`}>
+                          <YouTubeIcon className="w-2.5 h-2.5 text-[#FF0000]" /> YouTube
+                        </span>
+                        <span className={`text-[7px] font-bold truncate ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Channel Page</span>
+                      </div>
+                      <span className={`text-[6px] font-bold mt-1 block ${isLight ? 'text-zinc-400' : 'text-white/40'}`}>Open YouTube &rsaquo;</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Ordered Sections */}
+            <div className="space-y-4">
+              {sectionOrder.map((sec) => {
+                if (sec === 'gallery') {
+                  if (displayGallery.length === 0) return null;
+                  return (
+                    <div key="gallery" className={`space-y-2 text-left border-t pt-4 ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`}>
+                      <div className="flex items-center gap-1.5">
+                        <div className={`w-5 h-5 rounded flex items-center justify-center border shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/5 border border-white/10'}`}>
+                          <span className="text-[#7C5CFF] font-bold text-[8px] font-mono">01</span>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              }
-              if (sec === 'video') {
-                return (
-                  <div key="video" className="space-y-1.5">
-                    <div className="flex items-center gap-1">
-                      <VideoIcon className="w-2.5 h-2.5 text-[#D4567A]" />
-                      <span className="text-[9px] font-bold text-white/80">Featured Video</span>
-                    </div>
-                    <div className="w-full aspect-video rounded-xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-center">
-                      <PlayIcon className="w-3.5 h-3.5 text-white/10" />
-                    </div>
-                  </div>
-                );
-              }
-              if (sec === 'audio') {
-                return (
-                  <div key="audio" className="space-y-1.5">
-                    <div className="flex items-center gap-1">
-                      <MusicNoteIcon className="w-2.5 h-2.5 text-[#F25A2B]" />
-                      <span className="text-[9px] font-bold text-white/80">Audio Samples</span>
-                    </div>
-                    <div className="space-y-1">
-                      {[1, 2].map(i => (
-                        <div key={i} className="flex items-center gap-2 p-1.5 rounded-lg bg-white/[0.01] border border-white/[0.03]">
-                          <PlayIcon className="w-2 h-2 text-[#F25A2B]/40" />
-                          <div className="flex-1">
-                            <div className="h-1 w-10 bg-white/10 rounded-full" />
+                        <div>
+                          <h2 className={`text-[9px] font-bold tracking-tight ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Gig Gallery</h2>
+                          <p className={`text-[5px] font-mono tracking-wider uppercase ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>Live Gigs & Moments</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-1">
+                        {galleryPhotos.map((url) => (
+                          <div key={url} className={`aspect-square rounded-lg overflow-hidden border ${isLight ? 'border-black/10 bg-white shadow-sm' : 'border-white/[0.05]'}`}>
+                            <img src={url} alt="" className="w-full h-full object-cover" />
                           </div>
-                          <span className="text-[7px] font-mono text-white/20">--:--</span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+                if (sec === 'video') {
+                  const ytId = youtubeUrl ? getYouTubeEmbedId(youtubeUrl) : null;
+                  const igId = youtubeUrl ? getInstagramEmbedId(youtubeUrl) : null;
+                  if (!youtubeUrl) return null;
+                  return (
+                    <div key="video" className={`space-y-2 text-left border-t pt-4 ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`}>
+                      <div className="flex items-center gap-1.5">
+                        <div className={`w-5 h-5 rounded flex items-center justify-center border shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/5 border border-white/10'}`}>
+                          <span className="text-[#D4567A] font-bold text-[8px] font-mono">02</span>
                         </div>
-                      ))}
+                        <div>
+                          <h2 className={`text-[9px] font-bold tracking-tight ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Featured Showreel</h2>
+                          <p className={`text-[5px] font-mono tracking-wider uppercase ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>Performances & Showreel</p>
+                        </div>
+                      </div>
+
+                      <div className={`w-full aspect-video rounded-xl flex items-center justify-center relative overflow-hidden border ${isLight ? 'bg-white border-black/10 shadow-sm' : 'bg-white/[0.02] border border-white/[0.05]'}`}>
+                        {ytId ? (
+                          <iframe
+                            width="100%"
+                            height="100%"
+                            src={`https://www.youtube.com/embed/${ytId}?autoplay=0&rel=0`}
+                            title="YouTube video player"
+                            frameBorder="0"
+                            className="w-full h-full pointer-events-none"
+                          />
+                        ) : igId ? (
+                          <iframe
+                            width="100%"
+                            height="100%"
+                            src={`https://www.instagram.com/p/${igId}/embed`}
+                            title="Instagram video player"
+                            frameBorder="0"
+                            className="w-full h-full pointer-events-none"
+                          />
+                        ) : youtubeUrl.includes('/profiles/video_') ? (
+                          <video
+                            src={youtubeUrl}
+                            controls
+                            className="w-full h-full object-cover pointer-events-none"
+                          />
+                        ) : (
+                          <>
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                              <Play className="w-3.5 h-3.5 text-white/80" />
+                            </div>
+                            <div className={`text-[5px] font-mono absolute bottom-1 left-2 truncate max-w-[90%] ${isLight ? 'text-zinc-600' : 'text-white/40'}`}>
+                              {youtubeUrl.replace(/https?:\/\/(www\.)?/, '')}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })}
+            </div>
+
+            {/* Founding Status Section */}
+            {featureFoundingCard && (
+              <div className={`space-y-2 text-left border-t pt-4 ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`}>
+                <div className="flex items-center gap-1.5">
+                  <div className={`w-5 h-5 rounded flex items-center justify-center border shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/5 border border-white/10'}`}>
+                    <span className="text-[#F25A2B] font-bold text-[8px] font-mono">03</span>
+                  </div>
+                  <div>
+                    <h2 className={`text-[9px] font-bold tracking-tight ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Founding Status</h2>
+                    <p className={`text-[5px] font-mono tracking-wider uppercase ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>Waitlist Placement Certificate</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-center w-full py-1">
+                  <div 
+                    className={`w-full max-w-[220px] aspect-[1.58/1] relative rounded-xl p-[1px] overflow-hidden border shadow-sm ${isLight ? 'border-[#7C5CFF]/15' : 'border-white/5 shadow-lg'}`}
+                    style={{
+                      background: isLight 
+                        ? 'linear-gradient(135deg, rgba(124,92,255,0.1), rgba(124,92,255,0.02) 40%, rgba(124,92,255,0.25))'
+                        : 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.01) 40%, rgba(124,92,255,0.2))',
+                    }}
+                  >
+                    <div className={`relative w-full h-full rounded-xl p-2 flex flex-col justify-between overflow-hidden ${isLight ? 'bg-white/90 border-0' : 'bg-[#050508]/95'}`}>
+                      {/* Decorative elements */}
+                      <div className={`absolute -right-8 -bottom-8 w-24 h-24 rounded-full border pointer-events-none ${isLight ? 'border-[#7C5CFF]/5' : 'border-white/[0.01]'}`} />
+
+                      {/* Card Top Row */}
+                      <div className="flex justify-between items-start z-10 w-full">
+                        <div className="flex items-center gap-1">
+                          <img src="/logo_a.png" alt="" className="w-2 h-2 object-contain opacity-80" />
+                          <span className={`font-mono text-[3.5px] font-bold tracking-[0.2em] ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>FOUNDING CARD</span>
+                        </div>
+                        <span className={`px-1 py-0.5 rounded-full font-mono text-[3.5px] font-bold uppercase tracking-wider ${isLight ? 'bg-black/[0.02] border border-black/5 text-zinc-500' : 'bg-white/[0.02] border border-white/5 text-white/40'}`}>
+                          Founding Artist
+                        </span>
+                      </div>
+
+                      {/* Rank Position */}
+                      <div className="flex flex-col items-center justify-center z-10 flex-1 my-0.5">
+                        <h1 className={`font-display font-black leading-none text-base ${isLight ? 'text-zinc-900' : 'text-white'}`}>
+                          #{waitlistPos || '---'}
+                        </h1>
+                        <span className={`text-[3.5px] font-mono tracking-[0.2em] uppercase mt-0.5 ${isLight ? 'text-zinc-400' : 'text-white/25'}`}>Waitlist Rank</span>
+                      </div>
+
+                      {/* Card Bottom Row */}
+                      <div className={`flex justify-between items-end z-10 w-full border-t pt-1 ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`}>
+                        <div className="flex flex-col text-left">
+                          <span className={`text-[3px] font-mono tracking-widest uppercase ${isLight ? 'text-zinc-400' : 'text-white/35'}`}>Artist Name</span>
+                          <span className={`text-[5px] font-bold truncate max-w-[60px] ${isLight ? 'text-zinc-800' : 'text-white/80'}`}>{displayName || reservation.username}</span>
+                        </div>
+                        <div className="flex flex-col text-right">
+                          <span className={`text-[3px] font-mono tracking-widest uppercase ${isLight ? 'text-zinc-400' : 'text-white/35'}`}>Cohort / Status</span>
+                          <span className="text-[4px] font-mono tracking-wider text-[#7C5CFF] font-bold">COHORT 003 · FOUNDING</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                );
-              }
-              return null;
-            })}
+                </div>
+              </div>
+            )}
+
+            {/* Visit Artistant CTA banner */}
+            <div className="pt-2">
+              <div className={`rounded-xl p-3 border flex flex-col items-center text-center gap-1.5 relative overflow-hidden shadow-sm ${isLight ? 'bg-white border-[#7C5CFF]/10 shadow-[0_10px_20px_rgba(124,92,255,0.04)]' : 'bg-[#0A0A10]/95 border border-white/[0.03]'}`}>
+                {/* Watermark logo matching public page */}
+                <img 
+                  src="/logo_a.png" 
+                  alt="" 
+                  className={`absolute -bottom-[20%] -left-[5%] h-[130%] w-auto max-w-none pointer-events-none z-0 select-none ${isLight ? 'opacity-[0.03]' : 'opacity-[0.08]'}`}
+                />
+
+                <span className={`text-[8px] font-bold leading-tight z-10 ${isLight ? 'text-zinc-900' : 'text-white'}`}>
+                  India&apos;s Live Economy,{' '}
+                  <span className="bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] bg-clip-text text-transparent inline-block">
+                    Rebuilt
+                  </span>
+                </span>
+                <p className={`text-[5.5px] max-w-[200px] leading-normal z-10 font-mono ${isLight ? 'text-zinc-500' : 'text-white/50'}`}>
+                  Artistant is the booking, contract, and escrow infrastructure designed to empower independent live artists.
+                </p>
+                <div className={`px-2.5 py-0.5 rounded text-[5.5px] font-bold uppercase font-mono z-10 shadow-sm ${isLight ? 'bg-[#7C5CFF] text-white' : 'bg-white text-black'}`}>
+                  Visit Artistant
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className={`border-t pt-3 flex flex-col items-center gap-1 ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`}>
+              <div className={`flex items-center gap-1 ${isLight ? 'text-zinc-400 opacity-60' : 'text-white opacity-35'}`}>
+                <img src="/logo_a.png" alt="" className="w-3.5 h-3.5" />
+                <span className="text-[5.5px]">
+                  Powered by <span className="font-bold">Artistant Portfolio</span>
+                </span>
+              </div>
+              <span className={`text-[5px] font-mono ${isLight ? 'text-zinc-400' : 'text-white/15'}`}>@{reservation.username}</span>
+            </div>
+
           </div>
         </div>
 
-        {/* Open page hover banner */}
-        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center gap-2 z-50">
-          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white border border-white/25">
-            <ExternalLink className="w-4 h-4" />
-          </div>
-          <span className="text-[10px] font-bold text-white/80 font-mono tracking-wider">OPEN LIVE PROFILE</span>
-        </div>
+        {/* Mini Contact drawer modal overlay inside the preview phone simulator */}
+        <AnimatePresence>
+          {previewContactOpen && (
+            <div 
+              onClick={(e) => {
+                e.stopPropagation();
+                setPreviewContactOpen(false);
+              }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-end"
+            >
+              <div 
+                onClick={(e) => e.stopPropagation()}
+                className={`w-full rounded-t-2xl border-t p-3.5 space-y-3 pb-6 text-left ${isLight ? 'bg-white border-[#7C5CFF]/20 shadow-xl' : 'bg-[#0c0c12] border-[#7C5CFF]/15'}`}
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className={`text-[8px] font-mono tracking-widest uppercase ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>Contact Options</h3>
+                  <button 
+                    onClick={() => setPreviewContactOpen(false)}
+                    className={`w-4 h-4 rounded-full flex items-center justify-center ${isLight ? 'bg-black/5 text-zinc-500 hover:text-zinc-800' : 'bg-white/5 text-white/40 hover:text-white'}`}
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+                
+                {contactEmailEnabled && contactEmail && (
+                  <div className={`p-2 rounded-xl border flex flex-col gap-1 text-left shadow-sm ${isLight ? 'bg-zinc-50/50 border-black/5' : 'bg-white/[0.02] border-white/[0.04]'}`}>
+                    <span className={`text-[5px] font-mono font-bold uppercase tracking-widest flex items-center gap-0.5 ${isLight ? 'text-zinc-500' : 'text-white/30'}`}>
+                      <Mail className="w-2 h-2 text-[#7C5CFF]" /> Email Address
+                    </span>
+                    <span className={`text-[7px] font-bold truncate ${isLight ? 'text-zinc-950' : 'text-white/90'}`}>{contactEmail}</span>
+                    <div className={`mt-1 text-center py-1 rounded font-bold text-[6px] max-w-[50px] shadow-sm ${isLight ? 'bg-[#7C5CFF] text-white' : 'bg-white text-black'}`}>
+                      Send Mail
+                    </div>
+                  </div>
+                )}
+
+                {contactPhoneEnabled && contactPhone && (
+                  <div className={`p-2 rounded-xl border flex flex-col gap-1 text-left shadow-sm ${isLight ? 'bg-zinc-50/50 border-black/5' : 'bg-white/[0.02] border-white/[0.04]'}`}>
+                    <span className={`text-[5px] font-mono font-bold uppercase tracking-widest flex items-center gap-0.5 ${isLight ? 'text-zinc-500' : 'text-white/30'}`}>
+                      <Phone className="w-2 h-2 text-[#F25A2B]" /> Mobile Number
+                    </span>
+                    <span className={`text-[7px] font-bold truncate ${isLight ? 'text-zinc-950' : 'text-white/90'}`}>{contactPhone}</span>
+                    <div className="flex gap-1 mt-1">
+                      <div className={`text-center py-0.5 px-1.5 rounded font-bold text-[5px] border ${isLight ? 'bg-white border-black/10 text-zinc-800' : 'bg-white/5 border border-white/10 text-white'}`}>
+                        Call
+                      </div>
+                      <div className="text-center py-0.5 px-1.5 rounded bg-[#25D366] font-bold text-[5px] text-white shadow-sm">
+                        WhatsApp
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     );
   };
@@ -1304,10 +1724,829 @@ export default function ProfilePage() {
           </motion.div>
         </section>
 
+        {/* ── DASHBOARD SUB-NAVIGATION TAB BAR ── */}
+        <div className="flex justify-center mb-8 relative z-30">
+          <div className={`flex flex-wrap items-center justify-center p-1.5 rounded-3xl border backdrop-blur-md gap-1 ${
+            isLight ? 'bg-black/5 border-black/5' : 'bg-white/[0.02] dark:bg-black/30 border border-white/5'
+          }`}>
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-bold font-mono uppercase tracking-wider transition-all duration-300 relative cursor-pointer ${
+                activeTab === 'dashboard' ? 'text-white' : isLight ? 'text-black/45 hover:text-black/70' : 'text-white/40 hover:text-white/70'
+              }`}
+            >
+              {activeTab === 'dashboard' && (
+                <motion.div
+                  layoutId="activeDashboardTab"
+                  className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF]"
+                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                  style={{ zIndex: -1 }}
+                />
+              )}
+              <LayoutGrid className="w-3.5 h-3.5 transition-colors duration-300" />
+              <span>Dashboard</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('portfolio')}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-bold font-mono uppercase tracking-wider transition-all duration-300 relative cursor-pointer ${
+                activeTab === 'portfolio' ? 'text-white' : isLight ? 'text-black/45 hover:text-black/70' : 'text-white/40 hover:text-white/70'
+              }`}
+            >
+              {activeTab === 'portfolio' && (
+                <motion.div
+                  layoutId="activeDashboardTab"
+                  className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF]"
+                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                  style={{ zIndex: -1 }}
+                />
+              )}
+              <Smartphone className="w-3.5 h-3.5 transition-colors duration-300" />
+              <span>Portfolio</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('leaderboard')}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-bold font-mono uppercase tracking-wider transition-all duration-300 relative cursor-pointer ${
+                activeTab === 'leaderboard' ? 'text-white' : isLight ? 'text-black/45 hover:text-black/70' : 'text-white/40 hover:text-white/70'
+              }`}
+            >
+              {activeTab === 'leaderboard' && (
+                <motion.div
+                  layoutId="activeDashboardTab"
+                  className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF]"
+                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                  style={{ zIndex: -1 }}
+                />
+              )}
+              <Trophy className="w-3.5 h-3.5 transition-colors duration-300" />
+              <span>Leaderboard</span>
+            </button>
+          </div>
+        </div>
+
+        {/* ── DASHBOARD WORKSPACE (Dashboard Tab) ── */}
+        {activeTab === 'dashboard' && (
+          <div className="space-y-8 relative z-10 text-left">
+            {/* ── BANNERS SECTION ── */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+              {/* Edit Portfolio Banner */}
+              <div 
+                onClick={() => setActiveTab('portfolio')}
+                className={`p-4 md:p-5 rounded-3xl border text-left relative overflow-hidden group cursor-pointer transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] h-full ${
+                  isLight 
+                    ? 'bg-white border-[#7C5CFF]/10 hover:border-[#7C5CFF]/30 shadow-[0_8px_30px_rgba(124,92,255,0.08)]' 
+                    : 'bg-[#0A0A0F] border-white/5 hover:border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.4)]'
+                }`}
+                style={{
+                  isolation: 'isolate',
+                  WebkitMaskImage: '-webkit-radial-gradient(white, black)'
+                }}
+              >
+                <div 
+                  className="absolute -right-6 -top-6 w-20 h-20 rounded-full group-hover:scale-125 transition-transform duration-500 pointer-events-none"
+                  style={{ background: 'radial-gradient(circle, rgba(124,92,255,0.12) 0%, rgba(242,90,43,0.06) 50%, transparent 70%)' }}
+                />
+                <div className="flex items-start gap-3.5 z-10 relative">
+                  <div className="w-9 h-9 rounded-2xl bg-[#7C5CFF]/10 flex items-center justify-center text-[#7C5CFF] shrink-0 border border-[#7C5CFF]/20 group-hover:bg-[#7C5CFF] group-hover:text-white group-hover:border-[#7C5CFF] group-hover:rotate-12 transition-all duration-300">
+                    <Smartphone className="w-4 h-4" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className={`text-xs font-bold flex items-center gap-1.5 uppercase font-mono tracking-wider ${isLight ? 'text-black' : 'text-white'}`}>
+                      Portfolio Designer
+                    </h4>
+                    <p className={`text-[10px] leading-relaxed font-sans ${isLight ? 'text-black/60' : 'text-white/50'}`}>
+                      Want to update your bio, upload gig photos, or add a video showreel? Visit the Portfolio tab to edit details.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* View Public Portfolio Page Banner */}
+              <div 
+                onClick={() => window.open(`/${reservation.username}`, '_blank')}
+                className={`p-4 md:p-5 rounded-3xl border text-left relative overflow-hidden group cursor-pointer transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] h-full ${
+                  isLight 
+                    ? 'bg-white border-[#F25A2B]/10 hover:border-[#F25A2B]/30 shadow-[0_8px_30px_rgba(242,90,43,0.08)]' 
+                    : 'bg-[#0A0A0F] border-white/5 hover:border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.4)]'
+                }`}
+                style={{
+                  isolation: 'isolate',
+                  WebkitMaskImage: '-webkit-radial-gradient(white, black)'
+                }}
+              >
+                <div 
+                  className="absolute -right-6 -top-6 w-20 h-20 rounded-full group-hover:scale-125 transition-transform duration-500 pointer-events-none"
+                  style={{ background: 'radial-gradient(circle, rgba(242,90,43,0.12) 0%, rgba(212,86,122,0.06) 50%, transparent 70%)' }}
+                />
+                <div className="flex items-start gap-3.5 z-10 relative">
+                  <div className="w-9 h-9 rounded-2xl bg-[#F25A2B]/10 flex items-center justify-center text-[#F25A2B] shrink-0 border border-[#F25A2B]/20 group-hover:bg-[#F25A2B] group-hover:text-white group-hover:border-[#F25A2B] group-hover:scale-105 transition-all duration-300">
+                    <Globe className="w-4 h-4" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className={`text-xs font-bold flex items-center gap-1.5 uppercase font-mono tracking-wider ${isLight ? 'text-black' : 'text-white'}`}>
+                      Live Portfolio Page
+                    </h4>
+                    <p className={`text-[10px] leading-relaxed font-sans ${isLight ? 'text-black/60' : 'text-white/50'}`}>
+                      Your booking page is online and ready for clients! Share your custom handle to take escrow-secured bookings.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── TWO-COLUMN WORKSPACE ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              {/* LEFT COLUMN: VOUCH & STANDING (7 Columns) */}
+              <div className="lg:col-span-7 space-y-6">
+                {/* Founding Network Status Card */}
+                <div className="rounded-[2.5rem] p-[1.5px] bg-gradient-to-b from-[var(--line)] to-transparent shadow-2xl relative overflow-hidden group">
+                  <div className="bg-bg-card/95 rounded-[2.4rem] p-6 md:p-8 backdrop-blur-xl border border-line-soft relative">
+                    <div className="absolute -left-20 -top-20 w-48 h-48 rounded-full bg-[#7C5CFF]/3 blur-[80px] pointer-events-none" />
+
+                    <div className="flex justify-between items-center mb-6">
+                      <h3 className="font-mono text-[10px] font-bold text-ink-2 uppercase tracking-[0.2em] flex items-center gap-2">
+                        <TrendingUp className="w-3.5 h-3.5 text-[#7C5CFF]" /> Founding Status
+                      </h3>
+                      <motion.button 
+                        onClick={() => setActiveInfo('why-refer')}
+                        animate={{ width: isHelpExpanded ? 82 : 20 }}
+                        className="rounded-full flex items-center justify-center text-[10px] font-mono font-bold text-white bg-gradient-to-br from-[#7C5CFF] to-[#D4567A] border border-white/10 shadow-[0_0_8px_rgba(124,92,255,0.3)] cursor-pointer overflow-hidden whitespace-nowrap gap-1"
+                        style={{ width: isHelpExpanded ? '82px' : '20px', height: '20px', minWidth: '20px', padding: isHelpExpanded ? '0 7px' : '0' }}
+                        title="Why invite peers?"
+                      >
+                        <span>?</span>
+                        {isHelpExpanded && (
+                          <span className="text-[7px] tracking-wider uppercase">Invite Info</span>
+                        )}
+                      </motion.button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center mb-6">
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className="font-mono text-[9px] text-ink-3 tracking-widest block uppercase font-bold">Current Standing</span>
+                          <motion.button 
+                            onClick={() => setActiveInfo('vouch-points')}
+                            animate={{ width: isHelpExpanded ? 80 : 16 }}
+                            className="rounded-full flex items-center justify-center text-[8px] font-mono font-bold text-white bg-gradient-to-br from-[#7C5CFF] to-[#D4567A] border border-white/10 shadow-[0_0_6px_rgba(124,92,255,0.3)] cursor-pointer overflow-hidden whitespace-nowrap gap-1"
+                            style={{ width: isHelpExpanded ? '80px' : '16px', height: '16px', minWidth: '16px', padding: isHelpExpanded ? '0 5px' : '0' }}
+                            title="How points work"
+                          >
+                            <span>?</span>
+                            {isHelpExpanded && (
+                              <span className="text-[7px] tracking-wider uppercase">Points Info</span>
+                            )}
+                          </motion.button>
+                        </div>
+                        <div className="font-display font-black text-5xl mt-2 tracking-tight text-ink drop-shadow-[0_4px_12px_var(--shadow-base)] flex items-baseline gap-1.5">
+                          {points} <span className="font-mono text-xs font-bold text-[#7C5CFF]">PTS</span>
+                        </div>
+                        <p className="text-[10px] text-ink-2 mt-2 font-mono">
+                          Base 100 PTS + 50 PTS per verified referral + 80 PTS for Story task.
+                        </p>
+                      </div>
+
+                      {/* Vouch Slots Progress Panel */}
+                      <div className="w-full h-32 bg-black/5 dark:bg-black/30 border border-line-soft rounded-3xl p-4 shadow-inner">
+                        <div className="grid grid-cols-3 gap-3 w-full h-full items-center">
+                          {Array.from({ length: 3 }).map((_, idx) => {
+                            const active = idx < verifiedReferrals;
+                            return (
+                              <div 
+                                key={idx}
+                                className={`flex flex-col items-center justify-center p-2 rounded-2xl border transition-all duration-300 relative overflow-hidden ${
+                                  active 
+                                    ? 'bg-gradient-to-b from-[#7C5CFF]/12 to-[#D4567A]/4 border-[#7C5CFF]/20 shadow-[0_4px_12px_rgba(124,92,255,0.08)]' 
+                                    : isLight ? 'bg-black/5 border-black/5' : 'bg-white/[0.01] dark:bg-white/[0.01] border-line-soft'
+                                }`}
+                                style={{ height: '96px' }}
+                              >
+                                {active ? (
+                                  <>
+                                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#7C5CFF] to-[#D4567A] flex items-center justify-center text-white mb-2 shadow-[0_0_10px_rgba(124,92,255,0.4)]">
+                                      <Check className="w-3.5 h-3.5" />
+                                    </div>
+                                    <span className="font-mono text-[9px] uppercase tracking-wider text-[#34D399] font-bold">Vouched</span>
+                                    <span className="font-mono text-[7px] text-ink-3 uppercase tracking-widest mt-0.5 font-bold">Artist {idx + 1}</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-ink-3 mb-2 border ${isLight ? 'bg-black/10 border-black/5' : 'bg-black/20 dark:bg-white/5 border-line-soft'}`}>
+                                      <LockKeyhole className="w-3 h-3 opacity-40 text-ink-3" />
+                                    </div>
+                                    <span className="font-mono text-[9px] uppercase tracking-wider text-ink-3 opacity-60">Locked</span>
+                                    <span className="font-mono text-[7px] text-ink-3 uppercase tracking-widest mt-0.5">Artist {idx + 1}</span>
+                                  </>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="relative space-y-4">
+                      <div>
+                        <p className="font-mono text-[9px] text-ink-2 uppercase tracking-wider mb-2.5 leading-relaxed">
+                          Progress to Founding Artist Badge:
+                        </p>
+
+                        {/* Segmented hardware-style progress track */}
+                        <div className="relative w-full h-3 rounded-full bg-black/10 dark:bg-black/40 border border-line-soft overflow-hidden p-0.5 shadow-inner">
+                          <div className="absolute inset-0 flex pointer-events-none z-20">
+                            <div className="w-px h-full bg-black/10 dark:bg-white/10" style={{ marginLeft: '25%' }} />
+                            <div className="w-px h-full bg-black/10 dark:bg-white/10" style={{ marginLeft: '50%' }} />
+                            <div className="w-px h-full bg-black/10 dark:bg-white/10" style={{ marginLeft: '75%' }} />
+                          </div>
+                          <motion.div 
+                            className="h-full rounded-full bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF]" 
+                            initial={{ width: 0 }} 
+                            whileInView={{ width: `${progressPercentage}%` }} 
+                            viewport={{ once: true }} 
+                            transition={{ duration: 1.2, ease: "easeOut" }} 
+                          />
+                        </div>
+
+                        <div className="flex justify-between items-center mt-3">
+                          <span className="text-[9px] text-ink-3 font-mono uppercase tracking-widest">Founding Artist Level (500 PTS)</span>
+                          <span className="text-[9px] text-ink-3 font-mono uppercase tracking-widest font-bold">{points}/500 PTS</span>
+                        </div>
+                      </div>
+
+                      {/* Unverified Referrals pending notice */}
+                      {unverifiedReferrals > 0 && (
+                        <div className="px-4 py-3 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-amber-500/90 text-[10px] font-mono flex items-center gap-2.5 shadow-inner">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0 shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
+                          <span>Your referrals are being verified. Once approved, points will unlock and climb your rank! ({unverifiedReferrals} pending)</span>
+                        </div>
+                      )}
+
+                      {/* Dynamic competitive notification */}
+                      {verifiedReferrals >= 3 ? (
+                        <div className="px-4 py-3 rounded-2xl bg-[#7C5CFF]/10 border border-[#7C5CFF]/20 text-[var(--ink)] text-[10px] font-mono leading-relaxed shadow-sm">
+                          🚀 **You've referred {verifiedReferrals} peers! But don't stop there.** Earning more points helps you climb the leaderboard, secure your priority position in **Cohort 001**, and prevents other artists from overtaking your rank!
+                        </div>
+                      ) : (
+                        <div className="text-[9px] font-mono text-ink-3 text-left">
+                          Refer active artists to earn points, climb the leaderboard, and claim a spot in Cohort 1.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Referral Invite & Vouch Engine Card */}
+                <div className="rounded-[2.5rem] p-[1.5px] bg-gradient-to-b from-[var(--line)] to-transparent shadow-2xl relative overflow-hidden group">
+                  <div className="bg-bg-card/95 rounded-[2.4rem] p-6 md:p-8 backdrop-blur-xl border border-line-soft relative">
+                    <div className="absolute -right-20 -bottom-20 w-48 h-48 rounded-full bg-[#F25A2B]/2 blur-[80px] pointer-events-none" />
+
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="font-mono text-[10px] font-bold text-ink-2 uppercase tracking-[0.2em] flex items-center gap-2">
+                        <Users className="w-3.5 h-3.5 text-[#F25A2B]" /> Vouch Engine
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        {verifiedReferrals > 0 ? (
+                          <span className="font-mono text-[9px] uppercase font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full select-none">
+                            {verifiedReferrals} approved
+                          </span>
+                        ) : (
+                          <span className="font-mono text-[9px] uppercase font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full select-none animate-pulse">
+                            0 approved
+                          </span>
+                        )}
+                        <motion.button 
+                          onClick={() => setActiveInfo('why-refer')}
+                          animate={{ width: isHelpExpanded ? 82 : 20 }}
+                          className="rounded-full flex items-center justify-center text-[10px] font-mono font-bold text-white bg-gradient-to-br from-[#7C5CFF] to-[#D4567A] border border-white/10 shadow-[0_0_8px_rgba(124,92,255,0.3)] cursor-pointer overflow-hidden whitespace-nowrap gap-1"
+                          style={{ width: isHelpExpanded ? '82px' : '20px', height: '20px', minWidth: '20px', padding: isHelpExpanded ? '0 7px' : '0' }}
+                          title="Why share stories?"
+                        >
+                          <span>?</span>
+                          {isHelpExpanded && (
+                            <span className="text-[7px] tracking-wider uppercase">Invite Info</span>
+                          )}
+                        </motion.button>
+                      </div>
+                    </div>
+
+                    <h4 className="text-xl font-display font-black text-ink uppercase tracking-tight mb-2.5">
+                      Fast-Track to Cohort 1 & Founding Status
+                    </h4>
+                    <p className="text-xs text-ink-2 mb-6 leading-relaxed">
+                      Access is released in rollouts. Earn <strong className="text-ink">250 PTS</strong> to qualify for Cohort 1 priority access (includes first gig platform fee waived), and reach <strong className="text-ink">500 PTS</strong> to claim a permanent verified <strong className="text-ink">"Founding Artist"</strong> badge. The first 50 Founding Artists receive a lifetime <strong className="text-ink">0% Platform Fee</strong> guarantee!
+                    </p>
+
+                    {/* Share Tools */}
+                    <div className="space-y-4 mb-6">
+                      {/* Copy Link Input Bar */}
+                      <div className="flex items-center gap-3 bg-black/5 dark:bg-black/40 border border-line-soft p-1.5 rounded-2xl shadow-inner">
+                        <div className="flex-1 px-4 py-2 text-ink-2 font-mono text-xs truncate select-all">
+                          artistant.in/?ref={reservation.username}
+                        </div>
+                        <button 
+                          onClick={copyReferralLink} 
+                          className="h-10 px-4 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 border border-black/10 dark:border-white/10 text-ink font-mono text-[10px] uppercase font-bold tracking-widest shadow-md active:scale-95 transition-all shrink-0 flex items-center gap-1.5"
+                        >
+                          {copied ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 text-emerald-400" /> Copied
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5" /> Copy Link
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Quick-Share Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <button 
+                          onClick={() => handleShareStory('whatsapp')}
+                          className="flex items-center justify-center gap-2.5 h-12 rounded-xl bg-[#25D366]/8 hover:bg-[#25D366]/18 border border-[#25D366]/30 text-[#25D366] font-mono text-[10px] uppercase tracking-wider font-bold transition-all duration-300 active:scale-95 cursor-pointer"
+                        >
+                          <span>Share via</span>
+                          <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 448 512">
+                            <path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/>
+                          </svg>
+                        </button>
+                        <button 
+                          onClick={() => handleShareStory('instagram')}
+                          className="flex items-center justify-center gap-2.5 h-12 rounded-xl bg-[#E1306C]/8 hover:bg-[#E1306C]/18 border border-[#E1306C]/30 text-[#E1306C] font-mono text-[10px] uppercase tracking-wider font-bold transition-all duration-300 active:scale-95 cursor-pointer"
+                        >
+                          <span>Share via</span>
+                          <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
+                          </svg>
+                        </button>
+                        <button 
+                          onClick={() => handleShareStory('x')}
+                          className={`flex items-center justify-center gap-2.5 h-12 rounded-xl font-mono text-[10px] uppercase tracking-wider font-bold transition-all duration-300 active:scale-95 cursor-pointer flex-1 sm:flex-none ${
+                            isLight 
+                              ? 'bg-black/[0.04] hover:bg-black/[0.08] border border-black/15 text-black' 
+                              : 'bg-white/[0.03] hover:bg-white/[0.08] border border-white/20 text-white'
+                          }`}
+                        >
+                          <span>Share via</span>
+                          <svg className="w-3.5 h-3.5 fill-current shrink-0" viewBox="0 0 24 24">
+                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Expandable Message Box */}
+                    <div className="border-t border-line-soft pt-4">
+                      <button 
+                        onClick={() => setRawTextOpen(!rawTextOpen)}
+                        className="w-full flex items-center justify-between text-[9px] font-mono uppercase text-ink-3 hover:text-ink transition-colors py-1"
+                      >
+                        <span>Show Invite Copywriting Template</span>
+                        <span>{rawTextOpen ? '[-]' : '[+]'}</span>
+                      </button>
+                      
+                      <AnimatePresence>
+                        {rawTextOpen && (
+                          <motion.div 
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="overflow-hidden mt-3"
+                          >
+                            <div className="flex items-start gap-3 bg-black/5 dark:bg-black/50 border border-line-soft p-4 rounded-2xl shadow-inner text-left relative group/raw">
+                              <p className="flex-1 text-[11px] font-mono text-ink-2 leading-relaxed select-all">
+                                Hey! I just locked my booking handle on Artistant. It lets you take direct client bookings, handles your contracts, and secures your money in escrow before you even perform. Claim your name before someone else takes it: artistant.in/?ref={reservation.username}
+                              </p>
+                              <button 
+                                onClick={() => {
+                                  const shareText = `Hey! I just locked my booking handle on Artistant. It lets you take direct client bookings, handles your contracts, and secures your money in escrow before you even perform. Claim your name before someone else takes it: artistant.in/?ref=${reservation.username}`;
+                                  navigator.clipboard.writeText(shareText);
+                                  showToast("Invite template copied!");
+                                }}
+                                className="p-2.5 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 border border-black/10 dark:border-white/10 text-ink-2 hover:text-ink transition-colors"
+                                title="Copy raw text"
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* RIGHT COLUMN: IDENTITY & STORY (5 Columns) */}
+              <div className="lg:col-span-5 space-y-6 flex flex-col items-center">
+                {/* 3D TILT FOUNDING CARD */}
+                <div className="w-full max-w-md aspect-[1.58/1] relative mx-auto" style={{ perspective: 1200 }}>
+                  <motion.div
+                    ref={cardRef}
+                    onMouseMove={handleMouseMove}
+                    onMouseLeave={handleMouseLeave}
+                    animate={{ rotateX, rotateY }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                    className={`w-full h-full relative rounded-[2.5rem] p-[1.5px] overflow-hidden group cursor-pointer ${isLight ? 'shadow-[0_20px_50px_rgba(124,92,255,0.08)]' : 'shadow-[0_30px_90px_-20px_rgba(0,0,0,0.9)]'}`}
+                    style={{
+                      background: isLight 
+                        ? 'linear-gradient(135deg, rgba(124,92,255,0.2), rgba(242,90,43,0.1) 40%, rgba(255,255,255,0.5))'
+                        : 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.01) 40%, rgba(124,92,255,0.2))',
+                      transformStyle: 'preserve-3d',
+                    }}
+                  >
+                    <div 
+                      className={`relative w-full h-full ${isLight ? 'bg-[#FFFFFF]/90' : 'bg-[#050508]/90'} rounded-[2.4rem] p-5 md:p-6 flex flex-col justify-between overflow-hidden border ${isLight ? 'border-[#7C5CFF]/15' : 'border-white/5'}`}
+                      style={{
+                        isolation: 'isolate',
+                        WebkitMaskImage: '-webkit-radial-gradient(white, black)'
+                      }}
+                    >
+                      <div className={`absolute -right-20 -bottom-20 w-80 h-80 rounded-full border ${isLight ? 'border-[#7C5CFF]/5' : 'border-white/[0.02]'} flex items-center justify-center pointer-events-none`}>
+                        <div className={`w-60 h-60 rounded-full border ${isLight ? 'border-[#7C5CFF]/5' : 'border-white/[0.01]'} flex items-center justify-center`} />
+                      </div>
+
+                      {/* Top Row */}
+                      <div className="flex justify-between items-start z-10 w-full">
+                        <div className="flex items-center gap-2">
+                          <img src="/logo_a.png" alt="A" className="w-6 h-6 object-contain opacity-80" />
+                          <span className="font-mono text-[9px] font-bold tracking-[0.2em] text-[var(--ink-2)]">FOUNDING CARD</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span 
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-mono text-[9px] font-bold uppercase tracking-wider relative overflow-hidden transition-all duration-300 ${
+                              points >= 500 
+                                ? isLight
+                                  ? 'bg-emerald-50 border border-emerald-200 text-emerald-700 shadow-sm'
+                                  : 'bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 text-emerald-400 shadow-[0_2px_10px_rgba(16,185,129,0.1)]' 
+                                : isLight
+                                  ? 'bg-black/[0.04] border border-black/8 text-black/45 shadow-sm'
+                                  : 'bg-white/[0.02] border border-white/5 text-white/40 shadow-sm'
+                            }`}
+                            style={{
+                              backdropFilter: 'blur(8px)',
+                              WebkitBackdropFilter: 'blur(8px)',
+                              boxShadow: points >= 500
+                                ? isLight
+                                  ? 'none'
+                                  : 'inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.2), 0 2px 8px rgba(16,185,129,0.08)'
+                                : isLight
+                                  ? 'inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -1px 0 rgba(0,0,0,0.03)'
+                                  : 'inset 0 1px 0 rgba(255,255,255,0.03), inset 0 -1px 0 rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.15)',
+                            }}
+                          >
+                            {points >= 500 ? (
+                              <>
+                                <span className={`w-1.5 h-1.5 rounded-full ${isLight ? 'bg-emerald-500' : 'bg-emerald-400 animate-pulse shadow-[0_0_8px_#34D399]'}`} />
+                                <span>Founding Artist</span>
+                              </>
+                            ) : (
+                              <>
+                                <span className={`w-1.5 h-1.5 rounded-full ${isLight ? 'bg-black/20' : 'bg-white/20'}`} />
+                                <span>Founding Artist</span>
+                                <LockKeyhole className={`w-2.5 h-2.5 ${isLight ? 'text-black/35' : 'text-white/30'} ml-0.5 shrink-0`} />
+                              </>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Rank Pos (Center) */}
+                      <div className="flex flex-col items-center justify-center z-10 flex-1 my-1 md:my-2">
+                        <h1 className="font-display font-black leading-none text-[var(--ink)] tracking-tighter text-4xl md:text-6xl" style={{ textShadow: isLight ? '0 10px 30px rgba(124,92,255,0.06)' : '0 10px 30px rgba(0,0,0,0.5)' }}>
+                          #{waitlistPos || '---'}
+                        </h1>
+                        <div className="flex flex-col items-center mt-1.5 md:mt-2.5">
+                          <span className="font-mono text-[9px] font-bold tracking-[0.35em] text-[var(--ink-3)]">WAITLIST RANK • COHORT {cohort}</span>
+                          <span className="font-mono text-[8px] font-bold tracking-[0.15em] text-[#F25A2B]">{isCohort1 ? 'BETA ACCESS GRANTED' : 'POSITION SECURED'}</span>
+                        </div>
+                      </div>
+
+                      {/* Bottom Row */}
+                      <div className="flex justify-between items-center z-10">
+                        <div className="flex flex-col text-left">
+                          <span className="font-display text-xl md:text-2xl font-black tracking-tight text-[var(--ink)]">@{reservation.username}</span>
+                          <span className="text-[9px] uppercase font-mono tracking-widest text-[var(--ink-3)] mt-0.5">Verified Artist</span>
+                        </div>
+                        <div className="flex flex-col items-end">
+                          <img src="/logo_wordmark.png" alt="ArtisTant" className="w-24 md:w-32 h-auto object-contain opacity-85 dark:invert-0 invert -my-3 md:-my-4" />
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                </div>
+
+                {/* ── STORY STUDIO WORKSPACE ── */}
+                <div className="w-full rounded-[2.5rem] p-[1.5px] bg-gradient-to-b from-[var(--line)] to-transparent shadow-2xl relative overflow-hidden group">
+                  <div className="bg-bg-card/95 rounded-[2.4rem] p-6 md:p-8 backdrop-blur-xl border border-line-soft flex flex-col items-center">
+                    
+                    {/* Header */}
+                    <div className="flex justify-between items-center w-full mb-2">
+                      <h3 className="font-mono text-[10px] font-bold text-ink-2 uppercase tracking-[0.2em]">
+                        Story Generator
+                      </h3>
+                      <div>
+                        {storyShared ? (
+                          <span className="font-mono text-[9px] uppercase font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full select-none">
+                            +80 PTS Earned
+                          </span>
+                        ) : (
+                          <span className="font-mono text-[9px] uppercase font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full select-none animate-pulse">
+                            Pending Share
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] text-ink-2 leading-relaxed self-start mb-5">
+                      Generate and share your Founding Card as an Instagram or WhatsApp story. <strong className="text-ink">To claim points, you must mention @artistant and put your referral link: `artistant.in/?ref={reservation.username}` on your Story!</strong>
+                    </p>
+
+                    {/* ── Template Selector Tabs ── */}
+                    <div className="flex w-full gap-1.5 mb-5">
+                      {[
+                        { name: 'Dark Noir', bg: '#0A0A10' },
+                        { name: 'Gradient', bg: '' },
+                        { name: 'Light', bg: '#FAFAFA' },
+                        { name: 'Live Economy', bg: '#0F172A' }
+                      ].map((tmpl, idx) => (
+                        <button 
+                          key={idx}
+                          onClick={() => setActiveStoryTemplate(idx)}
+                          className={`flex-1 h-9 rounded-full font-mono text-[8px] uppercase tracking-wider font-bold transition-all duration-300 cursor-pointer border ${
+                            activeStoryTemplate === idx 
+                              ? 'border-[#F25A2B]/50 shadow-[0_0_12px_rgba(242,90,43,0.15)] scale-[1.02]' 
+                              : 'border-line-soft hover:border-line opacity-60 hover:opacity-100'
+                          }`}
+                          style={{
+                            background: idx === 1 ? 'linear-gradient(135deg, #7C5CFF, #D4567A, #F25A2B)' : tmpl.bg,
+                            color: idx === 2 ? '#0F0F14' : '#FFFFFF'
+                          }}
+                        >
+                          {tmpl.name}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* ── Story Preview Card (Redesigned) ── */}
+                    <div className="relative w-full max-w-[280px] aspect-[9/16] rounded-[2.5rem] p-[3px] bg-gradient-to-b from-white/10 to-transparent shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] border border-white/5 mb-5 transition-all duration-500">
+                      <div className="w-full h-full rounded-[2.3rem] overflow-hidden relative"
+                        style={{
+                          background: activeStoryTemplate === 0 
+                            ? 'linear-gradient(180deg, #0A0A10, #04040A)' 
+                            : activeStoryTemplate === 1 
+                              ? 'linear-gradient(135deg, #7C5CFF, #D4567A, #F25A2B)' 
+                              : activeStoryTemplate === 2
+                                ? '#FAFAFA'
+                                : 'linear-gradient(180deg, #0F172A, #020617)',
+                        }}
+                      >
+                        {/* Dark overlay for template 1 */}
+                        {activeStoryTemplate === 1 && (
+                          <div className="absolute inset-0 bg-black/20 z-[1]" />
+                        )}
+
+                        {/* Dot grid for template 2 */}
+                        {activeStoryTemplate === 2 && (
+                          <div className="absolute inset-0 z-[1]" style={{
+                            backgroundImage: 'radial-gradient(circle, rgba(124,92,255,0.08) 1px, transparent 1px)',
+                            backgroundSize: '12px 12px'
+                          }} />
+                        )}
+
+                        {/* Grid lines for template 0 and 3 */}
+                        {(activeStoryTemplate === 0 || activeStoryTemplate === 3) && (
+                          <div className="absolute inset-0 z-[1]" style={{
+                            backgroundImage: 'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)',
+                            backgroundSize: '28px 28px'
+                          }} />
+                        )}
+
+                        {/* Glow for template 0 */}
+                        {activeStoryTemplate === 0 && (
+                          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full z-[1]" style={{
+                            background: 'radial-gradient(circle, rgba(242,90,43,0.1) 0%, rgba(124,92,255,0.05) 50%, transparent 100%)'
+                          }} />
+                        )}
+
+                        {/* Glow for template 3 */}
+                        {activeStoryTemplate === 3 && (
+                          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full z-[1]" style={{
+                            background: 'radial-gradient(circle, rgba(124,92,255,0.12) 0%, rgba(242,90,43,0.05) 50%, transparent 100%)'
+                          }} />
+                        )}
+
+                        {/* A Watermark logo in background */}
+                        <div className="absolute inset-0 z-[1] flex items-center justify-center pointer-events-none opacity-5">
+                          <img 
+                            src="/logo_a_watermark.png" 
+                            alt="Watermark" 
+                            className={`w-3/4 h-auto object-contain ${activeStoryTemplate === 2 ? 'invert' : ''}`} 
+                          />
+                        </div>
+
+                        <div className="relative z-[2] flex flex-col items-center justify-start h-full px-5 pt-6 pb-20 gap-3">
+                          {/* Top Section: Logo & Card (Clustered together and shifted up) */}
+                          <div className="w-full flex flex-col items-center gap-3">
+                            {/* Logo */}
+                            <div className="text-center flex flex-col items-center select-none -mt-[18px] -mb-[22px]">
+                              <img 
+                                src="/logo_wordmark.png" 
+                                alt="Artistant" 
+                                className={`w-28 h-auto object-contain transition-all duration-300 ${
+                                  activeStoryTemplate === 2 ? 'brightness-0' : ''
+                                }`} 
+                              />
+                            </div>
+
+                            {/* Mini Pass Card */}
+                            <div className="w-full rounded-2xl p-3 flex flex-col gap-1.5 border transition-all duration-300 backdrop-blur-md shadow-sm"
+                              style={{
+                                background: activeStoryTemplate === 0 
+                                  ? 'rgba(255,255,255,0.03)' 
+                                  : activeStoryTemplate === 1 
+                                    ? 'rgba(10,10,15,0.75)' 
+                                    : activeStoryTemplate === 2
+                                      ? 'rgba(255,255,255,0.8)'
+                                      : 'rgba(255,255,255,0.04)',
+                                borderColor: activeStoryTemplate === 2 ? 'rgba(124,92,255,0.12)' : 'rgba(255,255,255,0.08)',
+                                boxShadow: activeStoryTemplate === 2 ? '0 8px 30px rgba(124,92,255,0.06)' : 'none'
+                              }}
+                            >
+                              <div className="flex justify-between items-center text-[4.5px] font-mono font-bold">
+                                <div className="flex items-center gap-1">
+                                  <img src="/logo_a.png" alt="A" className={`w-2 h-2 object-contain ${activeStoryTemplate === 2 ? 'brightness-0' : ''}`} />
+                                  <span style={{ color: activeStoryTemplate === 2 ? '#7C5CFF' : '#F25A2B' }}>FOUNDING CARD</span>
+                                </div>
+                                <span style={{ color: activeStoryTemplate === 2 ? '#0F0F14' : '#FFFFFF', opacity: 0.5 }}>FOUNDING ARTIST</span>
+                              </div>
+                              <div className="w-full h-[0.5px]" style={{ background: activeStoryTemplate === 2 ? 'rgba(124,92,255,0.1)' : 'rgba(255,255,255,0.06)' }} />
+                              <div className="text-center py-1">
+                                <div className="text-2xl font-display font-black leading-none tracking-tight" style={{ color: activeStoryTemplate === 2 ? '#0F0F14' : '#FFFFFF' }}>
+                                  #{waitlistPos || '---'}
+                                </div>
+                                <div className="text-[3.5px] font-mono tracking-widest mt-0.5" style={{ color: activeStoryTemplate === 2 ? '#0F0F14' : '#FFFFFF', opacity: 0.35 }}>
+                                  WAITLIST POSITION
+                                </div>
+                              </div>
+                              <div className="flex justify-between items-end">
+                                <div className="text-left">
+                                  <div className="text-[7.5px] font-bold tracking-tight" style={{ color: activeStoryTemplate === 2 ? '#0F0F14' : '#FFFFFF', fontFamily: '"Space Grotesk", sans-serif' }}>
+                                    @{reservation.username}
+                                  </div>
+                                  <div className="text-[3.5px] font-mono tracking-wider mt-0.5" style={{ color: activeStoryTemplate === 2 ? '#0F0F14' : '#FFFFFF', opacity: 0.3 }}>
+                                    VERIFIED ARTIST
+                                  </div>
+                                </div>
+                                <div className="text-[4px] font-mono" style={{ color: activeStoryTemplate === 2 ? '#7C5CFF' : '#FFFFFF', opacity: 0.2 }}>
+                                  ||||| | ||||
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Headline */}
+                          <div className="text-center">
+                            {activeStoryTemplate === 0 && (
+                              <>
+                                <h4 className="font-display font-black text-[12px] uppercase tracking-tight leading-snug text-white">I CHOSE ZERO<br />MIDDLEMEN.</h4>
+                                <p className="text-[5px] font-mono tracking-widest uppercase mt-1.5" style={{ background: 'linear-gradient(90deg, #F25A2B, #7C5CFF)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>DIRECT BOOKING ECOSYSTEM</p>
+                              </>
+                            )}
+                            {activeStoryTemplate === 1 && (
+                              <>
+                                <h4 className="font-display font-black text-[13px] uppercase tracking-tight leading-snug text-white">BUILT FOR STAGE.<br />ARTIST FIRST.</h4>
+                                <p className="text-[5px] font-mono tracking-widest uppercase text-white/50 mt-1.5">RECLAIMING CREATIVE VALUE</p>
+                              </>
+                            )}
+                            {activeStoryTemplate === 2 && (
+                              <>
+                                <h4 className="font-display font-black text-[12px] uppercase tracking-tight leading-snug text-[#0F0F14]">BUILT FOR ARTISTS.<br />NOT PLATFORMS.</h4>
+                                <p className="text-[5px] font-mono tracking-widest uppercase text-[#7C5CFF] mt-1.5">COHORT {cohort} · FOUNDING ARTIST</p>
+                              </>
+                            )}
+                            {activeStoryTemplate === 3 && (
+                              <>
+                                <h4 className="font-display font-black text-[11px] uppercase tracking-tight leading-snug text-white">I AM ON ARTISTANT.</h4>
+                                <p className="text-[4.5px] font-mono tracking-wider text-white/60 mt-1.5 leading-normal">THEY ARE REBUILDING<br />INDIA&apos;S LIVE ECONOMY.</p>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Features */}
+                          <div className="w-full space-y-1 text-[8px] font-mono flex flex-col items-center">
+                            {(() => {
+                              const getFeaturesList = () => {
+                                switch(activeStoryTemplate) {
+                                  case 0:
+                                    return ['Direct client-to-artist routing', 'GigSafe escrow payment security', 'Auto-synced availability booking'];
+                                  case 1:
+                                    return ['Direct client bookings', 'GigSafe escrow guarantees', 'Custom portfolio @handle'];
+                                  case 2:
+                                    return ['Direct gig booking system', 'Escrow payment infrastructure', 'Verified availability sync'];
+                                  default:
+                                    return ['Direct artist-to-client connections', 'Secure Escrow Infrastructure', `Profile: artistant.in/${reservation.username}`];
+                                }
+                              };
+                              
+                              const features = getFeaturesList();
+                              const pillBg = activeStoryTemplate === 2 ? 'rgba(124, 92, 255, 0.04)' : 'rgba(255, 255, 255, 0.04)';
+                              const pillBorder = activeStoryTemplate === 2 ? 'rgba(124, 92, 255, 0.08)' : 'rgba(255, 255, 255, 0.06)';
+                              const textColor = activeStoryTemplate === 2 ? '#7C5CFF' : 'rgba(255, 255, 255, 0.65)';
+                              const checkColor = activeStoryTemplate === 2 ? '#7C5CFF' : activeStoryTemplate === 0 ? '#F25A2B' : activeStoryTemplate === 1 ? '#FFFFFF' : '#7C5CFF';
+
+                              return features.map((feat, i) => (
+                                <div 
+                                  key={i} 
+                                  className="px-3 py-1.5 rounded-full border flex items-center justify-center gap-1.5 w-fit max-w-[90%] backdrop-blur-sm shadow-sm"
+                                  style={{ 
+                                    background: pillBg, 
+                                    borderColor: pillBorder,
+                                    color: textColor
+                                  }}
+                                >
+                                  <span className="font-bold text-[9px] shrink-0" style={{ color: checkColor }}>✓</span>
+                                  <span className="tracking-wide uppercase text-[7.5px] whitespace-nowrap overflow-hidden text-ellipsis">{feat}</span>
+                                </div>
+                              ));
+                            })()}
+                          </div>
+
+                          {/* Highlighted CTA Box */}
+                          <div 
+                            className="px-3 py-1.5 rounded-full border text-[6px] font-mono font-bold tracking-wider uppercase text-center w-[90%] backdrop-blur-sm shadow-sm"
+                            style={{
+                              background: activeStoryTemplate === 0 
+                                ? 'rgba(255,255,255,0.06)' 
+                                : activeStoryTemplate === 1 
+                                  ? 'rgba(255,255,255,0.15)' 
+                                  : activeStoryTemplate === 2
+                                    ? 'rgba(124, 92, 255, 0.06)'
+                                    : 'rgba(124, 92, 255, 0.12)',
+                              borderColor: activeStoryTemplate === 0 
+                                ? '#F25A2B' 
+                                : activeStoryTemplate === 1 
+                                  ? 'rgba(255,255,255,0.4)' 
+                                  : activeStoryTemplate === 2
+                                    ? '#7C5CFF'
+                                    : '#7C5CFF',
+                              color: activeStoryTemplate === 2 
+                                ? '#7C5CFF' 
+                                : '#FFFFFF'
+                            }}
+                          >
+                            {activeStoryTemplate === 0 && "SECURE YOUR NAME BEFORE SOMEONE ELSE DOES"}
+                            {activeStoryTemplate === 1 && "CLAIM YOUR @HANDLE NOW"}
+                            {activeStoryTemplate === 2 && "SECURE YOUR NAME BEFORE IT'S TAKEN"}
+                            {activeStoryTemplate === 3 && `GO CHECK MY PROFILE OUT ON ARTISTANT.IN/${reservation.username.toUpperCase()}`}
+                          </div>
+
+                          {/* Bottom branding */}
+                          <div className="text-[5.5px] font-mono font-bold tracking-[0.25em] uppercase" style={{ color: activeStoryTemplate === 2 ? '#7C5CFF' : '#FFFFFF', opacity: 0.3 }}>
+                            ARTISTANT.IN
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Dot indicators */}
+                    <div className="flex gap-2 mb-5">
+                      {[0, 1, 2, 3].map(idx => (
+                        <button
+                          key={idx}
+                          onClick={() => setActiveStoryTemplate(idx)}
+                          className={`rounded-full transition-all duration-300 cursor-pointer ${
+                            activeStoryTemplate === idx 
+                              ? 'w-5 h-1.5 bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF]' 
+                              : 'w-1.5 h-1.5 bg-ink-3/30 hover:bg-ink-3/50'
+                          }`}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Share via Instagram Story Button */}
+                    <button 
+                      onClick={() => handleShareStory('instagram')}
+                      className="w-full flex items-center justify-center gap-2.5 h-12 rounded-xl text-xs font-mono uppercase tracking-widest font-bold bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF] hover:opacity-90 active:scale-95 transition-all text-white shadow-[0_10px_25px_-5px_rgba(242,90,43,0.35)] shrink-0 cursor-pointer"
+                    >
+                      <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
+                      </svg>
+                      <span>Share via Instagram Story</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── PROFILE CUSTOMIZER & LIVE PREVIEW WORKSPACE ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-12 relative z-10">
-          
-          {/* LEFT COLUMN: LIVE PREVIEW (5 Cols) */}
+        {activeTab === 'portfolio' && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-12 relative z-10">
+            
+            {/* LEFT COLUMN: LIVE PREVIEW (5 Cols) */}
           <div className="lg:col-span-5 lg:sticky lg:top-28 flex flex-col items-center">
             <div className="flex items-center justify-between w-full max-w-[300px] mb-3 px-2">
               <h3 className="text-[10px] font-bold text-[var(--ink-2)] font-mono uppercase tracking-widest">Live Preview</h3>
@@ -1322,121 +2561,29 @@ export default function ProfilePage() {
             
             {renderMobilePreview()}
 
-            {/* Customize Profile Button */}
-            <button
-              onClick={() => setIsCustomizerOpen(true)}
-              className="mt-6 w-full max-w-[300px] py-3.5 px-6 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF] hover:scale-[1.02] active:scale-95 transition-all shadow-[0_10px_25px_rgba(124,92,255,0.25)] flex items-center justify-center gap-2 group cursor-pointer"
-            >
-              <Sparkles className="w-4 h-4 group-hover:rotate-12 transition-transform duration-300" />
-              <span>Customize Profile</span>
-            </button>
+
           </div>
 
           {/* RIGHT COLUMN: CONTROLS & FORM (7 Cols) */}
           <div className="lg:col-span-7 space-y-6">
             
-            {/* 3D TILT FOUNDING CARD */}
-            <div className="w-full max-w-md aspect-[1.58/1] relative mx-auto" style={{ perspective: 1200 }}>
-              <motion.div
-                ref={cardRef}
-                onMouseMove={handleMouseMove}
-                onMouseLeave={handleMouseLeave}
-                animate={{ rotateX, rotateY }}
-                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                className={`w-full h-full relative rounded-[2.5rem] p-[1.5px] overflow-hidden group cursor-pointer ${isLight ? 'shadow-[0_20px_50px_rgba(124,92,255,0.08)]' : 'shadow-[0_30px_90px_-20px_rgba(0,0,0,0.9)]'}`}
-                style={{
-                  background: isLight 
-                    ? 'linear-gradient(135deg, rgba(124,92,255,0.2), rgba(242,90,43,0.1) 40%, rgba(255,255,255,0.5))'
-                    : 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.01) 40%, rgba(124,92,255,0.2))',
-                  transformStyle: 'preserve-3d',
-                }}
+
+
+            {/* ── PROFILE ANALYTICS, BROADCAST & CUSTOMIZATION ── */}
+            <div className="flex flex-col gap-4 w-full max-w-md mx-auto">
+              {/* Visitors Card */}
+              <div 
+                className={`p-6 rounded-3xl border ${isLight ? 'bg-white border-[#7C5CFF]/10 shadow-[0_8px_30px_rgba(124,92,255,0.08)]' : 'bg-[#0A0A0F] border-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.4)]'} flex flex-col justify-center items-center relative overflow-hidden group`}
+                style={{ isolation: 'isolate', WebkitMaskImage: '-webkit-radial-gradient(white, black)' }}
               >
                 <div 
-                  className={`relative w-full h-full ${isLight ? 'bg-[#FFFFFF]/90' : 'bg-[#050508]/90'} rounded-[2.4rem] p-5 md:p-6 flex flex-col justify-between overflow-hidden border ${isLight ? 'border-[#7C5CFF]/15' : 'border-white/5'}`}
+                  className="absolute -right-10 -top-10 w-32 h-32 rounded-full transition-all duration-300 pointer-events-none group-hover:scale-110"
                   style={{
-                    isolation: 'isolate',
-                    WebkitMaskImage: '-webkit-radial-gradient(white, black)'
+                    background: isLight 
+                      ? 'radial-gradient(circle, rgba(124,92,255,0.08) 0%, transparent 70%)'
+                      : 'radial-gradient(circle, rgba(124,92,255,0.15) 0%, transparent 70%)'
                   }}
-                >
-                  <div className={`absolute -right-20 -bottom-20 w-80 h-80 rounded-full border ${isLight ? 'border-[#7C5CFF]/5' : 'border-white/[0.02]'} flex items-center justify-center pointer-events-none`}>
-                    <div className={`w-60 h-60 rounded-full border ${isLight ? 'border-[#7C5CFF]/5' : 'border-white/[0.01]'} flex items-center justify-center`} />
-                  </div>
-
-                  {/* Top Row */}
-                  <div className="flex justify-between items-start z-10 w-full">
-                    <div className="flex items-center gap-2">
-                      <img src="/logo_a.png" alt="A" className="w-6 h-6 object-contain opacity-80 dark:invert-0 invert" />
-                      <span className="font-mono text-[9px] font-bold tracking-[0.2em] text-[var(--ink-2)]">FOUNDING CARD</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span 
-                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-mono text-[9px] font-bold uppercase tracking-wider relative overflow-hidden transition-all duration-300 ${
-                          points >= 500 
-                            ? isLight
-                              ? 'bg-emerald-50 border border-emerald-200 text-emerald-700 shadow-sm'
-                              : 'bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 text-emerald-400 shadow-[0_2px_10px_rgba(16,185,129,0.1)]' 
-                            : isLight
-                              ? 'bg-black/[0.04] border border-black/8 text-black/45 shadow-sm'
-                              : 'bg-white/[0.02] border border-white/5 text-white/40 shadow-sm'
-                        }`}
-                        style={{
-                          backdropFilter: 'blur(8px)',
-                          WebkitBackdropFilter: 'blur(8px)',
-                          boxShadow: points >= 500
-                            ? isLight
-                              ? 'none'
-                              : 'inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.2), 0 2px 8px rgba(16,185,129,0.08)'
-                            : isLight
-                              ? 'inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -1px 0 rgba(0,0,0,0.03)'
-                              : 'inset 0 1px 0 rgba(255,255,255,0.03), inset 0 -1px 0 rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.15)',
-                        }}
-                      >
-                        {points >= 500 ? (
-                          <>
-                            <span className={`w-1.5 h-1.5 rounded-full ${isLight ? 'bg-emerald-500' : 'bg-emerald-400 animate-pulse shadow-[0_0_8px_#34D399]'}`} />
-                            <span>Founding Artist</span>
-                          </>
-                        ) : (
-                          <>
-                            <span className={`w-1 h-1 rounded-full ${isLight ? 'bg-black/20' : 'bg-white/20'}`} />
-                            <span>Founding Artist</span>
-                            <LockKeyhole className={`w-2.5 h-2.5 ${isLight ? 'text-black/35' : 'text-white/30'} ml-0.5 shrink-0`} />
-                          </>
-                        )}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Rank Pos (Center) */}
-                  <div className="flex flex-col items-center justify-center z-10 flex-1 my-1 md:my-2">
-                    <h1 className="font-display font-black leading-none text-[var(--ink)] tracking-tighter text-4xl md:text-6xl" style={{ textShadow: isLight ? '0 10px 30px rgba(124,92,255,0.06)' : '0 10px 30px rgba(0,0,0,0.5)' }}>
-                      #{waitlistPos || '---'}
-                    </h1>
-                    <div className="flex flex-col items-center mt-1.5 md:mt-2.5">
-                      <span className="font-mono text-[9px] font-bold tracking-[0.35em] text-[var(--ink-3)]">WAITLIST RANK • COHORT {cohort}</span>
-                      <span className="font-mono text-[8px] font-bold tracking-[0.15em] text-[#F25A2B]">{isCohort1 ? 'BETA ACCESS GRANTED' : 'POSITION SECURED'}</span>
-                    </div>
-                  </div>
-
-                  {/* Bottom Row */}
-                  <div className="flex justify-between items-center z-10">
-                    <div className="flex flex-col text-left">
-                      <span className="font-display text-xl md:text-2xl font-black tracking-tight text-[var(--ink)]">@{reservation.username}</span>
-                      <span className="text-[9px] uppercase font-mono tracking-widest text-[var(--ink-3)] mt-0.5">Verified Artist</span>
-                    </div>
-                    <div className="flex flex-col items-end">
-                      <img src="/logo_wordmark.png" alt="ArtisTant" className="w-24 md:w-32 h-auto object-contain opacity-85 dark:invert-0 invert -my-3 md:-my-4" />
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-
-            {/* ── PROFILE ANALYTICS & BROADCAST ── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Visitors Card */}
-              <div className={`p-6 rounded-3xl border ${isLight ? 'bg-white border-[#7C5CFF]/10 shadow-[0_8px_30px_rgba(124,92,255,0.08)]' : 'bg-[#0A0A0F] border-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.4)]'} flex flex-col justify-center items-center relative overflow-hidden group`}>
-                <div className={`absolute -right-10 -top-10 w-32 h-32 ${isLight ? 'bg-[#7C5CFF]/5' : 'bg-[#7C5CFF]/10'} rounded-full blur-2xl group-hover:bg-[#7C5CFF]/20 transition-all`} />
+                />
                 <h3 className="text-sm font-bold text-[var(--ink-2)] mb-2 uppercase tracking-wider font-mono">Profile Visitors</h3>
                 <div className="flex items-baseline gap-2">
                   <span className="text-5xl font-black font-display text-[var(--ink)] tracking-tighter">{reservation.profile_visitors_count || 0}</span>
@@ -1480,531 +2627,107 @@ export default function ProfilePage() {
                   </div>
                 </div>
               </div>
-            </div>
-
-          </div>
-        </div>
-
-          {/* ── DASHBOARD TWO-COLUMN WORKSPACE ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
-             
-            {/* LEFT COLUMN: REFERRALS HUB (7 Cols) */}
-            <div className="lg:col-span-7 space-y-6">
-               
-              {/* Founding Network Status Card */}
-              <div className="rounded-[2.5rem] p-[1.5px] bg-gradient-to-b from-[var(--line)] to-transparent shadow-2xl relative overflow-hidden group">
-                <div className="bg-bg-card/95 rounded-[2.4rem] p-6 md:p-8 backdrop-blur-xl border border-line-soft relative">
-                  <div className="absolute -left-20 -top-20 w-48 h-48 rounded-full bg-[#7C5CFF]/3 blur-[80px] pointer-events-none" />
-
-                  <div className="flex justify-between items-center mb-6">
-                    <h3 className="font-mono text-[10px] font-bold text-ink-2 uppercase tracking-[0.2em] flex items-center gap-2">
-                      <TrendingUp className="w-3.5 h-3.5 text-[#7C5CFF]" /> Founding Status
-                    </h3>
-                    <motion.button 
-                      onClick={() => setActiveInfo('why-refer')}
-                      animate={{ width: isHelpExpanded ? 82 : 20 }}
-                      className="rounded-full flex items-center justify-center text-[10px] font-mono font-bold text-white bg-gradient-to-br from-[#7C5CFF] to-[#D4567A] border border-white/10 shadow-[0_0_8px_rgba(124,92,255,0.3)] cursor-pointer overflow-hidden whitespace-nowrap gap-1"
-                      style={{ width: isHelpExpanded ? '82px' : '20px', height: '20px', minWidth: '20px', padding: isHelpExpanded ? '0 7px' : '0' }}
-                      title="Why invite peers?"
-                    >
-                      <span>?</span>
-                      {isHelpExpanded && (
-                        <span className="text-[7px] tracking-wider uppercase">Invite Info</span>
-                      )}
-                    </motion.button>
+              {/* Customize Profile Card */}
+              <button 
+                onClick={() => setIsCustomizerOpen(true)}
+                className={`p-6 rounded-3xl border text-left relative overflow-hidden group transition-all duration-300 w-full hover:scale-[1.01] active:scale-[0.99] cursor-pointer ${
+                  isLight 
+                    ? 'bg-white border-[#7C5CFF]/10 hover:border-[#7C5CFF]/30 shadow-[0_8px_30px_rgba(124,92,255,0.08)]' 
+                    : 'bg-[#0A0A0F] border-white/5 hover:border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.4)]'
+                }`}
+                style={{ isolation: 'isolate', WebkitMaskImage: '-webkit-radial-gradient(white, black)' }}
+              >
+                {/* Accent glow on hover */}
+                <div 
+                  className="absolute -right-10 -top-10 w-32 h-32 rounded-full transition-all duration-300 pointer-events-none group-hover:scale-110"
+                  style={{
+                    background: isLight 
+                      ? 'radial-gradient(circle, rgba(124,92,255,0.08) 0%, transparent 70%)'
+                      : 'radial-gradient(circle, rgba(124,92,255,0.15) 0%, transparent 70%)'
+                  }}
+                />
+                
+                <div className="flex flex-col gap-3 z-10 w-full relative">
+                  <h3 className="text-sm font-bold text-[var(--ink)] flex items-center gap-2">
+                    <Smartphone className="w-4 h-4 text-[#7C5CFF] group-hover:rotate-12 transition-transform duration-300" />
+                    Customize Profile
+                  </h3>
+                  <p className="text-[11px] text-[var(--ink-2)] leading-snug">
+                    Customize your public page, reorder sections, and configure contact options.
+                  </p>
+                  <div className="flex justify-end mt-1">
+                    <span className="bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-[0_4px_12px_rgba(124,92,255,0.2)] transition-all">
+                      Customize
+                    </span>
                   </div>
+                </div>
+              </button>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center mb-6">
-                    <div>
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span className="font-mono text-[9px] text-ink-3 tracking-widest block uppercase font-bold">Current Standing</span>
-                        <motion.button 
-                          onClick={() => setActiveInfo('vouch-points')}
-                          animate={{ width: isHelpExpanded ? 80 : 16 }}
-                          className="rounded-full flex items-center justify-center text-[8px] font-mono font-bold text-white bg-gradient-to-br from-[#7C5CFF] to-[#D4567A] border border-white/10 shadow-[0_0_6px_rgba(124,92,255,0.3)] cursor-pointer overflow-hidden whitespace-nowrap gap-1"
-                          style={{ width: isHelpExpanded ? '80px' : '16px', height: '16px', minWidth: '16px', padding: isHelpExpanded ? '0 5px' : '0' }}
-                          title="How points work"
-                        >
-                          <span>?</span>
-                          {isHelpExpanded && (
-                            <span className="text-[7px] tracking-wider uppercase">Points Info</span>
-                          )}
-                        </motion.button>
+              {/* Profile Completeness Bar */}
+              {(() => {
+                const completenessItems = [
+                  { label: 'Profile Photo', done: !!reservation?.profile_photo_url, weight: 20 },
+                  { label: 'Biography / About', done: !!bio, weight: 20 },
+                  { label: 'Genre tags configured', done: genres.length > 0, weight: 20 },
+                  { label: 'Gig Gallery photos', done: galleryPhotos.length > 0, weight: 20 },
+                  { label: 'Featured Showreel video', done: !!youtubeUrl, weight: 20 },
+                ];
+                const completenessScore = completenessItems.reduce((acc, item) => acc + (item.done ? item.weight : 0), 0);
+
+                return (
+                  <div 
+                    className={`p-6 rounded-3xl border ${isLight ? 'bg-white border-[#7C5CFF]/10 shadow-[0_8px_30px_rgba(124,92,255,0.08)]' : 'bg-[#0A0A0F] border-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.4)]'} w-full relative overflow-hidden group`}
+                    style={{ isolation: 'isolate', WebkitMaskImage: '-webkit-radial-gradient(white, black)' }}
+                  >
+                    <div 
+                      className="absolute -right-10 -top-10 w-24 h-24 rounded-full pointer-events-none"
+                      style={{ background: 'radial-gradient(circle, rgba(124,92,255,0.08) 0%, rgba(242,90,43,0.04) 50%, transparent 70%)' }}
+                    />
+                    <div className="space-y-3 relative z-10 w-full">
+                      <div className="flex justify-between items-center w-full">
+                        <h4 className={`text-[10px] font-bold uppercase tracking-widest font-mono ${isLight ? 'text-black/50' : 'text-white/50'}`}>Profile Completeness</h4>
+                        <span className="text-xs font-mono font-bold text-[#7C5CFF]">{completenessScore}%</span>
                       </div>
-                      <div className="font-display font-black text-5xl mt-2 tracking-tight text-ink drop-shadow-[0_4px_12px_var(--shadow-base)] flex items-baseline gap-1.5">
-                        {points} <span className="font-mono text-xs font-bold text-[#7C5CFF]">PTS</span>
-                      </div>
-                      <p className="text-[10px] text-ink-2 mt-2 font-mono">
-                        Base 100 PTS + 50 PTS per verified referral + 80 PTS for Story task.
-                      </p>
-                    </div>
-
-                    {/* Vouch Slots Progress Panel */}
-                    <div className="w-full h-32 bg-black/5 dark:bg-black/30 border border-line-soft rounded-3xl p-4 shadow-inner">
-                      <div className="grid grid-cols-3 gap-3 w-full h-full items-center">
-                        {Array.from({ length: 3 }).map((_, idx) => {
-                          const active = idx < verifiedReferrals;
-                          return (
-                            <div 
-                              key={idx}
-                              className={`flex flex-col items-center justify-center p-2 rounded-2xl border transition-all duration-300 relative overflow-hidden ${
-                                active 
-                                  ? 'bg-gradient-to-b from-[#7C5CFF]/12 to-[#D4567A]/4 border-[#7C5CFF]/20 shadow-[0_4px_12px_rgba(124,92,255,0.08)]' 
-                                  : 'bg-black/10 dark:bg-white/[0.01] border-line-soft'
-                              }`}
-                              style={{ height: '96px' }}
-                            >
-                              {active ? (
-                                <>
-                                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#7C5CFF] to-[#D4567A] flex items-center justify-center text-white mb-2 shadow-[0_0_10px_rgba(124,92,255,0.4)]">
-                                    <Check className="w-3.5 h-3.5" />
-                                  </div>
-                                  <span className="font-mono text-[9px] uppercase tracking-wider text-[#34D399] font-bold">Vouched</span>
-                                  <span className="font-mono text-[7px] text-ink-3 uppercase tracking-widest mt-0.5 font-bold">Artist {idx + 1}</span>
-                                </>
-                              ) : (
-                                <>
-                                  <div className="w-7 h-7 rounded-full bg-black/20 dark:bg-white/5 flex items-center justify-center text-ink-3 mb-2 border border-line-soft">
-                                    <LockKeyhole className="w-3 h-3 opacity-40 text-ink-3" />
-                                  </div>
-                                  <span className="font-mono text-[9px] uppercase tracking-wider text-ink-3 opacity-60">Locked</span>
-                                  <span className="font-mono text-[7px] text-ink-3 uppercase tracking-widest mt-0.5">Artist {idx + 1}</span>
-                                </>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="relative space-y-4">
-                    <div>
-                      <p className="font-mono text-[9px] text-ink-2 uppercase tracking-wider mb-2.5 leading-relaxed">
-                        Progress to Founding Artist Badge:
-                      </p>
-
-                      {/* Segmented hardware-style progress track */}
-                      <div className="relative w-full h-3 rounded-full bg-black/10 dark:bg-black/40 border border-line-soft overflow-hidden p-0.5 shadow-inner">
+                      
+                      {/* Segmented/Hardware style progress track */}
+                      <div className="relative w-full h-3 rounded-full bg-black/20 dark:bg-black/45 border border-white/5 dark:border-white/10 overflow-hidden p-0.5 shadow-inner">
                         <div className="absolute inset-0 flex pointer-events-none z-20">
-                          <div className="w-px h-full bg-black/10 dark:bg-white/10" style={{ marginLeft: '25%' }} />
-                          <div className="w-px h-full bg-black/10 dark:bg-white/10" style={{ marginLeft: '50%' }} />
-                          <div className="w-px h-full bg-black/10 dark:bg-white/10" style={{ marginLeft: '75%' }} />
+                          <div className={`w-px h-full ${isLight ? 'bg-black/10' : 'bg-white/5'}`} style={{ marginLeft: '25%' }} />
+                          <div className={`w-px h-full ${isLight ? 'bg-black/10' : 'bg-white/5'}`} style={{ marginLeft: '50%' }} />
+                          <div className={`w-px h-full ${isLight ? 'bg-black/10' : 'bg-white/5'}`} style={{ marginLeft: '75%' }} />
                         </div>
                         <motion.div 
                           className="h-full rounded-full bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF]" 
                           initial={{ width: 0 }} 
-                          whileInView={{ width: `${progressPercentage}%` }} 
-                          viewport={{ once: true }} 
+                          animate={{ width: `${completenessScore}%` }} 
                           transition={{ duration: 1.2, ease: "easeOut" }} 
                         />
                       </div>
-
-                      <div className="flex justify-between items-center mt-3">
-                        <span className="text-[9px] text-ink-3 font-mono uppercase tracking-widest">Founding Artist Level (500 PTS)</span>
-                        <span className="text-[9px] text-ink-3 font-mono uppercase tracking-widest font-bold">{points}/500 PTS</span>
-                      </div>
-                    </div>
-
-                    {/* Unverified Referrals pending notice */}
-                    {unverifiedReferrals > 0 && (
-                      <div className="px-4 py-3 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-amber-500/90 text-[10px] font-mono flex items-center gap-2.5 shadow-inner">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0 shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
-                        <span>Your referrals are being verified. Once approved, points will unlock and climb your rank! ({unverifiedReferrals} pending)</span>
-                      </div>
-                    )}
-
-                    {/* Dynamic competitive notification */}
-                    {verifiedReferrals >= 3 ? (
-                      <div className="px-4 py-3 rounded-2xl bg-[#7C5CFF]/10 border border-[#7C5CFF]/20 text-[var(--ink)] text-[10px] font-mono leading-relaxed shadow-sm">
-                        🚀 **You've referred {verifiedReferrals} peers! But don't stop there.** Earning more points helps you climb the leaderboard, secure your priority position in **Cohort 001**, and prevents other artists from overtaking your rank!
-                      </div>
-                    ) : (
-                      <div className="text-[9px] font-mono text-ink-3 text-left">
-                        Refer active artists to earn points, climb the leaderboard, and claim a spot in Cohort 1.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Referral Invite & Vouch Engine Card */}
-              <div className="rounded-[2.5rem] p-[1.5px] bg-gradient-to-b from-[var(--line)] to-transparent shadow-2xl relative overflow-hidden group">
-                <div className="bg-bg-card/95 rounded-[2.4rem] p-6 md:p-8 backdrop-blur-xl border border-line-soft relative">
-                  <div className="absolute -right-20 -bottom-20 w-48 h-48 rounded-full bg-[#F25A2B]/2 blur-[80px] pointer-events-none" />
-
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-mono text-[10px] font-bold text-ink-2 uppercase tracking-[0.2em] flex items-center gap-2">
-                      <Users className="w-3.5 h-3.5 text-[#F25A2B]" /> Vouch Engine
-                    </h3>
-                    <div className="flex items-center gap-2">
-                      {verifiedReferrals > 0 ? (
-                        <span className="font-mono text-[9px] uppercase font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full select-none">
-                          {verifiedReferrals} approved
-                        </span>
+                      
+                      {completenessScore < 100 ? (
+                        <p className={`text-[9px] font-mono leading-relaxed ${isLight ? 'text-black/55' : 'text-white/40'}`}>
+                          💡 Tip: Add your {completenessItems.find(item => !item.done)?.label.toLowerCase()} to complete your profile.
+                        </p>
                       ) : (
-                        <span className="font-mono text-[9px] uppercase font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full select-none animate-pulse">
-                          0 approved
-                        </span>
+                        <p className="text-[9px] text-emerald-400/80 font-mono leading-relaxed flex items-center gap-1">
+                          <Check className="w-3.5 h-3.5 shrink-0" /> Your profile is fully complete!
+                        </p>
                       )}
-                      <motion.button 
-                        onClick={() => setActiveInfo('why-refer')}
-                        animate={{ width: isHelpExpanded ? 82 : 20 }}
-                        className="rounded-full flex items-center justify-center text-[10px] font-mono font-bold text-white bg-gradient-to-br from-[#7C5CFF] to-[#D4567A] border border-white/10 shadow-[0_0_8px_rgba(124,92,255,0.3)] cursor-pointer overflow-hidden whitespace-nowrap gap-1"
-                        style={{ width: isHelpExpanded ? '82px' : '20px', height: '20px', minWidth: '20px', padding: isHelpExpanded ? '0 7px' : '0' }}
-                        title="Why share stories?"
-                      >
-                        <span>?</span>
-                        {isHelpExpanded && (
-                          <span className="text-[7px] tracking-wider uppercase">Invite Info</span>
-                        )}
-                      </motion.button>
                     </div>
                   </div>
-
-                  <h4 className="text-xl font-display font-black text-ink uppercase tracking-tight mb-2.5">
-                    Fast-Track to Cohort 1 & Founding Status
-                  </h4>
-                  <p className="text-xs text-ink-2 mb-6 leading-relaxed">
-                    Access is released in rollouts. Earn <strong className="text-ink">250 PTS</strong> to qualify for Cohort 1 priority access (includes first gig platform fee waived), and reach <strong className="text-ink">500 PTS</strong> to claim a permanent verified <strong className="text-ink">"Founding Artist"</strong> badge. The first 50 Founding Artists receive a lifetime <strong className="text-ink">0% Platform Fee</strong> guarantee!
-                  </p>
-
-                  {/* Share Tools */}
-                  <div className="space-y-4 mb-6">
-                    {/* Copy Link Input Bar */}
-                    <div className="flex items-center gap-3 bg-black/5 dark:bg-black/40 border border-line-soft p-1.5 rounded-2xl shadow-inner">
-                      <div className="flex-1 px-4 py-2 text-ink-2 font-mono text-xs truncate select-all">
-                        artistant.in/?ref={reservation.username}
-                      </div>
-                      <button 
-                        onClick={copyReferralLink} 
-                        className="h-10 px-4 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 border border-black/10 dark:border-white/10 text-ink font-mono text-[10px] uppercase font-bold tracking-widest shadow-md active:scale-95 transition-all shrink-0 flex items-center gap-1.5"
-                      >
-                        {copied ? (
-                          <>
-                            <Check className="w-3.5 h-3.5 text-emerald-400" /> Copied
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3.5 h-3.5" /> Copy Link
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    {/* Quick-Share Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <button 
-                        onClick={() => handleShareStory('whatsapp')}
-                        className="flex items-center justify-center gap-2.5 h-12 rounded-xl bg-[#25D366]/8 hover:bg-[#25D366]/18 border border-[#25D366]/30 text-[#25D366] font-mono text-[10px] uppercase tracking-wider font-bold transition-all duration-300 active:scale-95 cursor-pointer"
-                      >
-                        <span>Share via</span>
-                        <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 448 512">
-                          <path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/>
-                        </svg>
-                      </button>
-                      <button 
-                        onClick={() => handleShareStory('instagram')}
-                        className="flex items-center justify-center gap-2.5 h-12 rounded-xl bg-[#E1306C]/8 hover:bg-[#E1306C]/18 border border-[#E1306C]/30 text-[#E1306C] font-mono text-[10px] uppercase tracking-wider font-bold transition-all duration-300 active:scale-95 cursor-pointer"
-                      >
-                        <span>Share via</span>
-                        <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
-                          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.333 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
-                        </svg>
-                      </button>
-                      <button 
-                        onClick={() => handleShareStory('x')}
-                        className={`flex items-center justify-center gap-2.5 h-12 rounded-xl font-mono text-[10px] uppercase tracking-wider font-bold transition-all duration-300 active:scale-95 cursor-pointer flex-1 sm:flex-none ${
-                          isLight 
-                            ? 'bg-black/[0.04] hover:bg-black/[0.08] border border-black/15 text-black' 
-                            : 'bg-white/[0.03] hover:bg-white/[0.08] border border-white/20 text-white'
-                        }`}
-                      >
-                        <span>Share via</span>
-                        <svg className="w-3.5 h-3.5 fill-current shrink-0" viewBox="0 0 24 24">
-                          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Expandable Message Box */}
-                  <div className="border-t border-line-soft pt-4">
-                    <button 
-                      onClick={() => setRawTextOpen(!rawTextOpen)}
-                      className="w-full flex items-center justify-between text-[9px] font-mono uppercase text-ink-3 hover:text-ink transition-colors py-1"
-                    >
-                      <span>Show Invite Copywriting Template</span>
-                      <span>{rawTextOpen ? '[-]' : '[+]'}</span>
-                    </button>
-                    
-                    <AnimatePresence>
-                      {rawTextOpen && (
-                        <motion.div 
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="overflow-hidden mt-3"
-                        >
-                          <div className="flex items-start gap-3 bg-black/5 dark:bg-black/50 border border-line-soft p-4 rounded-2xl shadow-inner text-left relative group/raw">
-                            <p className="flex-1 text-[11px] font-mono text-ink-2 leading-relaxed select-all">
-                              Hey! I just locked my booking handle on Artistant. It lets you take direct client bookings, handles your contracts, and secures your money in escrow before you even perform. Claim your name before someone else takes it: artistant.in/?ref={reservation.username}
-                            </p>
-                            <button 
-                              onClick={() => {
-                                const shareText = `Hey! I just locked my booking handle on Artistant. It lets you take direct client bookings, handles your contracts, and secures your money in escrow before you even perform. Claim your name before someone else takes it: artistant.in/?ref=${reservation.username}`;
-                                navigator.clipboard.writeText(shareText);
-                                showToast("Invite template copied!");
-                              }}
-                              className="p-2.5 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 border border-black/10 dark:border-white/10 text-ink-2 hover:text-ink transition-colors"
-                              title="Copy raw text"
-                            >
-                              <Copy className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </div>
-              </div>
-
-
+                );
+              })()}
             </div>
 
-            {/* RIGHT COLUMN: INSTAGRAM STORY STUDIO (5 Cols) */}
-            <div className="lg:col-span-5 space-y-6">
-               
-              <div className="rounded-[2.5rem] p-[1.5px] bg-gradient-to-b from-[var(--line)] to-transparent shadow-2xl relative overflow-hidden group">
-                <div className="bg-bg-card/95 rounded-[2.4rem] p-6 md:p-8 backdrop-blur-xl border border-line-soft flex flex-col items-center">
-                  
-                  {/* Header */}
-                  <div className="flex justify-between items-center w-full mb-2">
-                    <h3 className="font-mono text-[10px] font-bold text-ink-2 uppercase tracking-[0.2em]">
-                      Story Generator
-                    </h3>
-                    <div>
-                      {storyShared ? (
-                        <span className="font-mono text-[9px] uppercase font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full select-none">
-                          +80 PTS Earned
-                        </span>
-                      ) : (
-                        <span className="font-mono text-[9px] uppercase font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full select-none animate-pulse">
-                          Pending Share
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <p className="text-[11px] text-ink-2 leading-relaxed self-start mb-5">
-                    Generate and share your Founding Card as an Instagram or WhatsApp story. <strong className="text-ink">To claim points, you must mention @artistant and put your referral link: `artistant.in/?ref={reservation.username}` on your Story!</strong>
-                  </p>
-
-                  {/* ── Template Selector Tabs ── */}
-                  <div className="flex w-full gap-1.5 mb-5">
-                    {[
-                      { name: 'Dark Noir', bg: '#0A0A10' },
-                      { name: 'Gradient', bg: '' },
-                      { name: 'Light', bg: '#FAFAFA' },
-                      { name: 'Live Economy', bg: '#0F172A' }
-                    ].map((tmpl, idx) => (
-                      <button 
-                        key={idx}
-                        onClick={() => setActiveStoryTemplate(idx)}
-                        className={`flex-1 h-9 rounded-lg font-mono text-[8px] uppercase tracking-wider font-bold transition-all duration-300 cursor-pointer border ${
-                          activeStoryTemplate === idx 
-                            ? 'border-[#F25A2B]/50 shadow-[0_0_12px_rgba(242,90,43,0.15)] scale-[1.02]' 
-                            : 'border-line-soft hover:border-line opacity-60 hover:opacity-100'
-                        }`}
-                        style={{
-                          background: idx === 1 ? 'linear-gradient(135deg, #7C5CFF, #D4567A, #F25A2B)' : tmpl.bg,
-                          color: idx === 2 ? '#0F0F14' : '#FFFFFF'
-                        }}
-                      >
-                        {tmpl.name}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* ── Story Preview Card ── */}
-                  <div className="relative w-full max-w-[260px] aspect-[9/16] rounded-2xl overflow-hidden shadow-[0_20px_50px_var(--shadow-heavy)] border border-line-soft mb-5 transition-all duration-500"
-                    style={{
-                      background: activeStoryTemplate === 0 
-                        ? 'linear-gradient(180deg, #0A0A10, #04040A)' 
-                        : activeStoryTemplate === 1 
-                          ? 'linear-gradient(135deg, #7C5CFF, #D4567A, #F25A2B)' 
-                          : activeStoryTemplate === 2
-                            ? '#FAFAFA'
-                            : 'linear-gradient(180deg, #0F172A, #020617)',
-                    }}
-                  >
-                    {/* Dark overlay for template 1 */}
-                    {activeStoryTemplate === 1 && (
-                      <div className="absolute inset-0 bg-black/20 z-[1]" />
-                    )}
-
-                    {/* Dot grid for template 2 */}
-                    {activeStoryTemplate === 2 && (
-                      <div className="absolute inset-0 z-[1]" style={{
-                        backgroundImage: 'radial-gradient(circle, rgba(124,92,255,0.08) 1px, transparent 1px)',
-                        backgroundSize: '12px 12px'
-                      }} />
-                    )}
-
-                    {/* Grid lines for template 0 and 3 */}
-                    {(activeStoryTemplate === 0 || activeStoryTemplate === 3) && (
-                      <div className="absolute inset-0 z-[1]" style={{
-                        backgroundImage: 'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)',
-                        backgroundSize: '28px 28px'
-                      }} />
-                    )}
-
-                    {/* Glow for template 0 */}
-                    {activeStoryTemplate === 0 && (
-                      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full z-[1]" style={{
-                        background: 'radial-gradient(circle, rgba(242,90,43,0.1) 0%, rgba(124,92,255,0.05) 50%, transparent 100%)'
-                      }} />
-                    )}
-
-                    {/* Glow for template 3 */}
-                    {activeStoryTemplate === 3 && (
-                      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full z-[1]" style={{
-                        background: 'radial-gradient(circle, rgba(124,92,255,0.12) 0%, rgba(242,90,43,0.05) 50%, transparent 100%)'
-                      }} />
-                    )}
-
-                    <div className="relative z-[2] flex flex-col items-center justify-between h-full px-4 py-5">
-                      {/* Logo */}
-                      <div className="text-center flex flex-col items-center gap-0.5 select-none">
-                        <img 
-                          src="/logo_wordmark.png" 
-                          alt="Artistant" 
-                          className={`h-5 w-auto object-contain transition-all ${
-                            activeStoryTemplate === 2 ? 'invert' : ''
-                          }`} 
-                        />
-                        <span className={`text-[4px] font-mono tracking-widest uppercase ${activeStoryTemplate === 2 ? 'text-[#0F0F14]/35' : 'text-white/30'} mt-0.5`}>
-                          FOUNDING MEMBER PASSPORT
-                        </span>
-                      </div>
-
-                      {/* Mini Pass Card */}
-                      <div className="w-full rounded-lg p-2.5 flex flex-col gap-1 border transition-all duration-300"
-                        style={{
-                          background: activeStoryTemplate === 0 
-                            ? 'rgba(255,255,255,0.02)' 
-                            : activeStoryTemplate === 1 
-                              ? 'rgba(10,10,15,0.75)' 
-                              : activeStoryTemplate === 2
-                                ? '#FFFFFF'
-                                : 'rgba(255,255,255,0.03)',
-                          borderColor: activeStoryTemplate === 2 ? 'rgba(124,92,255,0.12)' : 'rgba(255,255,255,0.08)',
-                          boxShadow: activeStoryTemplate === 2 ? '0 4px 20px rgba(124,92,255,0.06)' : 'none'
-                        }}
-                      >
-                        <div className="flex justify-between items-center text-[4px] font-mono font-bold">
-                          <span style={{ color: activeStoryTemplate === 2 ? '#7C5CFF' : '#F25A2B' }}>FOUNDING CARD</span>
-                          <span style={{ color: activeStoryTemplate === 2 ? '#0F0F14' : '#FFFFFF', opacity: 0.5 }}>FOUNDING ARTIST</span>
-                        </div>
-                        <div className="w-full h-px" style={{ background: activeStoryTemplate === 2 ? 'rgba(124,92,255,0.1)' : 'rgba(255,255,255,0.06)' }} />
-                        <div className="text-center py-2">
-                          <div className="text-2xl font-display font-black leading-none" style={{ color: activeStoryTemplate === 2 ? '#0F0F14' : '#FFFFFF' }}>
-                            #{waitlistPos || '---'}
-                          </div>
-                          <div className="text-[3.5px] font-mono tracking-widest mt-0.5" style={{ color: activeStoryTemplate === 2 ? '#0F0F14' : '#FFFFFF', opacity: 0.35 }}>
-                            WAITLIST POSITION
-                          </div>
-                        </div>
-                        <div className="flex justify-between items-end">
-                          <div>
-                            <div className="text-[7px] font-bold" style={{ color: activeStoryTemplate === 2 ? '#0F0F14' : '#FFFFFF', fontFamily: '"Space Grotesk", sans-serif' }}>
-                              @{reservation.username}
-                            </div>
-                            <div className="text-[3px] font-mono" style={{ color: activeStoryTemplate === 2 ? '#0F0F14' : '#FFFFFF', opacity: 0.3 }}>
-                              VERIFIED ARTIST
-                            </div>
-                          </div>
-                          <div className="text-[4px] font-mono" style={{ color: activeStoryTemplate === 2 ? '#7C5CFF' : '#FFFFFF', opacity: 0.2 }}>
-                            ||||| | ||||
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Headline */}
-                      <div className="text-center">
-                        {activeStoryTemplate === 0 && (
-                          <>
-                            <h4 className="font-display font-black text-[11px] uppercase tracking-tight leading-snug text-white">I CHOSE ZERO<br />MIDDLEMEN.</h4>
-                            <p className="text-[4.5px] font-mono tracking-widest uppercase mt-1" style={{ background: 'linear-gradient(90deg, #F25A2B, #7C5CFF)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>DIRECT BOOKING ECOSYSTEM</p>
-                          </>
-                        )}
-                        {activeStoryTemplate === 1 && (
-                          <>
-                            <h4 className="font-display font-black text-[12px] uppercase tracking-tight leading-snug text-white">BUILT FOR STAGE.<br />ARTIST FIRST.</h4>
-                            <p className="text-[4.5px] font-mono tracking-widest uppercase text-white/50 mt-1">RECLAIMING CREATIVE VALUE</p>
-                          </>
-                        )}
-                        {activeStoryTemplate === 2 && (
-                          <>
-                            <h4 className="font-display font-black text-[11px] uppercase tracking-tight leading-snug text-[#0F0F14]">BUILT FOR ARTISTS.<br />NOT PLATFORMS.</h4>
-                            <p className="text-[4.5px] font-mono tracking-widest uppercase text-[#7C5CFF] mt-1">COHORT {cohort} · FOUNDING ARTIST</p>
-                          </>
-                        )}
-                        {activeStoryTemplate === 3 && (
-                          <>
-                            <h4 className="font-display font-black text-[10px] uppercase tracking-tight leading-snug text-white">I AM ON ARTISTANT.</h4>
-                            <p className="text-[4px] font-mono tracking-wider text-white/60 mt-1 leading-normal">THEY ARE REBUILDING<br />INDIA&apos;S LIVE ECONOMY.</p>
-                          </>
-                        )}
-                      </div>
-
-                      {/* Features */}
-                      <div className="space-y-0.5 text-[5px] font-mono text-center" style={{ color: activeStoryTemplate === 2 ? '#7C5CFF' : 'rgba(255,255,255,0.5)' }}>
-                        {activeStoryTemplate === 0 && (<><div>✓ Direct client-to-artist routing</div><div>✓ GigSafe escrow payment security</div><div>✓ Auto-synced availability booking</div></>)}
-                        {activeStoryTemplate === 1 && (<><div>✓ Direct client bookings</div><div>✓ GigSafe escrow guarantees</div><div>✓ Custom portfolio @handle</div></>)}
-                        {activeStoryTemplate === 2 && (<><div>✓ Direct gig booking system</div><div>✓ Escrow payment infrastructure</div><div>✓ Verified availability sync</div></>)}
-                        {activeStoryTemplate === 3 && (<><div>✓ Direct artist-to-client connections</div><div>✓ Secure Escrow Infrastructure</div><div>✓ Check out my profile: artistant.in/{reservation.username}</div></>)}
-                      </div>
-
-                      {/* Bottom branding */}
-                      <div className="text-[5px] font-mono font-bold tracking-widest uppercase" style={{ color: activeStoryTemplate === 2 ? '#7C5CFF' : '#FFFFFF', opacity: 0.25 }}>
-                        ARTISTANT.IN
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Dot indicators */}
-                  <div className="flex gap-2 mb-5">
-                    {[0, 1, 2, 3].map(idx => (
-                      <button
-                        key={idx}
-                        onClick={() => setActiveStoryTemplate(idx)}
-                        className={`rounded-full transition-all duration-300 cursor-pointer ${
-                          activeStoryTemplate === idx 
-                            ? 'w-5 h-1.5 bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF]' 
-                            : 'w-1.5 h-1.5 bg-ink-3/30 hover:bg-ink-3/50'
-                        }`}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Share via Instagram Story Button */}
-                  <button 
-                    onClick={() => handleShareStory('instagram')}
-                    className="w-full flex items-center justify-center gap-2.5 h-12 rounded-xl text-xs font-mono uppercase tracking-widest font-bold bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF] hover:opacity-90 active:scale-95 transition-all text-white shadow-[0_10px_25px_-5px_rgba(242,90,43,0.35)] shrink-0 cursor-pointer"
-                  >
-                    <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
-                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
-                    </svg>
-                    <span>Share via Instagram Story</span>
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
+        </div>
+      )}
 
-          {/* ── LEADERBOARD & FOUNDING ARTISTS SHOWCASE ── */}
-          <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-12 text-left relative z-20">
+
+
+          {/* ── LEADERBOARD & FOUNDING ARTISTS SHOWCASE (Leaderboard Tab) ── */}
+          {activeTab === 'leaderboard' && (
+            <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-12 text-left relative z-20">
             
             {/* LEADERBOARD (7 Columns) */}
             <div className="lg:col-span-7 space-y-6">
@@ -2043,13 +2766,15 @@ export default function ProfilePage() {
                               return (
                                 <tr 
                                   key={idx} 
-                                  className={`border-b border-line-soft/40 hover:bg-white/[0.02] transition-colors ${
+                                  className={`border-b border-line-soft/40 transition-colors ${
+                                    isLight ? 'hover:bg-black/[0.02]' : 'hover:bg-white/[0.02]'
+                                  } ${
                                     isSelf ? 'bg-gradient-to-r from-[#7C5CFF]/10 to-transparent font-bold text-[var(--ink)]' : 'text-ink-2'
                                   }`}
                                 >
                                   <td className="py-3 px-4 flex items-center gap-1.5">
                                     {rankNum === 1 ? '🥇' : rankNum === 2 ? '🥈' : rankNum === 3 ? '🥉' : `#${rankNum}`}
-                                    {entry.is_verified && (
+                                    {entry.points >= 500 && (
                                       <Award className="w-3 h-3 text-[#7C5CFF]" title="Founding Artist" />
                                     )}
                                   </td>
@@ -2199,7 +2924,7 @@ export default function ProfilePage() {
                   
                   {/* Call-to-action foot note */}
                   <div className="mt-5 p-3.5 rounded-xl bg-gradient-to-r from-[#7C5CFF]/5 to-[#F25A2B]/5 border-l-2 border-[#7C5CFF] text-[9.5px] font-mono text-ink-2 leading-relaxed flex items-start gap-2.5 shadow-sm">
-                    <Sparkles className="w-3.5 h-3.5 text-[#7C5CFF] shrink-0 mt-0.5" />
+                    <Zap className="w-3.5 h-3.5 text-[#7C5CFF] shrink-0 mt-0.5" />
                     <div>
                       <strong className="text-ink font-bold">Want to join the showcase?</strong> Refer peers to earn <span className="text-[#F25A2B] font-bold">+50 PTS</span> per approved invite and complete tasks to unlock your verified stamp!
                     </div>
@@ -2209,6 +2934,7 @@ export default function ProfilePage() {
             </div>
 
           </section>
+        )}
 
           {/* ── THE ECOSYSTEM ACCESS (STATIC MOCKUP SHOWCASE) ── */}
           <StaticModulesShowcase cohort={cohort} />
@@ -2319,7 +3045,7 @@ export default function ProfilePage() {
               {activeInfo === 'why-stories' && (
                 <div className="space-y-4">
                   <div className="w-12 h-12 rounded-2xl bg-[#7C5CFF]/10 flex items-center justify-center border border-[#7C5CFF]/20">
-                    <Sparkles className="w-6 h-6 text-[#7C5CFF]" />
+                     <Camera className="w-6 h-6 text-[#7C5CFF]" />
                   </div>
                   <h4 className="font-display font-black text-xl text-[var(--ink)] uppercase tracking-tight">Why Share Stories?</h4>
                   <p className="text-xs text-[var(--ink-2)] leading-relaxed">
@@ -2456,90 +3182,130 @@ export default function ProfilePage() {
               exit={{ scale: 0.95, y: 20, opacity: 0 }}
               transition={{ type: 'spring', duration: 0.5 }}
               onClick={(e) => e.stopPropagation()}
-              className={`relative w-full max-w-6xl h-[90vh] md:h-[85vh] rounded-[2.5rem] overflow-hidden flex flex-col md:flex-row shadow-[0_30px_90px_rgba(0,0,0,0.8)] border ${
-                isLight ? 'bg-[#F9F9FB] border-[#7C5CFF]/15' : 'bg-[#050508] border-white/10'
+              className={`relative w-full max-w-6xl h-[90vh] md:h-[85vh] rounded-[2rem] overflow-hidden flex flex-col md:flex-row border transition-all duration-300 ${
+                isLight 
+                  ? 'border-[#7C5CFF]/15 bg-white shadow-[0_32px_80px_-20px_rgba(124,92,255,0.12)]' 
+                  : 'border-white/5 bg-[#121218] shadow-[0_32px_80px_-20px_rgba(0,0,0,0.8)]'
               }`}
+              style={{
+                background: isLight ? 'rgba(255, 255, 255, 0.98)' : 'rgba(18, 18, 24, 0.98)',
+                backdropFilter: 'blur(24px)',
+              }}
             >
               {/* Close Button */}
               <button 
                 onClick={() => setIsCustomizerOpen(false)}
-                className={`absolute top-6 right-6 z-50 p-2.5 rounded-xl border transition-all cursor-pointer ${
+                className={`absolute top-4 right-4 sm:top-6 sm:right-6 w-8 h-8 rounded-full flex items-center justify-center border transition-all duration-300 z-50 cursor-pointer ${
                   isLight 
-                    ? 'bg-black/5 border-black/10 text-black/70 hover:text-black hover:bg-black/10' 
-                    : 'bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10'
+                    ? 'border-black/5 bg-black/5 text-black/40 hover:text-black hover:bg-black/10' 
+                    : 'border-white/5 bg-white/5 text-white/40 hover:text-white hover:bg-white/10'
                 }`}
+                aria-label="Close customizer"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
 
               {/* LEFT SIDE: LIVE PREVIEW */}
-              <div className={`w-full md:w-[45%] flex flex-col items-center justify-center p-8 select-none relative ${
-                isLight ? 'bg-[#F0EFF4] border-r border-[#7C5CFF]/10' : 'bg-[#020204] border-r border-white/5'
+              <div className={`w-full md:w-[45%] flex flex-col items-center justify-start p-6 md:p-8 select-none relative overflow-hidden transition-all duration-300 ${
+                isLight ? 'bg-zinc-50 border-r border-black/5' : 'bg-black/50 border-r border-white/5'
               }`}>
-                <div className="absolute top-6 left-8">
-                  <h3 className={`text-xs font-bold uppercase font-mono tracking-widest ${isLight ? 'text-[#7C5CFF]' : 'text-transparent bg-clip-text bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF]'}`}>
+                {/* Decorative gradients matching AuthModal style */}
+                <div className="absolute top-0 left-0 w-full h-full opacity-40 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-[#F25A2B]/35 via-transparent to-transparent pointer-events-none" />
+                <div className="absolute bottom-0 right-0 w-full h-full opacity-40 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-[#7C5CFF]/35 via-transparent to-transparent pointer-events-none" />
+                
+                {/* Big Watermark Logo matching AuthModal */}
+                <img 
+                  src="/logo_a.png" 
+                  alt="" 
+                  className={`absolute -bottom-[10%] -left-[10%] h-[70%] w-auto max-w-none pointer-events-none z-0 ${
+                    isLight ? 'opacity-[0.04]' : 'opacity-[0.08]'
+                  }`}
+                />
+
+                {/* Bottom Gradient Overlay for Visual Integration */}
+                <div 
+                  className="absolute bottom-0 left-0 w-full h-[35%] pointer-events-none z-0 transition-all duration-300"
+                  style={{ 
+                    background: isLight 
+                      ? 'linear-gradient(to top, rgba(244,244,245,0.8) 0%, transparent 100%)' 
+                      : 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)' 
+                  }}
+                />
+
+                {/* Live Preview Header (Static to prevent overlap) */}
+                <div className="w-full text-left z-10 pl-2 shrink-0">
+                  <h3 className="text-xs font-bold uppercase font-mono tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF]">
                     Live Preview
                   </h3>
                   <p className={`text-[9px] font-mono mt-0.5 ${isLight ? 'text-black/40' : 'text-white/40'}`}>Real-time portfolio rendering</p>
                 </div>
                 
-                <div className="scale-[0.8] sm:scale-[0.85] md:scale-95 lg:scale-100 transition-all mt-6">
-                  {renderMobilePreview()}
+                {/* Phone Preview Wrapper */}
+                <div className="flex-1 flex items-center justify-center w-full min-h-0 z-10">
+                  <div className="scale-[0.7] sm:scale-[0.75] md:scale-[0.8] lg:scale-[0.9] xl:scale-95 transition-all origin-center">
+                    {renderMobilePreview()}
+                  </div>
                 </div>
               </div>
 
               {/* RIGHT SIDE: SETTINGS FORM (Scrollable) */}
               <div className="w-full md:w-[55%] h-full overflow-y-auto p-6 md:p-10 space-y-8 text-left scrollbar-none">
-                <div className="pb-2 border-b border-[var(--line-soft)]">
+                <div className={`pb-2 border-b ${isLight ? 'border-black/5' : 'border-white/[0.05]'}`}>
                   <h2 className={`text-2xl font-black uppercase font-display tracking-tight ${isLight ? 'text-black' : 'text-white'}`}>
                     Edit Portfolio Profile
                   </h2>
-                  <p className={`text-xs mt-1 ${isLight ? 'text-black/50' : 'text-white/50'}`}>
+                  <p className={`text-xs mt-1 ${isLight ? 'text-black/55' : 'text-white/55'}`}>
                     Customize your public page, reorder sections, and configure contact options.
                   </p>
                 </div>
 
                 {/* 1. PROFILE CUSTOMIZER CARD PANEL (Without icon) */}
-                <div className={`p-6 rounded-3xl border ${isLight ? 'bg-white border-[#7C5CFF]/10 shadow-[0_8px_30px_rgba(124,92,255,0.08)]' : 'bg-[#0A0A0F] border-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.4)]'} space-y-6 text-left`}>
-                  <div className="flex items-center gap-2 pb-4 border-b border-[var(--line-soft)]">
-                    <h3 className="text-base font-bold text-[var(--ink)]">Customize Portfolio</h3>
+                <div className={`p-6 rounded-3xl border backdrop-blur-md space-y-6 text-left ${
+                  isLight 
+                    ? 'border-[#7C5CFF]/10 bg-zinc-50/60 shadow-sm' 
+                    : 'border-white/5 bg-white/[0.02] shadow-[0_8px_30px_rgba(0,0,0,0.4)]'
+                }`}>
+                  <div className={`flex items-center gap-2 pb-4 border-b ${isLight ? 'border-black/5' : 'border-white/[0.05]'}`}>
+                    <h3 className={`text-base font-bold ${isLight ? 'text-black' : 'text-white'}`}>Customize Portfolio</h3>
                   </div>
 
                   {/* Profile Photo */}
                   <div className="flex items-center gap-4">
                     <div className="relative group">
-                      <div className={`w-16 h-16 rounded-xl overflow-hidden border ${reservation.profile_photo_url ? 'border-[#7C5CFF]/20' : 'border-dashed border-[var(--ink-3)]/30'} flex items-center justify-center shrink-0 bg-white/[0.02]`}>
+                      <div className={`w-16 h-16 rounded-2xl overflow-hidden border flex items-center justify-center shrink-0 ${
+                        reservation.profile_photo_url 
+                          ? isLight ? 'border-black/10' : 'border-white/10' 
+                          : isLight ? 'border-dashed border-black/15 bg-black/5' : 'border-dashed border-white/10 bg-white/[0.02]'
+                      }`}>
                         {reservation.profile_photo_url ? (
                           <img src={reservation.profile_photo_url} alt="Profile" className="w-full h-full object-cover" />
                         ) : (
-                          <span className="text-xl font-black text-[var(--ink-3)]">{displayName[0]?.toUpperCase() || reservation.username[0].toUpperCase()}</span>
+                          <span className={`text-xl font-black ${isLight ? 'text-black/40' : 'text-white/40'}`}>
+                            {displayName[0]?.toUpperCase() || reservation.username[0].toUpperCase()}
+                          </span>
                         )}
                       </div>
-                      <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                      <label className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                         <Camera className="w-4 h-4 text-white" />
-                        <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (!file || !user) return;
-                          try {
-                            const reader = new FileReader();
-                            reader.onload = async (ev) => {
-                              const base64 = ev.target?.result as string;
-                              if (!base64) return;
-                              showToast('Uploading photo...');
-                              const idToken = await user.getIdToken();
-                              const ext = file.name.split('.').pop() || 'jpg';
-                              const publicUrl = await uploadProfilePhotoAction(idToken, base64, ext);
-                              setReservation({ ...reservation, profile_photo_url: publicUrl });
-                              showToast('Profile photo updated!');
-                            };
-                            reader.readAsDataURL(file);
-                          } catch (err) { console.error(err); showToast('Upload failed'); }
+                          
+                          const reader = new FileReader();
+                          reader.onload = (ev) => {
+                            setCropperImageSrc(ev.target?.result as string);
+                            setPendingFileExt(file.name.split('.').pop() || 'jpg');
+                            setCropperOpen(true);
+                            // Reset target value so the same image can be chosen again
+                            e.target.value = '';
+                          };
+                          reader.readAsDataURL(file);
                         }} />
                       </label>
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-[var(--ink)]">Artist Photo</h4>
-                      <p className="text-[10px] text-[var(--ink-2)] mt-0.5">Hover & click to upload/change photo</p>
+                      <h4 className={`text-xs font-bold ${isLight ? 'text-black' : 'text-white'}`}>Artist Photo</h4>
+                      <p className={`text-[10px] mt-0.5 ${isLight ? 'text-black/40' : 'text-white/40'}`}>Hover & click to upload/change photo</p>
                     </div>
                   </div>
 
@@ -2547,117 +3313,167 @@ export default function ProfilePage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Display Name */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">Display Name</label>
+                      <label className={`text-[10px] font-bold uppercase tracking-wider font-mono ${isLight ? 'text-black/45' : 'text-white/40'}`}>Display Name</label>
                       <input
                         type="text"
                         value={displayName}
                         onChange={(e) => setDisplayName(e.target.value)}
                         placeholder="e.g. Anudeep Dash"
-                        className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF] font-sans"
+                        className={`rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-[#7C5CFF]/50 focus:ring-1 focus:ring-[#7C5CFF]/50 transition-all duration-300 font-sans ${
+                          isLight 
+                            ? 'bg-black/5 border-black/10 text-black placeholder-black/30' 
+                            : 'bg-black/40 border border-white/5 text-white placeholder-white/30'
+                        }`}
                       />
                     </div>
 
                     {/* Category dropdown */}
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">Artist Type / Category</label>
-                      <select
-                        value={category}
-                        onChange={(e) => setCategory(e.target.value)}
-                        className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF]"
+                    <div className="flex flex-col gap-1.5 relative" ref={categoryDropdownRef}>
+                      <label className={`text-[10px] font-bold uppercase tracking-wider font-mono ${isLight ? 'text-black/45' : 'text-white/40'}`}>Artist Type / Category</label>
+                      <button
+                        type="button"
+                        onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                        className={`rounded-2xl px-4 py-3.5 text-xs flex items-center justify-between transition-all duration-300 border text-left outline-none ${
+                          isLight 
+                            ? 'bg-black/5 border-black/10 text-zinc-800 hover:bg-black/10' 
+                            : 'bg-black/40 border-white/5 text-zinc-100 hover:bg-black/50'
+                        } ${isCategoryDropdownOpen ? 'border-[#7C5CFF]/50 ring-1 ring-[#7C5CFF]/50' : ''}`}
                       >
-                        <option value="singer">Singer</option>
-                        <option value="dj">DJ</option>
-                        <option value="band">Band</option>
-                        <option value="comedian">Comedian</option>
-                        <option value="dancer">Dancer</option>
-                        <option value="mc_rapper">MC / Rapper</option>
-                        <option value="instrumentalist">Instrumentalist</option>
-                        <option value="other">Other / Custom</option>
-                      </select>
+                        <span className="font-sans font-medium">{categoryLabels[category] || category || 'Select Category'}</span>
+                        <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isCategoryDropdownOpen ? 'rotate-180 text-[#7C5CFF]' : 'opacity-40'}`} />
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      <AnimatePresence>
+                        {isCategoryDropdownOpen && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -8 }}
+                            transition={{ duration: 0.15, ease: 'easeOut' }}
+                            className={`absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-2xl border shadow-xl max-h-60 overflow-y-auto backdrop-blur-md ${
+                              isLight 
+                                ? 'bg-white/95 border-black/10' 
+                                : 'bg-[#121218]/95 border-white/10'
+                            }`}
+                          >
+                            <div className="p-1.5 space-y-1">
+                              {Object.entries(categoryLabels).map(([key, label]) => {
+                                const selected = category === key;
+                                return (
+                                  <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => {
+                                      setCategory(key);
+                                      setIsCategoryDropdownOpen(false);
+                                    }}
+                                    className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold font-sans transition-all duration-150 flex items-center justify-between ${
+                                      selected
+                                        ? 'bg-[#7C5CFF] text-white'
+                                        : isLight 
+                                          ? 'hover:bg-black/5 text-zinc-800' 
+                                          : 'hover:bg-white/5 text-zinc-200'
+                                    }`}
+                                  >
+                                    <span>{label}</span>
+                                    {selected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
 
                     {/* City */}
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">Base City</label>
+                      <label className={`text-[10px] font-bold uppercase tracking-wider font-mono ${isLight ? 'text-black/45' : 'text-white/40'}`}>Base City</label>
                       <input
                         type="text"
                         value={city}
                         onChange={(e) => setCity(e.target.value)}
                         placeholder="e.g. Pune, India"
-                        className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF]"
+                        className={`rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-[#7C5CFF]/50 focus:ring-1 focus:ring-[#7C5CFF]/50 transition-all duration-300 ${
+                          isLight 
+                            ? 'bg-black/5 border-black/10 text-black placeholder-black/30' 
+                            : 'bg-black/40 border border-white/5 text-white placeholder-white/30'
+                        }`}
                       />
                     </div>
 
                     {/* Social Instagram */}
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">Instagram</label>
-                      <div className="flex items-center bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 focus-within:border-[#7C5CFF] transition-all">
+                    <div className="flex flex-col gap-1.5 col-span-1 md:col-span-2">
+                      <label className={`text-[10px] font-bold uppercase tracking-wider font-mono ${isLight ? 'text-black/45' : 'text-white/40'}`}>Instagram</label>
+                      <div className={`flex items-center rounded-2xl px-4 py-3 focus-within:border-[#7C5CFF]/50 focus-within:ring-1 focus-within:ring-[#7C5CFF]/50 transition-all duration-300 ${
+                        isLight ? 'bg-black/5 border-black/10' : 'bg-black/40 border border-white/5'
+                      }`}>
                         <InstagramIcon className="w-4 h-4 text-[#E1306C] shrink-0 mr-2" />
-                        <span className="text-[var(--ink-3)] text-xs select-none font-mono mr-0.5 shrink-0">instagram.com/</span>
+                        <span className={`text-xs select-none font-mono mr-0.5 shrink-0 ${isLight ? 'text-black/40' : 'text-white/40'}`}>instagram.com/</span>
                         <input
                           type="text"
                           value={getInstagramHandle(instagramUrl)}
                           onChange={(e) => setInstagramUrl(makeInstagramUrl(e.target.value))}
                           placeholder="username"
-                          className="flex-1 bg-transparent border-none p-0 text-xs text-[var(--ink)] placeholder-[var(--ink-3)]/50 focus:ring-0 focus:outline-none"
+                          className={`flex-1 bg-transparent border-none p-0 text-xs focus:ring-0 focus:outline-none ${
+                            isLight ? 'text-black placeholder-black/20' : 'text-white placeholder-white/20'
+                          }`}
                         />
                       </div>
                     </div>
 
                     {/* Social Spotify */}
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">Spotify</label>
-                      <div className="flex items-center bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 focus-within:border-[#7C5CFF] transition-all">
+                    <div className="flex flex-col gap-1.5 col-span-1 md:col-span-2">
+                      <label className={`text-[10px] font-bold uppercase tracking-wider font-mono ${isLight ? 'text-black/45' : 'text-white/40'}`}>Spotify</label>
+                      <div className={`flex items-center rounded-2xl px-4 py-3 focus-within:border-[#7C5CFF]/50 focus-within:ring-1 focus-within:ring-[#7C5CFF]/50 transition-all duration-300 ${
+                        isLight ? 'bg-black/5 border-black/10' : 'bg-black/40 border border-white/5'
+                      }`}>
                         <SpotifyIcon className="w-4 h-4 text-[#1DB954] shrink-0 mr-2" />
-                        <span className="text-[var(--ink-3)] text-xs select-none font-mono mr-0.5 shrink-0">open.spotify.com/artist/</span>
+                        <span className={`text-xs select-none font-mono mr-0.5 shrink-0 ${isLight ? 'text-black/40' : 'text-white/40'}`}>open.spotify.com/artist/</span>
                         <input
                           type="text"
                           value={getSpotifyHandle(spotifyUrl)}
                           onChange={(e) => setSpotifyUrl(makeSpotifyUrl(e.target.value))}
                           placeholder="artist_id"
-                          className="flex-1 bg-transparent border-none p-0 text-xs text-[var(--ink)] placeholder-[var(--ink-3)]/50 focus:ring-0 focus:outline-none"
+                          className={`flex-1 bg-transparent border-none p-0 text-xs focus:ring-0 focus:outline-none ${
+                            isLight ? 'text-black placeholder-black/20' : 'text-white placeholder-white/20'
+                          }`}
                         />
                       </div>
                     </div>
 
-                    {/* Social YouTube */}
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">YouTube</label>
-                      <div className="flex items-center bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 focus-within:border-[#7C5CFF] transition-all">
-                        <YouTubeIcon className="w-4 h-4 text-[#FF0000] shrink-0 mr-2" />
-                        <span className="text-[var(--ink-3)] text-xs select-none font-mono mr-0.5 shrink-0">youtube.com/@</span>
-                        <input
-                          type="text"
-                          value={getYoutubeHandle(youtubeUrl)}
-                          onChange={(e) => setYoutubeUrl(makeYoutubeUrl(e.target.value))}
-                          placeholder="channel"
-                          className="flex-1 bg-transparent border-none p-0 text-xs text-[var(--ink)] placeholder-[var(--ink-3)]/50 focus:ring-0 focus:outline-none"
-                        />
-                      </div>
-                    </div>
                   </div>
 
                   {/* Bio */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">Artist Bio</label>
+                    <label className={`text-[10px] font-bold uppercase tracking-wider font-mono ${isLight ? 'text-black/45' : 'text-white/40'}`}>Artist Bio</label>
                     <textarea
                       value={bio}
                       onChange={(e) => setBio(e.target.value.slice(0, 150))}
                       placeholder="Tell clients about your work, instruments, performance packages..."
                       rows={3}
-                      className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF] font-sans"
+                      className={`rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-[#7C5CFF]/50 focus:ring-1 focus:ring-[#7C5CFF]/50 transition-all duration-300 font-sans ${
+                        isLight 
+                          ? 'bg-black/5 border-black/10 text-black placeholder-black/30' 
+                          : 'bg-black/40 border border-white/5 text-white placeholder-white/30'
+                      }`}
                     />
-                    <span className="text-[9px] text-[var(--ink-3)] text-right">{bio.length}/150 characters</span>
+                    <span className={`text-[9px] text-right ${isLight ? 'text-black/40' : 'text-white/40'}`}>{bio.length}/150 characters</span>
                   </div>
 
                   {/* Genres Tag editor */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-[var(--ink-2)] uppercase tracking-wider font-mono">Genre Tags (Max 3)</label>
+                    <label className={`text-[10px] font-bold uppercase tracking-wider font-mono ${isLight ? 'text-black/45' : 'text-white/40'}`}>Genre Tags (Max 3)</label>
                     <div className="flex flex-wrap gap-1.5 mb-2">
                       {genres.map((g) => (
-                        <span key={g} className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-[#7C5CFF]/15 text-[#B49FFF] border border-[#7C5CFF]/20 flex items-center gap-1 font-mono">
+                        <span key={g} className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 font-mono ${
+                          isLight 
+                            ? 'bg-[#7C5CFF]/10 text-[#7C5CFF] border border-[#7C5CFF]/20' 
+                            : 'bg-[#7C5CFF]/15 text-[#B49FFF] border border-[#7C5CFF]/20'
+                        }`}>
                           {g}
-                          <button onClick={() => setGenres(genres.filter(genre => genre !== g))} className="text-[10px] hover:text-white">&times;</button>
+                          <button onClick={() => setGenres(genres.filter(genre => genre !== g))} className={`text-[10px] ${isLight ? 'hover:text-black/80' : 'hover:text-white'}`}>&times;</button>
                         </span>
                       ))}
                     </div>
@@ -2678,7 +3494,11 @@ export default function ProfilePage() {
                             }
                           }}
                           placeholder="Type tag & press enter"
-                          className="flex-1 bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF] font-sans"
+                          className={`flex-1 rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-[#7C5CFF]/50 focus:ring-1 focus:ring-[#7C5CFF]/50 transition-all duration-300 font-sans ${
+                            isLight 
+                              ? 'bg-black/5 border-black/10 text-black placeholder-black/30' 
+                              : 'bg-black/40 border border-white/5 text-white placeholder-white/30'
+                          }`}
                         />
                         <button
                           onClick={() => {
@@ -2688,7 +3508,9 @@ export default function ProfilePage() {
                               setNewGenreInput('');
                             }
                           }}
-                          className="bg-[var(--ink)] text-[var(--bg)] px-3 py-2 rounded-xl text-xs font-bold hover:scale-105 transition-transform"
+                          className={`px-4 py-3 rounded-2xl text-xs font-bold hover:scale-105 active:scale-95 transition-all cursor-pointer ${
+                            isLight ? 'bg-black text-white' : 'bg-white text-black'
+                          }`}
                         >
                           Add
                         </button>
@@ -2700,7 +3522,8 @@ export default function ProfilePage() {
                     <button
                       disabled={isSaving}
                       onClick={handleSaveProfileDetails}
-                      className="px-6 py-2.5 rounded-xl text-xs font-bold bg-white text-black hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                      className="px-6 py-3 rounded-2xl text-xs font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-[0_4px_14px_0_rgba(124,92,255,0.25)]"
+                      style={{ background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)' }}
                     >
                       {isSaving ? 'Saving...' : 'Save Profile details'}
                     </button>
@@ -2708,11 +3531,15 @@ export default function ProfilePage() {
                 </div>
 
                 {/* 2. Section Reordering Card (Without icon) */}
-                <div className={`p-6 rounded-3xl border ${isLight ? 'bg-white border-[#7C5CFF]/10 shadow-[0_8px_30px_rgba(124,92,255,0.08)]' : 'bg-[#0A0A0F] border-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.4)]'} space-y-4 text-left`}>
+                <div className={`p-6 rounded-3xl border backdrop-blur-md space-y-4 text-left ${
+                  isLight 
+                    ? 'border-[#7C5CFF]/10 bg-zinc-50/60 shadow-sm' 
+                    : 'border-white/5 bg-white/[0.02] shadow-[0_8px_30px_rgba(0,0,0,0.4)]'
+                }`}>
                   <div className="flex items-center gap-2 pb-2">
-                    <h3 className="text-base font-bold text-[var(--ink)]">Section Reordering</h3>
+                    <h3 className={`text-base font-bold ${isLight ? 'text-black' : 'text-white'}`}>Section Reordering</h3>
                   </div>
-                  <p className="text-[11px] text-[var(--ink-2)]">Shift sections up or down to re-arrange how they appear on your public portfolio page.</p>
+                  <p className={`text-[11px] ${isLight ? 'text-black/45' : 'text-white/40'}`}>Shift sections up or down to re-arrange how they appear on your public portfolio page.</p>
                   
                   <div className="space-y-2">
                     {sectionOrder.map((section, idx) => {
@@ -2724,21 +3551,25 @@ export default function ProfilePage() {
                       return (
                         <div 
                           key={section} 
-                          className="flex items-center justify-between p-3.5 rounded-xl bg-white/[0.01] border border-white/[0.03]"
+                          className={`flex items-center justify-between p-3.5 rounded-2xl border ${isLight ? 'bg-black/[0.01] border-black/5' : 'bg-white/[0.01] border-white/5'}`}
                         >
-                          <span className="text-xs font-bold text-white/80">{sectionNames[section] || section}</span>
+                          <span className={`text-xs font-bold ${isLight ? 'text-black/80' : 'text-white/80'}`}>{sectionNames[section] || section}</span>
                           <div className="flex items-center gap-1">
                             <button
                               disabled={idx === 0}
                               onClick={() => moveSection(idx, 'up')}
-                              className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors text-xs"
+                              className={`w-7 h-7 rounded-lg flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none transition-colors text-xs cursor-pointer ${
+                                isLight ? 'bg-black/5 hover:bg-black/10 text-black' : 'bg-white/5 hover:bg-white/10 text-white'
+                              }`}
                             >
                               &uarr;
                             </button>
                             <button
                               disabled={idx === sectionOrder.length - 1}
                               onClick={() => moveSection(idx, 'down')}
-                              className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors text-xs"
+                              className={`w-7 h-7 rounded-lg flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none transition-colors text-xs cursor-pointer ${
+                                isLight ? 'bg-black/5 hover:bg-black/10 text-black' : 'bg-white/5 hover:bg-white/10 text-white'
+                              }`}
                             >
                               &darr;
                             </button>
@@ -2750,40 +3581,52 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Founding Card Toggle Card */}
-                <div className={`p-6 rounded-3xl border ${isLight ? 'bg-white border-[#7C5CFF]/10 shadow-[0_8px_30px_rgba(124,92,255,0.08)]' : 'bg-[#0A0A0F] border-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.4)]'} space-y-4 text-left`}>
+                <div className={`p-6 rounded-3xl border backdrop-blur-md space-y-4 text-left ${
+                  isLight 
+                    ? 'border-[#7C5CFF]/10 bg-zinc-50/60 shadow-sm' 
+                    : 'border-white/5 bg-white/[0.02] shadow-[0_8px_30px_rgba(0,0,0,0.4)]'
+                }`}>
                   <div className="flex items-center gap-2 pb-2">
-                    <h3 className="text-base font-bold text-[var(--ink)]">Founding Card Feature</h3>
+                    <h3 className={`text-base font-bold ${isLight ? 'text-black' : 'text-white'}`}>Founding Card Feature</h3>
                   </div>
-                  <p className="text-[11px] text-[var(--ink-2)]">Showcase your digital Founding Artist Pass certificate directly on your public portfolio page.</p>
+                  <p className={`text-[11px] ${isLight ? 'text-black/45' : 'text-white/40'}`}>Showcase your digital Founding Artist Pass certificate directly on your public portfolio page.</p>
                   
-                  <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.01] border border-white/[0.03]">
-                    <span className="text-xs font-bold text-white/80">Feature Founding Card</span>
+                  <div className={`flex items-center justify-between p-3.5 rounded-2xl border ${isLight ? 'bg-black/[0.01] border-black/5' : 'bg-white/[0.01] border-white/5'}`}>
+                    <span className={`text-xs font-bold ${isLight ? 'text-black/80' : 'text-white/80'}`}>Feature Founding Card</span>
                     <button
                       onClick={() => handleToggleFeatureFoundingCard(!featureFoundingCard)}
-                      className={`w-10 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none ${featureFoundingCard ? 'bg-[#7C5CFF]' : 'bg-white/10'}`}
+                      className={`w-10 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none cursor-pointer ${
+                        featureFoundingCard ? 'bg-[#7C5CFF]' : isLight ? 'bg-black/10' : 'bg-white/10'
+                      }`}
                     >
-                      <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-200 ${featureFoundingCard ? 'translate-x-4' : 'translate-x-0'}`} />
+                      <div className="w-4 h-4 rounded-full bg-white transition-transform duration-200 transform translate-x-0" style={{ transform: featureFoundingCard ? 'translateX(16px)' : 'translateX(0)' }} />
                     </button>
                   </div>
                 </div>
 
                 {/* 3. Contact Settings Card (Without icon) */}
-                <div className={`p-6 rounded-3xl border ${isLight ? 'bg-white border-[#7C5CFF]/10 shadow-[0_8px_30px_rgba(124,92,255,0.08)]' : 'bg-[#0A0A0F] border-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.4)]'} space-y-4 text-left`}>
+                <div className={`p-6 rounded-3xl border backdrop-blur-md space-y-4 text-left ${
+                  isLight 
+                    ? 'border-[#7C5CFF]/10 bg-zinc-50/60 shadow-sm' 
+                    : 'border-white/5 bg-white/[0.02] shadow-[0_8px_30px_rgba(0,0,0,0.4)]'
+                }`}>
                   <div className="flex items-center gap-2 pb-2">
-                    <h3 className="text-base font-bold text-[var(--ink)]">Contact Options</h3>
+                    <h3 className={`text-base font-bold ${isLight ? 'text-black' : 'text-white'}`}>Contact Options</h3>
                   </div>
-                  <p className="text-[11px] text-[var(--ink-2)]">Enable buttons on your public profile so clients can call, message, or email you directly.</p>
+                  <p className={`text-[11px] ${isLight ? 'text-black/45' : 'text-white/40'}`}>Enable buttons on your public profile so clients can call, message, or email you directly.</p>
 
                   <div className="space-y-4">
                     {/* Email settings */}
-                    <div className="flex flex-col gap-2 p-3.5 rounded-2xl bg-white/[0.01] border border-white/[0.03]">
+                    <div className={`flex flex-col gap-2 p-3.5 rounded-2xl border ${isLight ? 'bg-black/[0.01] border-black/5' : 'bg-white/[0.01] border-white/5'}`}>
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold">Email Contact Button</span>
+                        <span className={`text-xs font-bold ${isLight ? 'text-black/80' : 'text-white/80'}`}>Email Contact Button</span>
                         <button
                           onClick={() => setContactEmailEnabled(!contactEmailEnabled)}
-                          className={`w-10 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none ${contactEmailEnabled ? 'bg-[#7C5CFF]' : 'bg-white/10'}`}
+                          className={`w-10 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none cursor-pointer ${
+                            contactEmailEnabled ? 'bg-[#7C5CFF]' : isLight ? 'bg-black/10' : 'bg-white/10'
+                          }`}
                         >
-                          <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-200 ${contactEmailEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                          <div className="w-4 h-4 rounded-full bg-white transition-transform duration-200" style={{ transform: contactEmailEnabled ? 'translateX(16px)' : 'translateX(0)' }} />
                         </button>
                       </div>
                       {contactEmailEnabled && (
@@ -2792,20 +3635,26 @@ export default function ProfilePage() {
                           value={contactEmail}
                           onChange={(e) => setContactEmail(e.target.value)}
                           placeholder="Verify contact email"
-                          className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF] mt-1 font-sans"
+                          className={`rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-[#7C5CFF]/50 focus:ring-1 focus:ring-[#7C5CFF]/50 transition-all duration-300 mt-1 font-sans ${
+                            isLight 
+                              ? 'bg-black/5 border-black/10 text-black placeholder-black/30' 
+                              : 'bg-black/40 border border-white/5 text-white placeholder-white/30'
+                          }`}
                         />
                       )}
                     </div>
 
                     {/* Phone settings */}
-                    <div className="flex flex-col gap-2 p-3.5 rounded-2xl bg-white/[0.01] border border-white/[0.03]">
+                    <div className={`flex flex-col gap-2 p-3.5 rounded-2xl border ${isLight ? 'bg-black/[0.01] border-black/5' : 'bg-white/[0.01] border-white/5'}`}>
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold">Phone Contact Button</span>
+                        <span className={`text-xs font-bold ${isLight ? 'text-black/80' : 'text-white/80'}`}>Phone Contact Button</span>
                         <button
                           onClick={() => setContactPhoneEnabled(!contactPhoneEnabled)}
-                          className={`w-10 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none ${contactPhoneEnabled ? 'bg-[#7C5CFF]' : 'bg-white/10'}`}
+                          className={`w-10 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none cursor-pointer ${
+                            contactPhoneEnabled ? 'bg-[#7C5CFF]' : isLight ? 'bg-black/10' : 'bg-white/10'
+                          }`}
                         >
-                          <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-200 ${contactPhoneEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                          <div className="w-4 h-4 rounded-full bg-white transition-transform duration-200" style={{ transform: contactPhoneEnabled ? 'translateX(16px)' : 'translateX(0)' }} />
                         </button>
                       </div>
                       {contactPhoneEnabled && (
@@ -2814,7 +3663,11 @@ export default function ProfilePage() {
                           value={contactPhone}
                           onChange={(e) => setContactPhone(e.target.value)}
                           placeholder="Verify phone number (e.g. +919900000000)"
-                          className="bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF] mt-1 font-sans"
+                          className={`rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-[#7C5CFF]/50 focus:ring-1 focus:ring-[#7C5CFF]/50 transition-all duration-300 mt-1 font-sans ${
+                            isLight 
+                              ? 'bg-black/5 border-black/10 text-black placeholder-black/30' 
+                              : 'bg-black/40 border border-white/5 text-white placeholder-white/30'
+                          }`}
                         />
                       )}
                     </div>
@@ -2824,11 +3677,269 @@ export default function ProfilePage() {
                     <button
                       disabled={isSaving}
                       onClick={handleSaveContactSettings}
-                      className="px-6 py-2.5 rounded-xl text-xs font-bold bg-white text-black hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                      className="px-6 py-3 rounded-2xl text-xs font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-[0_4px_14px_0_rgba(124,92,255,0.25)]"
+                      style={{ background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)' }}
                     >
                       {isSaving ? 'Saving...' : 'Save Contact settings'}
                     </button>
                   </div>
+                </div>
+
+                {/* Gig Gallery Manager Card (Without icon) */}
+                <div className={`p-6 rounded-3xl border backdrop-blur-md space-y-4 text-left ${
+                  isLight 
+                    ? 'border-[#7C5CFF]/10 bg-zinc-50/60 shadow-sm' 
+                    : 'border-white/5 bg-white/[0.02] shadow-[0_8px_30px_rgba(0,0,0,0.4)]'
+                }`}>
+                  <div className="flex items-center gap-2 pb-2">
+                    <h3 className={`text-base font-bold ${isLight ? 'text-black' : 'text-white'}`}>Gig Gallery Manager</h3>
+                  </div>
+                  <p className={`text-[11px] ${isLight ? 'text-black/45' : 'text-white/40'}`}>Upload up to 6 custom photos of your gigs, setups, or backstage moments to showcase on your portfolio.</p>
+                  
+                  {/* Gallery Grid */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {/* Render current gallery photos */}
+                    {galleryPhotos.map((photoUrl, index) => (
+                      <div key={photoUrl} className={`relative aspect-square rounded-2xl overflow-hidden border bg-white/[0.02] group ${isLight ? 'border-black/5' : 'border-white/5'}`}>
+                        <img src={photoUrl} alt={`Gallery ${index + 1}`} className="w-full h-full object-cover" />
+                        <button
+                          onClick={async () => {
+                            if (!user) return;
+                            try {
+                              showToast('Deleting photo...');
+                              const idToken = await user.getIdToken();
+                              const updated = await deleteGalleryPhotoAction(idToken, photoUrl);
+                              setGalleryPhotos(updated);
+                              if (reservation) {
+                                  setReservation({ ...reservation, gallery_photos: updated });
+                              }
+                              showToast('Photo deleted!');
+                            } catch (err) {
+                              console.error(err);
+                              showToast('Delete failed');
+                            }
+                          }}
+                          className="absolute top-1.5 right-1.5 p-1 rounded-lg bg-black/60 hover:bg-red-600/90 text-white opacity-0 group-hover:opacity-100 transition-all cursor-pointer flex items-center justify-center"
+                          title="Delete photo"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+
+                    {/* Add Photo Card if count is < 6 */}
+                    {galleryPhotos.length < 6 && (
+                      <label className={`aspect-square rounded-2xl border border-dashed transition-all flex flex-col items-center justify-center cursor-pointer ${
+                        isLight 
+                          ? 'border-black/20 hover:border-[#7C5CFF]/50 bg-black/[0.01] hover:bg-black/[0.03]' 
+                          : 'border-white/10 hover:border-[#7C5CFF]/50 bg-white/[0.01] hover:bg-white/[0.03]'
+                      }`}>
+                        <Camera className={`w-5 h-5 mb-1 ${isLight ? 'text-black/40' : 'text-white/40'}`} />
+                        <span className={`text-[9px] font-bold ${isLight ? 'text-black/40' : 'text-white/40'}`}>Add Photo</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file || !user) return;
+                            try {
+                              showToast('Processing photo...');
+                              const compressedBase64 = await compressImage(file, 1000, 1000, 0.8);
+                              showToast('Uploading photo...');
+                              const idToken = await user.getIdToken();
+                              const ext = file.name.split('.').pop() || 'jpg';
+                              const updated = await uploadGalleryPhotoAction(idToken, compressedBase64, ext);
+                              setGalleryPhotos(updated);
+                              if (reservation) {
+                                setReservation({ ...reservation, gallery_photos: updated });
+                              }
+                              showToast('Photo uploaded!');
+                            } catch (err) {
+                              console.error(err);
+                              showToast('Upload failed');
+                            }
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
+                  {galleryPhotos.length > 0 && (
+                    <p className={`text-[9px] text-right font-mono ${isLight ? 'text-black/45' : 'text-white/40'}`}>{galleryPhotos.length}/6 photos uploaded</p>
+                  )}
+                </div>
+
+                {/* Featured Showreel Video Card */}
+                <div className={`p-6 rounded-3xl border backdrop-blur-md space-y-5 text-left ${
+                  isLight 
+                    ? 'border-[#7C5CFF]/10 bg-zinc-50/60 shadow-sm' 
+                    : 'border-white/5 bg-white/[0.02] shadow-[0_8px_30px_rgba(0,0,0,0.4)]'
+                }`}>
+                  <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
+                    <h3 className={`text-base font-bold ${isLight ? 'text-black' : 'text-white'}`}>Featured Video / Showreel</h3>
+                    {youtubeUrl && (
+                      <button
+                        onClick={async () => {
+                          if (!user) return;
+                          setIsSaving(true);
+                          try {
+                            showToast('Removing video...');
+                            const idToken = await user.getIdToken();
+                            await deleteShowreelVideoAction(idToken);
+                            setYoutubeUrl('');
+                            if (reservation) {
+                              setReservation({ ...reservation, youtube_url: '' });
+                            }
+                            showToast('Video removed');
+                          } catch (err) {
+                            console.error(err);
+                            showToast('Delete failed');
+                          } finally {
+                            setIsSaving(false);
+                          }
+                        }}
+                        className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition-all active:scale-95 cursor-pointer ${
+                          isLight 
+                            ? 'border-red-500/20 text-red-600 bg-red-50 hover:bg-red-100' 
+                            : 'border-red-500/20 text-red-400 bg-red-500/10 hover:bg-red-500/20'
+                        }`}
+                      >
+                        Remove Video
+                      </button>
+                    )}
+                  </div>
+
+                  {youtubeUrl ? (
+                    <div className="space-y-3">
+                      <span className={`text-[10px] font-bold uppercase tracking-wider font-mono ${isLight ? 'text-black/45' : 'text-white/40'}`}>Active Showreel</span>
+                      <div className={`w-full aspect-video rounded-2xl overflow-hidden relative border bg-black ${isLight ? 'border-black/10' : 'border-white/10'}`}>
+                        {youtubeUrl.includes('/profiles/video_') ? (
+                          <video src={youtubeUrl} controls className="w-full h-full object-cover" />
+                        ) : (
+                          <iframe
+                            width="100%"
+                            height="100%"
+                            src={youtubeUrl.includes('youtube.com') 
+                              ? `https://www.youtube.com/embed/${youtubeUrl.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/)?.[2] || ''}?autoplay=0&rel=0`
+                              : `https://www.instagram.com/p/${youtubeUrl.match(/instagram\.com\/(?:p|reel|tv)\/([^/?#&]+)/i)?.[1] || ''}/embed`
+                            }
+                            title="Video player"
+                            frameBorder="0"
+                            allowFullScreen
+                            className="w-full h-full"
+                          />
+                        )}
+                      </div>
+                      <p className={`text-[10px] font-mono break-all ${isLight ? 'text-black/50' : 'text-white/40'}`}>
+                        {youtubeUrl}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Option 1: Paste Link */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className={`text-[10px] font-bold uppercase tracking-wider font-mono ${isLight ? 'text-black/45' : 'text-white/40'}`}>Paste YouTube / Instagram Link</label>
+                        <div className={`flex items-center rounded-2xl px-4 py-3 focus-within:border-[#7C5CFF]/50 focus-within:ring-1 focus-within:ring-[#7C5CFF]/50 transition-all duration-300 ${
+                          isLight ? 'bg-black/5 border-black/10' : 'bg-black/40 border border-white/5'
+                        }`}>
+                          <Play className="w-4 h-4 text-[#D4567A] shrink-0 mr-2" />
+                          <input
+                            type="text"
+                            placeholder="e.g. https://www.youtube.com/watch?v=... or https://instagram.com/reel/..."
+                            onKeyDown={async (e) => {
+                              if (e.key === 'Enter') {
+                                const val = (e.target as HTMLInputElement).value.trim();
+                                if (!val || !user) return;
+                                setIsSaving(true);
+                                try {
+                                  showToast('Saving video URL...');
+                                  const idToken = await user.getIdToken();
+                                  await updateProfileDetailsAction(idToken, { youtube_url: val });
+                                  setYoutubeUrl(val);
+                                  if (reservation) {
+                                    setReservation({ ...reservation, youtube_url: val });
+                                  }
+                                  showToast('Showreel video URL saved!');
+                                } catch (err) {
+                                  console.error(err);
+                                  showToast('Save failed');
+                                } finally {
+                                  setIsSaving(false);
+                                }
+                              }
+                            }}
+                            className={`flex-1 bg-transparent border-none p-0 text-xs focus:ring-0 focus:outline-none ${
+                              isLight ? 'text-black placeholder-black/20' : 'text-white placeholder-white/20'
+                            }`}
+                          />
+                        </div>
+                        <span className={`text-[8px] ${isLight ? 'text-black/35' : 'text-white/35'}`}>Press Enter to save the link.</span>
+                      </div>
+
+                      <div className="flex items-center justify-center gap-4 py-1">
+                        <div className={`h-[1px] flex-1 ${isLight ? 'bg-black/5' : 'bg-white/5'}`} />
+                        <span className={`text-[8px] font-bold uppercase font-mono tracking-widest ${isLight ? 'text-black/30' : 'text-white/25'}`}>or</span>
+                        <div className={`h-[1px] flex-1 ${isLight ? 'bg-black/5' : 'bg-white/5'}`} />
+                      </div>
+
+                      {/* Option 2: Upload Direct File */}
+                      <div className="flex flex-col gap-2">
+                        <label className={`text-[10px] font-bold uppercase tracking-wider font-mono ${isLight ? 'text-black/45' : 'text-white/40'}`}>Upload Video File (Max 15MB)</label>
+                        <label className={`rounded-2xl border border-dashed p-6 transition-all flex flex-col items-center justify-center cursor-pointer ${
+                          isLight 
+                            ? 'border-black/20 hover:border-[#7C5CFF]/50 bg-black/[0.01] hover:bg-black/[0.03]' 
+                            : 'border-white/10 hover:border-[#7C5CFF]/50 bg-white/[0.01] hover:bg-white/[0.03]'
+                        }`}>
+                          <DownloadCloud className={`w-6 h-6 mb-1.5 ${isLight ? 'text-black/40' : 'text-white/40'}`} />
+                          <span className={`text-xs font-bold ${isLight ? 'text-zinc-800' : 'text-zinc-200'}`}>Click to Upload Video</span>
+                          <span className={`text-[9px] mt-1 ${isLight ? 'text-black/40' : 'text-white/40'}`}>Supports MP4, MOV, WebM</span>
+                          <input
+                            type="file"
+                            accept="video/*"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file || !user) return;
+                              
+                              if (file.size > 15 * 1024 * 1024) {
+                                showToast('File is too large! Max size is 15MB.');
+                                return;
+                              }
+
+                              try {
+                                showToast('Reading video file...');
+                                const reader = new FileReader();
+                                reader.onload = async () => {
+                                  const base64DataUrl = reader.result as string;
+                                  showToast('Uploading video to Storage...');
+                                  setIsSaving(true);
+                                  try {
+                                    const idToken = await user.getIdToken();
+                                    const ext = file.name.split('.').pop() || 'mp4';
+                                    const publicUrl = await uploadShowreelVideoAction(idToken, base64DataUrl, ext);
+                                    setYoutubeUrl(publicUrl);
+                                    if (reservation) {
+                                      setReservation({ ...reservation, youtube_url: publicUrl });
+                                    }
+                                    showToast('Video uploaded and saved!');
+                                  } catch (err: any) {
+                                    console.error(err);
+                                    showToast(err.message || 'Upload failed');
+                                  } finally {
+                                    setIsSaving(false);
+                                  }
+                                };
+                                reader.readAsDataURL(file);
+                              } catch (err) {
+                                console.error(err);
+                                showToast('Failed to process video file');
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
               </div>
@@ -2837,6 +3948,30 @@ export default function ProfilePage() {
         )}
       </AnimatePresence>
 
+      <ImageCropperModal
+        isOpen={cropperOpen}
+        imageSrc={cropperImageSrc}
+        aspectRatio={3/4}
+        targetWidth={600}
+        targetHeight={800}
+        onCrop={async (croppedBase64) => {
+          setCropperOpen(false);
+          if (!user) return;
+          try {
+            showToast('Uploading photo...');
+            const idToken = await user.getIdToken();
+            const publicUrl = await uploadProfilePhotoAction(idToken, croppedBase64, pendingFileExt);
+            setReservation((prev) => prev ? { ...prev, profile_photo_url: publicUrl } : null);
+            showToast('Profile photo updated!');
+          } catch (err) {
+            console.error(err);
+            showToast('Upload failed');
+          }
+        }}
+        onClose={() => {
+          setCropperOpen(false);
+        }}
+      />
     </div>
   );
 }

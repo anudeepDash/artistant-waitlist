@@ -715,7 +715,7 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
                                   </>
                                 ) : (
                                   <>
-                                    Get Early Access Pass <Sparkles className="w-4 h-4" />
+                                    Get Early Access Pass <ArrowRight className="w-4 h-4" />
                                   </>
                                 )}
                               </button>

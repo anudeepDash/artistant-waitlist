@@ -433,9 +433,9 @@ export async function getWaitlistDashboardDataAction(idToken: string): Promise<{
     };
   }
 
-  // 6. Founding Artists are those who have (is_verified = true OR points >= 500) AND role = 'artist'
+  // 6. Founding Artists are those who have points >= 500 AND role = 'artist'
   const foundingArtists = sorted
-    .filter(u => u.role === 'artist' && (u.is_verified || u.points >= 500))
+    .filter(u => u.role === 'artist' && u.points >= 500)
     .map(u => ({
       username: u.username,
       display_name: u.display_name,

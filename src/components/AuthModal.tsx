@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, type FormEvent } from 'react';
+import { useState, useEffect, useCallback, useRef, type FormEvent, Fragment } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -18,6 +18,7 @@ import { compressImage } from '@/lib/image-utils';
 import { auth, isFirebaseConfigured } from '@/lib/firebase/client';
 import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import SuccessConfirmation from '@/components/SuccessConfirmation';
+import ImageCropperModal from '@/components/ImageCropperModal';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -293,6 +294,8 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
   const [bio, setBio] = useState('');
   const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
   const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [cropperImageSrc, setCropperImageSrc] = useState('');
 
   const toggleGenre = (genre: string) => {
     setSelectedGenres(prev =>
@@ -388,8 +391,8 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
           email: resolvedEmail,
           name: pendingUser.displayName ?? resolvedEmail ?? normalised,
           username: normalised,
-        }).catch((err: unknown) => console.error("Error sending welcome email"));
-      }).catch((err: unknown) => console.error("Error getting ID token for welcome email"));
+        }).catch((err: unknown) => console.error("Error sending welcome email:", err));
+      }).catch((err: unknown) => console.error("Error getting ID token for welcome email:", err));
 
 
       setReservedUsername(normalised);
@@ -683,7 +686,8 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
   // --------------------------------------------------------------------------
 
   return (
-    <AnimatePresence>
+    <Fragment>
+      <AnimatePresence>
       {isOpen && (
         <motion.div
           key="auth-overlay"
@@ -1610,21 +1614,16 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                                 type="file" 
                                 className="hidden" 
                                 accept="image/*"
-                                onChange={async (e) => {
+                                onChange={(e) => {
                                   const file = e.target.files?.[0];
                                   if (file) {
                                     setProfilePhotoFile(file);
-                                    try {
-                                      const compressedBase64 = await compressImage(file, 600, 600, 0.75);
-                                      setProfilePhotoPreview(compressedBase64);
-                                    } catch (err) {
-                                      console.error("Compression failed, falling back to original:", err);
-                                      const reader = new FileReader();
-                                      reader.onload = (ev) => {
-                                        setProfilePhotoPreview(ev.target?.result as string);
-                                      };
-                                      reader.readAsDataURL(file);
-                                    }
+                                    const reader = new FileReader();
+                                    reader.onload = (ev) => {
+                                      setCropperImageSrc(ev.target?.result as string);
+                                      setCropperOpen(true);
+                                    };
+                                    reader.readAsDataURL(file);
                                   }
                                 }}
                               />
@@ -1745,5 +1744,21 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
         </motion.div>
       )}
     </AnimatePresence>
+
+    <ImageCropperModal
+      isOpen={cropperOpen}
+      imageSrc={cropperImageSrc}
+      aspectRatio={3/4}
+      targetWidth={600}
+      targetHeight={800}
+      onCrop={(croppedBase64) => {
+        setProfilePhotoPreview(croppedBase64);
+        setCropperOpen(false);
+      }}
+      onClose={() => {
+        setCropperOpen(false);
+      }}
+    />
+    </Fragment>
   );
 }

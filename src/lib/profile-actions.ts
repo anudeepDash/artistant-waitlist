@@ -437,3 +437,111 @@ export async function deleteGalleryPhotoAction(
   return updatedPhotos;
 }
 
+export async function uploadShowreelVideoAction(
+  idToken: string,
+  base64DataUrl: string,
+  fileExtension: string
+): Promise<string> {
+  const decodedToken = await verifyIdToken(idToken);
+  const uid = decodedToken.uid;
+  const client = createAdminClient();
+
+  // Decode the base64 data URL into a buffer
+  const base64Data = base64DataUrl.split(',')[1];
+  if (!base64Data) {
+    throw new Error('Invalid video data');
+  }
+  const buffer = Buffer.from(base64Data, 'base64');
+
+  // Determine content type
+  const mimeMatch = base64DataUrl.match(/^data:(video\/\w+);/);
+  const contentType = mimeMatch ? mimeMatch[1] : 'video/mp4';
+
+  const fileName = `video_${uid}_${Date.now()}.${fileExtension || 'mp4'}`;
+
+  // Ensure the 'profiles' bucket exists
+  const { data: buckets } = await client.storage.listBuckets();
+  const bucketExists = buckets?.some(b => b.name === 'profiles');
+  if (!bucketExists) {
+    await client.storage.createBucket('profiles', { public: true });
+  }
+
+  // Upload to storage (upsert to handle re-uploads)
+  const { error: uploadError } = await client.storage
+    .from('profiles')
+    .upload(fileName, buffer, {
+      contentType,
+      upsert: true,
+    });
+
+  if (uploadError) {
+    console.error('Storage upload error:', uploadError);
+    throw new Error(`Failed to upload video: ${uploadError.message}`);
+  }
+
+  // Get the public URL
+  const { data: publicUrlData } = client.storage
+    .from('profiles')
+    .getPublicUrl(fileName);
+  
+  const publicUrl = publicUrlData.publicUrl;
+
+  // Update user profile youtube_url with this new public URL
+  const { error: updateError } = await client
+    .from('waitlist_users')
+    .update({ youtube_url: publicUrl })
+    .eq('user_id', uid);
+
+  if (updateError) {
+    console.error('DB update error:', updateError);
+    throw new Error('Video uploaded but failed to save URL');
+  }
+
+  return publicUrl;
+}
+
+export async function deleteShowreelVideoAction(
+  idToken: string
+): Promise<boolean> {
+  const decodedToken = await verifyIdToken(idToken);
+  const uid = decodedToken.uid;
+  const client = createAdminClient();
+
+  // Retrieve current video URL
+  const { data: userData, error: fetchError } = await client
+    .from('waitlist_users')
+    .select('youtube_url')
+    .eq('user_id', uid)
+    .single();
+
+  if (fetchError || !userData) {
+    throw new Error('Failed to retrieve user profile');
+  }
+
+  const currentUrl = userData.youtube_url;
+  if (currentUrl) {
+    // If it's a self-hosted uploaded video, delete it from storage
+    if (currentUrl.includes('/profiles/video_')) {
+      const fileName = currentUrl.split('/').pop();
+      if (fileName) {
+        await client.storage
+          .from('profiles')
+          .remove([fileName]);
+      }
+    }
+  }
+
+  // Clear youtube_url in DB
+  const { error: updateError } = await client
+    .from('waitlist_users')
+    .update({ youtube_url: null })
+    .eq('user_id', uid);
+
+  if (updateError) {
+    throw new Error('Failed to remove showreel video');
+  }
+
+  return true;
+}
+
+

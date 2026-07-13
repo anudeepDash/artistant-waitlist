@@ -3,20 +3,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence } from 'motion/react';
 import { useParams, useRouter } from 'next/navigation';
-import { 
-  type WaitlistEntry 
-} from '@/lib/waitlist';
+import { type WaitlistEntry } from '@/lib/waitlist';
 import { incrementProfileVisitorsAction, getPublicProfileDataAction } from '@/lib/profile-actions';
 import { useTheme } from 'next-themes';
 import { 
-  X, MapPin, Share2, ExternalLink, ChevronDown, Mail, Phone, 
-  LockKeyhole, Award, Play, Pause, Volume2 
+  X, MapPin, Share2, Mail, Phone, LockKeyhole, ArrowLeft, Heart
 } from 'lucide-react';
-import ParticleBackground from '@/components/ParticleBackground';
 
-/* ──────────────────────────────────────────────────────────────────────────
-   INLINE SVG ICONS
-   ────────────────────────────────────────────────────────────────────────── */
+const categoryLabels: Record<string, string> = {
+  singer: 'Singer',
+  dj: 'DJ',
+  band: 'Band',
+  comedian: 'Comedian',
+  dancer: 'Dancer',
+  mc_rapper: 'MC / Rapper',
+  instrumentalist: 'Instrumentalist',
+  other: 'Artist',
+};
 
 const InstagramIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -35,49 +38,6 @@ const YouTubeIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <path d="M21.582 6.186a2.506 2.506 0 0 0-1.762-1.766C18.265 4 12 4 12 4s-6.265 0-7.82.42a2.506 2.506 0 0 0-1.762 1.766C2 7.74 2 12 2 12s0 4.26.418 5.814a2.506 2.506 0 0 0 1.762 1.766C5.735 20 12 20 12 20s6.265 0 7.82-.42a2.506 2.506 0 0 0 1.762-1.766C22 16.26 22 12 22 12s0-4.26-.418-5.814zM10 15.464V8.536L16 12l-6 3.464z" />
   </svg>
 );
-const PlayIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" {...props}><path d="M8 5v14l11-7z"/></svg>
-);
-const MusicNoteIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-    <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
-  </svg>
-);
-const ImageGridIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-    <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
-  </svg>
-);
-const VideoIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-    <polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-  </svg>
-);
-
-const categoryLabels: Record<string, string> = {
-  singer: 'Singer',
-  dj: 'DJ',
-  band: 'Band',
-  comedian: 'Comedian',
-  dancer: 'Dancer',
-  mc_rapper: 'MC / Rapper',
-  instrumentalist: 'Instrumentalist',
-  other: 'Artist',
-};
-
-const GALLERY_IMAGES = [
-  { url: '/gallery_1.png', caption: 'Live Concert Set' },
-  { url: '/gallery_2.png', caption: 'Acoustic Vibe Session' },
-  { url: '/gallery_3.png', caption: 'Sunset Festival Mainstage' },
-  { url: '/gallery_4.png', caption: 'Backstage Warmup Session' },
-  { url: '/gallery_5.png', caption: 'Crowd Connection Moment' },
-  { url: '/gallery_6.png', caption: 'Soundcheck & Setup Jam' },
-];
-
-const TRACKS = [
-  { id: 1, title: 'Live Performance Showcase — Cohort 1 Preview', src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' },
-  { id: 2, title: 'Studio Electronic Demo — System Preview', src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3' },
-];
 
 export default function PublicProfilePage() {
   const params = useParams();
@@ -90,10 +50,11 @@ export default function PublicProfilePage() {
   const [mounted, setMounted] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [liked, setLiked] = useState(false);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   const [isContactOpen, setIsContactOpen] = useState(false);
 
-  // Dynamic user stats for Founding Badge / Card
+  // Dynamic user stats for Founding Card / Badge
   const [points, setPoints] = useState<number>(100);
   const [waitlistPos, setWaitlistPos] = useState<number | null>(null);
   const [cohortVal, setCohortVal] = useState<string>('003');
@@ -105,18 +66,9 @@ export default function PublicProfilePage() {
   const [sheenX, setSheenX] = useState(50);
   const [sheenY, setSheenY] = useState(50);
 
-  // Audio player state
-  const [currentPlayingTrack, setCurrentPlayingTrack] = useState<number | null>(null);
-  const [audioPlaying, setAudioPlaying] = useState<boolean>(false);
-  const [audioProgress, setAudioProgress] = useState<number>(0);
-  const [audioCurrentTime, setAudioCurrentTime] = useState<string>('00:00');
-  const [audioDuration, setAudioDuration] = useState<string>('00:00');
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
   const heroRef = useRef<HTMLDivElement>(null);
   const { scrollY } = useScroll();
-  const heroOpacity = useTransform(scrollY, [0, 300], [1, 0]);
-  const heroScale = useTransform(scrollY, [0, 400], [1, 1.08]);
+  const heroScale = useTransform(scrollY, [0, 400], [1, 1.05]);
 
   useEffect(() => { setMounted(true); }, []);
   const isLight = mounted && resolvedTheme === 'light';
@@ -165,8 +117,7 @@ export default function PublicProfilePage() {
 
   // 3D Card Hover Handlers
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
+    const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     const xc = rect.width / 2;
@@ -184,72 +135,19 @@ export default function PublicProfilePage() {
     setSheenY(50);
   };
 
-  // Audio Playback Handlers
-  const handlePlayPause = (trackId: number) => {
-    if (!audioRef.current) return;
-    
-    const track = TRACKS.find(t => t.id === trackId);
-    if (!track) return;
-
-    if (currentPlayingTrack === trackId) {
-      if (audioPlaying) {
-        audioRef.current.pause();
-        setAudioPlaying(false);
-      } else {
-        audioRef.current.play().catch(console.error);
-        setAudioPlaying(true);
-      }
-    } else {
-      audioRef.current.src = track.src;
-      audioRef.current.load();
-      audioRef.current.play().then(() => {
-        setAudioPlaying(true);
-      }).catch(console.error);
-      setCurrentPlayingTrack(trackId);
-    }
-  };
-
-  const handleTimeUpdate = () => {
-    if (!audioRef.current) return;
-    const cur = audioRef.current.currentTime;
-    const dur = audioRef.current.duration || 1;
-    setAudioProgress((cur / dur) * 100);
-    setAudioCurrentTime(formatTime(cur));
-  };
-
-  const handleLoadedMetadata = () => {
-    if (!audioRef.current) return;
-    setAudioDuration(formatTime(audioRef.current.duration));
-  };
-
-  const handleAudioEnded = () => {
-    setAudioPlaying(false);
-    setAudioProgress(0);
-    setAudioCurrentTime('00:00');
-  };
-
-  const formatTime = (time: number) => {
-    if (isNaN(time)) return '00:00';
-    const mins = Math.floor(time / 60);
-    const secs = Math.floor(time % 60);
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const handleScrub = (value: number) => {
-    if (!audioRef.current) return;
-    const dur = audioRef.current.duration;
-    if (!dur) return;
-    const newTime = (value / 100) * dur;
-    audioRef.current.currentTime = newTime;
-    setAudioProgress(value);
-  };
-
   // Check YouTube Video Id
   const getYouTubeEmbedId = (url: string) => {
     if (!url) return null;
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
     const match = url.match(regExp);
     return (match && match[2].length === 11) ? match[2] : null;
+  };
+
+  // Check Instagram Video/Reel Id
+  const getInstagramEmbedId = (url: string) => {
+    if (!url) return null;
+    const match = url.match(/instagram\.com\/(?:p|reel|tv)\/([^/?#&]+)/i);
+    return match ? match[1] : null;
   };
 
   if (loading) {
@@ -286,41 +184,170 @@ export default function PublicProfilePage() {
   const hasContact = isEmailEnabled || isPhoneEnabled;
 
   const youtubeId = reservation.youtube_url ? getYouTubeEmbedId(reservation.youtube_url) : null;
+  const instagramVideoId = reservation.youtube_url ? getInstagramEmbedId(reservation.youtube_url) : null;
+
+  // Dynamically map gallery photos (No fallback default images)
+  const displayGallery = reservation.gallery_photos && reservation.gallery_photos.length > 0
+    ? reservation.gallery_photos.map((url, i) => ({ url, caption: `Gig Performance ${i + 1}` }))
+    : [];
+
+  // Helper function to render the waitlist placement certificate / founding card
+  const renderFoundingCard = (isMobile: boolean) => {
+    if (!reservation?.feature_founding_card) return null;
+    return (
+      <motion.section
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5 }}
+        className={isMobile 
+          ? "space-y-6 text-left" 
+          : `hidden md:block space-y-6 text-left pt-8 border-t ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`
+        }
+      >
+        <div className="flex items-center gap-3">
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center border shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/5 border border-white/10'}`}>
+            <span className="text-[#F25A2B] font-bold text-xs font-mono">
+              <span className="inline md:hidden">01</span>
+              <span className="hidden md:inline">03</span>
+            </span>
+          </div>
+          <div>
+            <h2 className={`text-lg font-bold tracking-tight ${isLight ? 'text-zinc-900' : 'text-white'}`}>Founding Status</h2>
+            <p className={`text-[10px] font-mono tracking-wider uppercase ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>Waitlist Placement Certificate</p>
+          </div>
+        </div>
+
+        <div className="flex justify-center w-full py-4">
+          <div className="w-full max-w-sm aspect-[1.58/1] relative" style={{ perspective: 1200 }}>
+            <motion.div
+              onMouseMove={handleMouseMove}
+              onMouseLeave={handleMouseLeave}
+              animate={{ rotateX, rotateY }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className={`w-full h-full relative rounded-[2rem] p-[1.5px] overflow-hidden group cursor-pointer ${isLight ? 'shadow-[0_20px_50px_rgba(124,92,255,0.08)]' : 'shadow-[0_35px_80px_-20px_rgba(0,0,0,0.9)]'}`}
+              style={{
+                background: isLight 
+                  ? 'linear-gradient(135deg, rgba(124,92,255,0.1), rgba(124,92,255,0.02) 40%, rgba(124,92,255,0.25))' 
+                  : 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.01) 40%, rgba(124,92,255,0.2))',
+                transformStyle: 'preserve-3d',
+              }}
+            >
+              <div 
+                className={`relative w-full h-full rounded-[1.95rem] p-5 flex flex-col justify-between overflow-hidden border ${isLight ? 'bg-white/90 border-[#7C5CFF]/15' : 'bg-[#050508]/95 border border-white/5'}`}
+                style={{
+                  isolation: 'isolate',
+                  WebkitMaskImage: '-webkit-radial-gradient(white, black)'
+                }}
+              >
+                {/* Decorative Circles */}
+                <div className={`absolute -right-20 -bottom-20 w-80 h-80 rounded-full border flex items-center justify-center pointer-events-none ${isLight ? 'border-[#7C5CFF]/5' : 'border-white/[0.02]'}`}>
+                  <div className={`w-60 h-60 rounded-full border flex items-center justify-center ${isLight ? 'border-[#7C5CFF]/3' : 'border-white/[0.01]'}`} />
+                </div>
+
+                {/* Sheen effect */}
+                <div 
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                  style={{
+                    background: isLight 
+                      ? `radial-gradient(circle 180px at ${sheenX}% ${sheenY}%, rgba(124,92,255,0.08), transparent)`
+                      : `radial-gradient(circle 180px at ${sheenX}% ${sheenY}%, rgba(255,255,255,0.06), transparent)`,
+                  }}
+                />
+
+                {/* Card Top Row */}
+                <div className="flex justify-between items-start z-10 w-full">
+                  <div className="flex items-center gap-2">
+                    <img src="/logo_a.png" alt="A" className="w-5 h-5 object-contain opacity-80" />
+                    <span className={`font-mono text-[8px] font-bold tracking-[0.2em] ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>FOUNDING CARD</span>
+                  </div>
+                  <span 
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-mono text-[8px] font-bold uppercase tracking-wider relative overflow-hidden transition-all duration-300 ${
+                      points >= 500 
+                        ? isLight 
+                          ? 'bg-emerald-500/5 border border-emerald-500/15 text-emerald-600'
+                          : 'bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 text-emerald-400' 
+                        : isLight 
+                          ? 'bg-black/[0.02] border border-black/5 text-zinc-500'
+                          : 'bg-white/[0.02] border border-white/5 text-white/40'
+                    }`}
+                  >
+                    {points >= 500 ? (
+                      <>
+                        <span className={`w-1 h-1 rounded-full ${isLight ? 'bg-emerald-500' : 'bg-emerald-400 animate-pulse'}`} />
+                        <span>Founding Artist</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className={`w-1 h-1 rounded-full ${isLight ? 'bg-black/20' : 'bg-white/20'}`} />
+                        <span>Founding Artist</span>
+                        <LockKeyhole className={`w-2.5 h-2.5 ml-0.5 shrink-0 ${isLight ? 'text-zinc-400' : 'text-white/30'}`} />
+                      </>
+                    )}
+                  </span>
+                </div>
+
+                {/* Rank Position (Center) */}
+                <div className="flex flex-col items-center justify-center z-10 flex-1 my-1">
+                  <h1 className={`font-display font-black leading-none tracking-tighter text-4xl sm:text-5xl ${isLight ? 'text-zinc-900' : 'text-white'}`} style={{ textShadow: isLight ? '0 10px 30px rgba(124,92,255,0.06)' : '0 10px 30px rgba(0,0,0,0.5)' }}>
+                    #{waitlistPos || '---'}
+                  </h1>
+                  <span className={`text-[8px] font-mono tracking-[0.2em] uppercase mt-1 ${isLight ? 'text-zinc-400' : 'text-white/25'}`}>Waitlist Rank</span>
+                </div>
+
+                {/* Card Bottom Row */}
+                <div className={`flex justify-between items-end z-10 w-full border-t pt-3 ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`}>
+                  <div className="flex flex-col text-left">
+                    <span className={`text-[7px] font-mono tracking-widest uppercase ${isLight ? 'text-zinc-400' : 'text-white/35'}`}>Artist Name</span>
+                    <span className={`text-[10px] font-bold truncate max-w-[120px] ${isLight ? 'text-zinc-800' : 'text-white/80'}`}>{displayName}</span>
+                  </div>
+                  <div className="flex flex-col text-right">
+                    <span className={`text-[7px] font-mono tracking-widest uppercase ${isLight ? 'text-zinc-400' : 'text-white/35'}`}>Cohort / Status</span>
+                    <span className="text-[8px] font-mono tracking-wider text-[#7C5CFF] font-bold">COHORT {cohortVal} · FOUNDING</span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </motion.section>
+    );
+  };
 
   return (
-    <div className="min-h-screen w-full bg-[#050508] font-sans overflow-x-hidden relative text-white selection:bg-[#7C5CFF]/30">
+    <div className={`min-h-screen w-full font-sans overflow-x-hidden relative transition-colors duration-300 ${isLight ? 'bg-[#FAF9FD] text-zinc-900 selection:bg-[#7C5CFF]/15' : 'bg-[#050508] text-white selection:bg-[#7C5CFF]/30'}`}>
 
-      {/* Global CSS Styles for dancing waveform equalizer animation */}
+      {/* Import Playfair Display font dynamically */}
       <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes eq-bar-anim {
-          0%, 100% { height: 4px; }
-          50% { height: 16px; }
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
+        .font-serif-display {
+          font-family: 'Playfair Display', Georgia, serif;
         }
-        .animate-eq-bar-1 { animation: eq-bar-anim 0.8s ease-in-out infinite; }
-        .animate-eq-bar-2 { animation: eq-bar-anim 0.5s ease-in-out infinite 0.1s; }
-        .animate-eq-bar-3 { animation: eq-bar-anim 0.7s ease-in-out infinite 0.2s; }
-        .animate-eq-bar-4 { animation: eq-bar-anim 0.6s ease-in-out infinite 0.15s; }
-        .animate-eq-bar-5 { animation: eq-bar-anim 0.9s ease-in-out infinite 0.05s; }
       `}} />
 
-      {/* Premium background particles and grid mask */}
-      <ParticleBackground />
-
+      {/* Premium backgrounds, grid mask, and color flows */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden="true">
+        {/* Decorative radial gradients matching AuthModal styling */}
+        <div className={`absolute top-0 left-0 w-full h-[50vh] transition-opacity duration-300 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-[#F25A2B] via-transparent to-transparent pointer-events-none ${isLight ? 'opacity-[0.12]' : 'opacity-50'}`} style={{ '--tw-gradient-from-position': '0%', '--tw-gradient-via-position': '50%' } as any} />
+        <div className={`absolute top-0 right-0 w-full h-[60vh] transition-opacity duration-300 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#7C5CFF] via-transparent to-transparent pointer-events-none ${isLight ? 'opacity-[0.12]' : 'opacity-45'}`} style={{ '--tw-gradient-from-position': '0%', '--tw-gradient-via-position': '50%' } as any} />
+
         <div 
-          className="absolute inset-0 opacity-15"
+          className="absolute inset-0 transition-opacity duration-300"
           style={{
-            backgroundImage: "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
+            backgroundImage: isLight 
+              ? "linear-gradient(rgba(124,92,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(124,92,255,0.04) 1px, transparent 1px)"
+              : "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
             backgroundSize: "60px 60px",
             maskImage: "radial-gradient(ellipse 70% 60% at 50% 50%, black 40%, transparent 95%)",
             WebkitMaskImage: "radial-gradient(ellipse 70% 60% at 50% 50%, black 40%, transparent 95%)",
+            opacity: isLight ? 0.7 : 0.15
           }}
         />
         
         {/* Colorful flowing glowing blur orbs */}
-        <div className="absolute top-[10%] left-[-15%] w-[600px] h-[600px] rounded-full opacity-[0.06] blur-[120px]" style={{ background: 'radial-gradient(circle, #7C5CFF 0%, transparent 70%)' }} />
-        <div className="absolute top-[40%] right-[-15%] w-[750px] h-[750px] rounded-full opacity-[0.05] blur-[130px]" style={{ background: 'radial-gradient(circle, #F25A2B 0%, transparent 70%)' }} />
-        <div className="absolute bottom-[20%] left-[10%] w-[600px] h-[600px] rounded-full opacity-[0.06] blur-[120px]" style={{ background: 'radial-gradient(circle, #D4567A 0%, transparent 70%)' }} />
+        <div className="absolute top-[5%] left-[-10%] w-[550px] h-[550px] rounded-full blur-[110px] pointer-events-none animate-pulse transition-opacity duration-300" style={{ background: 'radial-gradient(circle, #7C5CFF 0%, transparent 70%)', animationDuration: '10s', opacity: isLight ? 0.08 : 0.25 }} />
+        <div className="absolute top-[35%] right-[-10%] w-[650px] h-[650px] rounded-full blur-[120px] pointer-events-none transition-opacity duration-300" style={{ background: 'radial-gradient(circle, #F25A2B 0%, transparent 70%)', opacity: isLight ? 0.07 : 0.2 }} />
+        <div className="absolute bottom-[15%] left-[5%] w-[550px] h-[550px] rounded-full blur-[110px] pointer-events-none animate-pulse transition-opacity duration-300" style={{ background: 'radial-gradient(circle, #D4567A 0%, transparent 70%)', animationDuration: '14s', opacity: isLight ? 0.07 : 0.22 }} />
       </div>
 
       {/* Broadcast Notification */}
@@ -333,321 +360,418 @@ export default function PublicProfilePage() {
             transition={{ type: "spring", stiffness: 380, damping: 28 }}
             className="fixed top-5 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:right-6 z-[60] w-[360px] max-w-[calc(100vw-24px)] rounded-2xl overflow-hidden"
             style={{
-              background: 'linear-gradient(135deg, rgba(12,12,18,0.92) 0%, rgba(20,16,32,0.92) 100%)',
+              background: isLight
+                ? 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(245,242,255,0.95) 100%)'
+                : 'linear-gradient(135deg, rgba(12,12,18,0.92) 0%, rgba(20,16,32,0.92) 100%)',
               backdropFilter: 'blur(24px)',
               WebkitBackdropFilter: 'blur(24px)',
-              border: '1px solid rgba(124,92,255,0.15)',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(124,92,255,0.08)',
+              border: isLight ? '1px solid rgba(124,92,255,0.2)' : '1px solid rgba(124,92,255,0.15)',
+              boxShadow: isLight
+                ? '0 20px 50px rgba(124,92,255,0.08), 0 0 0 1px rgba(124,92,255,0.05)'
+                : '0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(124,92,255,0.08)',
             }}
           >
-            <div className="px-4 py-2 flex items-center justify-between border-b border-white/[0.04]">
+            <div className={`px-4 py-2 flex items-center justify-between border-b ${isLight ? 'border-black/[0.05]' : 'border-white/[0.04]'}`}>
               <div className="flex items-center gap-2">
-                <img src="/logo_a.png" alt="A" className="w-3.5 h-3.5 opacity-50" />
-                <span className="text-[10px] font-bold text-white/35 uppercase tracking-[0.15em]">New Message</span>
+                <img src="/logo_a.png" alt="A" className={`w-3.5 h-3.5 ${isLight ? 'opacity-70' : 'opacity-50'}`} />
+                <span className={`text-[10px] font-bold uppercase tracking-[0.15em] ${isLight ? 'text-zinc-500' : 'text-white/35'}`}>New Message</span>
               </div>
-              <button onClick={() => setShowNotification(false)} className="w-5 h-5 rounded-full flex items-center justify-center hover:bg-white/10 text-white/30 hover:text-white/60 transition-colors">
+              <button onClick={() => setShowNotification(false)} className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${isLight ? 'hover:bg-black/5 text-zinc-400 hover:text-zinc-700' : 'hover:bg-white/10 text-white/30 hover:text-white/60'}`}>
                 <X className="w-3 h-3" />
               </button>
             </div>
             <div className="p-4 flex gap-3 items-start">
-              <div className="w-10 h-10 rounded-full shrink-0 overflow-hidden ring-2 ring-[#7C5CFF]/20 flex items-center justify-center bg-gradient-to-br from-[#7C5CFF]/20 to-[#D4567A]/20">
+              <div className={`w-10 h-10 rounded-full shrink-0 overflow-hidden ring-2 flex items-center justify-center ${isLight ? 'ring-[#7C5CFF]/15 bg-gradient-to-br from-[#7C5CFF]/10 to-[#D4567A]/10' : 'ring-[#7C5CFF]/20 bg-gradient-to-br from-[#7C5CFF]/20 to-[#D4567A]/20'}`}>
                 {reservation.profile_photo_url ? (
                   <img src={reservation.profile_photo_url} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-sm font-bold text-white/70">{displayName[0].toUpperCase()}</span>
+                  <span className={`text-sm font-bold ${isLight ? 'text-zinc-700' : 'text-white/70'}`}>{displayName[0].toUpperCase()}</span>
                 )}
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-sm font-bold text-white/90 truncate">{displayName}</span>
-                <p className="text-[13px] text-white/50 mt-0.5 leading-relaxed">{reservation.custom_status_message}</p>
+                <span className={`text-sm font-bold truncate ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>{displayName}</span>
+                <p className={`text-[13px] mt-0.5 leading-relaxed ${isLight ? 'text-zinc-600' : 'text-white/50'}`}>{reservation.custom_status_message}</p>
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Hero Section */}
-      <div ref={heroRef} className="relative w-full min-h-[90vh] md:min-h-[95vh] flex flex-col overflow-hidden">
-        <motion.div style={{ scale: heroScale }} className="absolute inset-0">
+      {/* ── MOBILE HEADER (Visible only on mobile/tablet) ── */}
+      <div ref={heroRef} className="relative w-full h-[40vh] sm:h-[48vh] overflow-hidden block md:hidden">
+        {/* Background Image */}
+        <motion.div style={{ scale: heroScale }} className="absolute inset-0 w-full h-full">
           {reservation.profile_photo_url ? (
-            <img src={reservation.profile_photo_url} alt="" className="w-full h-full object-cover" />
+            <img src={reservation.profile_photo_url} alt={displayName} className="w-full h-full object-cover object-top" />
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-[#1a0d2e] via-[#0d0d1a] to-[#0a0a0f]">
-              <div className="absolute inset-0 opacity-20" style={{
-                backgroundImage: `radial-gradient(circle at 20% 50%, #7C5CFF 0%, transparent 50%), radial-gradient(circle at 80% 20%, #F25A2B 0%, transparent 50%), radial-gradient(circle at 50% 80%, #D4567A 0%, transparent 50%)`,
-              }} />
-            </div>
+            <div className={`w-full h-full ${isLight ? 'bg-gradient-to-br from-[#f5f3f7] via-[#edeaf0] to-[#e4e0e8]' : 'bg-gradient-to-br from-[#1a0d2e] via-[#0d0d1a] to-[#0a0a0f]'}`} />
           )}
         </motion.div>
 
-        {/* Fades to make layout readable */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#050508]/30 via-transparent to-[#050508]" />
-        <div className="absolute inset-0 bg-[#050508]/40 backdrop-blur-[2px]" />
+        {/* Backdrop Overlay */}
+        <div className={`absolute inset-0 transition-colors duration-300 ${isLight ? 'bg-gradient-to-b from-black/15 via-transparent via-55% to-[#FAF9FD]' : 'bg-gradient-to-b from-black/35 via-transparent via-55% to-[#050508]'}`} />
 
-        {/* Top Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="relative z-20 flex items-center justify-between px-5 md:px-10 pt-6 md:pt-8 w-full"
-        >
-          <a href="/" className="flex items-center gap-2.5 group">
-            <img src="/logo_a.png" alt="Artistant" className="w-7 h-7 opacity-70 group-hover:opacity-100 transition-opacity" />
-            <span className="text-[11px] font-mono font-bold text-white/40 uppercase tracking-[0.2em] group-hover:text-white/60 transition-colors hidden sm:block">Artistant Portfolio</span>
-          </a>
-          <div className="flex items-center gap-3">
-            <motion.a
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              href="/"
-              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white/70 hover:text-white transition-colors border border-white/10"
-              style={{
-                background: 'rgba(255,255,255,0.04)',
-                backdropFilter: 'blur(12px)',
-              }}
-            >
-              <span>Visit Artistant</span>
-            </motion.a>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleShare}
-              className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold text-white/70 hover:text-white transition-colors"
-              style={{
-                background: 'rgba(255,255,255,0.06)',
-                backdropFilter: 'blur(12px)',
-                border: '1px solid rgba(255,255,255,0.08)',
-              }}
-            >
-              <Share2 className="w-3.5 h-3.5" />
-              <span>{copied ? 'Copied!' : 'Share'}</span>
-            </motion.button>
+        {/* Top Controls Bar (Mobile version) */}
+        <div className="absolute top-5 left-0 right-0 px-5 z-30 flex items-center justify-between">
+          <button 
+            onClick={() => router.push('/')}
+            className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-lg ${isLight ? 'bg-white/75 hover:bg-white/90 border border-black/10 text-zinc-900' : 'bg-black/40 hover:bg-black/60 border border-white/10 text-white'}`}
+          >
+            <ArrowLeft className="w-4.5 h-4.5" />
+          </button>
+
+          {/* Artistant Wordmark Logo Badge */}
+          <div className={`flex items-center gap-3.5 px-5 py-2.5 rounded-full backdrop-blur-md shadow-lg select-none ${isLight ? 'bg-white/80 border border-black/10' : 'bg-black/45 border border-white/10'}`}>
+            <img src="/logo_wordmark.png" alt="ArtisTant" className={`h-[50px] w-auto object-contain ${isLight ? 'invert dark:invert-0' : ''}`} />
+            <span className={`text-[10px] font-mono font-bold tracking-[0.3em] border-l pl-3.5 uppercase ${isLight ? 'text-zinc-500 border-black/15' : 'text-white/50 border-white/15'}`}>PORTFOLIO</span>
           </div>
-        </motion.div>
-
-        {/* Artist Header Details (Grid: Left Content, Right 3D Card) */}
-        <div className="relative z-20 mt-auto px-5 md:px-10 pb-10 md:pb-16 w-full max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-end">
-            
-            {/* Left Content column */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.7 }}
-              className="lg:col-span-7 text-left space-y-4"
+          
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setLiked(!liked)}
+              className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-lg ${isLight ? 'bg-white/75 hover:bg-white/90 border border-black/10 text-zinc-900' : 'bg-black/40 hover:bg-black/60 border border-white/10 text-white'}`}
             >
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                <span
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-[0.15em]"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(124,92,255,0.15) 0%, rgba(212,86,122,0.15) 100%)',
-                    border: '1px solid rgba(124,92,255,0.2)',
-                    color: '#B49FFF',
-                    backdropFilter: 'blur(8px)',
-                  }}
-                >
-                  {categoryLabel}
-                </span>
-                {reservation.city && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold text-white/50 bg-white/[0.05] border border-white/[0.06] backdrop-blur-sm">
-                    <MapPin className="w-3 h-3 text-[#F25A2B]" /> {reservation.city}
-                  </span>
-                )}
-              </div>
-
-              {/* Display Name + Verified Founding Badge */}
-              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-[-0.03em] leading-[0.95] font-display flex flex-wrap items-center gap-x-4 gap-y-2">
-                <span>{displayName}</span>
-                {points >= 500 && (
-                  <span 
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider bg-gradient-to-r from-emerald-500/15 to-teal-500/15 border border-emerald-500/30 text-emerald-400 select-none shrink-0"
-                    style={{
-                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 0 15px rgba(52, 211, 153, 0.15)',
-                      backdropFilter: 'blur(8px)',
-                    }}
-                    title="Verified Founding Artist Badge"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34D399]" />
-                    <span>Founding Artist</span>
-                  </span>
-                )}
-              </h1>
-
-              <p className="text-sm md:text-base font-mono text-white/35 tracking-wide">@{reservation.username}</p>
-
-              {genres.length > 0 && (
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {genres.map(g => (
-                    <span key={g} className="px-3 py-1 rounded-full text-xs font-medium text-[#c0b3ff] bg-white/[0.04] border border-white/[0.06]">{g}</span>
-                  ))}
-                </div>
-              )}
-
-              {reservation.bio && (
-                <p className="text-white/60 text-sm md:text-base leading-relaxed max-w-xl pt-2">{reservation.bio}</p>
-              )}
-
-              {/* Social Links & Contact */}
-              <div className="flex flex-wrap items-center gap-3 pt-4">
-                {reservation.instagram_url && (
-                  <a href={reservation.instagram_url} target="_blank" rel="noopener noreferrer"
-                    className="group flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 hover:scale-[1.03]"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(225,48,108,0.1) 0%, rgba(252,175,69,0.06) 100%)',
-                      border: '1px solid rgba(225,48,108,0.18)',
-                    }}
-                  >
-                    <InstagramIcon className="w-4 h-4 text-[#E1306C]" />
-                    <span className="text-white/70 group-hover:text-white transition-colors">Instagram</span>
-                  </a>
-                )}
-                {reservation.spotify_url && (
-                  <a href={reservation.spotify_url} target="_blank" rel="noopener noreferrer"
-                    className="group flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 hover:scale-[1.03]"
-                    style={{
-                      background: 'rgba(29,185,84,0.08)',
-                      border: '1px solid rgba(29,185,84,0.18)',
-                    }}
-                  >
-                    <SpotifyIcon className="w-4 h-4 text-[#1DB954]" />
-                    <span className="text-white/70 group-hover:text-white transition-colors">Spotify</span>
-                  </a>
-                )}
-                {reservation.youtube_url && (
-                  <a href={reservation.youtube_url} target="_blank" rel="noopener noreferrer"
-                    className="group flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 hover:scale-[1.03]"
-                    style={{
-                      background: 'rgba(255,0,0,0.06)',
-                      border: '1px solid rgba(255,0,0,0.15)',
-                    }}
-                  >
-                    <YouTubeIcon className="w-4 h-4 text-[#FF0000]" />
-                    <span className="text-white/70 group-hover:text-white transition-colors">YouTube</span>
-                  </a>
-                )}
-
-                {/* Floating Contact Drawer Action */}
-                {hasContact && (
-                  <button
-                    onClick={() => setIsContactOpen(true)}
-                    className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 bg-white text-black hover:bg-white/90 active:scale-95 shadow-[0_10px_30px_rgba(255,255,255,0.05)]"
-                  >
-                    <Mail className="w-3.5 h-3.5" />
-                    <span>Contact</span>
-                  </button>
-                )}
-              </div>
-            </motion.div>
-            
-            {/* Right Column: Featured Founding Card */}
-            {reservation.feature_founding_card && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ delay: 0.5, duration: 0.7 }}
-                className="lg:col-span-5 flex justify-center lg:justify-end w-full"
-              >
-                <div className="w-full max-w-sm aspect-[1.58/1] relative" style={{ perspective: 1200 }}>
-                  <motion.div
-                    ref={cardRef}
-                    onMouseMove={handleMouseMove}
-                    onMouseLeave={handleMouseLeave}
-                    animate={{ rotateX, rotateY }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                    className="w-full h-full relative rounded-[2rem] p-[1.5px] overflow-hidden group cursor-pointer shadow-[0_30px_90px_-20px_rgba(0,0,0,0.9)]"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.01) 40%, rgba(124,92,255,0.2))',
-                      transformStyle: 'preserve-3d',
-                    }}
-                  >
-                    <div 
-                      className="relative w-full h-full bg-[#050508]/90 rounded-[1.95rem] p-5 flex flex-col justify-between overflow-hidden border border-white/5"
-                      style={{
-                        isolation: 'isolate',
-                        WebkitMaskImage: '-webkit-radial-gradient(white, black)'
-                      }}
-                    >
-                      {/* Decorative Circles */}
-                      <div className="absolute -right-20 -bottom-20 w-80 h-80 rounded-full border border-white/[0.02] flex items-center justify-center pointer-events-none">
-                        <div className="w-60 h-60 rounded-full border border-white/[0.01] flex items-center justify-center" />
-                      </div>
-
-                      {/* Sheen effect */}
-                      <div 
-                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-                        style={{
-                          background: `radial-gradient(circle 180px at ${sheenX}% ${sheenY}%, rgba(255,255,255,0.06), transparent)`,
-                        }}
-                      />
-
-                      {/* Card Top Row */}
-                      <div className="flex justify-between items-start z-10 w-full">
-                        <div className="flex items-center gap-2">
-                          <img src="/logo_a.png" alt="A" className="w-5 h-5 object-contain opacity-80" />
-                          <span className="font-mono text-[8px] font-bold tracking-[0.2em] text-white/40">FOUNDING CARD</span>
-                        </div>
-                        <span 
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-mono text-[8px] font-bold uppercase tracking-wider relative overflow-hidden transition-all duration-300 ${
-                            points >= 500 
-                              ? 'bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 text-emerald-400' 
-                              : 'bg-white/[0.02] border border-white/5 text-white/40'
-                          }`}
-                        >
-                          {points >= 500 ? (
-                            <>
-                              <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
-                              <span>Founding Artist</span>
-                            </>
-                          ) : (
-                            <>
-                              <span className="w-1 h-1 rounded-full bg-white/20" />
-                              <span>Founding Artist</span>
-                              <LockKeyhole className="w-2 h-2 text-white/30 ml-0.5" />
-                            </>
-                          )}
-                        </span>
-                      </div>
-
-                      {/* Rank Position (Center) */}
-                      <div className="flex flex-col items-center justify-center z-10 flex-1 my-1">
-                        <h1 className="font-display font-black leading-none text-white tracking-tighter text-4xl sm:text-5xl" style={{ textShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
-                          #{waitlistPos || '---'}
-                        </h1>
-                        <span className="text-[8px] font-mono tracking-[0.2em] uppercase text-white/25 mt-1">Waitlist Rank</span>
-                      </div>
-
-                      {/* Card Bottom Row */}
-                      <div className="flex justify-between items-end z-10 w-full border-t border-white/[0.04] pt-3">
-                        <div className="flex flex-col text-left">
-                          <span className="text-[7px] font-mono tracking-widest text-white/35 uppercase">Artist Name</span>
-                          <span className="text-[10px] font-bold text-white/80 truncate max-w-[120px]">{displayName}</span>
-                        </div>
-                        <div className="flex flex-col text-right">
-                          <span className="text-[7px] font-mono tracking-widest text-white/35 uppercase">Cohort / Status</span>
-                          <span className="text-[8px] font-mono tracking-wider text-[#7C5CFF] font-bold">COHORT {cohortVal} · FOUNDING</span>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                </div>
-              </motion.div>
-            )}
-
+              <Heart className={`w-4.5 h-4.5 transition-colors ${liked ? 'fill-red-500 text-red-500' : isLight ? 'text-zinc-800' : 'text-white'}`} />
+            </button>
+            <button 
+              onClick={handleShare}
+              className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-lg ${isLight ? 'bg-white/75 hover:bg-white/90 border border-black/10 text-zinc-900' : 'bg-black/40 hover:bg-black/60 border border-white/10 text-white'}`}
+            >
+              <Share2 className="w-4.5 h-4.5" />
+            </button>
           </div>
         </div>
 
-        <motion.div
-          style={{ opacity: heroOpacity }}
-          className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-1"
-        >
-          <ChevronDown className="w-4 h-4 text-white/20 animate-bounce" />
-        </motion.div>
+        {/* Bottom Hero Overlay details (Category, Name & Genres) */}
+        <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-transparent to-transparent flex flex-col gap-2 z-20">
+          <div className="text-left space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`px-3.5 py-1 rounded-full text-[10px] font-bold backdrop-blur-sm uppercase tracking-wider font-mono shadow-sm ${isLight ? 'text-zinc-800 bg-white/90 border border-black/10' : 'text-white/85 bg-black/45 border border-white/10'}`}>
+                {categoryLabel}
+              </span>
+              {reservation.city && (
+                <span className={`inline-flex items-center gap-1 px-3.5 py-1 rounded-full text-[10px] font-bold backdrop-blur-sm uppercase tracking-wider font-mono shadow-sm ${isLight ? 'text-zinc-800 bg-white/90 border border-black/10' : 'text-white/85 bg-black/45 border border-white/10'}`}>
+                  <MapPin className="w-2.5 h-2.5 text-[#F25A2B]" /> {reservation.city}
+                </span>
+              )}
+            </div>
+            <h1 className={`text-4xl font-black leading-tight font-serif-display ${isLight ? 'text-zinc-950' : 'text-white'}`}>
+              {displayName}
+            </h1>
+            {genres.length > 0 && (
+              <p className={`text-xs font-mono tracking-wider ${isLight ? 'text-zinc-600' : 'text-white/50'}`}>
+                {genres.join(' · ')}
+              </p>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Public profile sections based on custom ordering */}
-      <div className="relative z-10 max-w-5xl mx-auto px-5 md:px-10 pb-20">
+      {/* ── DESKTOP HEADER BAR (Visible only on desktop md and up) ── */}
+      <div className="hidden md:flex max-w-5xl mx-auto px-8 py-6 items-center justify-between z-30 relative">
+        <button 
+          onClick={() => router.push('/')}
+          className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer ${isLight ? 'bg-white border border-black/10 text-zinc-900 shadow-sm hover:bg-zinc-50' : 'bg-white/[0.02] hover:bg-white/5 border border-white/10 text-white'}`}
+        >
+          <ArrowLeft className="w-4.5 h-4.5" />
+        </button>
+
+        {/* Desktop Artistant Logo Portfolio Badge */}
+        <div className={`flex items-center gap-3.5 px-5 py-2.5 rounded-full backdrop-blur-md shadow-lg select-none ${isLight ? 'bg-white border border-black/10' : 'bg-white/[0.02] border border-white/10'}`}>
+          <img src="/logo_wordmark.png" alt="ArtisTant" className={`h-[50px] w-auto object-contain ${isLight ? 'invert dark:invert-0' : ''}`} />
+          <span className={`text-[10px] font-mono font-bold tracking-[0.3em] border-l pl-3.5 uppercase ${isLight ? 'text-zinc-500 border-black/15' : 'text-white/50 border-white/15'}`}>PORTFOLIO</span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setLiked(!liked)}
+            className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer ${isLight ? 'bg-white border border-black/10 text-zinc-900 shadow-sm hover:bg-zinc-50' : 'bg-white/[0.02] hover:bg-white/5 border border-white/10 text-white'}`}
+          >
+            <Heart className={`w-4.5 h-4.5 transition-colors ${liked ? 'fill-red-500 text-red-500' : isLight ? 'text-zinc-800' : 'text-white'}`} />
+          </button>
+          <button 
+            onClick={handleShare}
+            className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer ${isLight ? 'bg-white border border-black/10 text-zinc-900 shadow-sm hover:bg-zinc-50' : 'bg-white/[0.02] hover:bg-white/5 border border-white/10 text-white'}`}
+          >
+            <Share2 className="w-4.5 h-4.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="relative z-10 max-w-4xl mx-auto px-5 md:px-8 py-8 space-y-12 pb-24">
+        
+        {/* ── DESKTOP SPLIT COLUMN VIEW (Only on desktop) ── */}
+        <div className={`hidden md:flex gap-10 items-start border-b pb-10 ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`}>
+          {/* Left Column: Portrait Photo card */}
+          <div className="w-[320px] shrink-0">
+            <div className={`aspect-[3/4] w-full rounded-[2.5rem] overflow-hidden border relative shadow-md ${isLight ? 'border-black/10 bg-white shadow-[0_20px_50px_rgba(124,92,255,0.06)]' : 'border-white/10 bg-white/[0.01] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)]'}`}>
+              {reservation.profile_photo_url ? (
+                <img src={reservation.profile_photo_url} alt={displayName} className="w-full h-full object-cover object-center" />
+              ) : (
+                <div className={`w-full h-full flex items-center justify-center ${isLight ? 'bg-gradient-to-br from-[#f5f3f7] via-[#edeaf0] to-[#e4e0e8]' : 'bg-gradient-to-br from-[#1a0d2e] via-[#0d0d1a] to-[#0a0a0f]'}`}>
+                  <span className={`text-4xl font-black ${isLight ? 'text-black/10' : 'text-white/10'}`}>{displayName[0].toUpperCase()}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column: Bio, Connect links & Metadata */}
+          <div className="flex-1 space-y-6 text-left">
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`inline-block px-3.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider font-mono shadow-sm ${isLight ? 'text-zinc-800 bg-white border border-black/10' : 'text-white/80 bg-white/[0.04] border border-white/5'}`}>
+                  {categoryLabel}
+                </span>
+                {reservation.city && (
+                  <span className={`inline-flex items-center gap-1 px-3.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider font-mono shadow-sm ${isLight ? 'text-zinc-800 bg-white border border-black/10' : 'text-white/80 bg-white/[0.04] border border-white/5'}`}>
+                    <MapPin className="w-2.5 h-2.5 text-[#F25A2B]" /> {reservation.city}
+                  </span>
+                )}
+              </div>
+              <h1 className={`text-5xl font-black leading-tight font-serif-display ${isLight ? 'text-zinc-900' : 'text-white'}`}>
+                {displayName}
+              </h1>
+              {genres.length > 0 && (
+                <p className={`text-xs font-mono tracking-wider ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>
+                  {genres.join(' · ')}
+                </p>
+              )}
+            </div>
+
+            {(reservation.bio || reservation.city || genres.length > 0) && (
+              <div className="space-y-4 text-left">
+                <h2 className={`text-[10px] font-mono font-bold uppercase tracking-widest ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>About</h2>
+                {reservation.bio && (
+                  <p className={`text-sm leading-relaxed whitespace-pre-wrap ${isLight ? 'text-zinc-700' : 'text-white/60'}`}>{reservation.bio}</p>
+                )}
+                
+                {/* Metadata Grid */}
+                <div className="grid grid-cols-2 gap-3 pt-2 max-w-md">
+                  {reservation.city && (
+                    <div className={`p-4 rounded-2xl border transition-all ${isLight ? 'bg-white border-black/10 shadow-sm' : 'bg-white/[0.01] border-white/[0.03]'}`}>
+                      <span className={`text-[9px] font-mono font-bold uppercase tracking-widest block ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>Location</span>
+                      <span className={`text-sm font-bold mt-1.5 block truncate flex items-center gap-1.5 ${isLight ? 'text-zinc-800' : 'text-white/80'}`}>
+                        <MapPin className="w-3.5 h-3.5 text-[#F25A2B]" /> {reservation.city}
+                      </span>
+                    </div>
+                  )}
+                  <div className={`p-4 rounded-2xl border transition-all ${isLight ? 'bg-white border-black/10 shadow-sm' : 'bg-white/[0.01] border-white/[0.03]'}`}>
+                    <span className={`text-[9px] font-mono font-bold uppercase tracking-widest block ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>Type</span>
+                    <span className={`text-sm font-bold mt-1.5 block truncate ${isLight ? 'text-zinc-800' : 'text-white/80'}`}>{categoryLabel}</span>
+                  </div>
+                  {genres.length > 0 && (
+                    <div className={`col-span-2 p-4 rounded-2xl border transition-all ${isLight ? 'bg-white border-black/10 shadow-sm' : 'bg-white/[0.01] border-white/[0.03]'}`}>
+                      <span className={`text-[9px] font-mono font-bold uppercase tracking-widest block ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>Genres</span>
+                      <span className={`text-sm font-bold mt-1.5 block whitespace-normal break-words ${isLight ? 'text-[#7C5CFF]' : 'text-[#c0b3ff]'}`}>{genres.join(', ')}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Connect Section (Desktop inline version) */}
+            {(hasContact || hasSocials) && (
+              <div className={`space-y-4 pt-4 border-t ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`}>
+                <h2 className={`text-[10px] font-mono font-bold uppercase tracking-widest ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>Connect</h2>
+                <div className="grid grid-cols-2 gap-3">
+                  {hasContact && (
+                    <div 
+                      onClick={() => setIsContactOpen(true)}
+                      className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between min-h-[120px] shadow-sm ${isLight ? 'bg-white border-black/10 hover:border-[#7C5CFF]/30 hover:shadow-md' : 'bg-white/[0.01] border-white/[0.03] hover:bg-white/[0.02] hover:border-white/10'}`}
+                    >
+                      <div className="flex flex-col gap-1 text-left">
+                        <span className={`text-[8px] font-mono font-bold uppercase tracking-wider ${isLight ? 'text-zinc-500' : 'text-white/35'}`}>Contact</span>
+                        <span className={`text-xs font-bold ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Get in Touch</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-[#7C5CFF] mt-2 block">Open Options &rsaquo;</span>
+                    </div>
+                  )}
+
+                  {reservation.instagram_url && (
+                    <a 
+                      href={reservation.instagram_url} target="_blank" rel="noopener noreferrer"
+                      className={`p-4 rounded-2xl border transition-all flex flex-col justify-between min-h-[120px] shadow-sm ${isLight ? 'bg-white border-black/10 hover:border-[#7C5CFF]/30 hover:shadow-md' : 'bg-white/[0.01] border-white/[0.03] hover:bg-white/[0.02] hover:border-white/10'}`}
+                    >
+                      <div className="flex flex-col gap-1 text-left">
+                        <span className={`text-[8px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 ${isLight ? 'text-zinc-500' : 'text-white/35'}`}>
+                          <InstagramIcon className="w-3 h-3 text-[#E1306C]" /> Instagram
+                        </span>
+                        <span className={`text-xs font-bold truncate ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>@{reservation.instagram_url.split('/').pop() || reservation.username}</span>
+                      </div>
+                      <span className={`text-[10px] font-bold mt-2 block ${isLight ? 'text-zinc-400' : 'text-white/40'}`}>View Page &rsaquo;</span>
+                    </a>
+                  )}
+
+                  {reservation.spotify_url && (
+                    <a 
+                      href={reservation.spotify_url} target="_blank" rel="noopener noreferrer"
+                      className={`p-4 rounded-2xl border transition-all flex flex-col justify-between min-h-[120px] shadow-sm ${isLight ? 'bg-white border-black/10 hover:border-[#7C5CFF]/30 hover:shadow-md' : 'bg-white/[0.01] border-white/[0.03] hover:bg-white/[0.02] hover:border-white/10'}`}
+                    >
+                      <div className="flex flex-col gap-1 text-left">
+                        <span className={`text-[8px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 ${isLight ? 'text-zinc-500' : 'text-white/35'}`}>
+                          <SpotifyIcon className="w-3 h-3 text-[#1DB954]" /> Spotify
+                        </span>
+                        <span className={`text-xs font-bold ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Artist Profile</span>
+                      </div>
+                      <span className={`text-[10px] font-bold mt-2 block ${isLight ? 'text-zinc-400' : 'text-white/40'}`}>Open Spotify &rsaquo;</span>
+                    </a>
+                  )}
+
+                  {reservation.youtube_url && (
+                    <a 
+                      href={reservation.youtube_url} target="_blank" rel="noopener noreferrer"
+                      className={`p-4 rounded-2xl border transition-all flex flex-col justify-between min-h-[120px] shadow-sm ${isLight ? 'bg-white border-black/10 hover:border-[#7C5CFF]/30 hover:shadow-md' : 'bg-white/[0.01] border-white/[0.03] hover:bg-white/[0.02] hover:border-white/10'}`}
+                    >
+                      <div className="flex flex-col gap-1 text-left">
+                        <span className={`text-[8px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 ${isLight ? 'text-zinc-500' : 'text-white/35'}`}>
+                          <YouTubeIcon className="w-3 h-3 text-[#FF0000]" /> YouTube
+                        </span>
+                        <span className={`text-xs font-bold ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Channel Page</span>
+                      </div>
+                      <span className={`text-[10px] font-bold mt-2 block ${isLight ? 'text-zinc-400' : 'text-white/40'}`}>Open YouTube &rsaquo;</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── MOBILE-ONLY MAIN BLOCKS (Only on mobile/tablet) ── */}
+        <div className="block md:hidden space-y-12">
+          {renderFoundingCard(true)}
+
+          {/* About Section */}
+          {(reservation.bio || reservation.city || genres.length > 0) && (
+            <section className="space-y-4 text-left">
+              <h2 className={`text-2xl font-serif-display font-bold ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>About</h2>
+              {reservation.bio && (
+                <p className={`text-sm md:text-base leading-relaxed whitespace-pre-wrap ${isLight ? 'text-zinc-700' : 'text-white/60'}`}>{reservation.bio}</p>
+              )}
+              
+              {/* Metadata Grid */}
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                {reservation.city && (
+                  <div className={`p-4 rounded-2xl border transition-all ${isLight ? 'bg-white border-black/10 shadow-sm' : 'bg-white/[0.01] border-white/[0.03]'}`}>
+                    <span className={`text-[9px] font-mono font-bold uppercase tracking-widest block ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>Location</span>
+                    <span className={`text-sm font-bold mt-1.5 block truncate flex items-center gap-1.5 ${isLight ? 'text-zinc-800' : 'text-white/80'}`}>
+                      <MapPin className="w-3.5 h-3.5 text-[#F25A2B]" /> {reservation.city}
+                    </span>
+                  </div>
+                )}
+                <div className={`p-4 rounded-2xl border transition-all ${isLight ? 'bg-white border-black/10 shadow-sm' : 'bg-white/[0.01] border-white/[0.03]'}`}>
+                  <span className={`text-[9px] font-mono font-bold uppercase tracking-widest block ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>Type</span>
+                  <span className={`text-sm font-bold mt-1.5 block truncate ${isLight ? 'text-zinc-800' : 'text-white/80'}`}>{categoryLabel}</span>
+                </div>
+                {genres.length > 0 && (
+                  <div className={`col-span-2 p-4 rounded-2xl border transition-all ${isLight ? 'bg-white border-black/10 shadow-sm' : 'bg-white/[0.01] border-white/[0.03]'}`}>
+                    <span className={`text-[9px] font-mono font-bold uppercase tracking-widest block ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>Genres</span>
+                    <span className={`text-sm font-bold mt-1.5 block whitespace-normal break-words ${isLight ? 'text-[#7C5CFF]' : 'text-[#c0b3ff]'}`}>{genres.join(', ')}</span>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+
+          {/* Connect Section (Mobile view card grid) */}
+          {(hasContact || hasSocials) && (
+            <section className={`space-y-4 text-left border-t pt-8 ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`}>
+              <h2 className={`text-2xl font-serif-display font-bold ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Connect</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                
+                {/* Contact Card */}
+                {hasContact && (
+                  <div 
+                    onClick={() => setIsContactOpen(true)}
+                    className={`p-5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between min-h-[140px] shadow-sm ${isLight ? 'bg-white border-black/10 hover:border-[#7C5CFF]/30 hover:shadow-md' : 'bg-white/[0.01] border-white/[0.03] hover:bg-white/[0.02] hover:border-white/10'}`}
+                  >
+                    <div className="flex flex-col gap-1.5 text-left">
+                      <span className={`text-[9px] font-mono font-bold uppercase tracking-widest flex items-center gap-1.5 ${isLight ? 'text-zinc-500' : 'text-white/35'}`}>
+                        <Mail className="w-3.5 h-3.5 text-[#7C5CFF]" /> Contact Artist
+                      </span>
+                      <span className={`text-sm font-bold mt-1 ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Get in Touch</span>
+                      <p className={`text-[10px] mt-0.5 leading-relaxed ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>Reach out via secure email, mobile phone, or WhatsApp.</p>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsContactOpen(true);
+                      }}
+                      className={`mt-3 text-center py-2 px-4 rounded-xl font-bold text-xs active:scale-[0.98] transition-all max-w-[120px] cursor-pointer shadow-sm ${isLight ? 'bg-[#7C5CFF] text-white hover:bg-[#6838FF]' : 'bg-white text-black hover:bg-white/90'}`}
+                    >
+                      Open Details
+                    </button>
+                  </div>
+                )}
+
+                {/* Instagram Card */}
+                {reservation.instagram_url && (
+                  <div className={`p-5 rounded-2xl border flex flex-col gap-2 shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/[0.01] border-white/[0.03]'}`}>
+                    <span className={`text-[9px] font-mono font-bold uppercase tracking-widest flex items-center gap-1.5 ${isLight ? 'text-zinc-500' : 'text-white/30'}`}>
+                      <InstagramIcon className="w-3.5 h-3.5 text-[#E1306C]" /> Instagram
+                    </span>
+                    <span className={`text-sm font-bold truncate ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>@{reservation.instagram_url.split('/').pop() || reservation.username}</span>
+                    <a
+                      href={reservation.instagram_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`mt-2 text-center py-2.5 rounded-xl font-bold text-xs active:scale-[1.02] transition-all max-w-[120px] ${isLight ? 'bg-zinc-50 border border-black/10 text-zinc-800 hover:bg-zinc-100' : 'bg-white/5 border border-white/10 text-white hover:bg-white/10'}`}
+                    >
+                      View Instagram
+                    </a>
+                  </div>
+                )}
+
+                {/* Spotify Card */}
+                {reservation.spotify_url && (
+                  <div className={`p-5 rounded-2xl border flex flex-col gap-2 shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/[0.01] border-white/[0.03]'}`}>
+                    <span className={`text-[9px] font-mono font-bold uppercase tracking-widest flex items-center gap-1.5 ${isLight ? 'text-zinc-500' : 'text-white/30'}`}>
+                      <SpotifyIcon className="w-3.5 h-3.5 text-[#1DB954]" /> Spotify
+                    </span>
+                    <span className={`text-sm font-bold truncate ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Artist Profile</span>
+                    <a
+                      href={reservation.spotify_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`mt-2 text-center py-2.5 rounded-xl font-bold text-xs active:scale-[1.02] transition-all max-w-[120px] ${isLight ? 'bg-zinc-50 border border-black/10 text-zinc-800 hover:bg-zinc-100' : 'bg-white/5 border border-white/10 text-white hover:bg-white/10'}`}
+                    >
+                      Open Spotify
+                    </a>
+                  </div>
+                )}
+
+                {/* YouTube Card */}
+                {reservation.youtube_url && (
+                  <div className={`p-5 rounded-2xl border flex flex-col gap-2 shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/[0.01] border-white/[0.03]'}`}>
+                    <span className={`text-[9px] font-mono font-bold uppercase tracking-widest flex items-center gap-1.5 ${isLight ? 'text-zinc-500' : 'text-white/30'}`}>
+                      <YouTubeIcon className="w-3.5 h-3.5 text-[#FF0000]" /> YouTube
+                    </span>
+                    <span className={`text-sm font-bold truncate ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Channel Page</span>
+                    <a
+                      href={reservation.youtube_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`mt-2 text-center py-2.5 rounded-xl font-bold text-xs active:scale-[1.02] transition-all max-w-[120px] ${isLight ? 'bg-zinc-50 border border-black/10 text-zinc-800 hover:bg-zinc-100' : 'bg-white/5 border border-white/10 text-white hover:bg-white/10'}`}
+                    >
+                      Open YouTube
+                    </a>
+                  </div>
+                )}
+
+              </div>
+            </section>
+          )}
+        </div>
+
+        {/* ── COMMON SECTIONS (Gig Gallery, Video, Founding card) ── */}
+        
+        {/* Dynamic Section Ordering */}
         {(reservation.section_order || ['gallery', 'video', 'audio']).map((section) => {
+          
+          // Gig Gallery Section (Render only if images uploaded!)
           if (section === 'gallery') {
+            if (displayGallery.length === 0) return null;
             return (
               <motion.section
                 key="gallery"
@@ -655,31 +779,31 @@ export default function PublicProfilePage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-60px" }}
                 transition={{ duration: 0.5 }}
-                className="mb-16 pt-8"
+                className="space-y-4 text-left"
               >
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 border border-white/10">
-                    <span className="text-[#7C5CFF] font-bold text-xs">01</span>
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center border shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/5 border border-white/10'}`}>
+                    <span className="text-[#7C5CFF] font-bold text-xs font-mono">
+                      <span className="inline md:hidden">{reservation.feature_founding_card ? '02' : '01'}</span>
+                      <span className="hidden md:inline">01</span>
+                    </span>
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold tracking-tight">Gig Gallery</h2>
-                    <p className="text-[10px] text-white/30 font-mono tracking-wider uppercase">Live Gigs & Moments</p>
+                    <h2 className={`text-lg font-bold tracking-tight ${isLight ? 'text-zinc-900' : 'text-white'}`}>Gig Gallery</h2>
+                    <p className={`text-[10px] font-mono tracking-wider uppercase ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>Live Gigs & Moments</p>
                   </div>
                 </div>
 
-                {/* Grid with Real visual assets */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-                  {GALLERY_IMAGES.map((img, i) => (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
+                  {displayGallery.map((img, i) => (
                     <motion.div
                       key={i}
                       whileHover={{ scale: 1.02, y: -4 }}
                       onClick={() => setLightboxImg(img.url)}
-                      className="aspect-square rounded-2xl overflow-hidden relative group bg-white/[0.01] border border-white/[0.05] cursor-pointer shadow-md"
+                      className={`aspect-square rounded-2xl overflow-hidden relative group border cursor-pointer shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/[0.01] border border-white/[0.05]'}`}
                     >
-                      <img src={img.url} alt={img.caption} className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-all duration-500" />
-                      
-                      {/* Dark overlay showing title on hover */}
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4 text-left">
+                      <img src={img.url} alt={img.caption} className={`w-full h-full object-cover transition-all duration-500 ${isLight ? 'opacity-95 group-hover:opacity-100' : 'opacity-70 group-hover:opacity-100'}`} />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
                         <span className="text-[8px] font-mono tracking-widest text-[#B49FFF] uppercase mb-0.5">Gig Moment</span>
                         <p className="text-xs font-bold text-white truncate">{img.caption}</p>
                       </div>
@@ -690,7 +814,9 @@ export default function PublicProfilePage() {
             );
           }
 
+          // Featured Video Section (Render only if Youtube link uploaded!)
           if (section === 'video') {
+            if (!youtubeId && !instagramVideoId && !reservation.youtube_url) return null;
             return (
               <motion.section
                 key="video"
@@ -698,21 +824,23 @@ export default function PublicProfilePage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-60px" }}
                 transition={{ duration: 0.5 }}
-                className="mb-16"
+                className="space-y-4 text-left"
               >
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 border border-white/10">
-                    <span className="text-[#D4567A] font-bold text-xs">02</span>
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center border shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/5 border border-white/10'}`}>
+                    <span className="text-[#D4567A] font-bold text-xs font-mono">
+                      <span className="inline md:hidden">{reservation.feature_founding_card ? '03' : '02'}</span>
+                      <span className="hidden md:inline">02</span>
+                    </span>
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold tracking-tight">Featured Showreel</h2>
-                    <p className="text-[10px] text-white/30 font-mono tracking-wider uppercase">Performances & Showreel</p>
+                    <h2 className={`text-lg font-bold tracking-tight ${isLight ? 'text-zinc-900' : 'text-white'}`}>Featured Showreel</h2>
+                    <p className={`text-[10px] font-mono tracking-wider uppercase ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>Performances & Showreel</p>
                   </div>
                 </div>
 
-                {/* Iframe wrapper for youtube URLs, with cover fallback */}
-                {youtubeId ? (
-                  <div className="w-full aspect-video rounded-3xl overflow-hidden relative border border-white/[0.06] bg-black shadow-[0_15px_50px_-15px_rgba(0,0,0,0.8)]">
+                <div className={`w-full aspect-video rounded-3xl overflow-hidden relative border bg-black shadow-md ${isLight ? 'border-black/10 shadow-[0_15px_40px_rgba(124,92,255,0.06)]' : 'border-white/[0.06] shadow-[0_15px_50px_-15px_rgba(0,0,0,0.8)]'}`}>
+                  {youtubeId ? (
                     <iframe
                       width="100%"
                       height="100%"
@@ -723,127 +851,25 @@ export default function PublicProfilePage() {
                       allowFullScreen
                       className="w-full h-full"
                     />
-                  </div>
-                ) : (
-                  <div
-                    className="w-full aspect-video rounded-3xl overflow-hidden relative group border border-white/[0.04] flex items-center justify-center cursor-pointer shadow-lg"
-                    onClick={() => {
-                      if (reservation.youtube_url) {
-                        window.open(reservation.youtube_url, '_blank');
-                      }
-                    }}
-                  >
-                    <img src="/gallery_3.png" alt="Showreel background cover" className="absolute inset-0 w-full h-full object-cover opacity-35 group-hover:scale-103 transition-transform duration-700" />
-                    
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
-                    
-                    <div className="relative z-10 w-20 h-20 rounded-full bg-gradient-to-br from-[#D4567A]/20 to-[#7C5CFF]/20 border border-white/20 flex items-center justify-center shadow-[0_0_30px_rgba(124,92,255,0.2)] group-hover:shadow-[0_0_50px_rgba(124,92,255,0.4)] group-hover:scale-110 transition-all duration-300 backdrop-blur-sm">
-                      <Play className="w-7 h-7 text-white ml-1 filter drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" />
-                    </div>
-                    
-                    <div className="absolute bottom-6 left-6 text-left z-10">
-                      <span className="text-[9px] font-mono font-bold tracking-widest text-[#B49FFF] uppercase mb-1 block">Click to Watch</span>
-                      <h3 className="text-sm font-bold text-white/90">Artist Showreel & Live Highlights</h3>
-                    </div>
-                  </div>
-                )}
-              </motion.section>
-            );
-          }
-
-          if (section === 'audio') {
-            return (
-              <motion.section
-                key="audio"
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-60px" }}
-                transition={{ duration: 0.5 }}
-                className="mb-16"
-              >
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 border border-white/10">
-                    <span className="text-[#F25A2B] font-bold text-xs">03</span>
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold tracking-tight">Audio Samples</h2>
-                    <p className="text-[10px] text-white/30 font-mono tracking-wider uppercase">Tracks & Demos</p>
-                  </div>
-                </div>
-
-                {/* Hidden html audio component */}
-                <audio 
-                  ref={audioRef}
-                  onTimeUpdate={handleTimeUpdate}
-                  onLoadedMetadata={handleLoadedMetadata}
-                  onEnded={handleAudioEnded}
-                />
-
-                {/* Custom functional audio track rows */}
-                <div className="space-y-3">
-                  {TRACKS.map((track) => (
-                    <div
-                      key={track.id}
-                      className={`flex flex-col gap-3 p-4 rounded-2xl border transition-all duration-300 text-left ${
-                        currentPlayingTrack === track.id
-                          ? 'bg-white/[0.03] border-white/10 shadow-lg'
-                          : 'bg-white/[0.01] border-white/[0.03] hover:border-white/5'
-                      }`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <button
-                          onClick={() => handlePlayPause(track.id)}
-                          className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 text-[#F25A2B] active:scale-95 transition-all"
-                        >
-                          {currentPlayingTrack === track.id && audioPlaying ? (
-                            <Pause className="w-4 h-4 text-white" />
-                          ) : (
-                            <Play className="w-4 h-4 text-white ml-0.5" />
-                          )}
-                        </button>
-                        
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-white/80 truncate">{track.title}</p>
-                          <span className="text-[9px] font-mono text-white/20 uppercase tracking-widest mt-0.5 block">
-                            {currentPlayingTrack === track.id ? 'Now Playing' : 'Demo Stream'}
-                          </span>
-                        </div>
-
-                        {/* Equalizer animation */}
-                        {currentPlayingTrack === track.id && audioPlaying && (
-                          <div className="flex items-end gap-0.5 h-4 px-2 shrink-0">
-                            <span className="w-[2px] bg-[#F25A2B] rounded-full animate-eq-bar-1" />
-                            <span className="w-[2px] bg-[#D4567A] rounded-full animate-eq-bar-2" />
-                            <span className="w-[2px] bg-[#7C5CFF] rounded-full animate-eq-bar-3" />
-                            <span className="w-[2px] bg-[#D4567A] rounded-full animate-eq-bar-4" />
-                            <span className="w-[2px] bg-[#F25A2B] rounded-full animate-eq-bar-5" />
-                          </div>
-                        )}
-
-                        <span className="text-[11px] font-mono text-white/25">
-                          {currentPlayingTrack === track.id ? audioCurrentTime : '00:00'}
-                        </span>
-                      </div>
-
-                      {/* Timeline controller for the active track */}
-                      {currentPlayingTrack === track.id && (
-                        <div className="flex items-center gap-3 pt-1">
-                          <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            value={audioProgress}
-                            onChange={(e) => handleScrub(parseFloat(e.target.value))}
-                            className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-[#F25A2B] focus:outline-none"
-                            style={{
-                              backgroundImage: `linear-gradient(to right, #F25A2B 0%, #F25A2B ${audioProgress}%, rgba(255,255,255,0.1) ${audioProgress}%, rgba(255,255,255,0.1) 100%)`
-                            }}
-                          />
-                          <span className="text-[10px] font-mono text-white/40 shrink-0">{audioDuration}</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                  ) : instagramVideoId ? (
+                    <iframe
+                      width="100%"
+                      height="100%"
+                      src={`https://www.instagram.com/p/${instagramVideoId}/embed`}
+                      title="Instagram video player"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="w-full h-full"
+                    />
+                  ) : reservation.youtube_url ? (
+                    <video
+                      src={reservation.youtube_url}
+                      controls
+                      playsInline
+                      className="w-full h-full object-cover"
+                    />
+                  ) : null}
                 </div>
               </motion.section>
             );
@@ -851,25 +877,41 @@ export default function PublicProfilePage() {
 
           return null;
         })}
+
+        {/* Founding Status Section (Featured 3D Card) */}
+        {renderFoundingCard(false)}
+
       </div>
 
       {/* Visit Artistant Call to Action Banner */}
-      <div className="relative z-10 max-w-5xl mx-auto px-5 md:px-10 pb-20">
+      <div className="relative z-10 max-w-4xl mx-auto px-5 md:px-8 pb-16">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="rounded-[2rem] p-[1.5px] bg-gradient-to-r from-[rgba(255,255,255,0.08)] to-transparent"
+          className={`rounded-[2rem] p-[1.5px] ${isLight ? 'bg-gradient-to-r from-[rgba(124,92,255,0.12)] to-transparent' : 'bg-gradient-to-r from-[rgba(255,255,255,0.08)] to-transparent'}`}
         >
-          <div className="bg-[#0A0A10]/90 rounded-[1.9rem] p-8 md:p-10 backdrop-blur-xl border border-white/[0.03] flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+          <div className={`rounded-[1.9rem] p-8 md:p-10 backdrop-blur-xl border flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden shadow-sm ${isLight ? 'bg-white border-[#7C5CFF]/10 shadow-[0_20px_40px_rgba(124,92,255,0.06)]' : 'bg-[#0A0A10]/90 border-white/[0.03]'}`}>
+            {/* Giant Background Watermark Logo A */}
+            <img 
+              src="/logo_a.png" 
+              alt="" 
+              className={`absolute -bottom-[20%] -left-[5%] h-[130%] w-auto max-w-none pointer-events-none z-0 select-none transition-all duration-300 ${isLight ? 'opacity-[0.05]' : 'opacity-[0.12]'}`}
+            />
+
             <div className="absolute top-0 right-0 w-80 h-80 rounded-full opacity-10 pointer-events-none" style={{
               background: 'radial-gradient(circle, rgba(124,92,255,0.3) 0%, rgba(242,90,43,0.1) 50%, transparent 100%)',
               filter: 'blur(40px)',
             }} />
             <div className="space-y-2 text-center md:text-left z-10">
-              <h3 className="text-xl md:text-2xl font-display font-black text-white leading-tight">Rebuilding India&apos;s Live Economy</h3>
-              <p className="text-xs text-white/50 max-w-md font-mono leading-relaxed">
+              <h3 className={`text-xl md:text-2xl font-display font-black leading-tight ${isLight ? 'text-zinc-900' : 'text-white'}`}>
+                India&apos;s Live Economy,{' '}
+                <span className="bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] bg-clip-text text-transparent inline-block">
+                  Rebuilt
+                </span>
+              </h3>
+              <p className={`text-xs max-w-md font-mono leading-relaxed ${isLight ? 'text-zinc-600' : 'text-white/50'}`}>
                 Artistant is the booking, contract, and escrow infrastructure designed to empower independent live artists. Secure your handle today.
               </p>
             </div>
@@ -877,7 +919,7 @@ export default function PublicProfilePage() {
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               href="/"
-              className="px-6 py-3 rounded-xl bg-white text-black text-xs font-bold font-mono uppercase hover:bg-white/90 transition-colors z-10 shrink-0 cursor-pointer shadow-[0_10px_20px_rgba(255,255,255,0.05)]"
+              className={`px-6 py-3 rounded-xl text-xs font-bold font-mono uppercase transition-all z-10 shrink-0 cursor-pointer shadow-md ${isLight ? 'bg-[#7C5CFF] text-white hover:bg-[#6838FF] shadow-[0_10px_20px_rgba(124,92,255,0.15)]' : 'bg-white text-black hover:bg-white/90 shadow-[0_10px_20px_rgba(255,255,255,0.05)]'}`}
             >
               Visit Artistant
             </motion.a>
@@ -885,15 +927,15 @@ export default function PublicProfilePage() {
         </motion.div>
       </div>
 
-      <footer className="relative z-10 border-t border-white/[0.04] py-8">
-        <div className="max-w-5xl mx-auto px-5 md:px-10 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <footer className={`relative z-10 border-t py-8 ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`}>
+        <div className="max-w-4xl mx-auto px-5 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <a href="/" className="flex items-center gap-2.5 group">
-            <img src="/logo_a.png" alt="" className="w-5 h-5 opacity-35" />
-            <span className="text-xs text-white/25">
-              Powered by <span className="font-bold text-white/40">Artistant Portfolio</span>
+            <img src="/logo_a.png" alt="" className={`w-5 h-5 transition-all duration-300 ${isLight ? 'opacity-70' : 'opacity-35'}`} />
+            <span className={`text-xs ${isLight ? 'text-zinc-400' : 'text-white/25'}`}>
+              Powered by <span className={`font-bold ${isLight ? 'text-zinc-600' : 'text-white/40'}`}>Artistant Portfolio</span>
             </span>
           </a>
-          <span className="text-[10px] font-mono text-white/15">@{reservation.username}</span>
+          <span className={`text-[10px] font-mono ${isLight ? 'text-zinc-400' : 'text-white/15'}`}>@{reservation.username}</span>
         </div>
       </footer>
 
@@ -917,7 +959,7 @@ export default function PublicProfilePage() {
             >
               <button
                 onClick={() => setLightboxImg(null)}
-                className="absolute -top-12 right-0 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 text-white transition-colors"
+                className={`absolute -top-12 right-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isLight ? 'bg-white/80 hover:bg-white/95 text-zinc-900 border border-black/10 shadow-sm animate-none' : 'bg-white/10 hover:bg-white/20 text-white'}`}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -925,12 +967,12 @@ export default function PublicProfilePage() {
               <img 
                 src={lightboxImg} 
                 alt="Enlarged stage photo" 
-                className="max-w-full max-h-[75vh] object-contain rounded-2xl border border-white/10 shadow-2xl" 
+                className={`max-w-full max-h-[75vh] object-contain rounded-2xl border shadow-2xl ${isLight ? 'border-black/10' : 'border-white/10'}`} 
               />
               
-              {GALLERY_IMAGES.find(img => img.url === lightboxImg)?.caption && (
+              {displayGallery.find(img => img.url === lightboxImg)?.caption && (
                 <span className="text-white/60 text-xs font-mono tracking-wider mt-4">
-                  {GALLERY_IMAGES.find(img => img.url === lightboxImg)?.caption}
+                  {displayGallery.find(img => img.url === lightboxImg)?.caption}
                 </span>
               )}
             </motion.div>
@@ -954,16 +996,19 @@ export default function PublicProfilePage() {
               initial={{ opacity: 0, scale: 0.94, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.94, y: 15 }}
-              className="relative w-full max-w-sm rounded-3xl overflow-hidden p-6 z-10 border border-white/10"
+              className={`relative w-full max-w-sm rounded-3xl overflow-hidden p-6 z-10 border shadow-xl`}
               style={{
-                background: 'linear-gradient(135deg, rgba(10,10,14,0.96) 0%, rgba(18,14,28,0.96) 100%)',
+                background: isLight 
+                  ? 'linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(245,242,255,0.98) 100%)'
+                  : 'linear-gradient(135deg, rgba(10,10,14,0.96) 0%, rgba(18,14,28,0.96) 100%)',
+                borderColor: isLight ? 'rgba(124,92,255,0.15)' : 'rgba(255,255,255,0.1)'
               }}
             >
               <div className="flex items-center justify-between mb-5">
-                <h3 className="text-sm font-mono tracking-widest text-white/40 uppercase">Contact Options</h3>
+                <h3 className={`text-sm font-mono tracking-widest uppercase ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>Contact Options</h3>
                 <button
                   onClick={() => setIsContactOpen(false)}
-                  className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 text-white/40 hover:text-white transition-colors"
+                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors cursor-pointer ${isLight ? 'bg-black/5 hover:bg-black/10 text-zinc-500 hover:text-zinc-800' : 'bg-white/5 hover:bg-white/10 text-white/40 hover:text-white'}`}
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -971,14 +1016,14 @@ export default function PublicProfilePage() {
 
               <div className="space-y-3">
                 {isEmailEnabled && (
-                  <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] flex flex-col gap-2 text-left">
-                    <span className="text-[9px] font-mono font-bold text-white/30 uppercase tracking-widest flex items-center gap-1.5">
-                      <Mail className="w-3 h-3 text-[#7C5CFF]" /> Email Address
+                  <div className={`p-4 rounded-2xl border flex flex-col gap-2 text-left shadow-sm ${isLight ? 'bg-zinc-50/50 border-black/5' : 'bg-white/[0.02] border-white/[0.04]'}`}>
+                    <span className={`text-[9px] font-mono font-bold uppercase tracking-widest flex items-center gap-1.5 ${isLight ? 'text-zinc-500' : 'text-white/30'}`}>
+                      <Mail className="w-3.5 h-3.5 text-[#7C5CFF]" /> Email Address
                     </span>
-                    <span className="text-sm font-bold text-white/90 truncate">{emailVal}</span>
+                    <span className={`text-sm font-bold truncate ${isLight ? 'text-zinc-950' : 'text-white/90'}`}>{emailVal}</span>
                     <a
                       href={`mailto:${emailVal}`}
-                      className="mt-1 text-center py-2.5 rounded-xl bg-white text-black font-bold text-xs hover:scale-[1.02] active:scale-[0.98] transition-all"
+                      className={`mt-1 text-center py-2.5 rounded-xl font-bold text-xs hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer shadow-sm ${isLight ? 'bg-[#7C5CFF] text-white hover:bg-[#6838FF]' : 'bg-white text-black hover:bg-white/90'}`}
                     >
                       Send Mail
                     </a>
@@ -986,15 +1031,15 @@ export default function PublicProfilePage() {
                 )}
 
                 {isPhoneEnabled && (
-                  <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] flex flex-col gap-2 text-left">
-                    <span className="text-[9px] font-mono font-bold text-white/30 uppercase tracking-widest flex items-center gap-1.5">
-                      <Phone className="w-3 h-3 text-[#F25A2B]" /> Mobile Number
+                  <div className={`p-4 rounded-2xl border flex flex-col gap-2 text-left shadow-sm ${isLight ? 'bg-zinc-50/50 border-black/5' : 'bg-white/[0.02] border-white/[0.04]'}`}>
+                    <span className={`text-[9px] font-mono font-bold uppercase tracking-widest flex items-center gap-1.5 ${isLight ? 'text-zinc-500' : 'text-white/30'}`}>
+                      <Phone className="w-3.5 h-3.5 text-[#F25A2B]" /> Mobile Number
                     </span>
-                    <span className="text-sm font-bold text-white/90 truncate">{phoneVal}</span>
+                    <span className={`text-sm font-bold truncate ${isLight ? 'text-zinc-950' : 'text-white/90'}`}>{phoneVal}</span>
                     <div className="grid grid-cols-2 gap-2 mt-1">
                       <a
                         href={`tel:${phoneVal}`}
-                        className="text-center py-2.5 rounded-xl bg-white/5 border border-white/10 font-bold text-xs text-white hover:bg-white/10 active:scale-95 transition-all"
+                        className={`text-center py-2.5 rounded-xl font-bold text-xs active:scale-95 transition-all cursor-pointer border ${isLight ? 'bg-white border-black/10 text-zinc-800 hover:bg-zinc-50' : 'bg-white/5 border border-white/10 text-white hover:bg-white/10'}`}
                       >
                         Call Mobile
                       </a>
@@ -1002,7 +1047,7 @@ export default function PublicProfilePage() {
                         href={`https://wa.me/${phoneVal.replace(/\+/g, '')}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-center py-2.5 rounded-xl bg-[#25D366] font-bold text-xs text-white hover:scale-[1.02] active:scale-95 transition-all"
+                        className="text-center py-2.5 rounded-xl bg-[#25D366] font-bold text-xs text-white hover:scale-[1.02] active:scale-95 transition-all cursor-pointer shadow-sm"
                       >
                         WhatsApp
                       </a>
@@ -1014,6 +1059,7 @@ export default function PublicProfilePage() {
           </div>
         )}
       </AnimatePresence>
+
     </div>
   );
 }
