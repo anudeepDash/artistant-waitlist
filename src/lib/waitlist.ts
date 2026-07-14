@@ -29,6 +29,7 @@ export interface WaitlistEntry {
   spotify_url?: string | null;
   instagram_url?: string | null;
   youtube_url?: string | null;
+  youtube_channel_url?: string | null;
   bio?: string | null;
   profile_photo_url?: string | null;
   gallery_photos?: string[] | null;
@@ -71,6 +72,7 @@ export interface ReserveUsernameInput {
   spotifyUrl?: string;
   instagramUrl?: string;
   youtubeUrl?: string;
+  youtubeChannelUrl?: string;
   bio?: string;
   profilePhotoUrl?: string;
 }
@@ -97,7 +99,8 @@ function normalise(username: string): string {
  */
 export async function isUsernameAvailable(username: string): Promise<boolean> {
   try {
-    return await checkUsernameAvailableAction(username);
+    const res = await checkUsernameAvailableAction(username);
+    return res.success ? res.available : true; // Fallback to true if checking failed to not block signup completely
   } catch (error) {
     console.error("Error checking username availability:", error);
     return true; // Fallback to true so registration doesn't completely break
@@ -118,7 +121,7 @@ export async function reserveUsername(
 
   const { 
     uid, username, email, displayName, role, category, genres, phone, referredBy,
-    city, eventTypes, spotifyUrl, instagramUrl, youtubeUrl, bio, profilePhotoUrl 
+    city, eventTypes, spotifyUrl, instagramUrl, youtubeUrl, youtubeChannelUrl, bio, profilePhotoUrl 
   } = input;
   const normalisedUsername = normalise(username);
 
@@ -148,6 +151,7 @@ export async function reserveUsername(
     ...(spotifyUrl ? { spotify_url: spotifyUrl } : {}),
     ...(instagramUrl ? { instagram_url: instagramUrl } : {}),
     ...(youtubeUrl ? { youtube_url: youtubeUrl } : {}),
+    ...(youtubeChannelUrl ? { youtube_channel_url: youtubeChannelUrl } : {}),
     ...(bio ? { bio } : {}),
     ...(profilePhotoUrl ? { profile_photo_url: profilePhotoUrl } : {}),
   });

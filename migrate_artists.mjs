@@ -52,7 +52,7 @@ async function main() {
   const templatePath = path.join(process.cwd(), 'src/templates/artistant-mail-template.html');
   let htmlContent = fs.readFileSync(templatePath, 'utf8');
   
-  const watermarkStyle = "background-image: url('https://raw.githubusercontent.com/anudeepDash/artistant-waitlist/main/public/logo_a_watermark.png'), url('https://artistant.in/logo_a_watermark.png'); background-repeat: no-repeat; background-position: center center; background-size: 280px 280px;";
+  const watermarkStyle = "background-image: url('https://artistant.in/logo_a_watermark.png'); background-repeat: no-repeat; background-position: center center; background-size: 280px 280px;";
 
   let successCount = 0;
 

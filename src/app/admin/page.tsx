@@ -58,7 +58,12 @@ import {
   Menu,
   Trash2,
   Globe,
-  Activity
+  Activity,
+  MapPin,
+  User,
+  ExternalLink,
+  Shield,
+  Zap
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -371,7 +376,8 @@ export default function AdminPage() {
   // Tabs: registrations | leaderboards | members | admins | graphics | calendar | emailing
   const [activeTab, setActiveTab] = useState<"registrations" | "leaderboards" | "members" | "admins" | "graphics" | "calendar" | "emailing">("registrations");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  
+  const [selectedReg, setSelectedReg] = useState<AdminWaitlistEntry | null>(null);
+
   // Notification Toast
   const [successToast, setSuccessToast] = useState<string | null>(null);
   
@@ -624,11 +630,14 @@ export default function AdminPage() {
       return r;
     });
     setRegistrations(updated);
+    if (selectedReg && selectedReg.user_id === reg.user_id) {
+      setSelectedReg(prev => prev ? { ...prev, is_verified: nextState } : null);
+    }
 
     try {
       if (isLiveMode) {
         const idToken = await getIdToken();
-        await adminUpdateRegistrationAction(idToken, reg.user_id, nextState, reg.is_blocked, reg.position_override);
+        await adminUpdateRegistrationAction(idToken, reg.user_id, nextState, reg.is_blocked, reg.position_override, reg.feature_founding_card ?? false);
         if (nextState) {
           // Send welcome email action
           await sendWelcomeEmailAction({
@@ -658,11 +667,14 @@ export default function AdminPage() {
       return r;
     });
     setRegistrations(updated);
+    if (selectedReg && selectedReg.user_id === reg.user_id) {
+      setSelectedReg(prev => prev ? { ...prev, is_blocked: nextState } : null);
+    }
 
     try {
       if (isLiveMode) {
         const idToken = await getIdToken();
-        await adminUpdateRegistrationAction(idToken, reg.user_id, reg.is_verified, nextState, reg.position_override);
+        await adminUpdateRegistrationAction(idToken, reg.user_id, reg.is_verified, nextState, reg.position_override, reg.feature_founding_card ?? false);
         showToast(`User @${reg.username} block status toggled!`);
       } else {
         localStorage.setItem("artistant_sandbox_registrations", JSON.stringify(updated));
@@ -674,19 +686,48 @@ export default function AdminPage() {
     }
   };
 
+  const handleToggleFoundingCard = async (reg: AdminWaitlistEntry) => {
+    const nextState = !reg.feature_founding_card;
+    const updated = registrations.map(r => {
+      if (r.user_id === reg.user_id) return { ...r, feature_founding_card: nextState };
+      return r;
+    });
+    setRegistrations(updated);
+    if (selectedReg && selectedReg.user_id === reg.user_id) {
+      setSelectedReg(prev => prev ? { ...prev, feature_founding_card: nextState } : null);
+    }
+
+    try {
+      if (isLiveMode) {
+        const idToken = await getIdToken();
+        await adminUpdateRegistrationAction(idToken, reg.user_id, reg.is_verified, reg.is_blocked, reg.position_override, nextState);
+        showToast(nextState ? `Featured @${reg.username} as Founding Card!` : `Unfeatured @${reg.username} as Founding Card.`);
+      } else {
+        localStorage.setItem("artistant_sandbox_registrations", JSON.stringify(updated));
+        showToast(`Sandbox: @${reg.username} founding card toggled!`);
+      }
+    } catch (err) {
+      console.error("[REDACTED_ERROR] PII stripped from client log.");
+      showToast("Error saving founding card status.");
+    }
+  };
+
   const handleSavePositionOverride = async (userId: string, val: number | null) => {
     const updated = registrations.map(r => {
       if (r.user_id === userId) return { ...r, position_override: val };
       return r;
     });
     setRegistrations(updated);
+    if (selectedReg && selectedReg.user_id === userId) {
+      setSelectedReg(prev => prev ? { ...prev, position_override: val } : null);
+    }
 
     try {
       const reg = registrations.find(r => r.user_id === userId);
       if (reg) {
         if (isLiveMode) {
           const idToken = await getIdToken();
-          await adminUpdateRegistrationAction(idToken, userId, reg.is_verified, reg.is_blocked, val);
+          await adminUpdateRegistrationAction(idToken, userId, reg.is_verified, reg.is_blocked, val, reg.feature_founding_card ?? false);
           showToast(`Priority Override set to position ${val ?? "Auto"}!`);
         } else {
           localStorage.setItem("artistant_sandbox_registrations", JSON.stringify(updated));
@@ -1172,6 +1213,7 @@ export default function AdminPage() {
   const verifiedCount = registrations.filter(r => r.is_verified).length;
   const blockedCount = registrations.filter(r => r.is_blocked).length;
   const pendingCount = totalCount - verifiedCount - blockedCount;
+  const portfolioCompleteCount = registrations.filter(r => r.profile_photo_url || r.bio || (r.gallery_photos && r.gallery_photos.length > 0) || r.instagram_url || r.spotify_url || r.youtube_url).length;
 
   // ---------------------------------------------------------------------------
   // Render Security Access screen
@@ -1220,12 +1262,12 @@ export default function AdminPage() {
               color: 'rgba(255,255,255,0.03)'
             }}>A</div>
 
-            <div className="text-center mb-8 relative z-10">
-              <h1 className="text-3xl font-display font-bold tracking-tight mb-3">
-                <span className="logo-typo">
-                  <span className="artis">Artis</span><span className="tant">Tant</span>
-                </span>
-              </h1>
+            <div className="text-center mb-8 relative z-10 flex flex-col items-center justify-center">
+              <img
+                src="/logo_wordmark.png"
+                alt="ArtisTant"
+                className="h-[44px] w-auto object-contain dark:invert-0 invert mb-3"
+              />
               <p className="text-[11px] font-mono font-semibold tracking-[0.12em] uppercase" style={{ color: 'var(--brand-1)' }}>
                 Admin Console
               </p>
@@ -1360,12 +1402,14 @@ export default function AdminPage() {
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           className={`fixed md:relative top-0 bottom-0 left-0 w-[280px] bg-bg border-r border-line-soft flex flex-col flex-shrink-0 z-40 transition-transform duration-300 md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
         >
-          {/* Brand Logo — exact homepage logo-typo */}
+          {/* Brand Logo */}
           <div className="px-8 pt-8 pb-6">
             <a href="/" target="_blank" className="block group">
-              <h1 className="text-2xl logo-typo tracking-tight">
-                <span className="artis">Artis</span><span className="tant">Tant</span>
-              </h1>
+              <img
+                src="/logo_wordmark.png"
+                alt="ArtisTant"
+                className="h-[32px] w-auto object-contain dark:invert-0 invert"
+              />
               <p className="text-[11px] font-mono font-semibold tracking-[0.12em] uppercase mt-2" style={{ color: 'var(--brand-1)' }}>
                 Admin Console
               </p>
@@ -1510,11 +1554,12 @@ export default function AdminPage() {
                   <div className="space-y-8">
                     
                     {/* Metric cards — homepage feature-card style */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
                       {[
                         { label: "Global Waitlist", value: totalCount, color: 'var(--ink)', Icon: Users },
                         { label: "Verified Artists", value: verifiedCount, color: 'var(--brand-3)', Icon: CheckCircle2 },
                         { label: "Pending Review", value: pendingCount, color: 'var(--brand-1)', Icon: Flame },
+                        { label: "Portfolio Setup", value: portfolioCompleteCount, color: 'var(--brand-2)', Icon: User },
                         { label: "Suspended", value: blockedCount, color: 'var(--hot)', Icon: XCircle },
                       ].map((card, i) => (
                         <GlowingAdminCard
@@ -1678,7 +1723,8 @@ export default function AdminPage() {
                           return (
                             <tr 
                               key={reg.id} 
-                              className={`hover:bg-ink/[0.02] transition-all duration-150 ${
+                              onClick={() => setSelectedReg(reg)}
+                              className={`hover:bg-ink/[0.02] transition-all duration-150 cursor-pointer ${
                                 reg.is_blocked ? "opacity-40" : ""
                               }`}
                             >
@@ -1827,10 +1873,11 @@ export default function AdminPage() {
                       <GlowingAdminCard 
                         key={reg.id}
                         idx={idx}
-                        className={`bg-bg-soft border border-line-soft rounded-[28px] p-8 flex flex-col gap-0 ${
+                        onClick={() => setSelectedReg(reg)}
+                        className={`bg-bg-soft border border-line-soft rounded-[28px] p-8 flex flex-col gap-0 cursor-pointer ${
                           reg.is_blocked ? "opacity-50" : ""
                         }`}
-                        style={{ minHeight: '380px' }}
+                        style={{ minHeight: '380px', cursor: 'pointer' }}
                       >
                         {/* Watermark initial */}
                         <div className="absolute top-3 right-6 select-none pointer-events-none" style={{
@@ -2902,7 +2949,7 @@ export default function AdminPage() {
                     <div 
                       className="absolute inset-0 opacity-[0.03] pointer-events-none"
                       style={{
-                        backgroundImage: "url('https://raw.githubusercontent.com/anudeepDash/artistant-waitlist/main/public/logo_a_watermark.png')",
+                        backgroundImage: "url('/logo_a_watermark.png')",
                         backgroundRepeat: 'no-repeat',
                         backgroundPosition: 'center center',
                         backgroundSize: '200px 200px'
@@ -2987,6 +3034,330 @@ export default function AdminPage() {
           </div>
         </main>
       </div>
+
+      {/* ═══════════════════════════════════════════════════
+          USER DETAIL DRAWER
+          ═══════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {selectedReg && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] cursor-pointer"
+              onClick={() => setSelectedReg(null)}
+            />
+
+            {/* Panel */}
+            <motion.div
+              initial={{ x: '100%', opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: '100%', opacity: 0 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="fixed right-0 top-0 bottom-0 w-[480px] max-w-full z-[70] bg-bg border-l border-line-soft overflow-y-auto shadow-2xl"
+            >
+              {/* Header */}
+              <div className="sticky top-0 z-10 backdrop-blur-xl px-8 py-5 flex items-center justify-between border-b border-line-soft" style={{ background: 'color-mix(in srgb, var(--bg) 85%, transparent)' }}>
+                <h3 className="text-sm font-mono font-bold uppercase tracking-[0.12em] text-ink">User Profile</h3>
+                <button
+                  onClick={() => setSelectedReg(null)}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center bg-bg-soft border border-line-soft text-ink-3 hover:text-ink hover:bg-bg-card transition-all cursor-pointer"
+                >
+                  <XCircle className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-8 space-y-6">
+
+                {/* ── Profile Hero ── */}
+                <div className="flex items-center gap-5">
+                  <div className="w-20 h-20 rounded-[20px] flex-shrink-0 overflow-hidden border border-line-soft shadow-lg" style={{
+                    background: selectedReg.profile_photo_url ? undefined : 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
+                  }}>
+                    {selectedReg.profile_photo_url ? (
+                      <img src={selectedReg.profile_photo_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-white font-display font-bold text-2xl">
+                        {(selectedReg.display_name || 'U')[0].toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="text-xl font-display font-bold text-ink tracking-tight truncate">
+                      {selectedReg.display_name || 'Unknown'}
+                    </h2>
+                    <p className="text-sm font-mono mt-0.5" style={{ color: 'var(--brand-1)' }}>
+                      @{selectedReg.username}
+                    </p>
+                    {selectedReg.bio && (
+                      <p className="text-xs text-ink-2 mt-2 leading-relaxed line-clamp-3">{selectedReg.bio}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* ── Status Badges ── */}
+                <div className="flex flex-wrap gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold tracking-[0.08em]" style={
+                    selectedReg.is_verified
+                      ? { background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)', color: 'white', boxShadow: '0 4px 12px -4px rgba(242,90,43,0.35)' }
+                      : { background: 'var(--bg-2)', color: 'var(--ink-3)', border: '1px solid rgba(255,255,255,0.04)' }
+                  }>
+                    <CheckCircle2 className="w-3 h-3" />
+                    {selectedReg.is_verified ? 'VERIFIED' : 'PENDING'}
+                  </span>
+
+                  {selectedReg.is_blocked && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold tracking-[0.08em]" style={{
+                      background: 'rgba(255,75,75,0.1)', color: 'var(--hot)', border: '1px solid rgba(255,75,75,0.2)'
+                    }}>
+                      <XCircle className="w-3 h-3" />
+                      SUSPENDED
+                    </span>
+                  )}
+
+                  {selectedReg.feature_founding_card && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold tracking-[0.08em]" style={{
+                      background: 'rgba(124,92,255,0.1)', color: 'var(--brand-3)', border: '1px solid rgba(124,92,255,0.2)'
+                    }}>
+                      <Sparkles className="w-3 h-3" />
+                      FOUNDING CARD
+                    </span>
+                  )}
+
+                  {selectedReg.role && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-[0.08em]" style={{
+                      background: 'var(--bg-2)',
+                      color: selectedReg.role === 'artist' ? 'var(--brand-3)' : selectedReg.role === 'venue' ? 'var(--brand-2)' : selectedReg.role === 'vendor' ? 'var(--brand-1)' : 'var(--ink-3)',
+                      border: '1px solid rgba(255,255,255,0.04)'
+                    }}>
+                      {selectedReg.role}
+                    </span>
+                  )}
+                </div>
+
+                {/* ── Quick Actions ── */}
+                <div className="bg-bg-soft border border-line-soft rounded-[20px] p-5 space-y-3">
+                  <p className="text-[10px] font-mono font-semibold uppercase tracking-[0.12em] text-ink-3 mb-3">Admin Actions</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    <button
+                      onClick={() => handleVerifyAndLock(selectedReg)}
+                      className="py-2.5 rounded-xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      style={selectedReg.is_verified ? {
+                        background: 'var(--bg-2)', color: 'var(--brand-3)', border: '1px solid rgba(124,92,255,0.2)',
+                      } : {
+                        background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)', color: 'white', border: 'none',
+                        boxShadow: '0 4px 16px -4px rgba(242,90,43,0.4)',
+                      }}
+                    >
+                      <CheckCircle2 className="w-3 h-3" />
+                      {selectedReg.is_verified ? 'Unverify' : 'Verify'}
+                    </button>
+
+                    <button
+                      onClick={() => handleToggleBlock(selectedReg)}
+                      className="py-2.5 rounded-xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      style={selectedReg.is_blocked ? {
+                        background: 'rgba(255,75,75,0.1)', color: 'var(--hot)', border: '1px solid rgba(255,75,75,0.2)',
+                      } : {
+                        background: 'var(--bg-2)', color: 'var(--ink-3)', border: '1px solid rgba(255,255,255,0.04)',
+                      }}
+                    >
+                      <XCircle className="w-3 h-3" />
+                      {selectedReg.is_blocked ? 'Restore' : 'Suspend'}
+                    </button>
+
+                    <button
+                      onClick={() => handleToggleFoundingCard(selectedReg)}
+                      className="py-2.5 rounded-xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      style={selectedReg.feature_founding_card ? {
+                        background: 'rgba(124,92,255,0.1)', color: 'var(--brand-3)', border: '1px solid rgba(124,92,255,0.2)',
+                      } : {
+                        background: 'var(--bg-2)', color: 'var(--ink-3)', border: '1px solid rgba(255,255,255,0.04)',
+                      }}
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      {selectedReg.feature_founding_card ? 'Unfeat.' : 'Feature'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="h-px bg-line-soft" />
+
+                {/* ── Category & Genres ── */}
+                {(selectedReg.category || (selectedReg.genres && selectedReg.genres.length > 0)) && (
+                  <div>
+                    <p className="text-[10px] font-mono font-semibold uppercase tracking-[0.12em] text-ink-3 mb-3">Category & Genres</p>
+                    {selectedReg.category && (
+                      <p className="text-sm text-ink capitalize mb-2">{selectedReg.category.replace('_', ' ')}</p>
+                    )}
+                    {selectedReg.genres && selectedReg.genres.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedReg.genres.map(g => (
+                          <span key={g} className="text-[10px] font-mono px-2.5 py-1 rounded-full text-ink-2" style={{
+                            background: 'var(--bg-2)', border: '1px solid rgba(255,255,255,0.04)'
+                          }}>#{g}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Contact Info ── */}
+                <div>
+                  <p className="text-[10px] font-mono font-semibold uppercase tracking-[0.12em] text-ink-3 mb-3">Contact Information</p>
+                  <div className="space-y-2.5">
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-bg-soft border border-line-soft">
+                        <Mail className="w-3.5 h-3.5 text-ink-3" />
+                      </div>
+                      <span className="text-ink font-mono text-xs truncate">{selectedReg.email}</span>
+                    </div>
+                    {selectedReg.phone && (
+                      <div className="flex items-center gap-3 text-sm">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-bg-soft border border-line-soft">
+                          <Smartphone className="w-3.5 h-3.5 text-ink-3" />
+                        </div>
+                        <span className="text-ink font-mono text-xs">{selectedReg.phone}</span>
+                      </div>
+                    )}
+                    {selectedReg.city && (
+                      <div className="flex items-center gap-3 text-sm">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-bg-soft border border-line-soft">
+                          <MapPin className="w-3.5 h-3.5 text-ink-3" />
+                        </div>
+                        <span className="text-ink text-xs">{selectedReg.city}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* ── Social Links ── */}
+                {(selectedReg.instagram_url || selectedReg.spotify_url || selectedReg.youtube_url || selectedReg.youtube_channel_url) && (
+                  <>
+                    <div className="h-px bg-line-soft" />
+                    <div>
+                      <p className="text-[10px] font-mono font-semibold uppercase tracking-[0.12em] text-ink-3 mb-3">Social Profiles</p>
+                      <div className="space-y-2">
+                        {selectedReg.instagram_url && (
+                          <a href={selectedReg.instagram_url.startsWith('http') ? selectedReg.instagram_url : `https://instagram.com/${selectedReg.instagram_url}`} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-3 p-3 rounded-xl bg-bg-soft border border-line-soft hover:bg-bg-card transition-all group">
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)', }}>
+                              <span className="text-white text-xs font-bold">IG</span>
+                            </div>
+                            <span className="text-xs font-mono text-ink truncate flex-1">Instagram</span>
+                            <ExternalLink className="w-3.5 h-3.5 text-ink-3 group-hover:text-ink transition-colors" />
+                          </a>
+                        )}
+                        {selectedReg.spotify_url && (
+                          <a href={selectedReg.spotify_url.startsWith('http') ? selectedReg.spotify_url : `https://open.spotify.com/artist/${selectedReg.spotify_url}`} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-3 p-3 rounded-xl bg-bg-soft border border-line-soft hover:bg-bg-card transition-all group">
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#1DB954]">
+                              <span className="text-white text-xs font-bold">SP</span>
+                            </div>
+                            <span className="text-xs font-mono text-ink truncate flex-1">Spotify</span>
+                            <ExternalLink className="w-3.5 h-3.5 text-ink-3 group-hover:text-ink transition-colors" />
+                          </a>
+                        )}
+                        {(selectedReg.youtube_url || selectedReg.youtube_channel_url) && (
+                          <a href={(selectedReg.youtube_channel_url || selectedReg.youtube_url || '').startsWith('http') ? (selectedReg.youtube_channel_url || selectedReg.youtube_url || '') : `https://youtube.com/@${selectedReg.youtube_channel_url || selectedReg.youtube_url}`} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-3 p-3 rounded-xl bg-bg-soft border border-line-soft hover:bg-bg-card transition-all group">
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#FF0000]">
+                              <span className="text-white text-xs font-bold">YT</span>
+                            </div>
+                            <span className="text-xs font-mono text-ink truncate flex-1">YouTube</span>
+                            <ExternalLink className="w-3.5 h-3.5 text-ink-3 group-hover:text-ink transition-colors" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* ── Gallery Photos ── */}
+                {selectedReg.gallery_photos && selectedReg.gallery_photos.length > 0 && (
+                  <>
+                    <div className="h-px bg-line-soft" />
+                    <div>
+                      <p className="text-[10px] font-mono font-semibold uppercase tracking-[0.12em] text-ink-3 mb-3">Gallery ({selectedReg.gallery_photos.length})</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {selectedReg.gallery_photos.map((photo, i) => (
+                          <img key={i} src={photo} alt="" className="w-full aspect-square object-cover rounded-xl border border-line-soft" />
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* ── Custom Status ── */}
+                {selectedReg.custom_status_message && (
+                  <>
+                    <div className="h-px bg-line-soft" />
+                    <div>
+                      <p className="text-[10px] font-mono font-semibold uppercase tracking-[0.12em] text-ink-3 mb-3">Custom Status</p>
+                      <p className="text-sm text-ink bg-bg-soft border border-line-soft rounded-xl p-4 italic">
+                        &ldquo;{selectedReg.custom_status_message}&rdquo;
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                <div className="h-px bg-line-soft" />
+
+                {/* ── Position & Meta ── */}
+                <div className="bg-bg-soft border border-line-soft rounded-[20px] p-5 space-y-4">
+                  <p className="text-[10px] font-mono font-semibold uppercase tracking-[0.12em] text-ink-3">Queue Management</p>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-ink-2 font-mono">Position Override:</span>
+                    <input
+                      type="number"
+                      placeholder="Auto"
+                      value={selectedReg.position_override ?? ''}
+                      onChange={(e) => {
+                        const val = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                        handleSavePositionOverride(selectedReg.user_id, val);
+                      }}
+                      className="w-20 bg-bg border border-line-soft rounded-full px-3 py-1.5 text-xs text-ink text-center font-mono focus:outline-none focus:border-brand transition-all"
+                    />
+                    <span className="text-[10px] font-mono text-ink-3">
+                      {selectedReg.position_override ? `#${selectedReg.position_override}` : 'Queue'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-ink-2 font-mono">
+                    <span className="text-ink-3">Registered:</span>
+                    <span>{new Date(selectedReg.reserved_at).toLocaleString()}</span>
+                  </div>
+                  {selectedReg.referred_by && (
+                    <div className="flex items-center gap-3 text-xs text-ink-2 font-mono">
+                      <span className="text-ink-3">Referred by:</span>
+                      <span style={{ color: 'var(--brand-1)' }}>@{selectedReg.referred_by}</span>
+                    </div>
+                  )}
+                  {selectedReg.profile_visitors_count !== undefined && selectedReg.profile_visitors_count > 0 && (
+                    <div className="flex items-center gap-3 text-xs text-ink-2 font-mono">
+                      <span className="text-ink-3">Profile views:</span>
+                      <span>{selectedReg.profile_visitors_count}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Portfolio link */}
+                <a
+                  href={`/${selectedReg.username}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-[11px] font-mono font-bold tracking-[0.06em] uppercase transition-all cursor-pointer bg-bg-soft border border-line-soft hover:bg-bg-card text-ink"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  View Portfolio Page
+                </a>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

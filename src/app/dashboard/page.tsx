@@ -274,6 +274,7 @@ export default function ProfilePage() {
   const [instagramUrl, setInstagramUrl] = useState('');
   const [spotifyUrl, setSpotifyUrl] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [youtubeChannelUrl, setYoutubeChannelUrl] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [contactEmailEnabled, setContactEmailEnabled] = useState(true);
@@ -460,6 +461,7 @@ export default function ProfilePage() {
         setInstagramUrl(res.instagram_url || '');
         setSpotifyUrl(res.spotify_url || '');
         setYoutubeUrl(res.youtube_url || '');
+        setYoutubeChannelUrl(res.youtube_channel_url || '');
         setContactEmail(res.email || '');
         setContactPhone(res.phone || '');
         setContactEmailEnabled(res.contact_email_enabled !== false);
@@ -574,6 +576,7 @@ export default function ProfilePage() {
         instagram_url: instagramUrl,
         spotify_url: spotifyUrl,
         youtube_url: youtubeUrl,
+        youtube_channel_url: youtubeChannelUrl,
       });
       showToast("Profile details updated!");
       if (reservation) {
@@ -587,6 +590,7 @@ export default function ProfilePage() {
           instagram_url: instagramUrl,
           spotify_url: spotifyUrl,
           youtube_url: youtubeUrl,
+          youtube_channel_url: youtubeChannelUrl,
         });
       }
     } catch (err: any) {
@@ -642,30 +646,34 @@ export default function ProfilePage() {
     showToast("Preparing your founding pass...");
     
     try {
+      if (typeof window !== 'undefined' && document.fonts) {
+        await document.fonts.ready;
+      }
+
       // Preload the official wordmark logo, A watermark, and logo_a images
       const logoImg = new Image();
-      logoImg.src = '/logo_wordmark.png';
-
       const watermarkImg = new Image();
-      watermarkImg.src = '/logo_a_watermark.png';
-
       const cardLogoImg = new Image();
-      cardLogoImg.src = '/logo_a.png';
 
-      await Promise.all([
-        new Promise((resolve) => {
-          logoImg.onload = resolve;
-          logoImg.onerror = resolve;
-        }),
-        new Promise((resolve) => {
-          watermarkImg.onload = resolve;
-          watermarkImg.onerror = resolve;
-        }),
-        new Promise((resolve) => {
-          cardLogoImg.onload = resolve;
-          cardLogoImg.onerror = resolve;
-        })
-      ]);
+      const loadLogo = new Promise((resolve) => {
+        logoImg.onload = resolve;
+        logoImg.onerror = resolve;
+        logoImg.src = '/logo_wordmark.png';
+      });
+
+      const loadWatermark = new Promise((resolve) => {
+        watermarkImg.onload = resolve;
+        watermarkImg.onerror = resolve;
+        watermarkImg.src = '/logo_a_watermark.png';
+      });
+
+      const loadCardLogo = new Promise((resolve) => {
+        cardLogoImg.onload = resolve;
+        cardLogoImg.onerror = resolve;
+        cardLogoImg.src = '/logo_a.png';
+      });
+
+      await Promise.all([loadLogo, loadWatermark, loadCardLogo]);
 
       const canvas = document.createElement('canvas');
       canvas.width = 1080;
@@ -1231,7 +1239,7 @@ export default function ProfilePage() {
 
     const displayGallery = galleryPhotos.map((url, i) => ({ url, caption: `Gig Performance ${i + 1}` }));
     const hasContact = (contactEmailEnabled && contactEmail) || (contactPhoneEnabled && contactPhone);
-    const hasSocials = !!instagramUrl || !!spotifyUrl || !!youtubeUrl;
+    const hasSocials = !!instagramUrl || !!spotifyUrl || !!youtubeChannelUrl;
 
     return (
       <div 
@@ -1251,7 +1259,7 @@ export default function ProfilePage() {
             {/* Background Image / Placeholder */}
             <div className="absolute inset-0 w-full h-full">
               {reservation.profile_photo_url ? (
-                <img src={reservation.profile_photo_url} alt="" className="w-full h-full object-cover object-top" />
+                <img src={reservation.profile_photo_url} alt="" className="w-full h-full object-cover object-center" />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-[#1a0d2e] via-[#0d0d1a] to-[#0a0a0f]">
                   <div className="absolute inset-0 opacity-20" style={{
@@ -1269,16 +1277,9 @@ export default function ProfilePage() {
               <div className={`w-6 h-6 rounded-full flex items-center justify-center backdrop-blur-md text-[10px] ${isLight ? 'bg-white/75 border border-black/10 text-zinc-900 shadow-sm' : 'bg-black/40 border border-white/10 text-white'}`}>
                 &larr;
               </div>
-              <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full backdrop-blur-md shadow-sm select-none ${isLight ? 'bg-white/80 border border-black/10' : 'bg-black/45 border border-white/10'}`}>
-                <span className={`text-[5px] font-mono font-bold tracking-[0.25em] ${isLight ? 'text-zinc-600' : 'text-white'}`}>PORTFOLIO</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center backdrop-blur-md flex items-center justify-center ${isLight ? 'bg-white/75 border border-black/10 text-zinc-900 shadow-sm' : 'bg-black/40 border border-white/10 text-white'}`}>
-                  <Heart className={`w-2.5 h-2.5 ${isLight ? 'text-zinc-800' : 'text-white'}`} />
-                </div>
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center backdrop-blur-md flex items-center justify-center ${isLight ? 'bg-white/75 border border-black/10 text-zinc-900 shadow-sm' : 'bg-black/40 border border-white/10 text-white'}`}>
-                  <Share2 className={`w-2.5 h-2.5 ${isLight ? 'text-zinc-800' : 'text-white'}`} />
-                </div>
+              <div className={`absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1 rounded-full backdrop-blur-md shadow-sm select-none ${isLight ? 'bg-white/80 border border-black/10' : 'bg-black/45 border border-white/10'}`}>
+                <img src="/logo_wordmark.png" alt="ArtisTant" className="h-[28px] w-auto object-contain dark:invert-0 invert" />
+                <span className={`text-[7px] font-mono font-bold tracking-[0.25em] border-l pl-2 uppercase ${isLight ? 'text-zinc-500 border-black/15' : 'text-white/50 border-white/15'}`}>PORTFOLIO</span>
               </div>
             </div>
 
@@ -1295,9 +1296,19 @@ export default function ProfilePage() {
                 )}
               </div>
 
-              <h1 className={`text-xs font-black leading-tight font-serif ${isLight ? 'text-zinc-950' : 'text-white'}`}>
-                {displayName || 'Artist'}
-              </h1>
+              <div className="flex items-center justify-between gap-2">
+                <h1 className={`text-xs font-black leading-tight font-serif ${isLight ? 'text-zinc-950' : 'text-white'}`}>
+                  {displayName || 'Artist'}
+                </h1>
+                <div className="flex items-center gap-1 shrink-0">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center backdrop-blur-md ${isLight ? 'bg-white/75 border border-black/10 text-zinc-900 shadow-sm' : 'bg-black/40 border border-white/10 text-white'}`}>
+                    <Heart className={`w-2.5 h-2.5 ${isLight ? 'text-zinc-800' : 'text-white'}`} />
+                  </div>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center backdrop-blur-md ${isLight ? 'bg-white/75 border border-black/10 text-zinc-900 shadow-sm' : 'bg-black/40 border border-white/10 text-white'}`}>
+                    <Share2 className={`w-2.5 h-2.5 ${isLight ? 'text-zinc-800' : 'text-white'}`} />
+                  </div>
+                </div>
+              </div>
 
               {genres.length > 0 && (
                 <p className={`text-[6px] font-mono tracking-wider ${isLight ? 'text-zinc-600' : 'text-white/50'}`}>
@@ -1309,9 +1320,71 @@ export default function ProfilePage() {
 
           {/* Main Content Area */}
           <div className={`px-3.5 py-4 space-y-6 flex-1 relative z-10 transition-colors duration-300 ${isLight ? 'bg-[#FAF9FD]' : 'bg-[#050508]'}`}>
+            {/* Founding Status Section */}
+            {featureFoundingCard && (
+              <div className="space-y-2 text-left">
+                <div className="flex items-center gap-1.5">
+                  <div className={`w-5 h-5 rounded flex items-center justify-center border shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/5 border border-white/10'}`}>
+                    <span className="text-[#F25A2B] font-bold text-[8px] font-mono">01</span>
+                  </div>
+                  <div>
+                    <h2 className={`text-[9px] font-bold tracking-tight ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Founding Status</h2>
+                    <p className={`text-[5px] font-mono tracking-wider uppercase ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>Waitlist Placement Certificate</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-center w-full py-1">
+                  <div 
+                    className={`w-full max-w-[220px] aspect-[1.58/1] relative rounded-xl p-[1px] overflow-hidden border shadow-sm ${isLight ? 'border-[#7C5CFF]/15' : 'border-white/5 shadow-lg'}`}
+                    style={{
+                      background: isLight 
+                        ? 'linear-gradient(135deg, rgba(124,92,255,0.1), rgba(124,92,255,0.02) 40%, rgba(124,92,255,0.25))'
+                        : 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.01) 40%, rgba(124,92,255,0.2))',
+                    }}
+                  >
+                    <div className={`relative w-full h-full rounded-xl p-2 flex flex-col justify-between overflow-hidden ${isLight ? 'bg-white/90 border-0' : 'bg-[#050508]/95'}`}>
+                      {/* Decorative elements */}
+                      <div className={`absolute -right-8 -bottom-8 w-24 h-24 rounded-full border pointer-events-none ${isLight ? 'border-[#7C5CFF]/5' : 'border-white/[0.01]'}`} />
+
+                      {/* Card Top Row */}
+                      <div className="flex justify-between items-start z-10 w-full">
+                        <div className="flex items-center gap-1">
+                          <img src="/logo_a.png" alt="" className="w-2 h-2 object-contain opacity-80" />
+                          <span className={`font-mono text-[3.5px] font-bold tracking-[0.2em] ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>FOUNDING CARD</span>
+                        </div>
+                        <span className={`px-1 py-0.5 rounded-full font-mono text-[3.5px] font-bold uppercase tracking-wider ${isLight ? 'bg-black/[0.02] border border-black/5 text-zinc-500' : 'bg-white/[0.02] border border-white/5 text-white/40'}`}>
+                          Founding Artist
+                        </span>
+                      </div>
+
+                      {/* Rank Position */}
+                      <div className="flex flex-col items-center justify-center z-10 flex-1 my-0.5">
+                        <h1 className={`font-display font-black leading-none text-base ${isLight ? 'text-zinc-900' : 'text-white'}`}>
+                          #{waitlistPos || '---'}
+                        </h1>
+                        <span className={`text-[3.5px] font-mono tracking-[0.2em] uppercase mt-0.5 ${isLight ? 'text-zinc-400' : 'text-white/25'}`}>Waitlist Rank</span>
+                      </div>
+
+                      {/* Card Bottom Row */}
+                      <div className={`flex justify-between items-end z-10 w-full border-t pt-1 ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`}>
+                        <div className="flex flex-col text-left">
+                          <span className={`text-[3px] font-mono tracking-widest uppercase ${isLight ? 'text-zinc-400' : 'text-white/35'}`}>Artist Name</span>
+                          <span className={`text-[5px] font-bold truncate max-w-[60px] ${isLight ? 'text-zinc-800' : 'text-white/80'}`}>{displayName || reservation.username}</span>
+                        </div>
+                        <div className="flex flex-col text-right">
+                          <span className={`text-[3px] font-mono tracking-widest uppercase ${isLight ? 'text-zinc-400' : 'text-white/35'}`}>Cohort / Status</span>
+                          <span className="text-[4px] font-mono tracking-wider text-[#7C5CFF] font-bold">COHORT 003 · FOUNDING</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* About Section */}
             {(bio || city || genres.length > 0) && (
-              <div className="space-y-2 text-left">
+              <div className={`space-y-2 text-left ${featureFoundingCard ? `border-t pt-4 ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}` : ''}`}>
                 <h2 className={`text-[10px] font-serif font-bold ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>About</h2>
                 {bio && (
                   <p className={`text-[8px] leading-relaxed whitespace-pre-wrap ${isLight ? 'text-zinc-700' : 'text-white/60'}`}>{bio}</p>
@@ -1393,7 +1466,7 @@ export default function ProfilePage() {
                     </div>
                   )}
 
-                  {youtubeUrl && (
+                  {youtubeChannelUrl && (
                     <div className={`p-2.5 rounded-xl border flex flex-col justify-between min-h-[90px] shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/[0.01] border-white/[0.03]'}`}>
                       <div className="flex flex-col gap-0.5">
                         <span className={`text-[6px] font-mono font-bold uppercase tracking-widest flex items-center gap-0.5 ${isLight ? 'text-zinc-500' : 'text-white/30'}`}>
@@ -1417,7 +1490,9 @@ export default function ProfilePage() {
                     <div key="gallery" className={`space-y-2 text-left border-t pt-4 ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`}>
                       <div className="flex items-center gap-1.5">
                         <div className={`w-5 h-5 rounded flex items-center justify-center border shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/5 border border-white/10'}`}>
-                          <span className="text-[#7C5CFF] font-bold text-[8px] font-mono">01</span>
+                          <span className="text-[#7C5CFF] font-bold text-[8px] font-mono">
+                            {featureFoundingCard ? '02' : '01'}
+                          </span>
                         </div>
                         <div>
                           <h2 className={`text-[9px] font-bold tracking-tight ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Gig Gallery</h2>
@@ -1443,7 +1518,9 @@ export default function ProfilePage() {
                     <div key="video" className={`space-y-2 text-left border-t pt-4 ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`}>
                       <div className="flex items-center gap-1.5">
                         <div className={`w-5 h-5 rounded flex items-center justify-center border shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/5 border border-white/10'}`}>
-                          <span className="text-[#D4567A] font-bold text-[8px] font-mono">02</span>
+                          <span className="text-[#D4567A] font-bold text-[8px] font-mono">
+                            {featureFoundingCard ? '03' : '02'}
+                          </span>
                         </div>
                         <div>
                           <h2 className={`text-[9px] font-bold tracking-tight ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Featured Showreel</h2>
@@ -1494,67 +1571,7 @@ export default function ProfilePage() {
               })}
             </div>
 
-            {/* Founding Status Section */}
-            {featureFoundingCard && (
-              <div className={`space-y-2 text-left border-t pt-4 ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`}>
-                <div className="flex items-center gap-1.5">
-                  <div className={`w-5 h-5 rounded flex items-center justify-center border shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/5 border border-white/10'}`}>
-                    <span className="text-[#F25A2B] font-bold text-[8px] font-mono">03</span>
-                  </div>
-                  <div>
-                    <h2 className={`text-[9px] font-bold tracking-tight ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Founding Status</h2>
-                    <p className={`text-[5px] font-mono tracking-wider uppercase ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>Waitlist Placement Certificate</p>
-                  </div>
-                </div>
 
-                <div className="flex justify-center w-full py-1">
-                  <div 
-                    className={`w-full max-w-[220px] aspect-[1.58/1] relative rounded-xl p-[1px] overflow-hidden border shadow-sm ${isLight ? 'border-[#7C5CFF]/15' : 'border-white/5 shadow-lg'}`}
-                    style={{
-                      background: isLight 
-                        ? 'linear-gradient(135deg, rgba(124,92,255,0.1), rgba(124,92,255,0.02) 40%, rgba(124,92,255,0.25))'
-                        : 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.01) 40%, rgba(124,92,255,0.2))',
-                    }}
-                  >
-                    <div className={`relative w-full h-full rounded-xl p-2 flex flex-col justify-between overflow-hidden ${isLight ? 'bg-white/90 border-0' : 'bg-[#050508]/95'}`}>
-                      {/* Decorative elements */}
-                      <div className={`absolute -right-8 -bottom-8 w-24 h-24 rounded-full border pointer-events-none ${isLight ? 'border-[#7C5CFF]/5' : 'border-white/[0.01]'}`} />
-
-                      {/* Card Top Row */}
-                      <div className="flex justify-between items-start z-10 w-full">
-                        <div className="flex items-center gap-1">
-                          <img src="/logo_a.png" alt="" className="w-2 h-2 object-contain opacity-80" />
-                          <span className={`font-mono text-[3.5px] font-bold tracking-[0.2em] ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>FOUNDING CARD</span>
-                        </div>
-                        <span className={`px-1 py-0.5 rounded-full font-mono text-[3.5px] font-bold uppercase tracking-wider ${isLight ? 'bg-black/[0.02] border border-black/5 text-zinc-500' : 'bg-white/[0.02] border border-white/5 text-white/40'}`}>
-                          Founding Artist
-                        </span>
-                      </div>
-
-                      {/* Rank Position */}
-                      <div className="flex flex-col items-center justify-center z-10 flex-1 my-0.5">
-                        <h1 className={`font-display font-black leading-none text-base ${isLight ? 'text-zinc-900' : 'text-white'}`}>
-                          #{waitlistPos || '---'}
-                        </h1>
-                        <span className={`text-[3.5px] font-mono tracking-[0.2em] uppercase mt-0.5 ${isLight ? 'text-zinc-400' : 'text-white/25'}`}>Waitlist Rank</span>
-                      </div>
-
-                      {/* Card Bottom Row */}
-                      <div className={`flex justify-between items-end z-10 w-full border-t pt-1 ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`}>
-                        <div className="flex flex-col text-left">
-                          <span className={`text-[3px] font-mono tracking-widest uppercase ${isLight ? 'text-zinc-400' : 'text-white/35'}`}>Artist Name</span>
-                          <span className={`text-[5px] font-bold truncate max-w-[60px] ${isLight ? 'text-zinc-800' : 'text-white/80'}`}>{displayName || reservation.username}</span>
-                        </div>
-                        <div className="flex flex-col text-right">
-                          <span className={`text-[3px] font-mono tracking-widest uppercase ${isLight ? 'text-zinc-400' : 'text-white/35'}`}>Cohort / Status</span>
-                          <span className="text-[4px] font-mono tracking-wider text-[#7C5CFF] font-bold">COHORT 003 · FOUNDING</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Visit Artistant CTA banner */}
             <div className="pt-2">
@@ -1712,12 +1729,12 @@ export default function ProfilePage() {
       />
 
       {/* ═══ DASHBOARD CONTENT (App Workspace View) ═══ */}
-      <main className="max-w-6xl mx-auto px-6 pt-24 pb-10 md:pt-36 md:pb-16 space-y-12 relative z-10">
+      <main className="max-w-6xl mx-auto px-6 pt-20 pb-10 md:pt-32 md:pb-16 space-y-12 relative z-10">
         
         {/* ── DASHBOARD GREETING ── */}
         <section className="flex flex-col items-center text-center max-w-3xl mx-auto mb-10">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="flex flex-col items-center w-full mb-4">
-            <h1 className="text-4xl md:text-5xl font-black tracking-tight text-[var(--ink)] uppercase" style={{ fontFamily: 'var(--font-display)' }}>
+            <h1 className="text-3xl md:text-5xl font-black tracking-tight text-[var(--ink)] uppercase" style={{ fontFamily: 'var(--font-display)' }}>
               {greeting},<br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF]">@{reservation.username}</span>
             </h1>
@@ -1731,7 +1748,7 @@ export default function ProfilePage() {
           }`}>
             <button
               onClick={() => setActiveTab('dashboard')}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-bold font-mono uppercase tracking-wider transition-all duration-300 relative cursor-pointer ${
+              className={`flex items-center gap-2 px-3 py-2 md:px-5 md:py-2.5 rounded-2xl text-xs font-bold font-mono uppercase tracking-wider transition-all duration-300 relative cursor-pointer ${
                 activeTab === 'dashboard' ? 'text-white' : isLight ? 'text-black/45 hover:text-black/70' : 'text-white/40 hover:text-white/70'
               }`}
             >
@@ -1744,12 +1761,12 @@ export default function ProfilePage() {
                 />
               )}
               <LayoutGrid className="w-3.5 h-3.5 transition-colors duration-300" />
-              <span>Dashboard</span>
+              <span className="hidden sm:inline">Dashboard</span>
             </button>
 
             <button
               onClick={() => setActiveTab('portfolio')}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-bold font-mono uppercase tracking-wider transition-all duration-300 relative cursor-pointer ${
+              className={`flex items-center gap-2 px-3 py-2 md:px-5 md:py-2.5 rounded-2xl text-xs font-bold font-mono uppercase tracking-wider transition-all duration-300 relative cursor-pointer ${
                 activeTab === 'portfolio' ? 'text-white' : isLight ? 'text-black/45 hover:text-black/70' : 'text-white/40 hover:text-white/70'
               }`}
             >
@@ -1762,12 +1779,12 @@ export default function ProfilePage() {
                 />
               )}
               <Smartphone className="w-3.5 h-3.5 transition-colors duration-300" />
-              <span>Portfolio</span>
+              <span className="hidden sm:inline">Portfolio</span>
             </button>
 
             <button
               onClick={() => setActiveTab('leaderboard')}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-bold font-mono uppercase tracking-wider transition-all duration-300 relative cursor-pointer ${
+              className={`flex items-center gap-2 px-3 py-2 md:px-5 md:py-2.5 rounded-2xl text-xs font-bold font-mono uppercase tracking-wider transition-all duration-300 relative cursor-pointer ${
                 activeTab === 'leaderboard' ? 'text-white' : isLight ? 'text-black/45 hover:text-black/70' : 'text-white/40 hover:text-white/70'
               }`}
             >
@@ -1780,7 +1797,7 @@ export default function ProfilePage() {
                 />
               )}
               <Trophy className="w-3.5 h-3.5 transition-colors duration-300" />
-              <span>Leaderboard</span>
+              <span className="hidden sm:inline">Leaderboard</span>
             </button>
           </div>
         </div>
@@ -2218,8 +2235,8 @@ export default function ProfilePage() {
                           #{waitlistPos || '---'}
                         </h1>
                         <div className="flex flex-col items-center mt-1.5 md:mt-2.5">
-                          <span className="font-mono text-[9px] font-bold tracking-[0.35em] text-[var(--ink-3)]">WAITLIST RANK • COHORT {cohort}</span>
-                          <span className="font-mono text-[8px] font-bold tracking-[0.15em] text-[#F25A2B]">{isCohort1 ? 'BETA ACCESS GRANTED' : 'POSITION SECURED'}</span>
+                          <span className="font-mono text-[8px] sm:text-[9px] font-bold tracking-[0.2em] sm:tracking-[0.3em] text-[var(--ink-3)] whitespace-nowrap">WAITLIST RANK • COHORT {cohort}</span>
+                          <span className="font-mono text-[7.5px] sm:text-[8px] font-bold tracking-[0.12em] sm:tracking-[0.15em] text-[#F25A2B] whitespace-nowrap">{isCohort1 ? 'BETA ACCESS GRANTED' : 'POSITION SECURED'}</span>
                         </div>
                       </div>
 
@@ -2346,8 +2363,8 @@ export default function ProfilePage() {
                           />
                         </div>
 
-                        <div className="relative z-[2] flex flex-col items-center justify-start h-full px-5 pt-6 pb-20 gap-3">
-                          {/* Top Section: Logo & Card (Clustered together and shifted up) */}
+                        <div className="relative z-[2] flex flex-col items-center justify-between h-full px-5 pt-8 pb-8">
+                          {/* Top Section: Logo & Card */}
                           <div className="w-full flex flex-col items-center gap-3">
                             {/* Logo */}
                             <div className="text-center flex flex-col items-center select-none -mt-[18px] -mb-[22px]">
@@ -2406,105 +2423,111 @@ export default function ProfilePage() {
                             </div>
                           </div>
 
-                          {/* Headline */}
-                          <div className="text-center">
-                            {activeStoryTemplate === 0 && (
-                              <>
-                                <h4 className="font-display font-black text-[12px] uppercase tracking-tight leading-snug text-white">I CHOSE ZERO<br />MIDDLEMEN.</h4>
-                                <p className="text-[5px] font-mono tracking-widest uppercase mt-1.5" style={{ background: 'linear-gradient(90deg, #F25A2B, #7C5CFF)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>DIRECT BOOKING ECOSYSTEM</p>
-                              </>
-                            )}
-                            {activeStoryTemplate === 1 && (
-                              <>
-                                <h4 className="font-display font-black text-[13px] uppercase tracking-tight leading-snug text-white">BUILT FOR STAGE.<br />ARTIST FIRST.</h4>
-                                <p className="text-[5px] font-mono tracking-widest uppercase text-white/50 mt-1.5">RECLAIMING CREATIVE VALUE</p>
-                              </>
-                            )}
-                            {activeStoryTemplate === 2 && (
-                              <>
-                                <h4 className="font-display font-black text-[12px] uppercase tracking-tight leading-snug text-[#0F0F14]">BUILT FOR ARTISTS.<br />NOT PLATFORMS.</h4>
-                                <p className="text-[5px] font-mono tracking-widest uppercase text-[#7C5CFF] mt-1.5">COHORT {cohort} · FOUNDING ARTIST</p>
-                              </>
-                            )}
-                            {activeStoryTemplate === 3 && (
-                              <>
-                                <h4 className="font-display font-black text-[11px] uppercase tracking-tight leading-snug text-white">I AM ON ARTISTANT.</h4>
-                                <p className="text-[4.5px] font-mono tracking-wider text-white/60 mt-1.5 leading-normal">THEY ARE REBUILDING<br />INDIA&apos;S LIVE ECONOMY.</p>
-                              </>
-                            )}
+                          {/* Middle Section: Headline & Features */}
+                          <div className="w-full flex flex-col items-center gap-3">
+                            {/* Headline */}
+                            <div className="text-center">
+                              {activeStoryTemplate === 0 && (
+                                <>
+                                  <h4 className="font-display font-black text-[12px] uppercase tracking-tight leading-snug text-white">I CHOSE ZERO<br />MIDDLEMEN.</h4>
+                                  <p className="text-[5px] font-mono tracking-widest uppercase mt-1.5" style={{ background: 'linear-gradient(90deg, #F25A2B, #7C5CFF)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>DIRECT BOOKING ECOSYSTEM</p>
+                                </>
+                              )}
+                              {activeStoryTemplate === 1 && (
+                                <>
+                                  <h4 className="font-display font-black text-[13px] uppercase tracking-tight leading-snug text-white">BUILT FOR STAGE.<br />ARTIST FIRST.</h4>
+                                  <p className="text-[5px] font-mono tracking-widest uppercase text-white/50 mt-1.5">RECLAIMING CREATIVE VALUE</p>
+                                </>
+                              )}
+                              {activeStoryTemplate === 2 && (
+                                <>
+                                  <h4 className="font-display font-black text-[12px] uppercase tracking-tight leading-snug text-[#0F0F14]">BUILT FOR ARTISTS.<br />NOT PLATFORMS.</h4>
+                                  <p className="text-[5px] font-mono tracking-widest uppercase text-[#7C5CFF] mt-1.5">COHORT {cohort} · FOUNDING ARTIST</p>
+                                </>
+                              )}
+                              {activeStoryTemplate === 3 && (
+                                <>
+                                  <h4 className="font-display font-black text-[11px] uppercase tracking-tight leading-snug text-white">I AM ON ARTISTANT.</h4>
+                                  <p className="text-[4.5px] font-mono tracking-wider text-white/60 mt-1.5 leading-normal">THEY ARE REBUILDING<br />INDIA&apos;S LIVE ECONOMY.</p>
+                                </>
+                              )}
+                            </div>
+
+                            {/* Features */}
+                            <div className="w-full space-y-1 text-[8px] font-mono flex flex-col items-center">
+                              {(() => {
+                                const getFeaturesList = () => {
+                                  switch(activeStoryTemplate) {
+                                    case 0:
+                                      return ['Direct client-to-artist routing', 'GigSafe escrow payment security', 'Auto-synced availability booking'];
+                                    case 1:
+                                      return ['Direct client bookings', 'GigSafe escrow guarantees', 'Custom portfolio @handle'];
+                                    case 2:
+                                      return ['Direct gig booking system', 'Escrow payment infrastructure', 'Verified availability sync'];
+                                    default:
+                                      return ['Direct artist-to-client connections', 'Secure Escrow Infrastructure', `Profile: artistant.in/${reservation.username}`];
+                                  }
+                                };
+                                
+                                const features = getFeaturesList();
+                                const pillBg = activeStoryTemplate === 2 ? 'rgba(124, 92, 255, 0.04)' : 'rgba(255, 255, 255, 0.04)';
+                                const pillBorder = activeStoryTemplate === 2 ? 'rgba(124, 92, 255, 0.08)' : 'rgba(255, 255, 255, 0.06)';
+                                const textColor = activeStoryTemplate === 2 ? '#7C5CFF' : 'rgba(255, 255, 255, 0.65)';
+                                const checkColor = activeStoryTemplate === 2 ? '#7C5CFF' : activeStoryTemplate === 0 ? '#F25A2B' : activeStoryTemplate === 1 ? '#FFFFFF' : '#7C5CFF';
+
+                                return features.map((feat, i) => (
+                                  <div 
+                                    key={i} 
+                                    className="px-3 py-1.5 rounded-full border flex items-center justify-center gap-1.5 w-fit max-w-[90%] backdrop-blur-sm shadow-sm"
+                                    style={{ 
+                                      background: pillBg, 
+                                      borderColor: pillBorder,
+                                      color: textColor
+                                    }}
+                                  >
+                                    <span className="font-bold text-[9px] shrink-0" style={{ color: checkColor }}>✓</span>
+                                    <span className="tracking-wide uppercase text-[7.5px] whitespace-nowrap overflow-hidden text-ellipsis">{feat}</span>
+                                  </div>
+                                ));
+                              })()}
+                            </div>
                           </div>
 
-                          {/* Features */}
-                          <div className="w-full space-y-1 text-[8px] font-mono flex flex-col items-center">
-                            {(() => {
-                              const getFeaturesList = () => {
-                                switch(activeStoryTemplate) {
-                                  case 0:
-                                    return ['Direct client-to-artist routing', 'GigSafe escrow payment security', 'Auto-synced availability booking'];
-                                  case 1:
-                                    return ['Direct client bookings', 'GigSafe escrow guarantees', 'Custom portfolio @handle'];
-                                  case 2:
-                                    return ['Direct gig booking system', 'Escrow payment infrastructure', 'Verified availability sync'];
-                                  default:
-                                    return ['Direct artist-to-client connections', 'Secure Escrow Infrastructure', `Profile: artistant.in/${reservation.username}`];
-                                }
-                              };
-                              
-                              const features = getFeaturesList();
-                              const pillBg = activeStoryTemplate === 2 ? 'rgba(124, 92, 255, 0.04)' : 'rgba(255, 255, 255, 0.04)';
-                              const pillBorder = activeStoryTemplate === 2 ? 'rgba(124, 92, 255, 0.08)' : 'rgba(255, 255, 255, 0.06)';
-                              const textColor = activeStoryTemplate === 2 ? '#7C5CFF' : 'rgba(255, 255, 255, 0.65)';
-                              const checkColor = activeStoryTemplate === 2 ? '#7C5CFF' : activeStoryTemplate === 0 ? '#F25A2B' : activeStoryTemplate === 1 ? '#FFFFFF' : '#7C5CFF';
+                          {/* Bottom Section: CTA & Branding */}
+                          <div className="w-full flex flex-col items-center gap-3">
+                            {/* Highlighted CTA Box */}
+                            <div 
+                              className="px-3 py-1.5 rounded-full border text-[6px] font-mono font-bold tracking-wider uppercase text-center w-[90%] backdrop-blur-sm shadow-sm"
+                              style={{
+                                background: activeStoryTemplate === 0 
+                                  ? 'rgba(255,255,255,0.06)' 
+                                  : activeStoryTemplate === 1 
+                                    ? 'rgba(255,255,255,0.15)' 
+                                    : activeStoryTemplate === 2
+                                      ? 'rgba(124, 92, 255, 0.06)'
+                                      : 'rgba(124, 92, 255, 0.12)',
+                                borderColor: activeStoryTemplate === 0 
+                                  ? '#F25A2B' 
+                                  : activeStoryTemplate === 1 
+                                    ? 'rgba(255,255,255,0.4)' 
+                                    : activeStoryTemplate === 2
+                                      ? '#7C5CFF'
+                                      : '#7C5CFF',
+                                color: activeStoryTemplate === 2 
+                                  ? '#7C5CFF' 
+                                  : '#FFFFFF'
+                              }}
+                            >
+                              {activeStoryTemplate === 0 && "SECURE YOUR NAME BEFORE SOMEONE ELSE DOES"}
+                              {activeStoryTemplate === 1 && "CLAIM YOUR @HANDLE NOW"}
+                              {activeStoryTemplate === 2 && "SECURE YOUR NAME BEFORE IT'S TAKEN"}
+                              {activeStoryTemplate === 3 && `GO CHECK MY PROFILE OUT ON ARTISTANT.IN/${reservation.username.toUpperCase()}`}
+                            </div>
 
-                              return features.map((feat, i) => (
-                                <div 
-                                  key={i} 
-                                  className="px-3 py-1.5 rounded-full border flex items-center justify-center gap-1.5 w-fit max-w-[90%] backdrop-blur-sm shadow-sm"
-                                  style={{ 
-                                    background: pillBg, 
-                                    borderColor: pillBorder,
-                                    color: textColor
-                                  }}
-                                >
-                                  <span className="font-bold text-[9px] shrink-0" style={{ color: checkColor }}>✓</span>
-                                  <span className="tracking-wide uppercase text-[7.5px] whitespace-nowrap overflow-hidden text-ellipsis">{feat}</span>
-                                </div>
-                              ));
-                            })()}
-                          </div>
-
-                          {/* Highlighted CTA Box */}
-                          <div 
-                            className="px-3 py-1.5 rounded-full border text-[6px] font-mono font-bold tracking-wider uppercase text-center w-[90%] backdrop-blur-sm shadow-sm"
-                            style={{
-                              background: activeStoryTemplate === 0 
-                                ? 'rgba(255,255,255,0.06)' 
-                                : activeStoryTemplate === 1 
-                                  ? 'rgba(255,255,255,0.15)' 
-                                  : activeStoryTemplate === 2
-                                    ? 'rgba(124, 92, 255, 0.06)'
-                                    : 'rgba(124, 92, 255, 0.12)',
-                              borderColor: activeStoryTemplate === 0 
-                                ? '#F25A2B' 
-                                : activeStoryTemplate === 1 
-                                  ? 'rgba(255,255,255,0.4)' 
-                                  : activeStoryTemplate === 2
-                                    ? '#7C5CFF'
-                                    : '#7C5CFF',
-                              color: activeStoryTemplate === 2 
-                                ? '#7C5CFF' 
-                                : '#FFFFFF'
-                            }}
-                          >
-                            {activeStoryTemplate === 0 && "SECURE YOUR NAME BEFORE SOMEONE ELSE DOES"}
-                            {activeStoryTemplate === 1 && "CLAIM YOUR @HANDLE NOW"}
-                            {activeStoryTemplate === 2 && "SECURE YOUR NAME BEFORE IT'S TAKEN"}
-                            {activeStoryTemplate === 3 && `GO CHECK MY PROFILE OUT ON ARTISTANT.IN/${reservation.username.toUpperCase()}`}
-                          </div>
-
-                          {/* Bottom branding */}
-                          <div className="text-[5.5px] font-mono font-bold tracking-[0.25em] uppercase" style={{ color: activeStoryTemplate === 2 ? '#7C5CFF' : '#FFFFFF', opacity: 0.3 }}>
-                            ARTISTANT.IN
+                            {/* Bottom branding */}
+                            <div className="text-[5.5px] font-mono font-bold tracking-[0.25em] uppercase" style={{ color: activeStoryTemplate === 2 ? '#7C5CFF' : '#FFFFFF', opacity: 0.3 }}>
+                              ARTISTANT.IN
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -3319,10 +3342,10 @@ export default function ProfilePage() {
                         value={displayName}
                         onChange={(e) => setDisplayName(e.target.value)}
                         placeholder="e.g. Anudeep Dash"
-                        className={`rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-[#7C5CFF]/50 focus:ring-1 focus:ring-[#7C5CFF]/50 transition-all duration-300 font-sans ${
+                        className={`rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-[#7C5CFF] focus:ring-2 focus:ring-[#7C5CFF]/15 transition-all duration-300 font-sans border backdrop-blur-sm ${
                           isLight 
-                            ? 'bg-black/5 border-black/10 text-black placeholder-black/30' 
-                            : 'bg-black/40 border border-white/5 text-white placeholder-white/30'
+                            ? 'bg-zinc-50 border-black/[0.08] text-black placeholder-black/30 shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]' 
+                            : 'bg-white/[0.02] border-white/[0.08] text-white placeholder-white/30 shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)]'
                         }`}
                       />
                     </div>
@@ -3333,11 +3356,11 @@ export default function ProfilePage() {
                       <button
                         type="button"
                         onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                        className={`rounded-2xl px-4 py-3.5 text-xs flex items-center justify-between transition-all duration-300 border text-left outline-none ${
+                        className={`rounded-2xl px-4 py-3.5 text-xs flex items-center justify-between transition-all duration-300 border text-left outline-none backdrop-blur-sm ${
                           isLight 
-                            ? 'bg-black/5 border-black/10 text-zinc-800 hover:bg-black/10' 
-                            : 'bg-black/40 border-white/5 text-zinc-100 hover:bg-black/50'
-                        } ${isCategoryDropdownOpen ? 'border-[#7C5CFF]/50 ring-1 ring-[#7C5CFF]/50' : ''}`}
+                            ? 'bg-zinc-50 border-black/[0.08] text-zinc-800 hover:bg-black/[0.02]' 
+                            : 'bg-white/[0.02] border-white/[0.08] text-zinc-100 hover:bg-white/[0.05]'
+                        } ${isCategoryDropdownOpen ? 'border-[#7C5CFF] ring-2 ring-[#7C5CFF]/15' : ''}`}
                       >
                         <span className="font-sans font-medium">{categoryLabels[category] || category || 'Select Category'}</span>
                         <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isCategoryDropdownOpen ? 'rotate-180 text-[#7C5CFF]' : 'opacity-40'}`} />
@@ -3351,10 +3374,10 @@ export default function ProfilePage() {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -8 }}
                             transition={{ duration: 0.15, ease: 'easeOut' }}
-                            className={`absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-2xl border shadow-xl max-h-60 overflow-y-auto backdrop-blur-md ${
+                            className={`absolute left-0 right-0 top-[calc(100%+6px)] z-50 rounded-2xl border shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_25px_60px_rgba(0,0,0,0.5)] max-h-60 overflow-y-auto backdrop-blur-xl transition-all ${
                               isLight 
-                                ? 'bg-white/95 border-black/10' 
-                                : 'bg-[#121218]/95 border-white/10'
+                                ? 'bg-white/95 border-black/[0.08]' 
+                                : 'bg-[#101015]/95 border-white/[0.08]'
                             }`}
                           >
                             <div className="p-1.5 space-y-1">
@@ -3370,10 +3393,10 @@ export default function ProfilePage() {
                                     }}
                                     className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold font-sans transition-all duration-150 flex items-center justify-between ${
                                       selected
-                                        ? 'bg-[#7C5CFF] text-white'
+                                        ? 'bg-[#7C5CFF] text-white shadow-[0_4px_12px_rgba(124,92,255,0.2)]'
                                         : isLight 
-                                          ? 'hover:bg-black/5 text-zinc-800' 
-                                          : 'hover:bg-white/5 text-zinc-200'
+                                          ? 'hover:bg-[#7C5CFF]/5 hover:text-[#7C5CFF] text-zinc-800' 
+                                          : 'hover:bg-[#7C5CFF]/10 hover:text-[#B49FFF] text-zinc-200'
                                     }`}
                                   >
                                     <span>{label}</span>
@@ -3395,10 +3418,10 @@ export default function ProfilePage() {
                         value={city}
                         onChange={(e) => setCity(e.target.value)}
                         placeholder="e.g. Pune, India"
-                        className={`rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-[#7C5CFF]/50 focus:ring-1 focus:ring-[#7C5CFF]/50 transition-all duration-300 ${
+                        className={`rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-[#7C5CFF] focus:ring-2 focus:ring-[#7C5CFF]/15 transition-all duration-300 border backdrop-blur-sm ${
                           isLight 
-                            ? 'bg-black/5 border-black/10 text-black placeholder-black/30' 
-                            : 'bg-black/40 border border-white/5 text-white placeholder-white/30'
+                            ? 'bg-zinc-50 border-black/[0.08] text-black placeholder-black/30 shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]' 
+                            : 'bg-white/[0.02] border-white/[0.08] text-white placeholder-white/30 shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)]'
                         }`}
                       />
                     </div>
@@ -3406,8 +3429,10 @@ export default function ProfilePage() {
                     {/* Social Instagram */}
                     <div className="flex flex-col gap-1.5 col-span-1 md:col-span-2">
                       <label className={`text-[10px] font-bold uppercase tracking-wider font-mono ${isLight ? 'text-black/45' : 'text-white/40'}`}>Instagram</label>
-                      <div className={`flex items-center rounded-2xl px-4 py-3 focus-within:border-[#7C5CFF]/50 focus-within:ring-1 focus-within:ring-[#7C5CFF]/50 transition-all duration-300 ${
-                        isLight ? 'bg-black/5 border-black/10' : 'bg-black/40 border border-white/5'
+                      <div className={`flex items-center rounded-2xl px-4 py-3 focus-within:border-[#E1306C] focus-within:ring-2 focus-within:ring-[#E1306C]/10 transition-all duration-300 border backdrop-blur-sm ${
+                        isLight 
+                          ? 'bg-zinc-50 border-black/[0.08] shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]' 
+                          : 'bg-white/[0.02] border-white/[0.08] shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)]'
                       }`}>
                         <InstagramIcon className="w-4 h-4 text-[#E1306C] shrink-0 mr-2" />
                         <span className={`text-xs select-none font-mono mr-0.5 shrink-0 ${isLight ? 'text-black/40' : 'text-white/40'}`}>instagram.com/</span>
@@ -3426,8 +3451,10 @@ export default function ProfilePage() {
                     {/* Social Spotify */}
                     <div className="flex flex-col gap-1.5 col-span-1 md:col-span-2">
                       <label className={`text-[10px] font-bold uppercase tracking-wider font-mono ${isLight ? 'text-black/45' : 'text-white/40'}`}>Spotify</label>
-                      <div className={`flex items-center rounded-2xl px-4 py-3 focus-within:border-[#7C5CFF]/50 focus-within:ring-1 focus-within:ring-[#7C5CFF]/50 transition-all duration-300 ${
-                        isLight ? 'bg-black/5 border-black/10' : 'bg-black/40 border border-white/5'
+                      <div className={`flex items-center rounded-2xl px-4 py-3 focus-within:border-[#1DB954] focus-within:ring-2 focus-within:ring-[#1DB954]/10 transition-all duration-300 border backdrop-blur-sm ${
+                        isLight 
+                          ? 'bg-zinc-50 border-black/[0.08] shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]' 
+                          : 'bg-white/[0.02] border-white/[0.08] shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)]'
                       }`}>
                         <SpotifyIcon className="w-4 h-4 text-[#1DB954] shrink-0 mr-2" />
                         <span className={`text-xs select-none font-mono mr-0.5 shrink-0 ${isLight ? 'text-black/40' : 'text-white/40'}`}>open.spotify.com/artist/</span>
@@ -3436,6 +3463,28 @@ export default function ProfilePage() {
                           value={getSpotifyHandle(spotifyUrl)}
                           onChange={(e) => setSpotifyUrl(makeSpotifyUrl(e.target.value))}
                           placeholder="artist_id"
+                          className={`flex-1 bg-transparent border-none p-0 text-xs focus:ring-0 focus:outline-none ${
+                            isLight ? 'text-black placeholder-black/20' : 'text-white placeholder-white/20'
+                          }`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Social YouTube */}
+                    <div className="flex flex-col gap-1.5 col-span-1 md:col-span-2">
+                      <label className={`text-[10px] font-bold uppercase tracking-wider font-mono ${isLight ? 'text-black/45' : 'text-white/40'}`}>YouTube Channel</label>
+                      <div className={`flex items-center rounded-2xl px-4 py-3 focus-within:border-[#FF0000] focus-within:ring-2 focus-within:ring-[#FF0000]/10 transition-all duration-300 border backdrop-blur-sm ${
+                        isLight 
+                          ? 'bg-zinc-50 border-black/[0.08] shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]' 
+                          : 'bg-white/[0.02] border-white/[0.08] shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)]'
+                      }`}>
+                        <YouTubeIcon className="w-4.5 h-4.5 text-[#FF0000] shrink-0 mr-2" />
+                        <span className={`text-xs select-none font-mono mr-0.5 shrink-0 ${isLight ? 'text-black/40' : 'text-white/40'}`}>youtube.com/@</span>
+                        <input
+                          type="text"
+                          value={getYoutubeHandle(youtubeChannelUrl)}
+                          onChange={(e) => setYoutubeChannelUrl(makeYoutubeUrl(e.target.value))}
+                          placeholder="channel_handle"
                           className={`flex-1 bg-transparent border-none p-0 text-xs focus:ring-0 focus:outline-none ${
                             isLight ? 'text-black placeholder-black/20' : 'text-white placeholder-white/20'
                           }`}
@@ -3453,10 +3502,10 @@ export default function ProfilePage() {
                       onChange={(e) => setBio(e.target.value.slice(0, 150))}
                       placeholder="Tell clients about your work, instruments, performance packages..."
                       rows={3}
-                      className={`rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-[#7C5CFF]/50 focus:ring-1 focus:ring-[#7C5CFF]/50 transition-all duration-300 font-sans ${
+                      className={`rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-[#7C5CFF] focus:ring-2 focus:ring-[#7C5CFF]/15 transition-all duration-300 font-sans border backdrop-blur-sm ${
                         isLight 
-                          ? 'bg-black/5 border-black/10 text-black placeholder-black/30' 
-                          : 'bg-black/40 border border-white/5 text-white placeholder-white/30'
+                          ? 'bg-zinc-50 border-black/[0.08] text-black placeholder-black/30 shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]' 
+                          : 'bg-white/[0.02] border-white/[0.08] text-white placeholder-white/30 shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)]'
                       }`}
                     />
                     <span className={`text-[9px] text-right ${isLight ? 'text-black/40' : 'text-white/40'}`}>{bio.length}/150 characters</span>
@@ -3494,10 +3543,10 @@ export default function ProfilePage() {
                             }
                           }}
                           placeholder="Type tag & press enter"
-                          className={`flex-1 rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-[#7C5CFF]/50 focus:ring-1 focus:ring-[#7C5CFF]/50 transition-all duration-300 font-sans ${
+                          className={`flex-1 rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-[#7C5CFF] focus:ring-2 focus:ring-[#7C5CFF]/15 transition-all duration-300 font-sans border backdrop-blur-sm ${
                             isLight 
-                              ? 'bg-black/5 border-black/10 text-black placeholder-black/30' 
-                              : 'bg-black/40 border border-white/5 text-white placeholder-white/30'
+                              ? 'bg-zinc-50 border-black/[0.08] text-black placeholder-black/30 shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]' 
+                              : 'bg-white/[0.02] border-white/[0.08] text-white placeholder-white/30 shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)]'
                           }`}
                         />
                         <button
@@ -3951,9 +4000,9 @@ export default function ProfilePage() {
       <ImageCropperModal
         isOpen={cropperOpen}
         imageSrc={cropperImageSrc}
-        aspectRatio={3/4}
-        targetWidth={600}
-        targetHeight={800}
+        aspectRatio={300/220}
+        targetWidth={900}
+        targetHeight={660}
         onCrop={async (croppedBase64) => {
           setCropperOpen(false);
           if (!user) return;

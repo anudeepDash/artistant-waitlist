@@ -33,25 +33,18 @@ async function test() {
       return;
     }
 
-    // 2. Query using service role client
-    const { data: serviceData } = await serviceClient
-      .from('waitlist_users')
-      .select('*')
-      .eq('username', 'test_artist')
-      .maybeSingle();
-    console.log("Service client query result (should be present):", serviceData ? "Success" : "Failed");
+    // 2. Call admin_get_registrations function
+    console.log("Calling admin_get_registrations...");
+    const { data: adminData, error: adminError } = await serviceClient
+      .rpc('admin_get_registrations', { p_passcode: 'ARTISTANT_ADMIN_2026' });
 
-    // 3. Query using anon client (simulates public visitor)
-    const { data: anonData, error: anonError } = await anonClient
-      .from('waitlist_users')
-      .select('*')
-      .eq('username', 'test_artist')
-      .maybeSingle();
+    if (adminError) {
+      console.error("admin_get_registrations error:", adminError);
+    } else {
+      console.log("admin_get_registrations success. Count:", adminData ? adminData.length : 0);
+    }
 
-    console.log("Anon client query result:", anonData);
-    console.log("Anon client query error:", anonError);
-
-    // 4. Cleanup
+    // 3. Cleanup
     console.log("Cleaning up test record...");
     await serviceClient
       .from('waitlist_users')

@@ -41,7 +41,8 @@ export default function ImageCropperModal({
   const startPosition = useRef({ x: 0, y: 0 });
 
   // Calculate dimensions and minScale to cover crop frame
-  const handleImageLoad = () => {
+  // Calculate dimensions and minScale to cover crop frame
+  const handleImageLoad = (isInitial = false) => {
     if (!imgRef.current || !frameRef.current) return;
 
     const img = imgRef.current;
@@ -52,6 +53,8 @@ export default function ImageCropperModal({
 
     const nW = img.naturalWidth;
     const nH = img.naturalHeight;
+
+    if (!nW || !nH) return;
 
     const sX = fW / nW;
     const sY = fH / nH;
@@ -65,11 +68,13 @@ export default function ImageCropperModal({
       minScale: minS,
     });
 
-    // Center the image initially
-    const initX = (fW - nW * minS) / 2;
-    const initY = (fH - nH * minS) / 2;
-    setPosition({ x: initX, y: initY });
-    setZoom(1);
+    if (isInitial) {
+      // Center the image initially
+      const initX = (fW - nW * minS) / 2;
+      const initY = (fH - nH * minS) / 2;
+      setPosition({ x: initX, y: initY });
+      setZoom(1);
+    }
     setImgLoaded(true);
   };
 
@@ -82,7 +87,7 @@ export default function ImageCropperModal({
 
     const handleResize = () => {
       if (imgLoaded) {
-        handleImageLoad();
+        handleImageLoad(false);
       }
     };
 
@@ -103,11 +108,34 @@ export default function ImageCropperModal({
   useEffect(() => {
     if (isOpen && imgLoaded) {
       const timer = setTimeout(() => {
-        handleImageLoad();
+        handleImageLoad(false);
       }, 300);
       return () => clearTimeout(timer);
     }
   }, [isOpen, imgLoaded]);
+
+  // Check if image is already loaded (complete) on mount/src change (very common for cached or base64 images)
+  useEffect(() => {
+    let checkInterval: NodeJS.Timeout;
+    let hasLoaded = false;
+
+    if (isOpen && imageSrc) {
+      const checkImage = () => {
+        const img = imgRef.current;
+        if (img && img.complete && img.naturalWidth > 0 && !hasLoaded) {
+          hasLoaded = true;
+          handleImageLoad(true);
+          clearInterval(checkInterval);
+        }
+      };
+
+      checkImage();
+      checkInterval = setInterval(checkImage, 50);
+    }
+    return () => {
+      if (checkInterval) clearInterval(checkInterval);
+    };
+  }, [imageSrc, isOpen]);
 
   // Adjust position when zoom changes, zooming relative to the frame center
   const handleZoomChange = (newZoom: number) => {
@@ -285,7 +313,7 @@ export default function ImageCropperModal({
                       width: dimensions.naturalWidth ? `${dimensions.naturalWidth * dimensions.minScale * zoom}px` : 'auto',
                       height: dimensions.naturalHeight ? `${dimensions.naturalHeight * dimensions.minScale * zoom}px` : 'auto',
                     }}
-                    onLoad={handleImageLoad}
+                    onLoad={() => handleImageLoad(true)}
                   />
                 )}
 

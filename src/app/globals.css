@@ -19,6 +19,9 @@
   --color-brand: var(--brand-1);
   --color-brand-ink: #ffffff;
   --color-hot: var(--hot);
+  --color-glass-bg: var(--glass-bg);
+  --color-glass-border: var(--glass-border);
+  --color-bg-card-hover: var(--bg-card-hover);
 
   --font-display: "Space Grotesk", system-ui, sans-serif;
   --font-serif: "Space Grotesk", system-ui, sans-serif;
@@ -70,6 +73,15 @@
   --orb-opacity: 0.85;
   --glow-blend: normal;
   color-scheme: light;
+
+  /* What-is-card variables */
+  --what-is-card-bg: rgba(255, 255, 255, 0.65);
+  --what-is-card-border: rgba(0, 0, 0, 0.06);
+  --what-is-card-shadow: rgba(0, 0, 0, 0.05);
+  --what-is-card-glow-opacity: 0.08;
+  --what-is-card-glow-1: radial-gradient(ellipse at top left, rgba(242, 90, 43, 0.08), transparent 70%);
+  --what-is-card-glow-2: radial-gradient(ellipse at top left, rgba(124, 92, 255, 0.08), transparent 70%);
+  --what-is-card-glow-3: radial-gradient(ellipse at top left, rgba(212, 86, 122, 0.08), transparent 70%);
 }
 
 .dark, :root[class~="dark"] {
@@ -114,6 +126,15 @@
   --orb-opacity: 1;
   --glow-blend: screen;
   color-scheme: dark;
+
+  /* What-is-card variables */
+  --what-is-card-bg: rgba(18, 18, 18, 0.7);
+  --what-is-card-border: rgba(255, 255, 255, 0.08);
+  --what-is-card-shadow: rgba(0, 0, 0, 0.4);
+  --what-is-card-glow-opacity: 0.15;
+  --what-is-card-glow-1: radial-gradient(ellipse at top left, rgba(242, 90, 43, 0.15), transparent 70%);
+  --what-is-card-glow-2: radial-gradient(ellipse at top left, rgba(124, 92, 255, 0.15), transparent 70%);
+  --what-is-card-glow-3: radial-gradient(ellipse at top left, rgba(212, 86, 122, 0.15), transparent 70%);
 }
 
 /* ═══ BASE ═══ */
@@ -550,6 +571,148 @@
   max-width: 560px;
 }
 
+/* ═══ WHAT IS ARTISTANT CARDS ═══ */
+.what-is-card {
+  background: var(--what-is-card-bg);
+  border: 1px solid var(--what-is-card-border);
+  border-radius: 16px;
+  padding: 40px;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(15px);
+  box-shadow: 0 10px 30px -10px var(--what-is-card-shadow);
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.what-is-card::before {
+  content: "";
+  display: none;
+}
+.what-is-card:hover {
+  box-shadow: 0 20px 40px -15px var(--what-is-card-shadow);
+}
+.what-is-card-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+.what-is-card-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(20px, 2vw, 24px);
+  color: var(--ink);
+  margin-bottom: 12px;
+  letter-spacing: -0.015em;
+}
+.what-is-card-desc {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  margin-bottom: 20px;
+}
+.what-is-card-points {
+  margin: 18px 0 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.what-is-card-point {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.what-is-card-point-bullet {
+  margin-top: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.what-is-card-point strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* ═══ FAQ SECTION ═══ */
+.faq-list {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+.faq-item {
+  border-bottom: 1px solid var(--line);
+  position: relative;
+}
+.faq-item:first-child {
+  border-top: 1px solid var(--line);
+}
+.faq-question {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(16px, 1.5vw, 19px);
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  transition: color 0.2s ease;
+}
+.faq-question:hover {
+  color: var(--brand-1);
+}
+.faq-question:hover .faq-chevron {
+  color: var(--brand-1);
+}
+.faq-question-text {
+  flex: 1;
+}
+.faq-chevron {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-3);
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+.faq-question:hover .faq-chevron {
+  background: rgba(242, 90, 43, 0.08);
+  border-color: rgba(242, 90, 43, 0.2);
+}
+.faq-answer-wrapper {
+  overflow: hidden;
+}
+.faq-answer {
+  padding: 0 4px 24px 4px;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--ink-2);
+  max-width: 680px;
+}
+
 /* ═══ STAT CARDS ═══ */
 .stat-grid {
   margin-top: 56px;
@@ -722,18 +885,20 @@
   gap: 24px;
 }
 .voice-card {
-  background: var(--bg-2);
-  border: 1px solid var(--line-soft);
-  border-left: 3px solid var(--voice-accent, var(--brand-1));
+  background: var(--what-is-card-bg);
+  border: 1px solid var(--what-is-card-border);
   border-radius: 16px;
   padding: 32px 28px;
-  transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  backdrop-filter: blur(15px);
+  box-shadow: 0 10px 30px -10px var(--what-is-card-shadow);
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
+  overflow: hidden;
 }
 .voice-card:hover {
-  transform: translateY(-4px);
-  border-color: var(--line);
-  box-shadow: 0 16px 48px -12px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 20px 40px -15px var(--what-is-card-shadow);
 }
 .voice-quote {
   font-size: 16px;
@@ -742,6 +907,7 @@
   font-style: italic;
   margin-bottom: 28px;
   position: relative;
+  padding-left: 28px;
 }
 .voice-quote::before {
   content: '\201C';
@@ -749,9 +915,9 @@
   font-size: 48px;
   font-weight: 700;
   color: var(--voice-accent, var(--brand-1));
-  opacity: 0.3;
+  opacity: 0.15;
   position: absolute;
-  top: -20px;
+  top: -12px;
   left: -4px;
   line-height: 1;
 }
@@ -761,6 +927,7 @@
   gap: 14px;
   padding-top: 20px;
   border-top: 1px solid var(--line-soft);
+  margin-top: auto;
 }
 .voice-avatar {
   width: 44px;
@@ -2012,7 +2179,7 @@
   }
 
   .hero {
-    padding: 100px var(--gutter) 60px;
+    padding: 90px var(--gutter) 60px;
   }
 
   .hero-headline {
@@ -2164,6 +2331,43 @@
   }
   .section-desc {
     font-size: 15px !important;
+  }
+
+  /* ── What is ArtisTant mobile ── */
+  .what-is-card {
+    padding: 28px 24px;
+    border-radius: 20px;
+  }
+  .what-is-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    margin-bottom: 20px;
+  }
+  .what-is-card-title {
+    font-size: 20px !important;
+  }
+  .what-is-card-desc {
+    font-size: 14px;
+  }
+
+  /* ── FAQ mobile ── */
+  .faq-question {
+    padding: 20px 0;
+    font-size: 16px !important;
+    gap: 16px;
+  }
+  .faq-chevron {
+    width: 28px;
+    height: 28px;
+  }
+  .faq-chevron svg {
+    width: 16px;
+    height: 16px;
+  }
+  .faq-answer {
+    padding: 0 0 20px 0;
+    font-size: 14px;
   }
 
   /* ── Timeline compact ── */

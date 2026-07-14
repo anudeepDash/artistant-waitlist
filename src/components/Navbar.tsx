@@ -140,14 +140,14 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="fixed top-0 inset-x-0 z-50 px-4 pt-4 md:px-6 pointer-events-none"
+      className="fixed top-0 inset-x-0 z-50 px-3 pt-3 md:px-6 md:pt-4 pointer-events-none"
     >
       <div
         className={[
           'mx-auto w-full transition-all duration-500 ease-out pointer-events-auto',
           scrolled
-            ? 'max-w-4xl bg-glass-bg border border-glass-border/60 shadow-lg shadow-black/10 rounded-full py-2 px-5 md:py-2.5 md:px-7 backdrop-blur-xl'
-            : 'max-w-7xl bg-transparent border-transparent py-4 px-6 md:px-10 rounded-none'
+            ? 'max-w-4xl bg-glass-bg border border-glass-border/60 shadow-lg shadow-black/10 rounded-full py-1.5 px-3 md:py-2.5 md:px-7 backdrop-blur-xl'
+            : 'max-w-7xl bg-transparent border-transparent py-3 px-4 md:py-4 md:px-10 rounded-none'
         ].join(' ')}
       >
         <div className="flex items-center justify-between">
@@ -168,11 +168,10 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
               src="/logo_wordmark.png"
               alt="ArtisTant"
               style={{
-                height: scrolled ? '56px' : '90px',
                 width: 'auto',
                 display: 'block'
               }}
-              className="object-contain transition-all duration-300 dark:invert-0 invert"
+              className={`object-contain transition-all duration-300 dark:invert-0 invert ${scrolled ? 'h-[36px] md:h-[56px]' : 'h-[44px] md:h-[90px]'}`}
             />
           </a>
 
@@ -209,7 +208,7 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
           )}
 
           {/* ── RIGHT: Controls & Profile ────────────── */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
             
             {/* Founding Points Badge (Profile Page specific) */}
             {foundingPoints !== undefined && (
@@ -233,7 +232,7 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
                 <button 
                   onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                   className="
-                    flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full
+                    flex items-center gap-2 px-2.5 py-1.5 md:px-4 md:py-2 rounded-full
                     bg-ink/5 dark:bg-white/5 border border-glass-border hover:bg-ink/10 dark:hover:bg-white/10 
                     transition-all duration-200 cursor-pointer text-sm font-medium text-ink
                   "
@@ -408,8 +407,8 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
                 className="
                   inline-flex items-center gap-1.5 cursor-pointer
                   bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF]
-                  px-5 py-2 rounded-full
-                  font-mono text-xs font-bold text-white uppercase tracking-wider
+                  px-3.5 py-1.5 md:px-5 md:py-2 rounded-full
+                  font-mono text-[10px] md:text-xs font-bold text-white uppercase tracking-wider
                   hover:scale-[1.04] active:scale-[0.97] shadow-lg shadow-[#F25A2B]/15
                   transition-all duration-200
                 "
@@ -429,7 +428,7 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
                 aria-expanded={mobileOpen}
                 onClick={() => setMobileOpen((prev) => !prev)}
                 className="
-                  md:hidden relative w-9 h-9 cursor-pointer
+                  md:hidden relative w-8 h-8 md:w-9 md:h-9 cursor-pointer
                   flex flex-col items-center justify-center gap-1.5 rounded-full
                   bg-ink/5 dark:bg-white/5 border border-glass-border
                 "

@@ -16,7 +16,7 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <div className="w-9 h-9 rounded-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10" />
+      <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10" />
     );
   }
 
@@ -25,7 +25,7 @@ export function ThemeToggle() {
       onClick={() => {
         setTheme(resolvedTheme === "light" ? "dark" : "light");
       }}
-      className="relative w-9 h-9 flex items-center justify-center rounded-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:bg-black/10 dark:hover:bg-white/10 transition-colors text-ink-2 hover:text-ink overflow-hidden before:absolute before:inset-[-6px] before:content-['']"
+      className="relative w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 hover:bg-black/10 dark:hover:bg-white/10 transition-colors text-ink-2 hover:text-ink overflow-hidden before:absolute before:inset-[-6px] before:content-['']"
       aria-label="Toggle theme"
       title={`Current theme: ${resolvedTheme}`}
     >
@@ -38,7 +38,7 @@ export function ThemeToggle() {
           transition={{ duration: 0.3, ease: "easeInOut" }}
           style={{ position: 'absolute' }}
         >
-          {resolvedTheme === "light" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          {resolvedTheme === "light" ? <Sun className="w-3.5 h-3.5 md:w-4 md:h-4" /> : <Moon className="w-3.5 h-3.5 md:w-4 md:h-4" />}
         </motion.div>
       </AnimatePresence>
     </button>

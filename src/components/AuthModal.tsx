@@ -312,12 +312,9 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
   // --------------------------------------------------------------------------
   const goToProfileStep = useCallback((firebaseUser: any) => {
     // Log login activity
-    logActivityAction({
-      userId: firebaseUser.uid,
-      email: firebaseUser.email || undefined,
-      actionType: 'login',
-      userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : undefined,
-    }).catch(err => console.warn('Error logging sign-in:', err));
+    firebaseUser.getIdToken()
+      .then((idToken: string) => logActivityAction({ actionType: 'login', idToken }))
+      .catch((err: unknown) => console.warn('Error logging sign-in:', err));
 
     if (!initialUsername || initialUsername.trim() === '') {
       onClose();
@@ -376,13 +373,9 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
       }
 
       // Log waitlist registration activity
-      logActivityAction({
-        userId: pendingUser.uid,
-        email: resolvedEmail,
-        username: normalised,
-        actionType: 'waitlist_register',
-        userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : undefined,
-      }).catch(err => console.warn('Error logging waitlist registration:', err));
+      pendingUser.getIdToken()
+        .then((idToken: string) => logActivityAction({ actionType: 'waitlist_register', idToken }))
+        .catch((err: unknown) => console.warn('Error logging waitlist registration:', err));
 
       // Trigger welcome email notification in the background
       pendingUser.getIdToken().then((idToken: string) => {
@@ -1748,9 +1741,9 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
     <ImageCropperModal
       isOpen={cropperOpen}
       imageSrc={cropperImageSrc}
-      aspectRatio={3/4}
-      targetWidth={600}
-      targetHeight={800}
+      aspectRatio={300/220}
+      targetWidth={900}
+      targetHeight={660}
       onCrop={(croppedBase64) => {
         setProfilePhotoPreview(croppedBase64);
         setCropperOpen(false);

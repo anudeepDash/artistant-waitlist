@@ -1,6 +1,7 @@
 'use server';
 
 import crypto from 'crypto';
+import { headers } from 'next/headers';
 
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { type AdminWaitlistEntry } from './waitlist';
@@ -13,30 +14,25 @@ import { verifyAdminToken, verifyIdToken } from './firebase/admin';
  * Otherwise, it falls back to the anonymous client (requiring DB RPC functions).
  */
 function createAdminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceRoleKey) {
-    return createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false,
-        },
-      }
-    );
+
+  if (!url) {
+    throw new Error('Supabase client configuration error: NEXT_PUBLIC_SUPABASE_URL is missing.');
   }
 
-  return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    serviceRoleKey,
-    {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    }
-  );
+  const key = serviceRoleKey || anonKey;
+  if (!key) {
+    throw new Error('Supabase client configuration error: Neither SUPABASE_SERVICE_ROLE_KEY nor NEXT_PUBLIC_SUPABASE_ANON_KEY is set.');
+  }
+
+  return createSupabaseClient(url, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
 }
 
 /**
@@ -87,7 +83,8 @@ export async function adminUpdateRegistrationAction(
   userId: string,
   isVerified: boolean,
   isBlocked: boolean,
-  positionOverride?: number | null
+  positionOverride?: number | null,
+  featureFoundingCard?: boolean
 ): Promise<void> {
   await verifyAdminToken(idToken);
 
@@ -96,13 +93,18 @@ export async function adminUpdateRegistrationAction(
 
   if (serviceRoleKey) {
     // Service Role Client: update table directly bypassing RLS
+    const updatePayload: any = {
+      is_verified: isVerified,
+      is_blocked: isBlocked,
+      position_override: positionOverride !== undefined ? positionOverride : null,
+    };
+    if (featureFoundingCard !== undefined) {
+      updatePayload.feature_founding_card = featureFoundingCard;
+    }
+
     const { error } = await client
       .from('waitlist_users')
-      .update({
-        is_verified: isVerified,
-        is_blocked: isBlocked,
-        position_override: positionOverride !== undefined ? positionOverride : null,
-      })
+      .update(updatePayload)
       .eq('user_id', userId);
 
     if (error) {
@@ -110,7 +112,7 @@ export async function adminUpdateRegistrationAction(
       const ref = crypto.randomUUID(); console.error('Error Ref:', ref, error); throw new Error('An internal error occurred. Ref: ' + ref);
     }
   } else {
-    // Fallback: call the RPC function
+    // Fallback: call the RPC function (might not support feature_founding_card in legacy RPC, but we can update it if it allows direct query)
     const { error } = await client.rpc('admin_update_registration', {
       p_passcode: process.env.ADMIN_PASSCODE || '',
       p_user_id: userId,
@@ -271,28 +273,47 @@ export async function adminRemoveAdminAction(idToken: string, email: string): Pr
  * (e.g., via Vercel Edge Config or a Redis counter) to prevent abuse.
  */
 export async function logActivityAction(input: {
-  userId?: string;
-  email?: string;
-  username?: string;
   actionType: string;
-  userAgent?: string;
-  referrer?: string;
+  idToken?: string;
 }): Promise<void> {
   const allowedTypes = ['visit', 'login', 'waitlist_register'];
   if (!allowedTypes.includes(input.actionType)) {
     throw new Error('Invalid activity type');
   }
 
+  // Login and registration entries must be tied to a verified Firebase user.
+  if (input.actionType !== 'visit' && !input.idToken) {
+    throw new Error('Authentication is required for this activity type');
+  }
+
+  let userId: string | null = null;
+  let email: string | null = null;
+  let username: string | null = null;
+  if (input.idToken) {
+    const decoded = await verifyIdToken(input.idToken);
+    userId = decoded.uid;
+    email = decoded.email || null;
+
+    const { data } = await createAdminClient()
+      .from('waitlist_users')
+      .select('username')
+      .eq('user_id', userId)
+      .maybeSingle();
+    username = data?.username || null;
+  }
+
+  const requestHeaders = await headers();
+
   const client = createAdminClient();
   const { error } = await client
     .from('activity_logs')
     .insert({
-      user_id: input.userId || null,
-      email: input.email || null,
-      username: input.username || null,
+      user_id: userId,
+      email,
+      username,
       action_type: input.actionType,
-      user_agent: input.userAgent || null,
-      referrer: input.referrer || null
+      user_agent: requestHeaders.get('user-agent'),
+      referrer: requestHeaders.get('referer'),
     });
 
   if (error) {
@@ -494,36 +515,48 @@ export async function markStorySharedAction(idToken: string): Promise<void> {
  * Server Action to check if a username is available.
  * Bypasses RLS by using the service role client on the server.
  */
-export async function checkUsernameAvailableAction(username: string): Promise<boolean> {
-  const client = createAdminClient();
-  const normalised = username.trim().toLowerCase();
+export type CheckUsernameResult = {
+  success: boolean;
+  available: boolean;
+  error?: string;
+};
 
-  const usernameRegex = /^[a-zA-Z0-9_.]{3,30}$/;
-  if (!usernameRegex.test(normalised)) {
-    return false;
-  }
+export async function checkUsernameAvailableAction(username: string): Promise<CheckUsernameResult> {
+  try {
+    const normalised = username.trim().toLowerCase();
 
-  // Directly check the waitlist_users table
-  const { data, error } = await client
-    .from('waitlist_users')
-    .select('id')
-    .eq('username', normalised)
-    .limit(1);
-
-  if (error) {
-    console.error('Error checking username availability directly, falling back:', error);
-    // Fallback to the RPC function in case table structure or permissions have issues
-    const { data: rpcData, error: rpcError } = await client.rpc('check_username_available', {
-      p_username: normalised,
-    });
-    if (rpcError) {
-      console.error('Fallback RPC check also failed:', rpcError);
-      throw new Error('Could not verify username availability due to database error.');
+    const usernameRegex = /^[a-zA-Z0-9_.]{3,30}$/;
+    if (!usernameRegex.test(normalised)) {
+      return { success: true, available: false, error: 'Invalid username format' };
     }
-    return rpcData === true;
-  }
 
-  return !data || data.length === 0;
+    const client = createAdminClient();
+
+    // Directly check the waitlist_users table
+    const { data, error } = await client
+      .from('waitlist_users')
+      .select('id')
+      .eq('username', normalised)
+      .limit(1);
+
+    if (error) {
+      console.error('Error checking username availability directly, falling back:', error);
+      // Fallback to the RPC function in case table structure or permissions have issues
+      const { data: rpcData, error: rpcError } = await client.rpc('check_username_available', {
+        p_username: normalised,
+      });
+      if (rpcError) {
+        console.error('Fallback RPC check also failed:', rpcError);
+        return { success: false, available: false, error: 'Could not verify username availability due to database error.' };
+      }
+      return { success: true, available: rpcData === true };
+    }
+
+    return { success: true, available: !data || data.length === 0 };
+  } catch (err: any) {
+    console.error('Unhandled error in checkUsernameAvailableAction:', err);
+    return { success: false, available: false, error: err?.message || 'Internal server error checking availability.' };
+  }
 }
 
 /**
@@ -531,42 +564,41 @@ export async function checkUsernameAvailableAction(username: string): Promise<bo
  * Bypasses RLS by using the service role client on the server.
  */
 export async function checkMultipleUsernamesAvailableAction(usernames: string[]): Promise<Record<string, boolean>> {
-  const client = createAdminClient();
-  const normalisedUsernames = usernames
-    .map(u => u.trim().toLowerCase())
-    .filter(u => /^[a-zA-Z0-9_.]{3,30}$/.test(u));
-
   const result: Record<string, boolean> = {};
-  
-  if (normalisedUsernames.length === 0) {
-    for (const u of usernames) {
-      result[u] = false;
-    }
-    return result;
+  for (const u of usernames) {
+    result[u] = false;
   }
 
-  const { data, error } = await client
-    .from('waitlist_users')
-    .select('username')
-    .in('username', normalisedUsernames);
+  try {
+    const client = createAdminClient();
+    const normalisedUsernames = usernames
+      .map(u => u.trim().toLowerCase())
+      .filter(u => /^[a-zA-Z0-9_.]{3,30}$/.test(u));
 
-  if (error) {
-    console.error('Error checking bulk usernames availability:', error);
-    for (const u of usernames) {
-      result[u] = false;
+    if (normalisedUsernames.length === 0) {
+      return result;
     }
-    return result;
-  }
 
-  const takenSet = new Set(data?.map(row => row.username) || []);
-  
-  for (const username of usernames) {
-    const norm = username.trim().toLowerCase();
-    if (!/^[a-zA-Z0-9_.]{3,30}$/.test(norm)) {
-      result[username] = false;
-    } else {
-      result[username] = !takenSet.has(norm);
+    const { data, error } = await client
+      .from('waitlist_users')
+      .select('username')
+      .in('username', normalisedUsernames);
+
+    if (error) {
+      console.error('Error checking bulk usernames availability:', error);
+      return result;
     }
+
+    const takenSet = new Set(data?.map(row => row.username) || []);
+    
+    for (const username of usernames) {
+      const norm = username.trim().toLowerCase();
+      if (/^[a-zA-Z0-9_.]{3,30}$/.test(norm)) {
+        result[username] = !takenSet.has(norm);
+      }
+    }
+  } catch (err) {
+    console.error('Unhandled error in checkMultipleUsernamesAvailableAction:', err);
   }
 
   return result;

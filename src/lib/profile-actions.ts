@@ -2,6 +2,57 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { verifyIdToken } from './firebase/admin';
+import { cookies, headers } from 'next/headers';
+import crypto from 'crypto';
+import { type WaitlistEntry } from './waitlist';
+
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 15 * 1024 * 1024;
+
+const IMAGE_TYPES = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+} as const;
+
+const VIDEO_TYPES = {
+  'video/mp4': 'mp4',
+  'video/webm': 'webm',
+  'video/quicktime': 'mov',
+} as const;
+
+type UploadTypeMap = Record<string, string>;
+
+function parseBase64Upload(
+  dataUrl: string,
+  allowedTypes: UploadTypeMap,
+  maxBytes: number,
+) {
+  const parts = dataUrl.split(',');
+  if (parts.length !== 2) {
+    throw new Error('Unsupported upload format (no data)');
+  }
+  
+  const header = parts[0];
+  const base64Data = parts[1];
+  
+  const contentTypeMatch = /^data:([^;,]+);base64$/.exec(header);
+  if (!contentTypeMatch) {
+    throw new Error('Unsupported upload format (invalid header)');
+  }
+  
+  const contentType = contentTypeMatch[1];
+  if (!(contentType in allowedTypes)) {
+    throw new Error('Unsupported file type');
+  }
+
+  const buffer = Buffer.from(base64Data, 'base64');
+  if (!buffer.length || buffer.length > maxBytes) {
+    throw new Error(`Upload must be smaller than ${Math.floor(maxBytes / 1024 / 1024)}MB`);
+  }
+
+  return { buffer, contentType, extension: allowedTypes[contentType] };
+}
 
 function createAdminClient() {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -13,24 +64,35 @@ function createAdminClient() {
 }
 
 export async function incrementProfileVisitorsAction(username: string) {
+  const normalisedUsername = username.trim().toLowerCase();
+  if (!/^[a-z0-9_.]{3,30}$/.test(normalisedUsername)) return false;
+
+  const requestHeaders = await headers();
+  const cookieStore = await cookies();
+  let visitorId = cookieStore.get('artistant_visitor_id')?.value;
+  if (!visitorId) {
+    visitorId = crypto.randomUUID();
+    cookieStore.set('artistant_visitor_id', visitorId, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 60 * 60 * 24 * 365,
+      path: '/',
+    });
+  }
+
+  const forwardedFor = requestHeaders.get('x-forwarded-for')?.split(',')[0]?.trim() || '';
+  const visitorKey = crypto
+    .createHash('sha256')
+    .update(`${process.env.VISITOR_HASH_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || 'artistant'}:${forwardedFor}:${visitorId}`)
+    .digest('hex');
   const client = createAdminClient();
-  
-  const { data, error } = await client
-    .from('waitlist_users')
-    .select('profile_visitors_count')
-    .eq('username', username)
-    .single();
-    
-  if (error || !data) return false;
-  
-  const newCount = (data.profile_visitors_count || 0) + 1;
-  
-  await client
-    .from('waitlist_users')
-    .update({ profile_visitors_count: newCount })
-    .eq('username', username);
-    
-  return true;
+  const { error } = await client.rpc('increment_profile_visitors', {
+    p_username: normalisedUsername,
+    p_viewer_key: visitorKey,
+  });
+
+  return !error;
 }
 
 export async function updateCustomStatusMessageAction(idToken: string, message: string) {
@@ -59,24 +121,14 @@ export async function updateCustomStatusMessageAction(idToken: string, message: 
 export async function uploadProfilePhotoAction(
   idToken: string,
   base64DataUrl: string,
-  fileExtension: string,
+  _fileExtension: string,
 ): Promise<string> {
   const decodedToken = await verifyIdToken(idToken);
   const uid = decodedToken.uid;
   const client = createAdminClient();
 
-  // Decode the base64 data URL into a buffer
-  const base64Data = base64DataUrl.split(',')[1];
-  if (!base64Data) {
-    throw new Error('Invalid image data');
-  }
-  const buffer = Buffer.from(base64Data, 'base64');
-
-  // Determine content type
-  const mimeMatch = base64DataUrl.match(/^data:(image\/\w+);/);
-  const contentType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-
-  const fileName = `${uid}_${Date.now()}.${fileExtension || 'jpg'}`;
+  const { buffer, contentType, extension } = parseBase64Upload(base64DataUrl, IMAGE_TYPES, MAX_IMAGE_BYTES);
+  const fileName = `${uid}_${Date.now()}.${extension}`;
 
   // Ensure the 'profiles' bucket exists (service role can create buckets)
   const { data: buckets } = await client.storage.listBuckets();
@@ -204,6 +256,7 @@ export async function updateProfileDetailsAction(
     instagram_url?: string;
     spotify_url?: string;
     youtube_url?: string;
+    youtube_channel_url?: string;
   }
 ): Promise<boolean> {
   const decodedToken = await verifyIdToken(idToken);
@@ -220,6 +273,7 @@ export async function updateProfileDetailsAction(
       ...(details.instagram_url !== undefined ? { instagram_url: details.instagram_url } : {}),
       ...(details.spotify_url !== undefined ? { spotify_url: details.spotify_url } : {}),
       ...(details.youtube_url !== undefined ? { youtube_url: details.youtube_url } : {}),
+      ...(details.youtube_channel_url !== undefined ? { youtube_channel_url: details.youtube_channel_url } : {}),
     })
     .eq('user_id', decodedToken.uid);
 
@@ -251,19 +305,47 @@ export async function updateFeatureFoundingCardAction(
   return true;
 }
 
-export async function getPublicProfileDataAction(username: string): Promise<{
-  reservation: any;
+export type PublicProfileReservation = Pick<WaitlistEntry,
+  | 'username'
+  | 'display_name'
+  | 'role'
+  | 'category'
+  | 'genres'
+  | 'city'
+  | 'event_types'
+  | 'spotify_url'
+  | 'instagram_url'
+  | 'youtube_url'
+  | 'youtube_channel_url'
+  | 'bio'
+  | 'profile_photo_url'
+  | 'gallery_photos'
+  | 'profile_visitors_count'
+  | 'custom_status_message'
+  | 'section_order'
+  | 'contact_email_enabled'
+  | 'contact_phone_enabled'
+  | 'feature_founding_card'
+> & Partial<Pick<WaitlistEntry, 'email' | 'phone'>>;
+
+export type PublicProfileData = {
+  reservation: PublicProfileReservation;
   points: number;
   waitlistPos: number;
   cohortVal: string;
-} | null> {
+};
+
+export async function getPublicProfileDataAction(username: string): Promise<PublicProfileData | null> {
+  const normalisedUsername = username.trim().toLowerCase();
+  if (!/^[a-z0-9_.]{3,30}$/.test(normalisedUsername)) return null;
   const client = createAdminClient();
   
   // 1. Fetch waitlist entry
   const { data: reservation, error } = await client
     .from('waitlist_users')
     .select('*')
-    .eq('username', username.trim().toLowerCase())
+    .eq('username', normalisedUsername)
+    .eq('is_blocked', false)
     .maybeSingle();
     
   if (error || !reservation) {
@@ -274,7 +356,7 @@ export async function getPublicProfileDataAction(username: string): Promise<{
   const { count: referralCount } = await client
     .from('waitlist_users')
     .select('id', { count: 'exact', head: true })
-    .eq('referred_by', username.trim().toLowerCase())
+    .eq('referred_by', normalisedUsername)
     .eq('is_verified', true);
     
   const verifiedRefs = referralCount || 0;
@@ -286,6 +368,7 @@ export async function getPublicProfileDataAction(username: string): Promise<{
     const { count } = await client
       .from('waitlist_users')
       .select('id', { count: 'exact', head: true })
+      .eq('is_blocked', false)
       .lte('reserved_at', reservation.reserved_at);
     pos = count;
   }
@@ -294,45 +377,47 @@ export async function getPublicProfileDataAction(username: string): Promise<{
   const cohortVal = waitlistPos ? Math.ceil(waitlistPos / 100).toString().padStart(3, '0') : '003';
   
   return {
-    reservation,
+    reservation: {
+      username: reservation.username,
+      display_name: reservation.display_name,
+      role: reservation.role,
+      category: reservation.category,
+      genres: reservation.genres,
+      city: reservation.city,
+      event_types: reservation.event_types,
+      spotify_url: reservation.spotify_url,
+      instagram_url: reservation.instagram_url,
+      youtube_url: reservation.youtube_url,
+      bio: reservation.bio,
+      profile_photo_url: reservation.profile_photo_url,
+      gallery_photos: reservation.gallery_photos,
+      profile_visitors_count: reservation.profile_visitors_count,
+      custom_status_message: reservation.custom_status_message,
+      section_order: reservation.section_order,
+      contact_email_enabled: reservation.contact_email_enabled,
+      contact_phone_enabled: reservation.contact_phone_enabled,
+      feature_founding_card: reservation.feature_founding_card,
+      ...(reservation.contact_email_enabled && reservation.email ? { email: reservation.email } : {}),
+      ...(reservation.contact_phone_enabled && reservation.phone ? { phone: reservation.phone } : {}),
+      youtube_channel_url: reservation.youtube_channel_url || null,
+    },
     points: calculatedPoints,
     waitlistPos,
     cohortVal
   };
 }
 
-export async function getWaitlistEntryByUsernameAction(username: string) {
-  const client = createAdminClient();
-  const { data, error } = await client
-    .from('waitlist_users')
-    .select('*')
-    .eq('username', username.trim().toLowerCase())
-    .maybeSingle();
-  if (error || !data) return null;
-  return data;
-}
-
 export async function uploadGalleryPhotoAction(
   idToken: string,
   base64DataUrl: string,
-  fileExtension: string
+  _fileExtension: string
 ): Promise<string[]> {
   const decodedToken = await verifyIdToken(idToken);
   const uid = decodedToken.uid;
   const client = createAdminClient();
 
-  // Decode the base64 data URL into a buffer
-  const base64Data = base64DataUrl.split(',')[1];
-  if (!base64Data) {
-    throw new Error('Invalid image data');
-  }
-  const buffer = Buffer.from(base64Data, 'base64');
-
-  // Determine content type
-  const mimeMatch = base64DataUrl.match(/^data:(image\/\w+);/);
-  const contentType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-
-  const fileName = `gallery_${uid}_${Date.now()}.${fileExtension || 'jpg'}`;
+  const { buffer, contentType, extension } = parseBase64Upload(base64DataUrl, IMAGE_TYPES, MAX_IMAGE_BYTES);
+  const fileName = `gallery_${uid}_${Date.now()}.${extension}`;
 
   // Ensure the 'profiles' bucket exists (service role can create buckets)
   const { data: buckets } = await client.storage.listBuckets();
@@ -440,24 +525,14 @@ export async function deleteGalleryPhotoAction(
 export async function uploadShowreelVideoAction(
   idToken: string,
   base64DataUrl: string,
-  fileExtension: string
+  _fileExtension: string
 ): Promise<string> {
   const decodedToken = await verifyIdToken(idToken);
   const uid = decodedToken.uid;
   const client = createAdminClient();
 
-  // Decode the base64 data URL into a buffer
-  const base64Data = base64DataUrl.split(',')[1];
-  if (!base64Data) {
-    throw new Error('Invalid video data');
-  }
-  const buffer = Buffer.from(base64Data, 'base64');
-
-  // Determine content type
-  const mimeMatch = base64DataUrl.match(/^data:(video\/\w+);/);
-  const contentType = mimeMatch ? mimeMatch[1] : 'video/mp4';
-
-  const fileName = `video_${uid}_${Date.now()}.${fileExtension || 'mp4'}`;
+  const { buffer, contentType, extension } = parseBase64Upload(base64DataUrl, VIDEO_TYPES, MAX_VIDEO_BYTES);
+  const fileName = `video_${uid}_${Date.now()}.${extension}`;
 
   // Ensure the 'profiles' bucket exists
   const { data: buckets } = await client.storage.listBuckets();
@@ -543,5 +618,3 @@ export async function deleteShowreelVideoAction(
 
   return true;
 }
-
-

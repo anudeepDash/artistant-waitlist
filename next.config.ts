@@ -39,7 +39,9 @@ if (typeof window === 'undefined' && process.env.NODE_ENV !== 'test') {
 const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
-      bodySizeLimit: '10mb',
+      // A 15MB video becomes roughly 20MB when base64 encoded for the current
+      // Server Action upload flow. Leave room for the action payload and token.
+      bodySizeLimit: '25mb',
     },
   },
   // 4. Security Headers & 6. CORS Configuration

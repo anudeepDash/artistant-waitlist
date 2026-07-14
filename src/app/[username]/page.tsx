@@ -3,8 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence } from 'motion/react';
 import { useParams, useRouter } from 'next/navigation';
-import { type WaitlistEntry } from '@/lib/waitlist';
-import { incrementProfileVisitorsAction, getPublicProfileDataAction } from '@/lib/profile-actions';
+import { incrementProfileVisitorsAction, getPublicProfileDataAction, type PublicProfileReservation } from '@/lib/profile-actions';
 import { useTheme } from 'next-themes';
 import { 
   X, MapPin, Share2, Mail, Phone, LockKeyhole, ArrowLeft, Heart
@@ -44,7 +43,7 @@ export default function PublicProfilePage() {
   const username = params?.username as string;
   const router = useRouter();
 
-  const [reservation, setReservation] = useState<WaitlistEntry | null>(null);
+  const [reservation, setReservation] = useState<PublicProfileReservation | null>(null);
   const [loading, setLoading] = useState(true);
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -174,7 +173,7 @@ export default function PublicProfilePage() {
   const displayName = reservation.display_name || reservation.username;
   const categoryLabel = categoryLabels[reservation.category || ''] || reservation.category || 'Artist';
   const genres = reservation.genres || [];
-  const hasSocials = reservation.instagram_url || reservation.spotify_url || reservation.youtube_url;
+  const hasSocials = reservation.instagram_url || reservation.spotify_url || reservation.youtube_channel_url;
 
   // Verify contact buttons eligibility
   const emailVal = reservation.email;
@@ -184,7 +183,7 @@ export default function PublicProfilePage() {
   const hasContact = isEmailEnabled || isPhoneEnabled;
 
   const youtubeId = reservation.youtube_url ? getYouTubeEmbedId(reservation.youtube_url) : null;
-  const instagramVideoId = reservation.youtube_url ? getInstagramEmbedId(reservation.youtube_url) : null;
+  const instagramVideoId = reservation.instagram_url ? getInstagramEmbedId(reservation.instagram_url) : null;
 
   // Dynamically map gallery photos (No fallback default images)
   const displayGallery = reservation.gallery_photos && reservation.gallery_photos.length > 0
@@ -219,22 +218,23 @@ export default function PublicProfilePage() {
         </div>
 
         <div className="flex justify-center w-full py-4">
-          <div className="w-full max-w-sm aspect-[1.58/1] relative" style={{ perspective: 1200 }}>
+          <div className="w-full max-w-md aspect-[1.58/1] relative mx-auto" style={{ perspective: 1200 }}>
             <motion.div
+              ref={cardRef}
               onMouseMove={handleMouseMove}
               onMouseLeave={handleMouseLeave}
               animate={{ rotateX, rotateY }}
               transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-              className={`w-full h-full relative rounded-[2rem] p-[1.5px] overflow-hidden group cursor-pointer ${isLight ? 'shadow-[0_20px_50px_rgba(124,92,255,0.08)]' : 'shadow-[0_35px_80px_-20px_rgba(0,0,0,0.9)]'}`}
+              className={`w-full h-full relative rounded-[2.5rem] p-[1.5px] overflow-hidden group cursor-pointer ${isLight ? 'shadow-[0_20px_50px_rgba(124,92,255,0.08)]' : 'shadow-[0_30px_90px_-20px_rgba(0,0,0,0.9)]'}`}
               style={{
                 background: isLight 
-                  ? 'linear-gradient(135deg, rgba(124,92,255,0.1), rgba(124,92,255,0.02) 40%, rgba(124,92,255,0.25))' 
+                  ? 'linear-gradient(135deg, rgba(124,92,255,0.2), rgba(242,90,43,0.1) 40%, rgba(255,255,255,0.5))' 
                   : 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.01) 40%, rgba(124,92,255,0.2))',
                 transformStyle: 'preserve-3d',
               }}
             >
               <div 
-                className={`relative w-full h-full rounded-[1.95rem] p-5 flex flex-col justify-between overflow-hidden border ${isLight ? 'bg-white/90 border-[#7C5CFF]/15' : 'bg-[#050508]/95 border border-white/5'}`}
+                className={`relative w-full h-full rounded-[2.4rem] p-5 md:p-6 flex flex-col justify-between overflow-hidden border ${isLight ? 'bg-white/90 border-[#7C5CFF]/15' : 'bg-[#050508]/90 border border-white/5'}`}
                 style={{
                   isolation: 'isolate',
                   WebkitMaskImage: '-webkit-radial-gradient(white, black)'
@@ -258,52 +258,65 @@ export default function PublicProfilePage() {
                 {/* Card Top Row */}
                 <div className="flex justify-between items-start z-10 w-full">
                   <div className="flex items-center gap-2">
-                    <img src="/logo_a.png" alt="A" className="w-5 h-5 object-contain opacity-80" />
-                    <span className={`font-mono text-[8px] font-bold tracking-[0.2em] ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>FOUNDING CARD</span>
+                    <img src="/logo_a.png" alt="A" className="w-6 h-6 object-contain opacity-80" />
+                    <span className="font-mono text-[9px] font-bold tracking-[0.2em] text-[var(--ink-2)]">FOUNDING CARD</span>
                   </div>
                   <span 
-                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-mono text-[8px] font-bold uppercase tracking-wider relative overflow-hidden transition-all duration-300 ${
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-mono text-[9px] font-bold uppercase tracking-wider relative overflow-hidden transition-all duration-300 ${
                       points >= 500 
                         ? isLight 
-                          ? 'bg-emerald-500/5 border border-emerald-500/15 text-emerald-600'
-                          : 'bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 text-emerald-400' 
+                          ? 'bg-emerald-50 border border-emerald-200 text-emerald-700 shadow-sm'
+                          : 'bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 text-emerald-400 shadow-[0_2px_10px_rgba(16,185,129,0.1)]' 
                         : isLight 
-                          ? 'bg-black/[0.02] border border-black/5 text-zinc-500'
-                          : 'bg-white/[0.02] border border-white/5 text-white/40'
+                          ? 'bg-black/[0.04] border border-black/8 text-black/45 shadow-sm'
+                          : 'bg-white/[0.02] border border-white/5 text-white/40 shadow-sm'
                     }`}
+                    style={{
+                      backdropFilter: 'blur(8px)',
+                      WebkitBackdropFilter: 'blur(8px)',
+                      boxShadow: points >= 500
+                        ? isLight
+                          ? 'none'
+                          : 'inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.2), 0 2px 8px rgba(16,185,129,0.08)'
+                        : isLight
+                          ? 'inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -1px 0 rgba(0,0,0,0.03)'
+                          : 'inset 0 1px 0 rgba(255,255,255,0.03), inset 0 -1px 0 rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.15)',
+                    }}
                   >
                     {points >= 500 ? (
                       <>
-                        <span className={`w-1 h-1 rounded-full ${isLight ? 'bg-emerald-500' : 'bg-emerald-400 animate-pulse'}`} />
+                        <span className={`w-1.5 h-1.5 rounded-full ${isLight ? 'bg-emerald-500' : 'bg-emerald-400 animate-pulse shadow-[0_0_8px_#34D399]'}`} />
                         <span>Founding Artist</span>
                       </>
                     ) : (
                       <>
-                        <span className={`w-1 h-1 rounded-full ${isLight ? 'bg-black/20' : 'bg-white/20'}`} />
+                        <span className={`w-1.5 h-1.5 rounded-full ${isLight ? 'bg-black/20' : 'bg-white/20'}`} />
                         <span>Founding Artist</span>
-                        <LockKeyhole className={`w-2.5 h-2.5 ml-0.5 shrink-0 ${isLight ? 'text-zinc-400' : 'text-white/30'}`} />
+                        <LockKeyhole className={`w-2.5 h-2.5 ${isLight ? 'text-black/35' : 'text-white/30'} ml-0.5 shrink-0`} />
                       </>
                     )}
                   </span>
                 </div>
 
                 {/* Rank Position (Center) */}
-                <div className="flex flex-col items-center justify-center z-10 flex-1 my-1">
-                  <h1 className={`font-display font-black leading-none tracking-tighter text-4xl sm:text-5xl ${isLight ? 'text-zinc-900' : 'text-white'}`} style={{ textShadow: isLight ? '0 10px 30px rgba(124,92,255,0.06)' : '0 10px 30px rgba(0,0,0,0.5)' }}>
+                <div className="flex flex-col items-center justify-center z-10 flex-1 my-1 md:my-2">
+                  <h1 className={`font-display font-black leading-none tracking-tighter text-4xl sm:text-6xl ${isLight ? 'text-zinc-900' : 'text-white'}`} style={{ textShadow: isLight ? '0 10px 30px rgba(124,92,255,0.06)' : '0 10px 30px rgba(0,0,0,0.5)' }}>
                     #{waitlistPos || '---'}
                   </h1>
-                  <span className={`text-[8px] font-mono tracking-[0.2em] uppercase mt-1 ${isLight ? 'text-zinc-400' : 'text-white/25'}`}>Waitlist Rank</span>
+                  <div className="flex flex-col items-center mt-1.5 md:mt-2.5">
+                    <span className="font-mono text-[8px] sm:text-[9px] font-bold tracking-[0.2em] sm:tracking-[0.3em] text-[var(--ink-3)] whitespace-nowrap">WAITLIST RANK • COHORT {cohortVal}</span>
+                    <span className="font-mono text-[7.5px] sm:text-[8px] font-bold tracking-[0.12em] sm:tracking-[0.15em] text-[#F25A2B] whitespace-nowrap">{(cohortVal === '001' || cohortVal === '1') ? 'BETA ACCESS GRANTED' : 'POSITION SECURED'}</span>
+                  </div>
                 </div>
 
-                {/* Card Bottom Row */}
-                <div className={`flex justify-between items-end z-10 w-full border-t pt-3 ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`}>
+                {/* Bottom Row */}
+                <div className="flex justify-between items-center z-10 w-full">
                   <div className="flex flex-col text-left">
-                    <span className={`text-[7px] font-mono tracking-widest uppercase ${isLight ? 'text-zinc-400' : 'text-white/35'}`}>Artist Name</span>
-                    <span className={`text-[10px] font-bold truncate max-w-[120px] ${isLight ? 'text-zinc-800' : 'text-white/80'}`}>{displayName}</span>
+                    <span className={`font-display text-xl md:text-2xl font-black tracking-tight ${isLight ? 'text-zinc-800' : 'text-white'}`}>@{reservation.username}</span>
+                    <span className={`text-[9px] uppercase font-mono tracking-widest mt-0.5 ${isLight ? 'text-zinc-400' : 'text-white/40'}`}>Verified Artist</span>
                   </div>
-                  <div className="flex flex-col text-right">
-                    <span className={`text-[7px] font-mono tracking-widest uppercase ${isLight ? 'text-zinc-400' : 'text-white/35'}`}>Cohort / Status</span>
-                    <span className="text-[8px] font-mono tracking-wider text-[#7C5CFF] font-bold">COHORT {cohortVal} · FOUNDING</span>
+                  <div className="flex flex-col items-end">
+                    <img src="/logo_wordmark.png" alt="ArtisTant" className={`w-24 md:w-32 h-auto object-contain opacity-85 -my-3 md:-my-4 ${isLight ? 'invert' : 'dark:invert-0'}`} />
                   </div>
                 </div>
               </div>
@@ -402,7 +415,7 @@ export default function PublicProfilePage() {
         {/* Background Image */}
         <motion.div style={{ scale: heroScale }} className="absolute inset-0 w-full h-full">
           {reservation.profile_photo_url ? (
-            <img src={reservation.profile_photo_url} alt={displayName} className="w-full h-full object-cover object-top" />
+            <img src={reservation.profile_photo_url} alt={displayName} className="w-full h-full object-cover object-center" />
           ) : (
             <div className={`w-full h-full ${isLight ? 'bg-gradient-to-br from-[#f5f3f7] via-[#edeaf0] to-[#e4e0e8]' : 'bg-gradient-to-br from-[#1a0d2e] via-[#0d0d1a] to-[#0a0a0f]'}`} />
           )}
@@ -421,24 +434,9 @@ export default function PublicProfilePage() {
           </button>
 
           {/* Artistant Wordmark Logo Badge */}
-          <div className={`flex items-center gap-3.5 px-5 py-2.5 rounded-full backdrop-blur-md shadow-lg select-none ${isLight ? 'bg-white/80 border border-black/10' : 'bg-black/45 border border-white/10'}`}>
-            <img src="/logo_wordmark.png" alt="ArtisTant" className={`h-[50px] w-auto object-contain ${isLight ? 'invert dark:invert-0' : ''}`} />
-            <span className={`text-[10px] font-mono font-bold tracking-[0.3em] border-l pl-3.5 uppercase ${isLight ? 'text-zinc-500 border-black/15' : 'text-white/50 border-white/15'}`}>PORTFOLIO</span>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={() => setLiked(!liked)}
-              className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-lg ${isLight ? 'bg-white/75 hover:bg-white/90 border border-black/10 text-zinc-900' : 'bg-black/40 hover:bg-black/60 border border-white/10 text-white'}`}
-            >
-              <Heart className={`w-4.5 h-4.5 transition-colors ${liked ? 'fill-red-500 text-red-500' : isLight ? 'text-zinc-800' : 'text-white'}`} />
-            </button>
-            <button 
-              onClick={handleShare}
-              className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-lg ${isLight ? 'bg-white/75 hover:bg-white/90 border border-black/10 text-zinc-900' : 'bg-black/40 hover:bg-black/60 border border-white/10 text-white'}`}
-            >
-              <Share2 className="w-4.5 h-4.5" />
-            </button>
+          <div className={`absolute left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-1 rounded-full backdrop-blur-md shadow-lg select-none ${isLight ? 'bg-white/80 border border-black/10' : 'bg-black/45 border border-white/10'}`}>
+            <img src="/logo_wordmark.png" alt="ArtisTant" className="h-[36px] w-auto object-contain dark:invert-0 invert" />
+            <span className={`text-[9px] font-mono font-bold tracking-[0.2em] border-l pl-2 uppercase ${isLight ? 'text-zinc-500 border-black/15' : 'text-white/50 border-white/15'}`}>PORTFOLIO</span>
           </div>
         </div>
 
@@ -455,9 +453,25 @@ export default function PublicProfilePage() {
                 </span>
               )}
             </div>
-            <h1 className={`text-4xl font-black leading-tight font-serif-display ${isLight ? 'text-zinc-950' : 'text-white'}`}>
-              {displayName}
-            </h1>
+            <div className="flex items-center justify-between gap-4">
+              <h1 className={`text-4xl font-black leading-tight font-serif-display ${isLight ? 'text-zinc-950' : 'text-white'}`}>
+                {displayName}
+              </h1>
+              <div className="flex items-center gap-3 shrink-0">
+                <button 
+                  onClick={() => setLiked(!liked)}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-lg ${isLight ? 'bg-white/75 hover:bg-white/90 border border-black/10 text-zinc-900' : 'bg-black/40 hover:bg-black/60 border border-white/10 text-white'}`}
+                >
+                  <Heart className={`w-4.5 h-4.5 transition-colors ${liked ? 'fill-red-500 text-red-500' : isLight ? 'text-zinc-800' : 'text-white'}`} />
+                </button>
+                <button 
+                  onClick={handleShare}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-lg ${isLight ? 'bg-white/75 hover:bg-white/90 border border-black/10 text-zinc-900' : 'bg-black/40 hover:bg-black/60 border border-white/10 text-white'}`}
+                >
+                  <Share2 className="w-4.5 h-4.5" />
+                </button>
+              </div>
+            </div>
             {genres.length > 0 && (
               <p className={`text-xs font-mono tracking-wider ${isLight ? 'text-zinc-600' : 'text-white/50'}`}>
                 {genres.join(' · ')}
@@ -477,8 +491,8 @@ export default function PublicProfilePage() {
         </button>
 
         {/* Desktop Artistant Logo Portfolio Badge */}
-        <div className={`flex items-center gap-3.5 px-5 py-2.5 rounded-full backdrop-blur-md shadow-lg select-none ${isLight ? 'bg-white border border-black/10' : 'bg-white/[0.02] border border-white/10'}`}>
-          <img src="/logo_wordmark.png" alt="ArtisTant" className={`h-[50px] w-auto object-contain ${isLight ? 'invert dark:invert-0' : ''}`} />
+        <div className={`absolute left-1/2 -translate-x-1/2 flex items-center gap-3.5 px-5 py-2.5 rounded-full backdrop-blur-md shadow-lg select-none ${isLight ? 'bg-white border border-black/10' : 'bg-white/[0.02] border border-white/10'}`}>
+          <img src="/logo_wordmark.png" alt="ArtisTant" className="h-[50px] w-auto object-contain dark:invert-0 invert" />
           <span className={`text-[10px] font-mono font-bold tracking-[0.3em] border-l pl-3.5 uppercase ${isLight ? 'text-zinc-500 border-black/15' : 'text-white/50 border-white/15'}`}>PORTFOLIO</span>
         </div>
 
@@ -618,9 +632,9 @@ export default function PublicProfilePage() {
                     </a>
                   )}
 
-                  {reservation.youtube_url && (
+                  {reservation.youtube_channel_url && (
                     <a 
-                      href={reservation.youtube_url} target="_blank" rel="noopener noreferrer"
+                      href={reservation.youtube_channel_url} target="_blank" rel="noopener noreferrer"
                       className={`p-4 rounded-2xl border transition-all flex flex-col justify-between min-h-[120px] shadow-sm ${isLight ? 'bg-white border-black/10 hover:border-[#7C5CFF]/30 hover:shadow-md' : 'bg-white/[0.01] border-white/[0.03] hover:bg-white/[0.02] hover:border-white/10'}`}
                     >
                       <div className="flex flex-col gap-1 text-left">
@@ -742,14 +756,14 @@ export default function PublicProfilePage() {
                 )}
 
                 {/* YouTube Card */}
-                {reservation.youtube_url && (
+                {reservation.youtube_channel_url && (
                   <div className={`p-5 rounded-2xl border flex flex-col gap-2 shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/[0.01] border-white/[0.03]'}`}>
-                    <span className={`text-[9px] font-mono font-bold uppercase tracking-widest flex items-center gap-1.5 ${isLight ? 'text-zinc-500' : 'text-white/30'}`}>
+                    <span className={`text-[9px] font-mono font-bold uppercase tracking-widest flex items-center gap-1.5 ${isLight ? 'text-zinc-500' : 'text-white/35'}`}>
                       <YouTubeIcon className="w-3.5 h-3.5 text-[#FF0000]" /> YouTube
                     </span>
                     <span className={`text-sm font-bold truncate ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Channel Page</span>
                     <a
-                      href={reservation.youtube_url}
+                      href={reservation.youtube_channel_url}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={`mt-2 text-center py-2.5 rounded-xl font-bold text-xs active:scale-[1.02] transition-all max-w-[120px] ${isLight ? 'bg-zinc-50 border border-black/10 text-zinc-800 hover:bg-zinc-100' : 'bg-white/5 border border-white/10 text-white hover:bg-white/10'}`}

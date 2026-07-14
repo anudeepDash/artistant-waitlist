@@ -569,6 +569,49 @@ function SwipeHint() {
   );
 }
 
+/* ── FAQ Accordion Item ── */
+function FAQItem({ question, answer, index }: { question: string; answer: string; index: number }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <motion.div
+      variants={fUp}
+      className="faq-item"
+      style={{ '--faq-index': index } as React.CSSProperties}
+    >
+      <button
+        className="faq-question"
+        onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+      >
+        <span className="faq-question-text">{question}</span>
+        <motion.span
+          className="faq-chevron"
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </motion.span>
+      </button>
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            className="faq-answer-wrapper"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <p className="faq-answer">{answer}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
 const wordRevealVariants = {
   hidden: { y: '105%', rotate: 1.5 },
   visible: {
@@ -746,12 +789,8 @@ export default function Home() {
       const logVisit = async () => {
         try {
           await logActivityAction({
-            userId: user?.uid || undefined,
-            email: user?.email || undefined,
-            username: userReservation?.username || undefined,
             actionType: "visit",
-            userAgent: typeof window !== "undefined" ? window.navigator.userAgent : undefined,
-            referrer: typeof document !== "undefined" ? document.referrer : undefined,
+            ...(user ? { idToken: await user.getIdToken() } : {}),
           });
           sessionStorage.setItem("artistant_visit_logged", "true");
         } catch (e) {
@@ -923,17 +962,21 @@ export default function Home() {
 
     const timer = setTimeout(async () => {
       try {
-        const free = await isUsernameAvailable(raw);
-        if (free) {
+        const res = await isUsernameAvailable(raw);
+        if (res.success && res.available) {
           setAvailStatus('available');
           setSuggestions([]);
           setSuggestionsLoading(false);
-        } else {
+        } else if (res.success && !res.available) {
           setAvailStatus('taken');
           const candidates = getCandidateUsernames(raw);
           const availabilityMap = await checkMultipleUsernamesAvailableAction(candidates);
           const available = candidates.filter(c => availabilityMap[c]).slice(0, 4);
           setSuggestions(available);
+          setSuggestionsLoading(false);
+        } else {
+          setAvailStatus('invalid');
+          setValidationError(res.error || 'Error checking availability');
           setSuggestionsLoading(false);
         }
       } catch (err: any) {
@@ -1236,6 +1279,187 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ──────────────────────── WHAT IS ARTISTANT? ──────────────────────── */}
+      <section id="what-is-artistant" className="section" style={{ borderTop: '1px solid var(--line-soft)', position: 'relative', overflow: 'hidden' }}>
+        {/* Ambient background glow */}
+        <div aria-hidden="true" style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '800px',
+          height: '800px',
+          background: 'radial-gradient(circle, rgba(242,90,43,0.08) 0%, rgba(124,92,255,0.06) 40%, transparent 70%)',
+          pointerEvents: 'none',
+        }} />
+
+        <div className="section-inner">
+          <motion.div
+            className="section-label"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fUp}
+            style={{ justifyContent: 'center', marginBottom: 16 }}
+          >
+            Introducing ArtisTant
+          </motion.div>
+
+          <motion.h2
+            className="section-heading"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fUp}
+            style={{ textAlign: 'center', margin: '0 auto 20px auto', maxWidth: '850px' }}
+          >
+            What is <AnimatedTitle text="ArtisTant?" className="brand-text" />
+          </motion.h2>
+
+          <motion.p
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fUp}
+            style={{
+              textAlign: 'center',
+              color: 'var(--ink-2)',
+              fontSize: 'clamp(16px, 1.5vw, 19px)',
+              lineHeight: 1.6,
+              maxWidth: '720px',
+              margin: '0 auto 56px auto',
+            }}
+          >
+            ArtisTant is India&apos;s first dedicated booking infrastructure for the live performance industry.
+            We&apos;re replacing the broken, informal booking culture — scattered WhatsApp chats, unreliable agents, delayed payments —
+            with a professional, technology-driven platform that empowers artists, organizers, and venues alike.
+          </motion.p>
+
+          {/* Three Value Pillars */}
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.15 }}
+            variants={staggerContainer}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '24px',
+              maxWidth: '1100px',
+              margin: '0 auto',
+            }}
+          >
+            {/* Pillar 1 — For Artists */}
+            <motion.div 
+              variants={scaleIn} 
+              className="what-is-card"
+              whileHover={{ scale: 1.02, borderColor: 'rgba(242, 90, 43, 0.4)' }}
+              whileTap={{ scale: 0.98 }}
+              style={{ cursor: 'pointer' }}
+            >
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '150px', background: 'var(--what-is-card-glow-1)', pointerEvents: 'none' }} />
+              <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                <div style={{ fontSize: '12px', color: '#F25A2B', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '16px', fontWeight: 600 }}>
+                  FOR PERFORMERS
+                </div>
+                <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--ink)', marginBottom: '16px', letterSpacing: '-0.02em', textTransform: 'uppercase', lineHeight: '1.1' }}>
+                  SHOWCASE & GET <span style={{ color: '#F25A2B' }}>BOOKED</span>.
+                </h3>
+                <p className="what-is-card-desc" style={{ fontSize: '14px', color: 'var(--ink-2)', lineHeight: '1.5', marginBottom: '20px' }}>
+                  Everything you need to run your live performance business professionally, without commissions.
+                </p>
+                <ul className="what-is-card-points">
+                  <li className="what-is-card-point">
+                    <span className="what-is-card-point-bullet" style={{ background: '#F25A2B' }} />
+                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)' }}><strong style={{ color: 'var(--ink)' }}>Digital Booking Profile:</strong> Houses press kits, media showreels, and technical riders in a clean layout.</span>
+                  </li>
+                  <li className="what-is-card-point">
+                    <span className="what-is-card-point-bullet" style={{ background: '#F25A2B' }} />
+                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)' }}><strong style={{ color: 'var(--ink)' }}>Direct Bookings:</strong> Receive formal gig offers directly from venue managers and organizers, eliminating middlemen.</span>
+                  </li>
+                  <li className="what-is-card-point">
+                    <span className="what-is-card-point-bullet" style={{ background: '#F25A2B' }} />
+                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)' }}><strong style={{ color: 'var(--ink)' }}>Zero Commission:</strong> Set your own transparent rates and keep 100% of your performance earnings.</span>
+                  </li>
+                </ul>
+              </div>
+            </motion.div>
+
+            {/* Pillar 2 — For Organizers */}
+            <motion.div 
+              variants={scaleIn} 
+              className="what-is-card"
+              whileHover={{ scale: 1.02, borderColor: 'rgba(124, 92, 255, 0.4)' }}
+              whileTap={{ scale: 0.98 }}
+              style={{ cursor: 'pointer' }}
+            >
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '150px', background: 'var(--what-is-card-glow-2)', pointerEvents: 'none' }} />
+              <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                <div style={{ fontSize: '12px', color: '#7C5CFF', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '16px', fontWeight: 600 }}>
+                  FOR ORGANIZERS
+                </div>
+                <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--ink)', marginBottom: '16px', letterSpacing: '-0.02em', textTransform: 'uppercase', lineHeight: '1.1' }}>
+                  DISCOVER & HIRE <span style={{ color: '#7C5CFF' }}>TALENT</span>.
+                </h3>
+                <p className="what-is-card-desc" style={{ fontSize: '14px', color: 'var(--ink-2)', lineHeight: '1.5', marginBottom: '20px' }}>
+                  A streamlined discovery and workflow engine to source and hire live talent with confidence.
+                </p>
+                <ul className="what-is-card-points">
+                  <li className="what-is-card-point">
+                    <span className="what-is-card-point-bullet" style={{ background: '#7C5CFF' }} />
+                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)' }}><strong style={{ color: 'var(--ink)' }}>Real-Time Availability:</strong> View up-to-date artist availability instantly, avoiding coordinate checks.</span>
+                  </li>
+                  <li className="what-is-card-point">
+                    <span className="what-is-card-point-bullet" style={{ background: '#7C5CFF' }} />
+                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)' }}><strong style={{ color: 'var(--ink)' }}>Verified Directory:</strong> Discover verified local performers, review portfolios, and compare pricing.</span>
+                  </li>
+                  <li className="what-is-card-point">
+                    <span className="what-is-card-point-bullet" style={{ background: '#7C5CFF' }} />
+                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)' }}><strong style={{ color: 'var(--ink)' }}>Structured Contracts:</strong> Send standardized gig agreements that log terms and keep matches secure.</span>
+                  </li>
+                </ul>
+              </div>
+            </motion.div>
+
+            {/* Pillar 3 — The Infrastructure */}
+            <motion.div 
+              variants={scaleIn} 
+              className="what-is-card"
+              whileHover={{ scale: 1.02, borderColor: 'rgba(212, 86, 122, 0.4)' }}
+              whileTap={{ scale: 0.98 }}
+              style={{ cursor: 'pointer' }}
+            >
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '150px', background: 'var(--what-is-card-glow-3)', pointerEvents: 'none' }} />
+              <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                <div style={{ fontSize: '12px', color: '#D4567A', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '16px', fontWeight: 600 }}>
+                  TRUST LAYER
+                </div>
+                <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--ink)', marginBottom: '16px', letterSpacing: '-0.02em', textTransform: 'uppercase', lineHeight: '1.1' }}>
+                  SECURED GIGS & <span style={{ color: '#D4567A' }}>PAYMENTS</span>.
+                </h3>
+                <p className="what-is-card-desc" style={{ fontSize: '14px', color: 'var(--ink-2)', lineHeight: '1.5', marginBottom: '20px' }}>
+                  Modern payment and scheduling protections that keep the performance industry secure.
+                </p>
+                <ul className="what-is-card-points">
+                  <li className="what-is-card-point">
+                    <span className="what-is-card-point-bullet" style={{ background: '#D4567A' }} />
+                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)' }}><strong style={{ color: 'var(--ink)' }}>GigSafe Escrow:</strong> Pay upfront with automated release (T+1 post-show), assuring payments and refunds.</span>
+                  </li>
+                  <li className="what-is-card-point">
+                    <span className="what-is-card-point-bullet" style={{ background: '#D4567A' }} />
+                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)' }}><strong style={{ color: 'var(--ink)' }}>Bookability Score™:</strong> Data-backed ratings scoring artists based on response times and gig success.</span>
+                  </li>
+                  <li className="what-is-card-point">
+                    <span className="what-is-card-point-bullet" style={{ background: '#D4567A' }} />
+                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)' }}><strong style={{ color: 'var(--ink)' }}>Replacement Guarantee:</strong> Peace of mind with automated matching to equivalent performers.</span>
+                  </li>
+                </ul>
+              </div>
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
       {/* ──────────────────────── THE PROBLEM (REAL VOICES) ──────────────────────── */}
       <section id="problem-voices" className="section" style={{ borderTop: '1px solid var(--line-soft)', paddingBottom: '40px', position: 'relative', overflow: 'hidden' }}>
 
@@ -1266,16 +1490,19 @@ export default function Home() {
             {/* Voice 01 */}
             <motion.div 
               className="voice-card"
-              style={{ '--voice-accent': '#F25A2B' } as any}
+              whileHover={{ scale: 1.02, borderColor: 'rgba(242, 90, 43, 0.4)' }}
+              whileTap={{ scale: 0.98 }}
+              style={{ cursor: 'pointer' }}
               initial={{ opacity: 0, y: 30, rotate: -0.5 }}
               whileInView={{ opacity: 1, y: 0, rotate: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1, duration: 0.6 }}
             >
-              <p className="voice-quote">
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '150px', background: 'var(--what-is-card-glow-1)', pointerEvents: 'none', zIndex: 1 }} />
+              <p className="voice-quote" style={{ position: 'relative', zIndex: 2 }}>
                 I lost a ₹80K corporate gig because the event manager ghosted after confirming on WhatsApp. No contract, no proof, nothing.
               </p>
-              <div className="voice-person">
+              <div className="voice-person" style={{ position: 'relative', zIndex: 2 }}>
                 <div className="voice-avatar" style={{ background: 'linear-gradient(135deg, #F25A2B, #D4567A)' }}>P</div>
                 <div className="voice-info">
                   <span className="voice-name">Priya Menon</span>
@@ -1287,16 +1514,19 @@ export default function Home() {
             {/* Voice 02 */}
             <motion.div 
               className="voice-card"
-              style={{ '--voice-accent': '#7C5CFF' } as any}
+              whileHover={{ scale: 1.02, borderColor: 'rgba(124, 92, 255, 0.4)' }}
+              whileTap={{ scale: 0.98 }}
+              style={{ cursor: 'pointer' }}
               initial={{ opacity: 0, y: 30, rotate: 0.5 }}
               whileInView={{ opacity: 1, y: 0, rotate: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.2, duration: 0.6 }}
             >
-              <p className="voice-quote">
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '150px', background: 'var(--what-is-card-glow-2)', pointerEvents: 'none', zIndex: 1 }} />
+              <p className="voice-quote" style={{ position: 'relative', zIndex: 2 }}>
                 I spent 3 weeks chasing a club promoter for my ₹45K advance. By the time I got paid, I&apos;d already played the next 4 shows for free.
               </p>
-              <div className="voice-person">
+              <div className="voice-person" style={{ position: 'relative', zIndex: 2 }}>
                 <div className="voice-avatar" style={{ background: 'linear-gradient(135deg, #7C5CFF, #6B7CDB)' }}>R</div>
                 <div className="voice-info">
                   <span className="voice-name">Rohan Kapoor</span>
@@ -1308,16 +1538,19 @@ export default function Home() {
             {/* Voice 03 */}
             <motion.div 
               className="voice-card"
-              style={{ '--voice-accent': '#D4567A' } as any}
+              whileHover={{ scale: 1.02, borderColor: 'rgba(212, 86, 122, 0.4)' }}
+              whileTap={{ scale: 0.98 }}
+              style={{ cursor: 'pointer' }}
               initial={{ opacity: 0, y: 30, rotate: -0.3 }}
               whileInView={{ opacity: 1, y: 0, rotate: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.3, duration: 0.6 }}
             >
-              <p className="voice-quote">
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '150px', background: 'var(--what-is-card-glow-3)', pointerEvents: 'none', zIndex: 1 }} />
+              <p className="voice-quote" style={{ position: 'relative', zIndex: 2 }}>
                 I quoted an artist ₹1.5L. The agent told the client ₹4.5L. The artist had no idea. That&apos;s the industry norm.
               </p>
-              <div className="voice-person">
+              <div className="voice-person" style={{ position: 'relative', zIndex: 2 }}>
                 <div className="voice-avatar" style={{ background: 'linear-gradient(135deg, #D4567A, #F25A2B)' }}>A</div>
                 <div className="voice-info">
                   <span className="voice-name">Arjun Desai</span>
@@ -1784,6 +2017,7 @@ export default function Home() {
           <SwipeHint />
         </div>
       </section>
+
 
       {/* ──────────────────────── FOOTER & WAITLIST ──────────────────────── */}
       <section id="join" className="cta-section" style={{ borderTop: '1px solid var(--line-soft)', position: 'relative' }}>
@@ -2511,33 +2745,33 @@ export default function Home() {
               whileHover={{ scale: 1.02, borderColor: 'rgba(124, 92, 255, 0.4)' }}
               whileTap={{ scale: 0.98 }}
               style={{
-                background: 'rgba(10, 10, 10, 0.8)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
+                background: 'var(--what-is-card-bg)',
+                border: '1px solid var(--what-is-card-border)',
                 borderRadius: '16px',
                 padding: isMobile ? '24px 20px' : '40px',
                 textAlign: 'left',
                 cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                backdropFilter: 'blur(10px)',
+                transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                backdropFilter: 'blur(15px)',
                 position: 'relative',
                 overflow: 'hidden',
-                boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)',
+                boxShadow: '0 10px 30px -10px var(--what-is-card-shadow)',
                 display: 'flex',
                 flexDirection: 'column'
               }}
             >
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '150px', background: 'radial-gradient(ellipse at top left, rgba(124, 92, 255, 0.15), transparent 70%)', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '150px', background: 'radial-gradient(ellipse at top left, rgba(124, 92, 255, var(--what-is-card-glow-opacity)), transparent 70%)', pointerEvents: 'none' }} />
               <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
                 <div style={{ fontSize: '12px', color: '#7C5CFF', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '16px', fontWeight: 600 }}>
                   FOR HOSTS
                 </div>
-                <h3 style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: '800', color: '#FFFFFF', marginBottom: '20px', letterSpacing: '-0.02em', textTransform: 'uppercase', lineHeight: '1.1' }}>
+                <h3 style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: '800', color: 'var(--ink)', marginBottom: '20px', letterSpacing: '-0.02em', textTransform: 'uppercase', lineHeight: '1.1' }}>
                   YOU <span className="brand-text">HIRE</span> ARTISTS.
                 </h3>
-                <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.7)', lineHeight: '1.5', marginBottom: '32px', fontWeight: 400 }}>
+                <p style={{ fontSize: '15px', color: 'var(--ink-2)', lineHeight: '1.5', marginBottom: '32px', fontWeight: 400 }}>
                   Festivals. Cafes. Brands. Weddings. Find verified talent. Pay through escrow. Sleep at night.
                 </p>
-                <div style={{ marginTop: 'auto', fontSize: '12px', color: '#FFFFFF', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ marginTop: 'auto', fontSize: '12px', color: 'var(--ink)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
                   REGISTER INTEREST <span>→</span>
                 </div>
               </div>
@@ -2549,33 +2783,33 @@ export default function Home() {
               whileHover={{ scale: 1.02, borderColor: 'rgba(242, 90, 43, 0.4)' }}
               whileTap={{ scale: 0.98 }}
               style={{
-                background: 'rgba(10, 10, 10, 0.8)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
+                background: 'var(--what-is-card-bg)',
+                border: '1px solid var(--what-is-card-border)',
                 borderRadius: '16px',
                 padding: isMobile ? '24px 20px' : '40px',
                 textAlign: 'left',
                 cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                backdropFilter: 'blur(10px)',
+                transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                backdropFilter: 'blur(15px)',
                 position: 'relative',
                 overflow: 'hidden',
-                boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)',
+                boxShadow: '0 10px 30px -10px var(--what-is-card-shadow)',
                 display: 'flex',
                 flexDirection: 'column'
               }}
             >
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '150px', background: 'radial-gradient(ellipse at top right, rgba(242, 90, 43, 0.15), transparent 70%)', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '150px', background: 'radial-gradient(ellipse at top right, rgba(242, 90, 43, var(--what-is-card-glow-opacity)), transparent 70%)', pointerEvents: 'none' }} />
               <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
                 <div style={{ fontSize: '12px', color: '#F25A2B', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '16px', fontWeight: 600 }}>
                   FOR VENUES
                 </div>
-                <h3 style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: '800', color: '#FFFFFF', marginBottom: '20px', letterSpacing: '-0.02em', textTransform: 'uppercase', lineHeight: '1.1' }}>
+                <h3 style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: '800', color: 'var(--ink)', marginBottom: '20px', letterSpacing: '-0.02em', textTransform: 'uppercase', lineHeight: '1.1' }}>
                   YOU <span className="brand-text">HAVE</span> SPACE.
                 </h3>
-                <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.7)', lineHeight: '1.5', marginBottom: '32px', fontWeight: 400 }}>
+                <p style={{ fontSize: '15px', color: 'var(--ink-2)', lineHeight: '1.5', marginBottom: '32px', fontWeight: 400 }}>
                   Turn your venue into a creative hub. Host verified artists, manage bookings, and create unforgettable experiences.
                 </p>
-                <div style={{ marginTop: 'auto', fontSize: '12px', color: '#FFFFFF', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ marginTop: 'auto', fontSize: '12px', color: 'var(--ink)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
                   REGISTER INTEREST <span>→</span>
                 </div>
               </div>
@@ -2597,6 +2831,123 @@ export default function Home() {
         >
           Direct Artist Booking · Gigsafe Escrow · Launching Soon
         </motion.div>
+      </section>
+
+      {/* ──────────────────────── FAQ ──────────────────────── */}
+      <section id="faq" className="section" style={{ borderTop: '1px solid var(--line-soft)', position: 'relative', overflow: 'hidden' }}>
+        {/* Ambient glow */}
+        <div aria-hidden="true" style={{
+          position: 'absolute',
+          top: '0',
+          right: '0',
+          width: '600px',
+          height: '600px',
+          background: 'radial-gradient(circle, rgba(124,92,255,0.06) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }} />
+        <div aria-hidden="true" style={{
+          position: 'absolute',
+          bottom: '0',
+          left: '0',
+          width: '500px',
+          height: '500px',
+          background: 'radial-gradient(circle, rgba(242,90,43,0.05) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }} />
+
+        <div className="section-inner">
+          <motion.div
+            className="section-label"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fUp}
+            style={{ justifyContent: 'center', marginBottom: 16 }}
+          >
+            Frequently Asked Questions
+          </motion.div>
+
+          <motion.h2
+            className="section-heading"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fUp}
+            style={{ textAlign: 'center', margin: '0 auto 20px auto', maxWidth: '850px' }}
+          >
+            Got <AnimatedTitle text="questions?" className="brand-text" />
+          </motion.h2>
+
+          <motion.p
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fUp}
+            style={{
+              textAlign: 'center',
+              color: 'var(--ink-2)',
+              fontSize: 'clamp(15px, 1.3vw, 18px)',
+              maxWidth: '560px',
+              margin: '0 auto 48px auto',
+              lineHeight: 1.5,
+            }}
+          >
+            Everything you need to know about ArtisTant and how the platform works.
+          </motion.p>
+
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.1 }}
+            variants={staggerContainer}
+            className="faq-list"
+          >
+            {[
+              {
+                q: 'What exactly is ArtisTant?',
+                a: 'ArtisTant is India\'s first dedicated booking infrastructure for the live performance industry. It\'s a platform where artists get professional portfolios, organizers discover verified talent, and every booking is backed by technology — eliminating the messy WhatsApp-and-agent culture that currently runs the industry.',
+              },
+              {
+                q: 'Is ArtisTant free for artists?',
+                a: 'Yes! Claiming your @username and building your portfolio on ArtisTant is completely free. We believe every performer deserves a professional digital presence without paying upfront. Premium features and advanced tools will be offered as optional upgrades in the future.',
+              },
+              {
+                q: 'How is this different from Instagram or a personal website?',
+                a: 'Instagram wasn\'t built for booking — your DMs get buried, there\'s no rate transparency, and no payment security. ArtisTant is purpose-built for the booking workflow: live availability calendars, standardized rate cards, verified reviews, and structured booking requests all in one place. Think of it as your professional booking identity, not just another social profile.',
+              },
+              {
+                q: 'What is The Bookability Score™?',
+                a: 'It\'s a 0-100 reliability rating unique to each artist, calculated from hard data: response times, profile completeness, verified client reviews, and booking history. It gives organizers confidence when choosing performers and rewards reliable artists with higher visibility.',
+              },
+              {
+                q: 'What is GigSafe Escrow?',
+                a: 'GigSafe Escrow is our upcoming secure payment system. Clients pay upfront into a protected escrow, and funds are automatically released to the performer after the gig is completed. This eliminates ghosting, delayed payments, and the stress of chasing advances.',
+              },
+              {
+                q: 'I\'m an event organizer. How does ArtisTant help me?',
+                a: 'ArtisTant lets you discover verified performers, check real-time availability, compare transparent rates, send structured booking offers, and access verified post-gig reviews — all without relying on unreliable agent networks or endless WhatsApp negotiations.',
+              },
+              {
+                q: 'What does claiming a @username do?',
+                a: 'Claiming your @username reserves your unique booking handle on the platform (e.g., artistant.in/yourname). It becomes your professional digital real estate — your portfolio, calendar, rates, and contact hub all live under this single, shareable link. Once someone else claims it, it\'s gone.',
+              },
+              {
+                q: 'When is ArtisTant launching?',
+                a: 'We\'re currently in our waitlist phase, building and refining the platform with early community feedback. Artists who claim their username now will get early access when we launch, priority onboarding, and a Founding Member badge on their profiles.',
+              },
+              {
+                q: 'Which types of performers can join?',
+                a: 'ArtisTant is built for every live performance category — singers, DJs, bands, comedians, instrumentalists, magicians, dancers, spoken word poets, acrobats, live visual artists, and more. If you perform live, there\'s a place for you here.',
+              },
+              {
+                q: 'Is my data safe on ArtisTant?',
+                a: 'Absolutely. We take data privacy seriously. Your personal information is encrypted, never sold to third parties, and you have full control over what appears on your public portfolio. Our privacy-first calendar, for example, shows only "Busy" or "Available" — never your actual event details.',
+              },
+            ].map((faqItem, idx) => (
+              <FAQItem key={idx} question={faqItem.q} answer={faqItem.a} index={idx} />
+            ))}
+          </motion.div>
+        </div>
       </section>
 
       {/* ──────────────────────── FOOTER ──────────────────────── */}
