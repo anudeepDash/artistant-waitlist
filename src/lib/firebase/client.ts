@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
+import { getAuth, initializeRecaptchaConfig, type Auth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
@@ -22,6 +22,12 @@ let auth: Auth;
 if (isFirebaseConfigured) {
   const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
   auth = getAuth(app);
+  // Initialize reCAPTCHA Enterprise config for Identity Platform phone auth
+  if (typeof window !== 'undefined') {
+    initializeRecaptchaConfig(auth).catch((err) => {
+      console.warn("reCAPTCHA config init skipped:", err?.message);
+    });
+  }
 } else {
   // Safe mock fallback for build compile-time and local environment setups without keys
   auth = {} as Auth;

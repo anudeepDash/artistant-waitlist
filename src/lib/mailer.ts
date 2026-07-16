@@ -123,7 +123,7 @@ export async function sendWelcomeEmail({ email, name, username }: WelcomeEmailPa
     const bodyText = `It's official. You've successfully claimed your premium username <strong>@${username}</strong> on ArtisTant!<br><br>Your professional <strong>portfolio page</strong> is now live at <a href="https://artistant.in/${username}" style="color: #7C5CFF; font-weight: bold; text-decoration: none;">artistant.in/${username}</a>. This is your single source of truth—a gorgeous, fast-loading booking hub designed to showcase your bio, target location, category/genres, media showreels, and social proof (linked via Spotify, YouTube, and Instagram).<br><br>Promoters and clients can visit your portfolio to view your profile photo, listen to your previews, inspect your details, and request direct bookings. You can customize, update, or complete all these details at any time by logging into your <a href="https://artistant.in/dashboard" style="color: #F25A2B; font-weight: bold; text-decoration: none;">ArtisTant Dashboard</a>.<br><br>By securing your handle early, you have received <strong>100 base points</strong> on your Founding Card. Here is how you can level up:<br><ul><li><strong>Cohort 1 Priority Access (250 PTS)</strong>: Earn 250 points to guarantee priority rollout access and waive your first gig's platform fee.</li><li><strong>Founding Artist Badge & Lifetime 0% Fee (500 PTS)</strong>: Reach 500 points to lock in a permanent verified "Founding Artist" badge. The first 50 artists to reach this status receive a lifetime <strong>0% platform fee guarantee</strong>!</li></ul><br>To climb the leaderboard and unlock rewards, share your referral link: <a href="https://artistant.in/?ref=${username}" style="color: #F25A2B; font-weight: bold;">https://artistant.in/?ref=${username}</a> or generate your Founding Card image on social media directly from your dashboard.`;
 
     // Process and substitute placeholders in the HTML
-    const watermarkStyle = "background-image: url('https://artistant.in/logo_a_watermark.png'); background-repeat: no-repeat; background-position: center center; background-size: 280px 280px;";
+    const watermarkStyle = "background-image: url('https://artistant.in/logo_a_watermark.png'); background-repeat: no-repeat; background-position: left bottom; background-size: 280px 280px;";
     
     let compiledHtml = htmlContent;
     compiledHtml = compiledHtml.replace('{{watermark_style}}', watermarkStyle);
@@ -189,7 +189,7 @@ export async function sendCustomEmail({
     }
 
     // Process and substitute placeholders in the HTML
-    const watermarkStyle = "background-image: url('https://artistant.in/logo_a_watermark.png'); background-repeat: no-repeat; background-position: center center; background-size: 280px 280px;";
+    const watermarkStyle = "background-image: url('https://artistant.in/logo_a_watermark.png'); background-repeat: no-repeat; background-position: left bottom; background-size: 280px 280px;";
     
     let compiledHtml = htmlContent;
     compiledHtml = compiledHtml.replace('{{watermark_style}}', watermarkStyle);
@@ -248,7 +248,7 @@ export async function sendPasswordResetEmail({
     const emailSubject = 'Reset your ArtisTant password 🔒';
     const bodyText = `We received a request to reset the password for your ArtisTant account.<br><br>Click the button below to choose a new password. If you did not make this request, you can safely ignore this email; your password will remain secure.<br><br>This link is valid for 1 hour.`;
 
-    const watermarkStyle = "background-image: url('https://artistant.in/logo_a_watermark.png'); background-repeat: no-repeat; background-position: center center; background-size: 280px 280px;";
+    const watermarkStyle = "background-image: url('https://artistant.in/logo_a_watermark.png'); background-repeat: no-repeat; background-position: left bottom; background-size: 280px 280px;";
     
     let compiledHtml = htmlContent;
     compiledHtml = compiledHtml.replace('{{watermark_style}}', watermarkStyle);

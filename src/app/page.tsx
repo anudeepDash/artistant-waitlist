@@ -10,6 +10,7 @@ import InteractiveTeaser from '@/components/InteractiveTeaser';
 import UIMockupSequence from '@/components/UIMockupSequence';
 import Navbar from '@/components/Navbar';
 import FeatureDetailsModal from '@/components/FeatureDetailsModal';
+import DashboardPrompt from '@/components/DashboardPrompt';
 import { getUserReservation, type WaitlistEntry } from '@/lib/waitlist';
 import { signInWithGoogle, signOut } from '@/lib/auth';
 import { useAuth } from '@/hooks/useAuth';
@@ -747,6 +748,7 @@ export default function Home() {
   const [validationError, setValidationError] = useState<string | null>(null);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [userReservation, setUserReservation] = useState<WaitlistEntry | null>(null);
+  const [showDashboardPrompt, setShowDashboardPrompt] = useState(true);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   
@@ -780,14 +782,8 @@ export default function Home() {
   useEffect(() => {
     if (!user) { setUserReservation(null); return; }
     getUserReservation(user.uid).then(setUserReservation).catch(() => setUserReservation(null));
+    setShowDashboardPrompt(true);
   }, [user]);
-
-  // Redirect to dashboard if user has already claimed a username
-  useEffect(() => {
-    if (user && userReservation) {
-      router.push('/dashboard');
-    }
-  }, [user, userReservation, router]);
 
   // Log visitor activity
   useEffect(() => {
@@ -1317,7 +1313,7 @@ export default function Home() {
               transition={{ duration: 0.6, delay: 0.1, ease: 'easeOut' }}
               style={{ position: 'relative', zIndex: 10 }}
             >
-              Artistant is the contract, escrow, and payment infrastructure built to help independent live performers manage bookings directly and secure instant payouts.
+              Artistant is the all-in-one professional toolkit built for independent live performers to build their digital presence, manage direct bookings, sign smart contracts, and secure instant payouts.
             </motion.p>
 
             {/* CTAs */}
@@ -3032,6 +3028,15 @@ export default function Home() {
           scrollToWaitlist();
         }}
       />
+
+      <AnimatePresence>
+        {user && userReservation && showDashboardPrompt && (
+          <DashboardPrompt 
+            onClose={() => setShowDashboardPrompt(false)} 
+            username={userReservation.username} 
+          />
+        )}
+      </AnimatePresence>
     </main>
   );
 }

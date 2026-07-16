@@ -32,6 +32,21 @@ function getOrInitApp(): App {
     });
   }
 
+  // Fallback to checking for service-account.json in the workspace root for local dev
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const serviceAccountPath = path.join(process.cwd(), 'service-account.json');
+    if (fs.existsSync(serviceAccountPath)) {
+      const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+      return initializeApp({
+        credential: cert(serviceAccount),
+      });
+    }
+  } catch (err) {
+    console.warn('Tried to look for service-account.json but encountered an error:', err);
+  }
+
   return initializeApp({ projectId });
 }
 
@@ -62,13 +77,50 @@ export const auth = new Proxy({} as any, {
 
 /**
  * Generates a password reset link for the given email.
+ * Falls back to Firebase Auth REST API if Admin SDK credentials are not configured.
  */
 export async function generatePasswordResetLink(email: string): Promise<string> {
-  const actionCodeSettings = {
-    url: 'https://artistant.in',
-    handleCodeInApp: false,
-  };
-  return auth.generatePasswordResetLink(email, actionCodeSettings);
+  try {
+    const actionCodeSettings = {
+      url: 'https://artistant.in',
+      handleCodeInApp: false,
+    };
+    return await auth.generatePasswordResetLink(email, actionCodeSettings);
+  } catch (adminErr) {
+    console.warn('Firebase Admin generatePasswordResetLink failed, attempting REST API fallback:', adminErr);
+
+    const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+    if (!apiKey) {
+      throw adminErr;
+    }
+
+    const response = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestType: 'PASSWORD_RESET',
+          email,
+          returnOobLink: true,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Firebase Auth REST sendOobCode failed:', errorData);
+      throw new Error(errorData?.error?.message || 'Failed to generate password reset link.');
+    }
+
+    const data = await response.json();
+    const resetLink = data?.oobLink;
+    if (!resetLink) {
+      throw new Error('OOB link was not returned by the Firebase Auth REST API.');
+    }
+
+    return resetLink;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -77,9 +129,57 @@ export async function generatePasswordResetLink(email: string): Promise<string> 
 
 /**
  * Verify a Firebase ID token and return the decoded claims.
+ * Falls back to Firebase Auth REST API if Admin SDK credentials are not configured.
  */
 export async function verifyIdToken(idToken: string): Promise<DecodedIdToken> {
-  return auth.verifyIdToken(idToken);
+  try {
+    return await auth.verifyIdToken(idToken);
+  } catch (adminErr) {
+    console.warn('Firebase Admin verifyIdToken failed, attempting REST API fallback:', adminErr);
+
+    const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+    if (!apiKey) {
+      throw adminErr;
+    }
+
+    const response = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Firebase Auth REST verification failed:', errorData);
+      throw new Error(errorData?.error?.message || 'Unauthorized');
+    }
+
+    const data = await response.json();
+    const user = data?.users?.[0];
+    if (!user) {
+      throw new Error('User not found in Firebase Auth REST verification.');
+    }
+
+    // Map user to DecodedIdToken structure
+    return {
+      uid: user.localId,
+      email: user.email,
+      email_verified: user.emailVerified,
+      auth_time: Math.floor(Date.now() / 1000),
+      iss: `https://securetoken.google.com/${projectId}`,
+      aud: projectId,
+      sub: user.localId,
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      iat: Math.floor(Date.now() / 1000),
+      firebase: {
+        identities: {},
+        sign_in_provider: user.providerUserInfo?.[0]?.providerId || 'password',
+      },
+    } as DecodedIdToken;
+  }
 }
 
 /**

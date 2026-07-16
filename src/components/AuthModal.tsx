@@ -322,9 +322,8 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
     getUserReservation(firebaseUser.uid)
       .then((existingReservation) => {
         if (existingReservation) {
-          // If the user already has a reservation, redirect directly to dashboard and close
+          // If the user already has a reservation, just close the modal and remain on home page
           onClose();
-          router.push('/dashboard');
         } else {
           // No existing reservation, proceed with onboarding/profiling
           if (!initialUsername || initialUsername.trim() === '') {
@@ -611,22 +610,27 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
       isActionPending.current = true;
       setError(null);
       setLoading(true);
+      let verifier: RecaptchaVerifier | null = null;
       try {
         if (!isFirebaseConfigured) {
           throw new Error('Firebase credentials are not configured.');
         }
         if (typeof window === 'undefined') return;
 
-        let container = document.getElementById('recaptcha-container');
-        if (!container) {
-          container = document.createElement('div');
-          container.id = 'recaptcha-container';
-          document.body.appendChild(container);
-        }
+        // Clean up any previous reCAPTCHA widget completely
+        const existingContainer = document.getElementById('recaptcha-container');
+        if (existingContainer) existingContainer.remove();
 
-        const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        // Create a fresh container
+        const container = document.createElement('div');
+        container.id = 'recaptcha-container';
+        document.body.appendChild(container);
+
+        // Create and render the verifier before using it
+        verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
           size: 'invisible',
         });
+        await verifier.render();
 
         const digitsOnly = phoneNumber.trim().replace(/\D/g, '');
         if (digitsOnly.length !== 10) {
@@ -640,8 +644,13 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
         setView('phone_verify');
         setTimeout(() => otpInputsRef.current[0]?.focus(), 150);
       } catch (err: any) {
-        console.error("Error sending OTP");
+        console.error("Error sending OTP:", err);
+        console.error("Error code:", err?.code, "Error message:", err?.message, "Full error:", JSON.stringify(err, null, 2));
         setError(friendlyError(err));
+        // Clean up verifier and container on error
+        if (verifier) {
+          try { verifier.clear(); } catch (_) { /* ignore */ }
+        }
         const container = document.getElementById('recaptcha-container');
         if (container) container.remove();
       } finally {
