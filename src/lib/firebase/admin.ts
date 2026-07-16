@@ -8,7 +8,8 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 const projectId =
   process.env.FIREBASE_ADMIN_PROJECT_ID ??
-  process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ??
+  "artistant-15c32";
 
 function getOrInitApp(): App {
   const existingApps = getApps();
@@ -34,8 +35,26 @@ function getOrInitApp(): App {
   return initializeApp({ projectId });
 }
 
-const app = getOrInitApp();
-export const auth = getAuth(app);
+let initializedAuth: any = null;
+
+function getAuthInstance() {
+  if (!initializedAuth) {
+    const app = getOrInitApp();
+    initializedAuth = getAuth(app);
+  }
+  return initializedAuth;
+}
+
+export const auth = new Proxy({} as any, {
+  get(target, prop) {
+    const instance = getAuthInstance();
+    const value = Reflect.get(instance, prop);
+    if (typeof value === 'function') {
+      return value.bind(instance);
+    }
+    return value;
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Link Generation helpers

@@ -15,7 +15,7 @@ export async function generateMetadata({
   const profile = await getPublicProfileDataAction(username);
 
 
-  const artistName = profile?.reservation.display_name || `@${username}`;
+  const artistName = profile?.reservation?.display_name || `@${username}`;
 
   return {
     title: artistName,
