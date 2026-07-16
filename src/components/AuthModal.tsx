@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, type FormEvent, Fragment } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import {
   signInWithGoogle,
@@ -9,7 +10,7 @@ import {
   signUpWithEmail,
   resetPassword,
 } from '@/lib/auth';
-import { reserveUsername, type ArtistCategory } from '@/lib/waitlist';
+import { reserveUsername, getUserReservation, type ArtistCategory } from '@/lib/waitlist';
 import { sendWelcomeEmailAction } from '@/lib/email-actions';
 import { logActivityAction } from '@/lib/admin-actions';
 import { uploadProfilePhotoAction } from '@/lib/profile-actions';
@@ -246,6 +247,7 @@ const makeYoutubeUrl = (input: string) => {
 
 export default function AuthModal({ isOpen, onClose, initialEmail, initialUsername, defaultTab }: AuthModalProps) {
   const { user } = useAuth();
+  const router = useRouter();
 
   // ---- internal state ----
   const [step, setStep] = useState<ModalStep>('auth');
@@ -316,13 +318,37 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
       .then((idToken: string) => logActivityAction({ actionType: 'login', idToken }))
       .catch((err: unknown) => console.warn('Error logging sign-in:', err));
 
-    if (!initialUsername || initialUsername.trim() === '') {
-      onClose();
-      return;
-    }
-    setPendingUser(firebaseUser);
-    setStep('profile');
-  }, [initialUsername, onClose]);
+    setLoading(true);
+    getUserReservation(firebaseUser.uid)
+      .then((existingReservation) => {
+        if (existingReservation) {
+          // If the user already has a reservation, redirect directly to dashboard and close
+          onClose();
+          router.push('/dashboard');
+        } else {
+          // No existing reservation, proceed with onboarding/profiling
+          if (!initialUsername || initialUsername.trim() === '') {
+            onClose();
+            return;
+          }
+          setPendingUser(firebaseUser);
+          setStep('profile');
+        }
+      })
+      .catch((err) => {
+        console.error('Error checking user reservation on login:', err);
+        // Fallback: proceed with onboarding
+        if (!initialUsername || initialUsername.trim() === '') {
+          onClose();
+          return;
+        }
+        setPendingUser(firebaseUser);
+        setStep('profile');
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [initialUsername, onClose, router]);
 
   // Called after profile form is submitted
   const handleProfileSubmit = useCallback(async (e: FormEvent) => {
@@ -396,7 +422,22 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
     } finally {
       setLoading(false);
     }
-  }, [pendingUser, category, selectedGenres, initialUsername, extraEmail, extraPhone]);
+  }, [
+    pendingUser,
+    category,
+    selectedGenres,
+    initialUsername,
+    extraEmail,
+    extraPhone,
+    city,
+    eventTypes,
+    spotifyUrl,
+    instagramUrl,
+    youtubeUrl,
+    bio,
+    profilePhotoFile,
+    profilePhotoPreview
+  ]);
 
   // --------------------------------------------------------------------------
   // Reset all transient state whenever the modal re-opens
