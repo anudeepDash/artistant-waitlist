@@ -508,7 +508,7 @@ function ScatterPhoto({
   );
 
   const isLight = mounted && resolvedTheme === 'light';
-  const startOpacity = isLight ? (isMobile ? 0.3 : 0.18) : (isMobile ? 0.46 : 0.26);
+  const startOpacity = isLight ? (isMobile ? 0.35 : 0.22) : (isMobile ? 0.46 : 0.26);
   const brightness = isLight ? (isMobile ? 0.95 : 0.9) : (isMobile ? 0.65 : 0.4);
   const size = isMobile ? layout.size * 2.2 : layout.size;
 
@@ -516,7 +516,7 @@ function ScatterPhoto({
   const scale = useTransform(progress, [0, 1], [0.92, 1.06]);
 
   const filter = isLight
-    ? `grayscale(0.85) contrast(0.85) brightness(${brightness})`
+    ? `grayscale(0.35) contrast(0.95) brightness(${brightness})`
     : `grayscale(1) contrast(1.2) brightness(${brightness})`;
 
   return (
