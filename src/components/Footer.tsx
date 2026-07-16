@@ -135,7 +135,7 @@ export default function Footer() {
             </span>
           </div>
           <div className="flex gap-8 items-center font-medium">
-            <Link href="/terms" className="hover:text-ink transition-colors duration-300 cursor-pointer">Terms & Conditions</Link>
+            <Link href="/terms" className="hover:text-ink transition-colors duration-300 cursor-pointer">Terms of Service</Link>
             <Link href="/privacy" className="hover:text-ink transition-colors duration-300 cursor-pointer">Privacy Policy</Link>
           </div>
         </div>
