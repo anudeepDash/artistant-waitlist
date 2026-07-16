@@ -336,75 +336,80 @@ export type PublicProfileData = {
 };
 
 export async function getPublicProfileDataAction(username: string): Promise<PublicProfileData | null> {
-  const normalisedUsername = username.trim().toLowerCase();
-  if (!/^[a-z0-9_.]{3,30}$/.test(normalisedUsername)) return null;
-  const client = createAdminClient();
-  
-  // 1. Fetch waitlist entry
-  const { data: reservation, error } = await client
-    .from('waitlist_users')
-    .select('*')
-    .eq('username', normalisedUsername)
-    .eq('is_blocked', false)
-    .maybeSingle();
+  try {
+    const normalisedUsername = username.trim().toLowerCase();
+    if (!/^[a-z0-9_.]{3,30}$/.test(normalisedUsername)) return null;
+    const client = createAdminClient();
     
-  if (error || !reservation) {
-    return null;
-  }
-  
-  // 2. Fetch referral count (verified)
-  const { count: referralCount } = await client
-    .from('waitlist_users')
-    .select('id', { count: 'exact', head: true })
-    .eq('referred_by', normalisedUsername)
-    .eq('is_verified', true);
+    // 1. Fetch waitlist entry
+    const { data: reservation, error } = await client
+      .from('waitlist_users')
+      .select('*')
+      .eq('username', normalisedUsername)
+      .eq('is_blocked', false)
+      .maybeSingle();
+      
+    if (error || !reservation) {
+      return null;
+    }
     
-  const verifiedRefs = referralCount || 0;
-  const calculatedPoints = 100 + verifiedRefs * 50 + (reservation.story_shared === true ? 80 : 0);
-  
-  // 3. Fetch waitlist position
-  let pos = reservation.position_override;
-  if (pos === undefined || pos === null) {
-    const { count } = await client
+    // 2. Fetch referral count (verified)
+    const { count: referralCount } = await client
       .from('waitlist_users')
       .select('id', { count: 'exact', head: true })
-      .eq('is_blocked', false)
-      .lte('reserved_at', reservation.reserved_at);
-    pos = count;
+      .eq('referred_by', normalisedUsername)
+      .eq('is_verified', true);
+      
+    const verifiedRefs = referralCount || 0;
+    const calculatedPoints = 100 + verifiedRefs * 50 + (reservation.story_shared === true ? 80 : 0);
+    
+    // 3. Fetch waitlist position
+    let pos = reservation.position_override;
+    if (pos === undefined || pos === null) {
+      const { count } = await client
+        .from('waitlist_users')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_blocked', false)
+        .lte('reserved_at', reservation.reserved_at);
+      pos = count;
+    }
+    
+    const waitlistPos = pos || 120;
+    const cohortVal = waitlistPos ? Math.ceil(waitlistPos / 100).toString().padStart(3, '0') : '003';
+    
+    return {
+      reservation: {
+        username: reservation.username,
+        display_name: reservation.display_name,
+        role: reservation.role,
+        category: reservation.category,
+        genres: reservation.genres,
+        city: reservation.city,
+        event_types: reservation.event_types,
+        spotify_url: reservation.spotify_url,
+        instagram_url: reservation.instagram_url,
+        youtube_url: reservation.youtube_url,
+        bio: reservation.bio,
+        profile_photo_url: reservation.profile_photo_url,
+        gallery_photos: reservation.gallery_photos,
+        profile_visitors_count: reservation.profile_visitors_count,
+        custom_status_message: reservation.custom_status_message,
+        section_order: reservation.section_order,
+        contact_email_enabled: reservation.contact_email_enabled,
+        contact_phone_enabled: reservation.contact_phone_enabled,
+        feature_founding_card: reservation.feature_founding_card,
+        ...(reservation.contact_email_enabled && reservation.email ? { email: reservation.email } : {}),
+        ...(reservation.contact_phone_enabled && reservation.phone ? { phone: reservation.phone } : {}),
+        youtube_channel_url: reservation.youtube_channel_url || null,
+      },
+      points: calculatedPoints,
+      waitlistPos,
+      cohortVal
+    };
+  } catch (err) {
+    console.error("Unhandled error in getPublicProfileDataAction:", err);
+    return null;
   }
-  
-  const waitlistPos = pos || 120;
-  const cohortVal = waitlistPos ? Math.ceil(waitlistPos / 100).toString().padStart(3, '0') : '003';
-  
-  return {
-    reservation: {
-      username: reservation.username,
-      display_name: reservation.display_name,
-      role: reservation.role,
-      category: reservation.category,
-      genres: reservation.genres,
-      city: reservation.city,
-      event_types: reservation.event_types,
-      spotify_url: reservation.spotify_url,
-      instagram_url: reservation.instagram_url,
-      youtube_url: reservation.youtube_url,
-      bio: reservation.bio,
-      profile_photo_url: reservation.profile_photo_url,
-      gallery_photos: reservation.gallery_photos,
-      profile_visitors_count: reservation.profile_visitors_count,
-      custom_status_message: reservation.custom_status_message,
-      section_order: reservation.section_order,
-      contact_email_enabled: reservation.contact_email_enabled,
-      contact_phone_enabled: reservation.contact_phone_enabled,
-      feature_founding_card: reservation.feature_founding_card,
-      ...(reservation.contact_email_enabled && reservation.email ? { email: reservation.email } : {}),
-      ...(reservation.contact_phone_enabled && reservation.phone ? { phone: reservation.phone } : {}),
-      youtube_channel_url: reservation.youtube_channel_url || null,
-    },
-    points: calculatedPoints,
-    waitlistPos,
-    cohortVal
-  };
 }
 
 export async function uploadGalleryPhotoAction(
