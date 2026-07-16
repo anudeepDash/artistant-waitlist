@@ -781,7 +781,7 @@ export default function Home() {
   // Fetch the current user's reservation when they sign in
   useEffect(() => {
     if (!user) { setUserReservation(null); return; }
-    getUserReservation(user.uid).then(setUserReservation).catch(() => setUserReservation(null));
+    getUserReservation(user.uid, user.email, user.phoneNumber).then(setUserReservation).catch(() => setUserReservation(null));
     setShowDashboardPrompt(true);
   }, [user]);
 

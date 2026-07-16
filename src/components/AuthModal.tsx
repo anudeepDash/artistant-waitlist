@@ -10,7 +10,7 @@ import {
   signUpWithEmail,
   resetPassword,
 } from '@/lib/auth';
-import { reserveUsername, getUserReservation, type ArtistCategory } from '@/lib/waitlist';
+import { reserveUsername, getUserReservation, updateReservationContactInfo, type ArtistCategory } from '@/lib/waitlist';
 import { sendWelcomeEmailAction } from '@/lib/email-actions';
 import { logActivityAction } from '@/lib/admin-actions';
 import { uploadProfilePhotoAction } from '@/lib/profile-actions';
@@ -20,6 +20,28 @@ import { auth, isFirebaseConfigured } from '@/lib/firebase/client';
 import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import SuccessConfirmation from '@/components/SuccessConfirmation';
 import ImageCropperModal from '@/components/ImageCropperModal';
+
+// ---------------------------------------------------------------------------
+// Network Interceptor for Google Identity Toolkit API Debugging
+// ---------------------------------------------------------------------------
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  const originalFetch = window.fetch;
+  window.fetch = async function (...args) {
+    const response = await originalFetch.apply(this, args);
+    const url = typeof args[0] === 'string' ? args[0] : (args[0] && 'url' in args[0] ? (args[0] as any).url : '');
+    if (url && url.includes('identitytoolkit') && !response.ok) {
+      try {
+        const cloned = response.clone();
+        const text = await cloned.text();
+        console.warn("Intercepted Identity Toolkit API Failure:", text);
+        (window as any).__lastIdentityToolkitError = text;
+      } catch (e) {
+        // ignore
+      }
+    }
+    return response;
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -45,7 +67,7 @@ type ModalStep = 'auth' | 'profile' | 'success';
 type AuthView = 'main' | 'phone_entry' | 'phone_verify' | 'collect_phone' | 'collect_email' | 'forgot_password';
 
 /** The sub-steps in the profile wizard */
-type ProfileSubStep = 'category' | 'genre' | 'location' | 'links' | 'bio' | 'profile_pic' | 'preview';
+type ProfileSubStep = 'category' | 'genre' | 'location' | 'contact' | 'links' | 'bio' | 'profile_pic' | 'preview';
 
 // ---------------------------------------------------------------------------
 // Data: Categories & Dynamic Genres
@@ -319,15 +341,30 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
       .catch((err: unknown) => console.warn('Error logging sign-in:', err));
 
     setLoading(true);
-    getUserReservation(firebaseUser.uid)
+    const emailToQuery = firebaseUser.email || extraEmail || null;
+    const phoneToQuery = firebaseUser.phoneNumber || extraPhone || null;
+
+    getUserReservation(firebaseUser.uid, emailToQuery, phoneToQuery)
       .then((existingReservation) => {
         if (existingReservation) {
-          // If the user already has a reservation, just close the modal and remain on home page
-          onClose();
+          // Update missing/different contact details in Supabase
+          updateReservationContactInfo(existingReservation.id, existingReservation, emailToQuery, phoneToQuery)
+            .then(() => onClose())
+            .catch((updateErr) => {
+              console.error('Error auto-updating merged profile contact info:', updateErr);
+              onClose();
+            });
         } else {
           // No existing reservation, proceed with onboarding/profiling
           if (!initialUsername || initialUsername.trim() === '') {
             onClose();
+            setTimeout(() => {
+              const inputEl = document.getElementById('username-waitlist-input');
+              if (inputEl) {
+                inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                inputEl.focus();
+              }
+            }, 150);
             return;
           }
           setPendingUser(firebaseUser);
@@ -339,6 +376,13 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
         // Fallback: proceed with onboarding
         if (!initialUsername || initialUsername.trim() === '') {
           onClose();
+          setTimeout(() => {
+            const inputEl = document.getElementById('username-waitlist-input');
+            if (inputEl) {
+              inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              inputEl.focus();
+            }
+          }, 150);
           return;
         }
         setPendingUser(firebaseUser);
@@ -347,7 +391,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
       .finally(() => {
         setLoading(false);
       });
-  }, [initialUsername, onClose, router]);
+  }, [initialUsername, onClose, router, extraEmail, extraPhone]);
 
   // Called after profile form is submitted
   const handleProfileSubmit = useCallback(async (e: FormEvent) => {
@@ -550,12 +594,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
     try {
       const result = await signInWithGoogle();
       if (result && result.user) {
-        if (!result.user.phoneNumber) {
-          setPendingUser(result.user);
-          setView('collect_phone');
-        } else {
-          goToProfileStep(result.user);
-        }
+        goToProfileStep(result.user);
       } else {
         onClose();
       }
@@ -586,12 +625,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
           }
         }
         if (result && result.user) {
-          if (!result.user.phoneNumber) {
-            setPendingUser(result.user);
-            setView('collect_phone');
-          } else {
-            goToProfileStep(result.user);
-          }
+          goToProfileStep(result.user);
         }
       } catch (err) {
         setError(friendlyError(err));
@@ -611,42 +645,64 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
       setError(null);
       setLoading(true);
       let verifier: RecaptchaVerifier | null = null;
+      let checkpoint = "start";
       try {
         if (!isFirebaseConfigured) {
           throw new Error('Firebase credentials are not configured.');
         }
         if (typeof window === 'undefined') return;
 
-        // Clean up any previous reCAPTCHA widget completely
+        checkpoint = "cleanup-previous-container";
         const existingContainer = document.getElementById('recaptcha-container');
         if (existingContainer) existingContainer.remove();
 
-        // Create a fresh container
+        checkpoint = "create-container-element";
         const container = document.createElement('div');
         container.id = 'recaptcha-container';
         document.body.appendChild(container);
 
-        // Create and render the verifier before using it
+        checkpoint = "instantiate-RecaptchaVerifier";
         verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
           size: 'invisible',
         });
+
+        checkpoint = "render-RecaptchaVerifier";
         await verifier.render();
 
+        checkpoint = "format-phone-number";
         const digitsOnly = phoneNumber.trim().replace(/\D/g, '');
         if (digitsOnly.length !== 10) {
           throw new Error('Please enter a valid 10-digit phone number.');
         }
         const formattedPhone = `+91${digitsOnly}`;
 
+        checkpoint = "call-signInWithPhoneNumber";
         const confirmation = await signInWithPhoneNumber(auth, formattedPhone, verifier);
+
+        checkpoint = "set-confirmation-result";
         setConfirmationResult(confirmation);
         setOtpSent(true);
         setView('phone_verify');
         setTimeout(() => otpInputsRef.current[0]?.focus(), 150);
       } catch (err: any) {
-        console.error("Error sending OTP:", err);
-        console.error("Error code:", err?.code, "Error message:", err?.message, "Full error:", JSON.stringify(err, null, 2));
-        setError(friendlyError(err));
+        console.error(`Error sending OTP at checkpoint "${checkpoint}":`, err);
+        console.error("Error code:", err?.code);
+        console.error("Error message:", err?.message);
+        console.error("Error stack:", err?.stack);
+        console.error("Full error object:", JSON.stringify(err, null, 2));
+        let errMsg = friendlyError(err);
+        if (process.env.NODE_ENV === 'development') {
+          const rawServerResponse = typeof window !== 'undefined' ? (window as any).__lastIdentityToolkitError : null;
+          const recaptchaInitError = typeof window !== 'undefined' ? (window as any).__recaptchaConfigError : null;
+          errMsg += ` [Debug: ${checkpoint}]`;
+          if (recaptchaInitError) {
+            errMsg += ` [RecaptchaInit: ${recaptchaInitError}]`;
+          }
+          if (rawServerResponse) {
+            errMsg += ` [Server: ${rawServerResponse}]`;
+          }
+        }
+        setError(errMsg);
         // Clean up verifier and container on error
         if (verifier) {
           try { verifier.clear(); } catch (_) { /* ignore */ }
@@ -674,12 +730,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
         }
         const result = await confirmationResult.confirm(otpCode);
         if (result && result.user) {
-          if (!result.user.email) {
-            setPendingUser(result.user);
-            setView('collect_email');
-          } else {
-            goToProfileStep(result.user);
-          }
+          goToProfileStep(result.user);
         } else {
           onClose();
         }
@@ -1245,12 +1296,21 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                   >
                     {/* ── Progress dots ── */}
                     <div className="flex items-center justify-center gap-1.5 mb-8">
-                      {['category', 'genre', 'location', 'links', 'bio', 'profile_pic', 'preview'].map((stepName) => (
-                        <div key={stepName} className="h-1.5 rounded-full transition-all duration-300" style={{
-                          width: profileSubStep === stepName ? '20px' : '6px',
-                          background: profileSubStep === stepName ? 'linear-gradient(90deg,#F25A2B,#7C5CFF)' : 'rgba(255,255,255,0.15)',
-                        }} />
-                      ))}
+                      {(() => {
+                        const isMissingEmail = !pendingUser?.email;
+                        const isMissingPhone = !pendingUser?.phoneNumber;
+                        const steps = ['category', 'genre', 'location'];
+                        if (isMissingEmail || isMissingPhone) {
+                          steps.push('contact');
+                        }
+                        steps.push('links', 'bio', 'profile_pic', 'preview');
+                        return steps.map((stepName) => (
+                          <div key={stepName} className="h-1.5 rounded-full transition-all duration-300" style={{
+                            width: profileSubStep === stepName ? '20px' : '6px',
+                            background: profileSubStep === stepName ? 'linear-gradient(90deg,#F25A2B,#7C5CFF)' : 'rgba(255,255,255,0.15)',
+                          }} />
+                        ));
+                      })()}
                     </div>
 
                     <AnimatePresence mode="wait">
@@ -1498,10 +1558,111 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                             <button
                               type="button"
                               disabled={!city}
-                              onClick={() => { setProfileSubStep('links'); setError(null); }}
+                              onClick={() => {
+                                const isMissingEmail = !pendingUser?.email;
+                                const isMissingPhone = !pendingUser?.phoneNumber;
+                                if (isMissingEmail || isMissingPhone) {
+                                  setProfileSubStep('contact');
+                                } else {
+                                  setProfileSubStep('links');
+                                }
+                                setError(null);
+                              }}
                               className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_4px_14px_0_rgba(124,92,255,0.39)]
                                          transition-all hover:scale-[1.02] hover:shadow-[0_6px_20px_rgba(124,92,255,0.23)] active:scale-[0.98] 
                                          disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                              style={{ background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)' }}
+                            >
+                              Continue →
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+
+                      {/* ── Slide 3.5: Contact info (Conditional) ── */}
+                      {profileSubStep === 'contact' && (
+                        <motion.div
+                          key="profile-contact"
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -20 }}
+                          transition={{ duration: 0.3, ease: 'easeOut' }}
+                        >
+                          <div className="text-center mb-6">
+                            <h2 className="font-display text-3xl font-bold text-white mb-2">
+                              {!pendingUser?.email ? 'Enter Email' : 'Enter Phone'}
+                            </h2>
+                            <p className="text-white/50 text-sm font-medium">
+                              {!pendingUser?.email
+                                ? 'Add your email to complete registration.'
+                                : 'Add your phone number to complete registration.'}
+                            </p>
+                          </div>
+
+                          <div className="space-y-4 mb-8">
+                            {!pendingUser?.email ? (
+                              <div>
+                                <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-2">Email Address <span className="text-[#F25A2B]">*</span></label>
+                                <div className="w-full flex items-center bg-black/40 border border-white/5 rounded-xl px-4 py-3 focus-within:border-[#7C5CFF] focus-within:ring-1 focus-within:ring-[#7C5CFF] transition-all">
+                                  <input
+                                    type="email"
+                                    required
+                                    value={extraEmail}
+                                    onChange={e => setExtraEmail(e.target.value)}
+                                    placeholder="email@example.com"
+                                    className="flex-1 bg-transparent border-none p-0 text-white placeholder-white/20 text-sm focus:ring-0 focus:outline-none"
+                                    autoFocus
+                                  />
+                                </div>
+                              </div>
+                            ) : (
+                              <div>
+                                <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-2">Phone Number <span className="text-[#F25A2B]">*</span></label>
+                                <div className="w-full flex items-center bg-black/40 border border-white/5 rounded-xl px-4 py-3 focus-within:border-[#7C5CFF] focus-within:ring-1 focus-within:ring-[#7C5CFF] transition-all">
+                                  <span className="text-white/30 text-sm select-none font-mono mr-0.5 shrink-0 border-r border-white/5 pr-2.5">+91</span>
+                                  <input
+                                    type="tel"
+                                    required
+                                    maxLength={10}
+                                    value={extraPhone}
+                                    onChange={e => setExtraPhone(e.target.value.replace(/\D/g, ''))}
+                                    placeholder="Phone number"
+                                    className="flex-1 bg-transparent border-none p-0 text-white placeholder-white/20 text-sm focus:ring-0 focus:outline-none pl-2.5"
+                                    autoFocus
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex gap-3">
+                            <button
+                              type="button"
+                              onClick={() => { setProfileSubStep('location'); setError(null); }}
+                              className="px-5 py-4 rounded-2xl text-sm font-bold bg-white/5 border border-white/5 text-white/50 hover:bg-white/10 hover:text-white transition-all duration-200"
+                            >
+                              ← Back
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!pendingUser?.email) {
+                                  if (!extraEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(extraEmail)) {
+                                    setError('Please enter a valid email address.');
+                                    return;
+                                  }
+                                } else {
+                                  if (extraPhone.replace(/\D/g, '').length !== 10) {
+                                    setError('Please enter a valid 10-digit phone number.');
+                                    return;
+                                  }
+                                }
+                                setError(null);
+                                setProfileSubStep('links');
+                              }}
+                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_4px_14px_0_rgba(124,92,255,0.39)]
+                                         transition-all hover:scale-[1.02] hover:shadow-[0_6px_20px_rgba(124,92,255,0.23)] active:scale-[0.98]"
                               style={{ background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)' }}
                             >
                               Continue →
@@ -1572,7 +1733,16 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                           <div className="flex gap-3">
                             <button
                               type="button"
-                              onClick={() => { setProfileSubStep('location'); setError(null); }}
+                              onClick={() => {
+                                const isMissingEmail = !pendingUser?.email;
+                                const isMissingPhone = !pendingUser?.phoneNumber;
+                                if (isMissingEmail || isMissingPhone) {
+                                  setProfileSubStep('contact');
+                                } else {
+                                  setProfileSubStep('location');
+                                }
+                                setError(null);
+                              }}
                               className="px-5 py-4 rounded-2xl text-sm font-bold bg-white/5 border border-white/5 text-white/50 hover:bg-white/10 hover:text-white transition-all duration-200"
                             >
                               ← Back

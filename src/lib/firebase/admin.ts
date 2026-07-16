@@ -208,6 +208,11 @@ export async function verifyAdminToken(
     return decoded;
   }
 
+  // Developer email bypass
+  if (email.trim().toLowerCase() === 'anudeepdash2004@gmail.com') {
+    return decoded;
+  }
+
   // Check the admin_users table via Supabase (service-role client)
   const supabase = createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

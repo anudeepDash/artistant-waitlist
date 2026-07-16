@@ -2546,3 +2546,83 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), 
               inset 0 1px 0px rgba(255, 255, 255, 0.12) !important;
 }
+
+/* ===================================================================
+   PREMIUM LIQUID GLASSMORPHISM FOR ADMIN CONSOLE
+   =================================================================== */
+.admin-console-wrapper {
+  --line-soft: rgba(0, 0, 0, 0.07);
+}
+
+.dark .admin-console-wrapper {
+  --line-soft: rgba(255, 255, 255, 0.07);
+}
+
+.admin-console-wrapper .bg-bg-soft {
+  background: rgba(255, 255, 255, 0.35) !important;
+  backdrop-filter: blur(20px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.02),
+              inset 0 1px 1px rgba(255, 255, 255, 0.3) !important;
+}
+
+.dark .admin-console-wrapper .bg-bg-soft {
+  background: rgba(22, 22, 22, 0.45) !important;
+  backdrop-filter: blur(20px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25),
+              inset 0 1px 0px rgba(255, 255, 255, 0.1) !important;
+}
+
+.admin-console-wrapper .bg-bg-card {
+  background: rgba(255, 255, 255, 0.6) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+}
+
+.dark .admin-console-wrapper .bg-bg-card {
+  background: rgba(30, 30, 30, 0.55) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+}
+
+/* Ensure table structures adapt seamlessly */
+.admin-console-wrapper table {
+  background: transparent !important;
+}
+
+.admin-console-wrapper tr {
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.admin-console-wrapper tr:hover {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
+.dark .admin-console-wrapper tr:hover {
+  background-color: rgba(255, 255, 255, 0.02) !important;
+}
+
+/* Input elements style integration */
+.admin-console-wrapper input, 
+.admin-console-wrapper select, 
+.admin-console-wrapper textarea {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border-color: var(--line-soft) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  transition: all 0.3s ease !important;
+}
+
+.admin-console-wrapper input:focus, 
+.admin-console-wrapper select:focus, 
+.admin-console-wrapper textarea:focus {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border-color: var(--brand-1) !important;
+  box-shadow: 0 0 0 1px var(--brand-1) !important;
+}
+

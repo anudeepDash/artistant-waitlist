@@ -448,7 +448,7 @@ export default function ProfilePage() {
     if (authLoading) return;
     if (!user) { router.push('/?auth=true'); return; }
 
-    getUserReservation(user.uid)
+    getUserReservation(user.uid, user.email, user.phoneNumber)
       .then(async (res) => {
         if (!res) { router.push('/'); return; }
         setReservation(res);

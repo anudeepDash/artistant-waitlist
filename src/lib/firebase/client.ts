@@ -24,8 +24,14 @@ if (isFirebaseConfigured) {
   auth = getAuth(app);
   // Initialize reCAPTCHA Enterprise config for Identity Platform phone auth
   if (typeof window !== 'undefined') {
+    // Enable bypassing reCAPTCHA check in local development for test phone numbers
+    if (process.env.NODE_ENV === 'development') {
+      (auth as any).appVerificationDisabledForTesting = true;
+    }
+    
     initializeRecaptchaConfig(auth).catch((err) => {
       console.warn("reCAPTCHA config init skipped:", err?.message);
+      (window as any).__recaptchaConfigError = err?.message || String(err);
     });
   }
 } else {

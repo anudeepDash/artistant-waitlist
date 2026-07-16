@@ -1,5 +1,4 @@
 import { createClient } from "./supabase/client";
-import { auth as firebaseAuth, isFirebaseConfigured } from "./firebase/client";
 import { checkUsernameAvailableAction } from "./admin-actions";
 
 // ---------------------------------------------------------------------------
@@ -171,19 +170,79 @@ export async function reserveUsername(
  */
 export async function getUserReservation(
   uid: string,
+  email?: string | null,
+  phone?: string | null
 ): Promise<WaitlistEntry | null> {
   const supabase = createClient();
-  const { data, error } = await supabase
+  let data: WaitlistEntry | null = null;
+
+  // 1. Try to find the profile by UID
+  const res = await supabase
     .from("waitlist_users")
     .select("*")
     .eq("user_id", uid)
     .maybeSingle();
-
-  if (error || !data) {
-    return null;
+  
+  if (res.data) {
+    data = res.data as WaitlistEntry;
   }
 
-  return data as WaitlistEntry;
+  if (res.error) {
+    console.error("Error fetching reservation by UID:", res.error);
+  }
+
+  // 2. If not found by UID, try to find by email (if provided)
+  if (!data && email) {
+    const { data: emailData, error: emailError } = await supabase
+      .from("waitlist_users")
+      .select("*")
+      .eq("email", email)
+      .maybeSingle();
+
+    if (emailError) {
+      console.error("Error fetching reservation by email:", emailError);
+    } else if (emailData) {
+      data = emailData as WaitlistEntry;
+      // Link the profile to the current UID
+      const { error: updateError } = await supabase
+        .from("waitlist_users")
+        .update({ user_id: uid })
+        .eq("id", emailData.id);
+      if (updateError) {
+        console.error("Error updating user_id to match email UID:", updateError);
+      } else {
+        data.user_id = uid;
+      }
+    }
+  }
+
+  // 3. If not found by UID/email, try to find by phone (if provided)
+  if (!data && phone) {
+    const formattedPhone = `+91${phone.replace(/\D/g, '').slice(-10)}`;
+    const { data: phoneData, error: phoneError } = await supabase
+      .from("waitlist_users")
+      .select("*")
+      .eq("phone", formattedPhone)
+      .maybeSingle();
+
+    if (phoneError) {
+      console.error("Error fetching reservation by phone:", phoneError);
+    } else if (phoneData) {
+      data = phoneData as WaitlistEntry;
+      // Link the profile to the current UID
+      const { error: updateError } = await supabase
+        .from("waitlist_users")
+        .update({ user_id: uid })
+        .eq("id", phoneData.id);
+      if (updateError) {
+        console.error("Error updating user_id to match phone UID:", updateError);
+      } else {
+        data.user_id = uid;
+      }
+    }
+  }
+
+  return data;
 }
 
 /**
@@ -294,9 +353,6 @@ export async function getWaitlistPosition(reservedAt: string, userId: string, po
   }
 }
 
-/**
- * Fetches the count of users referred by a given username.
- */
 export async function getReferralCount(username: string): Promise<number> {
   const supabase = createClient();
   try {
@@ -359,6 +415,43 @@ export async function getUnverifiedReferralCount(username: string): Promise<numb
   } catch (e) {
     console.error("Failed to fetch unverified referrals:", e);
     return 0;
+  }
+}
+
+/**
+ * Updates the contact details of a waitlist user if they are missing or different.
+ */
+export async function updateReservationContactInfo(
+  id: string,
+  existingReservation: WaitlistEntry,
+  email?: string | null,
+  phone?: string | null
+): Promise<void> {
+  const supabase = createClient();
+  const updates: { email?: string; phone?: string } = {};
+  let needsUpdate = false;
+
+  if (email && existingReservation.email !== email) {
+    updates.email = email;
+    needsUpdate = true;
+  }
+
+  if (phone) {
+    const formattedPhone = `+91${phone.replace(/\D/g, '').slice(-10)}`;
+    if (existingReservation.phone !== formattedPhone) {
+      updates.phone = formattedPhone;
+      needsUpdate = true;
+    }
+  }
+
+  if (needsUpdate) {
+    const { error } = await supabase
+      .from("waitlist_users")
+      .update(updates)
+      .eq("id", id);
+    if (error) {
+      console.error("Error updating reservation contact info:", error);
+    }
   }
 }
 
