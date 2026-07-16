@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { type User } from 'firebase/auth';
@@ -8,9 +8,6 @@ import { type WaitlistEntry } from '@/lib/waitlist';
 import { usePathname, useRouter } from 'next/navigation';
 import { deleteAccountDataAction } from '@/lib/account-actions';
 
-/* ──────────────────────────────────────────────
-   Navbar Props
-   ────────────────────────────────────────────── */
 interface NavbarProps {
   user: User | null;
   userReservation: WaitlistEntry | null;
@@ -20,27 +17,9 @@ interface NavbarProps {
   foundingPoints?: number;
 }
 
-/** Navigation link definition */
-interface NavLink {
-  label: string;
-  sectionId: string;
-}
-
-/** Center nav links — smooth-scroll to corresponding <section id="..."> */
-const NAV_LINKS: NavLink[] = [
-  { label: 'Why Artistant', sectionId: 'problem-voices' },
-  { label: 'Ecosystem', sectionId: 'ecosystem' },
-  { label: 'Roadmap', sectionId: 'standard' },
-];
-
-/* ──────────────────────────────────────────────
-   Navbar Component
-   ────────────────────────────────────────────── */
 const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClick, foundingPoints }: NavbarProps) => {
   const [scrolled, setScrolled] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  const [hoveredLink, setHoveredLink] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -62,15 +41,9 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
 
     setIsDeleting(true);
     try {
-      // 1. Get a fresh ID token while user is authenticated
       const idToken = await user.getIdToken(true);
-      
-      // 2. Delete from Firebase first. If stale, throws and stops before deleting DB record.
       await user.delete();
-      
-      // 3. Delete DB record using the pre-generated cryptographically valid token
       await deleteAccountDataAction(idToken);
-      
       setProfileDropdownOpen(false);
       router.push('/');
     } catch (err: any) {
@@ -107,33 +80,9 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
-    // Run once on mount in case already scrolled
     handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  // Close mobile menu when viewport widens past the breakpoint
-  useEffect(() => {
-    const mql = window.matchMedia('(min-width: 768px)');
-    const onChange = (e: MediaQueryListEvent) => {
-      if (e.matches) setMobileOpen(false);
-    };
-    mql.addEventListener('change', onChange);
-    return () => mql.removeEventListener('change', onChange);
-  }, []);
-
-  /** Smooth-scroll to a section or navigate to the landing page with anchor */
-  const scrollToSection = useCallback((sectionId: string) => {
-    if (pathname === '/') {
-      const el = document.getElementById(sectionId);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    } else {
-      window.location.href = `/#${sectionId}`;
-    }
-    setMobileOpen(false);
-  }, [pathname]);
 
   return (
     <motion.nav
@@ -174,38 +123,6 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
               className={`object-contain transition-all duration-300 dark:invert-0 invert ${scrolled ? 'h-[36px] md:h-[56px]' : 'h-[44px] md:h-[90px]'}`}
             />
           </a>
-
-          {/* ── CENTER: Desktop Nav Links ───────────── */}
-          {pathname === '/' && (
-            <ul className="hidden md:flex items-center gap-1.5">
-              {NAV_LINKS.map((link) => (
-                <motion.li 
-                  key={link.label}
-                  onHoverStart={() => setHoveredLink(link.label)}
-                  onHoverEnd={() => setHoveredLink(null)}
-                  className="relative"
-                >
-                  {hoveredLink === link.label && (
-                    <motion.div
-                      layoutId="nav-hover-pill"
-                      className="absolute inset-0 bg-ink/5 dark:bg-white/10 rounded-full -z-10"
-                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                    />
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => scrollToSection(link.sectionId)}
-                    className="
-                      px-4 py-2 font-body text-xs font-semibold uppercase tracking-wider
-                      text-ink-2 hover:text-ink transition-colors duration-200 cursor-pointer
-                    "
-                  >
-                    {link.label}
-                  </button>
-                </motion.li>
-              ))}
-            </ul>
-          )}
 
           {/* ── RIGHT: Controls & Profile ────────────── */}
           <div className="flex items-center gap-2 md:gap-3">
@@ -419,99 +336,10 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
                 </svg>
               </button>
             )}
-
-            {/* ── Hamburger toggle (mobile only) ─────── */}
-            {pathname === '/' && (
-              <button
-                type="button"
-                aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
-                aria-expanded={mobileOpen}
-                onClick={() => setMobileOpen((prev) => !prev)}
-                className="
-                  md:hidden relative w-8 h-8 md:w-9 md:h-9 cursor-pointer
-                  flex flex-col items-center justify-center gap-1.5 rounded-full
-                  bg-ink/5 dark:bg-white/5 border border-glass-border
-                "
-              >
-                <motion.span
-                  animate={mobileOpen ? { rotate: 45, y: 5.5 } : { rotate: 0, y: 0 }}
-                  transition={{ duration: 0.25 }}
-                  className="block h-[1.8px] w-4.5 rounded-full bg-ink origin-center"
-                />
-                <motion.span
-                  animate={mobileOpen ? { opacity: 0, scaleX: 0 } : { opacity: 1, scaleX: 1 }}
-                  transition={{ duration: 0.2 }}
-                  className="block h-[1.8px] w-4.5 rounded-full bg-ink origin-center"
-                />
-                <motion.span
-                  animate={mobileOpen ? { rotate: -45, y: -5.5 } : { rotate: 0, y: 0 }}
-                  transition={{ duration: 0.25 }}
-                  className="block h-[1.8px] w-4.5 rounded-full bg-ink origin-center"
-                />
-              </button>
-            )}
           </div>
 
         </div>
       </div>
-
-      {/* ── MOBILE MENU (dropdown) ────────────────── */}
-      {pathname === '/' && (
-        <AnimatePresence>
-          {mobileOpen && (
-            <motion.div
-              key="mobile-menu"
-              initial={{ opacity: 0, y: -10, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.98 }}
-              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              className="
-                md:hidden mx-auto max-w-lg mt-3
-                glass-card border border-glass-border/60 bg-glass-bg backdrop-blur-2xl
-                rounded-2xl overflow-hidden shadow-2xl shadow-black/30 pointer-events-auto
-              "
-            >
-              <div className="flex flex-col gap-1 p-3">
-                {NAV_LINKS.map((link) => (
-                  <button
-                    key={link.sectionId}
-                    type="button"
-                    onClick={() => scrollToSection(link.sectionId)}
-                    className="
-                      w-full text-left px-5 py-3.5 rounded-xl cursor-pointer
-                      font-body text-sm font-semibold text-ink-2
-                      hover:text-ink hover:bg-ink/5 dark:hover:bg-white/5
-                      transition-all duration-200
-                    "
-                  >
-                    {link.label}
-                  </button>
-                ))}
-
-                {/* Sign In / Profile action in mobile menu if not signed in */}
-                {!user && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMobileOpen(false);
-                      onSignInClick();
-                    }}
-                    className="
-                      mt-2 w-full gradient-bg cta-glow cursor-pointer
-                      py-3.5 rounded-full
-                      font-mono text-xs font-bold text-white text-center uppercase tracking-wider
-                      hover:scale-[1.02] active:scale-[0.97]
-                      transition-all duration-200
-                    "
-                  >
-                    Sign In
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      )}
     </motion.nav>
   );
 };

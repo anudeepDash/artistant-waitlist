@@ -1226,19 +1226,79 @@ export default function Home() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: 'easeOut' }}
-              style={{ position: 'relative', zIndex: 10 }}
+              style={{ 
+                position: 'relative', 
+                zIndex: 10, 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center',
+                lineHeight: '0.95',
+                letterSpacing: '-0.035em'
+              }}
             >
-              <span className="hero-line block">
-                India runs on <span className="hero-italic" style={{ color: 'var(--brand-1)' }}>live events.</span>
+              {/* Line 1 (Filled) */}
+              <span className="hero-line block" style={{ fontSize: 'clamp(28px, 6.2vw, 76px)', textAlign: 'center' }}>
+                The live event
               </span>
-              <span className="hero-line hero-outline block">
-                Booking it
+
+              {/* Line 2 (Outline) with dynamic rotated RED neon badge */}
+              <span className="hero-line hero-outline block" style={{ fontSize: 'clamp(28px, 6.2vw, 76px)', textAlign: 'center', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                ecosystem is{' '}
+                <span style={{ 
+                  background: 'rgba(255, 69, 58, 0.08)',
+                  border: '1px solid rgba(255, 69, 58, 0.25)',
+                  padding: '2px 12px',
+                  borderRadius: '10px',
+                  color: '#FF453A', 
+                  textShadow: '0 0 15px rgba(255, 69, 58, 0.45)',
+                  fontStyle: 'italic',
+                  fontWeight: '800',
+                  transform: 'rotate(-2deg)',
+                  display: 'inline-block',
+                  WebkitTextStroke: '0px'
+                }}>
+                  broken.
+                </span>
               </span>
-              <span className="hero-line block">
-                <span className="strike" style={{ color: 'var(--ink-2)' }}>shouldn&apos;t</span> <span className="hero-italic" style={{ color: 'var(--brand-1)' }}>just</span>
+
+              {/* Line 3 (Filled) with signature Artistant gradient text highlight - FIXED CLIPPING */}
+              <span className="hero-line block" style={{ fontSize: 'clamp(26px, 5.8vw, 72px)', textAlign: 'center', marginBottom: '4px' }}>
+                We built the{' '}
+                <span className="hero-italic" style={{ 
+                  background: 'linear-gradient(135deg, var(--brand-1) 0%, var(--brand-3) 100%)', 
+                  WebkitBackgroundClip: 'text', 
+                  WebkitTextFillColor: 'transparent', 
+                  textShadow: '0 0 20px rgba(124,92,255,0.25)',
+                  display: 'inline-block',
+                  paddingTop: '0.15em',
+                  paddingBottom: '0.05em',
+                  paddingRight: '0.05em',
+                  lineHeight: '1.0'
+                }}>
+                  infrastructure
+                </span>
               </span>
-              <span className="hero-line hero-outline block">
-                run on WhatsApp.
+
+              {/* Line 4 (Outline) */}
+              <span className="hero-line hero-outline block" style={{ fontSize: 'clamp(28px, 6.2vw, 76px)', textAlign: 'center' }}>
+                India&apos;s artists
+              </span>
+
+              {/* Line 5 (Filled) with marker/underline highlight box featuring SOLID line underline */}
+              <span className="hero-line block" style={{ fontSize: 'clamp(28px, 6.2vw, 76px)', textAlign: 'center' }}>
+                <span style={{ 
+                  background: 'rgba(242, 90, 43, 0.06)',
+                  borderBottom: '3px solid rgba(242, 90, 43, 0.5)',
+                  padding: '0px 14px',
+                  borderRadius: '4px',
+                  color: 'var(--brand-1)', 
+                  fontStyle: 'italic',
+                  fontWeight: '800',
+                  display: 'inline-block',
+                  textShadow: '0 0 10px rgba(242,90,43,0.2)'
+                }}>
+                  actually deserve.
+                </span>
               </span>
             </motion.h1>
 
@@ -1250,7 +1310,7 @@ export default function Home() {
               transition={{ duration: 0.6, delay: 0.1, ease: 'easeOut' }}
               style={{ position: 'relative', zIndex: 10 }}
             >
-              Step into The Bookability Engine™. Secure your custom portfolio, share standard rates, and lock in bookings instantly.
+              Artistant is the contract, escrow, and payment infrastructure built to help independent live performers manage bookings directly and secure instant payouts.
             </motion.p>
 
             {/* CTAs */}

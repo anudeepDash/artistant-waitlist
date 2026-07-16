@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     default: "Home | Artistant",
   },
   description:
-    "India runs on live events. The infrastructure to hire it doesn't exist yet. We're building it. Join the waitlist.",
+    "The live event ecosystem is broken. We built the contract, escrow, and payment infrastructure India's independent artists actually deserve.",
   keywords: [
     "ArtisTant",
     "live entertainment",
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "ARTISTANT — India's live economy, rebuilt.",
     description:
-      "India runs on live events. The infrastructure to hire it doesn't exist yet. We're building it.",
+      "The live event ecosystem is broken. We built the contract, escrow, and payment infrastructure India's independent artists actually deserve.",
     type: "website",
     siteName: "Artistant",
     locale: "en_IN",
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "ARTISTANT — India's live economy, rebuilt.",
     description:
-      "India runs on live events. The infrastructure to hire it doesn't exist yet. We're building it.",
+      "The live event ecosystem is broken. We built the contract, escrow, and payment infrastructure India's independent artists actually deserve.",
   },
   robots: "index, follow",
 };
