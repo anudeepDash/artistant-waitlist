@@ -22,10 +22,30 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   const pathname = usePathname();
   const router = useRouter();
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Sync and observe dark mode transitions
+  useEffect(() => {
+    const checkDark = () => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'));
+    };
+    
+    // Initial check
+    checkDark();
+
+    // Create mutation observer to listen for class changes on document root
+    const observer = new MutationObserver(checkDark);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   // Reset settings view when dropdown is closed
   useEffect(() => {
@@ -95,9 +115,18 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
         className={[
           'mx-auto w-full transition-all duration-500 ease-out pointer-events-auto',
           scrolled
-            ? 'max-w-4xl bg-glass-bg border border-glass-border/60 shadow-lg shadow-black/10 rounded-full py-1.5 px-3 md:py-2.5 md:px-7 backdrop-blur-xl'
+            ? 'max-w-4xl rounded-full py-1.5 px-3 md:py-2.5 md:px-7'
             : 'max-w-7xl bg-transparent border-transparent py-3 px-4 md:py-4 md:px-10 rounded-none'
         ].join(' ')}
+        style={scrolled ? {
+          background: isDarkMode ? 'rgba(18, 20, 28, 0.45)' : 'rgba(255, 255, 255, 0.45)',
+          backdropFilter: 'blur(24px) saturate(190%)',
+          WebkitBackdropFilter: 'blur(24px) saturate(190%)',
+          border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(0, 0, 0, 0.08)',
+          boxShadow: isDarkMode
+            ? '0 8px 32px rgba(0, 0, 0, 0.25), inset 0 1px 0px rgba(255, 255, 255, 0.12)'
+            : '0 4px 30px rgba(0, 0, 0, 0.02), inset 0 1px 1px rgba(255, 255, 255, 0.4)'
+        } : {}}
       >
         <div className="flex items-center justify-between">
           
