@@ -782,6 +782,13 @@ export default function Home() {
     getUserReservation(user.uid).then(setUserReservation).catch(() => setUserReservation(null));
   }, [user]);
 
+  // Redirect to dashboard if user has already claimed a username
+  useEffect(() => {
+    if (user && userReservation) {
+      router.push('/dashboard');
+    }
+  }, [user, userReservation, router]);
+
   // Log visitor activity
   useEffect(() => {
     const hasLoggedVisit = sessionStorage.getItem("artistant_visit_logged");
@@ -2233,7 +2240,7 @@ export default function Home() {
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => router.push(`/${userReservation.username}`)}
+                  onClick={() => router.push('/dashboard')}
                   style={{
                     background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)',
                     color: '#ffffff',
