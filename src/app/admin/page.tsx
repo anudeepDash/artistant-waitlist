@@ -1248,110 +1248,109 @@ export default function AdminPage() {
   // ---------------------------------------------------------------------------
   if (!isUnlocked) {
     return (
-      <div className="min-h-screen bg-[#050508] text-white flex flex-col justify-center items-center px-4 relative overflow-hidden">
-        {/* Homepage-style cinematic backdrop */}
-        <div className="absolute inset-0" style={{
-          background: `
-            radial-gradient(ellipse 70% 50% at 50% 40%, rgba(124,92,255,0.08), transparent 60%),
-            radial-gradient(ellipse 60% 40% at 25% 70%, rgba(242,90,43,0.06), transparent 55%),
-            radial-gradient(ellipse 50% 40% at 75% 80%, rgba(212,86,122,0.05), transparent 50%)
-          `
-        }} />
-        <div className="absolute inset-0" style={{
-          backgroundImage: 'linear-gradient(rgba(124,92,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(124,92,255,0.04) 1px, transparent 1px)',
-          backgroundSize: '80px 80px',
-          maskImage: 'radial-gradient(ellipse 70% 60% at 50% 40%, black 20%, transparent 70%)',
-          WebkitMaskImage: 'radial-gradient(ellipse 70% 60% at 50% 40%, black 20%, transparent 70%)',
-        }} />
+      <div className="min-h-screen bg-[#07070a] text-white flex flex-col justify-center items-center px-4 relative overflow-hidden">
+        {/* Cinematic Backdrop with soft glowing orbs */}
+        <div className="absolute inset-0 pointer-events-none z-0">
+          <div className="absolute inset-0" style={{
+            background: `
+              radial-gradient(ellipse 80% 50% at 50% -10%, rgba(124,92,255,0.18), transparent 70%),
+              radial-gradient(ellipse 60% 40% at 20% 80%, rgba(242,90,43,0.1), transparent 60%),
+              radial-gradient(ellipse 50% 50% at 80% 90%, rgba(212,86,122,0.08), transparent 60%)
+            `
+          }} />
+          <div className="absolute inset-0 opacity-[0.03]" style={{
+            backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
+            backgroundSize: '40px 40px',
+            maskImage: 'radial-gradient(ellipse 60% 60% at 50% 50%, black, transparent 80%)',
+            WebkitMaskImage: 'radial-gradient(ellipse 60% 60% at 50% 50%, black, transparent 80%)',
+          }} />
+        </div>
 
         <motion.div 
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="relative z-10 w-full max-w-sm md:max-w-4xl mx-4 rounded-3xl md:rounded-[2rem] shadow-[0_32px_80px_-20px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col md:flex-row border border-white/5 bg-[#121218]"
-          style={{
-            background: 'rgba(18, 18, 24, 0.96)',
-            backdropFilter: 'blur(24px)',
-          }}
+          initial={{ opacity: 0, y: 30, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="relative z-10 w-full max-w-sm md:max-w-4xl mx-4 rounded-3xl md:rounded-[2.4rem] shadow-[0_30px_100px_-15px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col md:flex-row border border-white/5 bg-[#0f0f15]/85 backdrop-blur-2xl"
         >
-          {/* Left Column (Brand / Visual) */}
-          <div className="hidden md:flex flex-col justify-between w-1/2 p-10 relative overflow-hidden bg-black/50 border-r border-white/5">
-            {/* Decorative gradients */}
-            <div className="absolute top-0 left-0 w-full h-full opacity-40 bg-[radial-gradient(ellipse_at_top_left,rgba(242,90,43,0.35),transparent_70%)] pointer-events-none" />
-            <div className="absolute bottom-0 right-0 w-full h-full opacity-40 bg-[radial-gradient(ellipse_at_bottom_right,rgba(124,92,255,0.35),transparent_70%)] pointer-events-none" />
+          {/* Left Column (Brand / Visual Showcase) */}
+          <div className="hidden md:flex flex-col justify-between w-1/2 p-12 relative overflow-hidden bg-black/40 border-r border-white/5">
+            {/* Ambient glows inside left column */}
+            <div className="absolute -top-[20%] -left-[20%] w-[120%] h-[120%] opacity-20 bg-[radial-gradient(circle_at_top_left,rgba(242,90,43,0.4),transparent_50%)] pointer-events-none" />
+            <div className="absolute -bottom-[20%] -right-[20%] w-[120%] h-[120%] opacity-25 bg-[radial-gradient(circle_at_bottom_right,rgba(124,92,255,0.4),transparent_50%)] pointer-events-none" />
             
-            {/* Big Watermark Logo */}
+            {/* Giant Graphic Watermark */}
             <img 
-              src="/logo_a.png" 
+              src="/logo_a_watermark.png" 
               alt="" 
-              className="absolute -bottom-[10%] -left-[10%] h-[100%] w-auto max-w-none opacity-30 pointer-events-none z-0 select-none"
-            />
-
-            {/* Bottom Gradient Overlay */}
-            <div 
-              className="absolute bottom-0 left-0 w-full h-[45%] pointer-events-none z-0"
-              style={{ background: 'linear-gradient(to top, rgba(0,0,0,1) 0px, rgba(0,0,0,1) 3px, rgba(0,0,0,0.8) 20%, transparent 100%)' }}
+              className="absolute -bottom-[15%] -left-[15%] h-[110%] w-auto max-w-none opacity-[0.08] pointer-events-none z-0 select-none"
             />
             
-
+            <div className="relative z-10">
+              <img
+                src="/logo_wordmark.png"
+                alt="ArtisTant"
+                className="h-[24px] w-auto object-contain dark:invert-0 invert-0"
+              />
+            </div>
 
             <div className="relative z-10 mt-auto">
-              <span className="text-[10px] font-mono font-bold tracking-[0.2em] text-[#F25A2B] uppercase block mb-2">Backstage Core</span>
-              <h3 className="font-display text-3xl font-bold text-white leading-[1.2] mb-4">
-                Command Center.
+              <span className="text-[10px] font-mono font-bold tracking-[0.25em] text-[#F25A2B] uppercase block mb-3">System Clearance Required</span>
+              <h3 className="font-display text-4xl font-bold text-white leading-tight mb-4 tracking-tight">
+                Backstage<br />Command Center.
               </h3>
-              <p className="text-white/60 text-sm leading-relaxed font-medium">
-                Verify credentials, orchestrate priority overrides, monitor real-time server activity, and coordinate mass artist outreach.
+              <p className="text-white/50 text-sm leading-relaxed font-medium">
+                Verify system access keys, orchestrate priority queue overrides, monitor live session logs, and manage outreach broadcasts.
               </p>
             </div>
           </div>
 
-          {/* Right Column (Form) */}
-          <div className="w-full md:w-1/2 p-8 sm:p-12 relative flex flex-col justify-center min-h-[500px]">
+          {/* Right Column (Auth Action Panel) */}
+          <div className="w-full md:w-1/2 p-10 sm:p-14 relative flex flex-col justify-center min-h-[520px]">
             <div className="text-center mb-8">
-              <h2 className="font-display text-4xl font-bold text-white tracking-tight">
-                Welcome Back
+              <h2 className="font-display text-3xl font-bold text-white tracking-tight">
+                Security clearance
               </h2>
+              <p className="text-xs text-white/40 font-mono uppercase tracking-wider mt-1.5">Sign in to confirm admin status</p>
             </div>
 
-            <div className="space-y-5 relative z-10">
+            <div className="space-y-6 relative z-10">
               {authLoading || checkingAdmin ? (
-                <div className="flex flex-col items-center justify-center py-8 gap-3">
+                <div className="flex flex-col items-center justify-center py-10 gap-4">
                   <RefreshCw className="w-8 h-8 animate-spin text-[#7C5CFF]" />
-                  <span className="text-xs font-mono text-white/40">Checking clearance credentials...</span>
+                  <span className="text-[11px] font-mono text-white/30 uppercase tracking-widest">Checking clearance...</span>
                 </div>
               ) : user ? (
                 !isAdmin ? (
                   <div className="text-center space-y-6">
-                    <div className="flex flex-col items-center gap-3 text-sm font-mono bg-hot/10 border border-hot/20 p-5 rounded-2xl text-hot">
+                    <div className="flex flex-col items-center gap-3 text-sm font-mono bg-hot/5 border border-hot/15 p-6 rounded-2xl text-hot">
                       <ShieldAlert className="w-8 h-8 shrink-0 mb-1" />
-                      <span className="font-semibold">Clearance Denied.</span>
-                      <span className="text-xs text-white/70">Your account does not have permission to access the administration suite.</span>
+                      <span className="font-bold tracking-tight text-base">Clearance Denied</span>
+                      <span className="text-xs text-white/60 leading-relaxed">Your account credentials do not match any authenticated administrator nodes.</span>
                     </div>
                     <button
                       onClick={handleLogout}
-                      className="text-xs text-white/50 hover:text-white underline underline-offset-4 transition-colors cursor-pointer"
+                      className="text-xs text-white/50 hover:text-[#FF4B4B] underline underline-offset-4 transition-colors cursor-pointer"
                     >
                       Sign out of {user.email}
                     </button>
                   </div>
                 ) : !isUnlocked ? (
                   <div className="text-center space-y-6">
-                    <div className="flex flex-col items-center justify-center gap-3 text-sm font-mono bg-white/5 border border-white/5 p-5 rounded-2xl">
-                      <Lock className="w-6 h-6 text-[#7C5CFF] shrink-0 mb-1" />
-                      <span className="text-white/80">Admin access verified. Connecting to database...</span>
+                    <div className="flex flex-col items-center justify-center gap-4 text-sm font-mono bg-white/[0.02] border border-white/5 p-6 rounded-[24px]">
+                      <Lock className="w-6 h-6 text-[#7C5CFF] shrink-0 mb-1 animate-pulse" />
+                      <span className="text-white/70 text-xs">Credentials verified. Ready to establish database tunnel.</span>
                       <button 
                         onClick={() => verifyAndLoad()}
                         disabled={isLoading}
-                        className="w-full mt-2 bg-white text-black font-bold py-3.5 rounded-xl disabled:opacity-50 hover:bg-white/90 active:scale-[0.98] transition-all cursor-pointer text-sm"
+                        className="w-full mt-2 bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] text-white font-bold py-4 rounded-xl disabled:opacity-50 hover:opacity-95 active:scale-[0.99] transition-all cursor-pointer text-sm shadow-[0_4px_20px_-5px_rgba(124,92,255,0.4)]"
                       >
-                        {isLoading ? 'Connecting...' : 'Initialize Connection'}
+                        {isLoading ? 'Establishing...' : 'Initialize Console'}
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="flex justify-center items-center py-6 text-sm font-mono animate-pulse text-[#7C5CFF]">
-                    Verifying Credentials...
+                  <div className="flex justify-center items-center py-8 text-sm font-mono animate-pulse text-[#7C5CFF] tracking-wider">
+                    Establishing Secure Tunnel...
                   </div>
                 )
               ) : (
@@ -1360,7 +1359,7 @@ export default function AdminPage() {
                   <button
                     onClick={handleLoginSubmit}
                     disabled={isLoading || authLoading || isSigningIn}
-                    className="relative flex items-center justify-center w-full py-3.5 px-5 rounded-2xl bg-white/5 border border-white/5 text-white font-semibold text-sm hover:bg-white/10 hover:border-white/10 active:scale-[0.98] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    className="relative flex items-center justify-center w-full py-4 px-5 rounded-2xl bg-white/[0.03] border border-white/10 text-white font-semibold text-sm hover:bg-white/[0.08] hover:border-white/20 active:scale-[0.99] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm"
                   >
                     {isSigningIn ? (
                       <span className="animate-spin h-5 w-5 border-2 border-white/40 border-t-white rounded-full mr-3" />
@@ -1379,7 +1378,7 @@ export default function AdminPage() {
                   <button
                     type="button"
                     disabled
-                    className="relative flex items-center justify-center w-full py-3.5 px-4 rounded-2xl bg-white border border-white/10 text-black font-semibold text-sm opacity-50 cursor-not-allowed select-none"
+                    className="relative flex items-center justify-center w-full py-4 px-5 rounded-2xl bg-white border border-white/10 text-black font-semibold text-sm opacity-35 cursor-not-allowed select-none"
                   >
                     <svg className="w-5 h-5 mr-3 shrink-0" viewBox="0 0 24 24" fill="black" xmlns="http://www.w3.org/2000/svg">
                       <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.32 2.32-1.55 4.3-3.74 4.25z"/>
@@ -1391,30 +1390,30 @@ export default function AdminPage() {
                   <button
                     type="button"
                     disabled
-                    className="relative flex items-center justify-center w-full py-3.5 px-4 rounded-2xl bg-white/5 border border-white/5 text-white font-semibold text-sm opacity-50 cursor-not-allowed select-none"
+                    className="relative flex items-center justify-center w-full py-4 px-5 rounded-2xl bg-white/[0.02] border border-white/5 text-white font-semibold text-sm opacity-35 cursor-not-allowed select-none"
                   >
                     <Smartphone className="w-4 h-4 mr-3 shrink-0 text-white/50" />
                     Continue with Phone
                   </button>
 
                   {/* Divider */}
-                  <div className="flex items-center gap-4 my-5">
+                  <div className="flex items-center gap-4 py-2">
                     <span className="flex-1 h-px bg-gradient-to-r from-transparent to-white/10" />
-                    <span className="text-white/30 text-[10px] font-mono font-bold uppercase tracking-wider">
-                      or email credentials
+                    <span className="text-white/20 text-[9px] font-mono font-bold uppercase tracking-[0.15em]">
+                      or console login
                     </span>
                     <span className="flex-1 h-px bg-gradient-to-l from-transparent to-white/10" />
                   </div>
 
                   {/* Email Sign In Form */}
-                  <form onSubmit={handleEmailLoginSubmit} className="space-y-4">
+                  <form onSubmit={handleEmailLoginSubmit} className="space-y-3.5">
                     <input
                       type="email"
                       required
                       placeholder="Email address"
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
-                      className="w-full px-5 py-3.5 bg-black/40 border border-white/5 rounded-2xl text-white placeholder-white/30 text-sm focus:border-[#7C5CFF]/50 transition-all duration-300 outline-none"
+                      className="w-full px-5 py-4 bg-black/40 border border-white/10 rounded-2xl text-white placeholder-white/20 text-sm focus:border-[#7C5CFF]/70 focus:ring-4 focus:ring-[#7C5CFF]/15 transition-all duration-300 outline-none"
                       autoComplete="email"
                     />
                     <input
@@ -1423,13 +1422,13 @@ export default function AdminPage() {
                       placeholder="Security password"
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
-                      className="w-full px-5 py-3.5 bg-black/40 border border-white/5 rounded-2xl text-white placeholder-white/30 text-sm focus:border-[#7C5CFF]/50 transition-all duration-300 outline-none"
+                      className="w-full px-5 py-4 bg-black/40 border border-white/10 rounded-2xl text-white placeholder-white/20 text-sm focus:border-[#7C5CFF]/70 focus:ring-4 focus:ring-[#7C5CFF]/15 transition-all duration-300 outline-none"
                       autoComplete="current-password"
                     />
                     <button
                       type="submit"
                       disabled={isLoading || isSigningIn}
-                      className="w-full bg-[#7C5CFF] text-white font-bold py-3.5 rounded-2xl hover:bg-[#7C5CFF]/90 active:scale-[0.98] transition-all duration-300 disabled:opacity-50 text-sm cursor-pointer"
+                      className="w-full bg-[#7C5CFF] text-white font-bold py-4 rounded-2xl hover:bg-[#7C5CFF]/90 active:scale-[0.99] transition-all duration-300 disabled:opacity-50 text-sm cursor-pointer shadow-md"
                     >
                       {isSigningIn ? 'Signing in...' : 'Sign In'}
                     </button>
@@ -1438,7 +1437,7 @@ export default function AdminPage() {
               )}
 
               {authError && (
-                <div className="flex items-center gap-2 text-xs font-mono bg-hot/10 border border-hot/20 p-3.5 rounded-xl mt-4 text-hot">
+                <div className="flex items-center gap-2 text-xs font-mono bg-hot/10 border border-hot/20 p-4 rounded-xl mt-4 text-hot">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{authError}</span>
                 </div>
@@ -1510,73 +1509,83 @@ export default function AdminPage() {
           initial={{ x: -300, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className={`fixed md:relative top-0 bottom-0 left-0 w-[280px] flex flex-col flex-shrink-0 z-40 transition-transform duration-300 md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+          className={`fixed md:relative top-0 bottom-0 left-0 w-[290px] flex flex-col flex-shrink-0 z-40 transition-transform duration-300 md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} md:my-5 md:ml-5 md:rounded-[2rem] border-r md:border border-line-soft`}
           style={{
-            background: 'color-mix(in srgb, var(--bg-soft) 55%, transparent)',
-            backdropFilter: 'blur(20px)',
-            borderRight: '1px solid var(--line-soft)',
+            background: 'rgba(30, 30, 38, 0.45)',
+            backdropFilter: 'blur(30px)',
+            WebkitBackdropFilter: 'blur(30px)',
           }}
         >
-          {/* Brand Logo */}
-          <div className="px-8 pt-8 pb-6">
+          {/* Brand Logo & Console Tag */}
+          <div className="px-8 pt-8 pb-5">
             <a href="/" target="_blank" className="block group">
               <img
                 src="/logo_wordmark.png"
                 alt="ArtisTant"
-                className="h-[32px] w-auto object-contain dark:invert-0 invert"
+                className="h-[28px] w-auto object-contain dark:invert-0 invert-0"
               />
-              <p className="text-[11px] font-mono font-semibold tracking-[0.12em] uppercase mt-2" style={{ color: 'var(--brand-1)' }}>
-                Admin Console
-              </p>
+              <div className="flex items-center gap-1.5 mt-2">
+                <span className="inline-flex w-1.5 h-1.5 rounded-full bg-brand animate-pulse" />
+                <p className="text-[10px] font-mono font-bold tracking-[0.15em] uppercase text-[#F25A2B]">
+                  Command center
+                </p>
+              </div>
             </a>
           </div>
 
-          <div className="h-px mx-6" style={{ background: 'var(--line-soft)' }} />
+          <div className="h-px mx-6 bg-gradient-to-r from-transparent via-line-soft to-transparent" />
 
-          {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-1">
-            <p className="text-[10px] font-mono font-semibold tracking-[0.12em] uppercase px-4 pb-3" style={{ color: 'var(--ink-3)' }}>
-              Command Center
+          {/* Navigation Links */}
+          <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-1.5 relative">
+            <p className="text-[9px] font-mono font-bold tracking-[0.18em] uppercase px-4 pb-2 text-ink-3">
+              Management Suite
             </p>
             
-            {([
-              { id: "registrations", label: "Waitlist", icon: Users, accent: 'var(--brand-1)' },
-              { id: "leaderboards", label: "Leaderboards", icon: Trophy, accent: 'var(--brand-2)' },
-              { id: "members", label: "Visitor Activity", icon: Eye, accent: 'var(--brand-3)' },
-              { id: "admins", label: "Manage Admins", icon: Settings, accent: 'var(--brand-4)' },
-            ] as const).map(item => (
-              <button
-                key={item.id}
-                onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all text-[14px] border ${
-                  activeTab === item.id 
-                    ? "text-ink font-semibold" 
-                    : "text-ink-2 hover:text-ink hover:bg-bg-soft/40 border-transparent"
-                }`}
-                style={activeTab === item.id ? {
-                  backgroundColor: `color-mix(in srgb, ${item.accent} 10%, transparent)`,
-                  borderColor: `color-mix(in srgb, ${item.accent} 25%, transparent)`,
-                  boxShadow: `0 4px 14px -4px color-mix(in srgb, ${item.accent} 20%, transparent)`
-                } : {}}
-              >
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center transition-all border"
-                  style={{
-                    backgroundColor: activeTab === item.id ? item.accent : 'var(--bg-card)',
-                    borderColor: activeTab === item.id ? 'transparent' : 'var(--line-soft)'
-                  }}
+            <div className="space-y-1 relative">
+              {([
+                { id: "registrations", label: "Waitlist", icon: Users, accent: 'var(--brand-1)' },
+                { id: "leaderboards", label: "Leaderboards", icon: Trophy, accent: 'var(--brand-2)' },
+                { id: "members", label: "Visitor Activity", icon: Eye, accent: 'var(--brand-3)' },
+                { id: "admins", label: "Manage Admins", icon: Settings, accent: 'var(--brand-4)' },
+              ] as const).map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
+                  className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl transition-all text-xs font-semibold relative group overflow-hidden"
                 >
-                  <item.icon className="w-4 h-4" style={{ color: activeTab === item.id ? '#ffffff' : 'var(--ink-3)' }} />
-                </div>
-                <span className="font-medium">{item.label}</span>
-              </button>
-            ))}
+                  {/* Sliding active pill indicator */}
+                  {activeTab === item.id && (
+                    <motion.div
+                      layoutId="activeSidebarTab"
+                      className="absolute inset-0 rounded-xl bg-white/[0.03] border border-white/[0.07]"
+                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                      style={{
+                        boxShadow: `0 4px 15px -4px color-mix(in srgb, ${item.accent} 20%, transparent)`
+                      }}
+                    />
+                  )}
+                  
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center transition-all border z-10"
+                    style={{
+                      backgroundColor: activeTab === item.id ? item.accent : 'rgba(255,255,255,0.01)',
+                      borderColor: activeTab === item.id ? 'transparent' : 'var(--line-soft)'
+                    }}
+                  >
+                    <item.icon className="w-3.5 h-3.5 transition-transform group-hover:scale-105 duration-300" style={{ color: activeTab === item.id ? '#ffffff' : 'var(--ink-3)' }} />
+                  </div>
+                  <span className={`font-semibold z-10 transition-colors duration-200 ${activeTab === item.id ? "text-white" : "text-ink-2 group-hover:text-white"}`}>
+                    {item.label}
+                  </span>
+                </button>
+              ))}
+            </div>
 
             <button 
               onClick={() => setGrowthExpanded(!growthExpanded)}
-              className="w-full flex items-center justify-between pt-4 pb-2 px-4 text-ink-3 hover:text-ink transition-colors cursor-pointer group"
+              className="w-full flex items-center justify-between pt-5 pb-2 px-4 text-ink-3 hover:text-white transition-colors cursor-pointer group"
             >
-              <span className="text-[10px] font-mono font-semibold tracking-[0.12em] uppercase">
-                Growth & Marketing
+              <span className="text-[9px] font-mono font-bold tracking-[0.18em] uppercase">
+                Growth & Campaigns
               </span>
               <ChevronDown 
                 className={`w-3.5 h-3.5 transition-transform duration-300 ${growthExpanded ? 'rotate-0' : '-rotate-90'}`} 
@@ -1600,26 +1609,30 @@ export default function AdminPage() {
                     <button
                       key={item.id}
                       onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all text-[14px] border ${
-                        activeTab === item.id 
-                          ? "text-ink font-semibold" 
-                          : "text-ink-2 hover:text-ink hover:bg-bg-soft/40 border-transparent"
-                      }`}
-                      style={activeTab === item.id ? {
-                        backgroundColor: `color-mix(in srgb, ${item.accent} 10%, transparent)`,
-                        borderColor: `color-mix(in srgb, ${item.accent} 25%, transparent)`,
-                        boxShadow: `0 4px 14px -4px color-mix(in srgb, ${item.accent} 20%, transparent)`
-                      } : {}}
+                      className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl transition-all text-xs font-semibold relative group overflow-hidden"
                     >
-                      <div className="w-8 h-8 rounded-xl flex items-center justify-center transition-all border"
+                      {activeTab === item.id && (
+                        <motion.div
+                          layoutId="activeSidebarTab"
+                          className="absolute inset-0 rounded-xl bg-white/[0.03] border border-white/[0.07]"
+                          transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                          style={{
+                            boxShadow: `0 4px 15px -4px color-mix(in srgb, ${item.accent} 20%, transparent)`
+                          }}
+                        />
+                      )}
+                      
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center transition-all border z-10"
                         style={{
-                          backgroundColor: activeTab === item.id ? item.accent : 'var(--bg-card)',
+                          backgroundColor: activeTab === item.id ? item.accent : 'rgba(255,255,255,0.01)',
                           borderColor: activeTab === item.id ? 'transparent' : 'var(--line-soft)'
                         }}
                       >
-                        <item.icon className="w-4 h-4" style={{ color: activeTab === item.id ? '#ffffff' : 'var(--ink-3)' }} />
+                        <item.icon className="w-3.5 h-3.5 transition-transform group-hover:scale-105 duration-300" style={{ color: activeTab === item.id ? '#ffffff' : 'var(--ink-3)' }} />
                       </div>
-                      <span className="font-medium">{item.label}</span>
+                      <span className={`font-semibold z-10 transition-colors duration-200 ${activeTab === item.id ? "text-white" : "text-ink-2 group-hover:text-white"}`}>
+                        {item.label}
+                      </span>
                     </button>
                   ))}
                 </motion.div>
@@ -1627,11 +1640,11 @@ export default function AdminPage() {
             </AnimatePresence>
           </nav>
 
-          {/* Bottom profile card */}
+          {/* Console Profile & System Health readout */}
           <div className="p-4 border-t border-line-soft">
-            <div className="bg-bg-card/50 border border-line-soft rounded-[20px] p-4 backdrop-blur-md">
+            <div className="bg-[#121217]/55 border border-white/[0.04] rounded-2xl p-4 backdrop-blur-md">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-[14px] flex items-center justify-center text-white font-display font-bold text-sm overflow-hidden shrink-0" style={{
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-display font-bold text-xs overflow-hidden shrink-0" style={{
                   background: user?.photoURL ? 'transparent' : 'linear-gradient(135deg, var(--brand-3), var(--brand-1))',
                   boxShadow: '0 4px 12px -4px rgba(124,92,255,0.35)',
                   border: user?.photoURL ? '1px solid var(--line-soft)' : 'none'
@@ -1643,48 +1656,69 @@ export default function AdminPage() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-ink truncate" title={userDisplayName}>{userDisplayName}</p>
-                  <p className="text-[10px] font-mono tracking-[0.08em] uppercase" style={{ color: 'var(--brand-1)' }}>{userRole}</p>
+                  <p className="text-xs font-bold text-white truncate" title={userDisplayName}>{userDisplayName}</p>
+                  <p className="text-[9px] font-mono tracking-[0.1em] uppercase mt-0.5 text-ink-3">{userRole}</p>
                 </div>
-                <button onClick={handleLogout} className="text-ink-3 hover:text-hot transition-colors p-1 cursor-pointer" title="Lock Dashboard">
-                  <LogOut className="w-4 h-4" />
+                <button onClick={handleLogout} className="text-ink-3 hover:text-hot transition-colors p-1.5 cursor-pointer rounded-lg hover:bg-white/[0.04]" title="Lock Dashboard">
+                  <LogOut className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <div className="flex items-center gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--line-soft)' }}>
-                <div className={`w-2 h-2 rounded-full ${isLiveMode ? "bg-[#22C55E] shadow-[0_0_8px_#22C55E]" : "bg-amber-500 shadow-[0_0_8px_orange]"}`} />
-                <span className="text-[10px] font-mono tracking-[0.08em] uppercase text-ink-3">{isLiveMode ? "Live Database" : "Sandbox Mode"}</span>
+
+              {/* Dynamic Console Stats */}
+              <div className="mt-3.5 pt-3.5 border-t border-white/[0.04] space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-1.5 h-1.5 rounded-full ${isLiveMode ? "bg-[#22C55E] shadow-[0_0_8px_#22C55E]" : "bg-amber-500 shadow-[0_0_8px_orange]"} animate-pulse`} />
+                    <span className="text-[9px] font-mono tracking-[0.08em] uppercase text-ink-3">{isLiveMode ? "LIVE DB TUNNEL" : "SANDBOX POOL"}</span>
+                  </div>
+                  <span className="text-[8px] font-mono text-neutral-600">v1.2.0</span>
+                </div>
+                
+                {/* Simulated Server/Connection Latency Widget */}
+                <div className="flex items-center gap-1 bg-white/[0.01] p-1.5 rounded-lg border border-white/[0.02]">
+                  <Activity className="w-3 h-3 text-[#22C55E]" />
+                  <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
+                    <div className="w-4/5 h-full bg-[#22C55E] rounded-full animate-[pulse_1.5s_infinite]" />
+                  </div>
+                  <span className="text-[8px] font-mono text-[#22C55E]">18ms</span>
+                </div>
               </div>
             </div>
           </div>
         </motion.aside>
 
         {/* ─── Main Content Canvas ─── */}
-        <main className="flex-1 overflow-y-auto relative scroll-smooth">
-          {/* Top bar */}
-          <header className="sticky top-0 z-30 backdrop-blur-xl border-b border-line-soft px-4 md:px-8 py-5 flex items-center justify-between" style={{ background: 'color-mix(in srgb, var(--bg) 80%, transparent)' }}>
-            <div className="flex items-center gap-3">
+        <main className="flex-1 overflow-y-auto relative scroll-smooth flex flex-col h-screen">
+          {/* Premium Header */}
+          <header className="sticky top-0 z-30 backdrop-blur-xl border-b border-line-soft px-6 md:px-10 py-5 flex items-center justify-between" style={{ background: 'rgba(10, 10, 14, 0.8)' }}>
+            <div className="flex items-center gap-4">
               <button 
                 onClick={() => setSidebarOpen(true)}
-                className="md:hidden p-2 rounded-xl border border-line-soft bg-bg-soft text-ink-2 hover:text-ink cursor-pointer hover:bg-bg-card transition-all"
+                className="md:hidden p-2.5 rounded-xl border border-line-soft bg-bg-soft text-ink-2 hover:text-ink cursor-pointer hover:bg-bg-card transition-all"
                 aria-label="Open sidebar"
               >
-                <Menu className="w-5 h-5" />
+                <Menu className="w-4 h-4" />
               </button>
-              <h2 className="text-xl font-display font-bold tracking-tight text-ink uppercase">
-                {activeTab === "registrations" && "Waitlist"}
-                {activeTab === "leaderboards" && "Leaderboards"}
-                {activeTab === "members" && "Visitor Activity"}
-                {activeTab === "admins" && "Manage Admins"}
-                {activeTab === "graphics" && "Content Wall"}
-                {activeTab === "calendar" && "Calendar"}
-                {activeTab === "emailing" && "Broadcasts"}
-              </h2>
+              
+              <div className="flex flex-col">
+                <span className="text-[9px] font-mono font-bold tracking-[0.2em] text-[#7C5CFF] uppercase">Backstage Console</span>
+                <h2 className="text-xl font-display font-bold tracking-tight text-white uppercase mt-0.5">
+                  {activeTab === "registrations" && "Waitlist Management"}
+                  {activeTab === "leaderboards" && "Leaderboard Rankings"}
+                  {activeTab === "members" && "Visitor Activity Logs"}
+                  {activeTab === "admins" && "Manage System Admins"}
+                  {activeTab === "graphics" && "Dynamic Content Wall"}
+                  {activeTab === "calendar" && "Social Outreach Schedule"}
+                  {activeTab === "emailing" && "Campaign Broadcasts"}
+                </h2>
+              </div>
             </div>
+
             <div className="flex items-center gap-3">
               {mounted && (
                 <button
                   onClick={() => setTheme(resolvedTheme === "light" ? "dark" : "light")}
-                  className="p-2 rounded-xl border border-line-soft bg-bg-soft text-ink-2 hover:text-ink cursor-pointer hover:bg-bg-card transition-all"
+                  className="p-2.5 rounded-xl border border-line-soft bg-bg-soft/50 text-ink-2 hover:text-ink cursor-pointer hover:bg-bg-card transition-all"
                   aria-label="Toggle Theme"
                   title={resolvedTheme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
                 >
@@ -1695,8 +1729,9 @@ export default function AdminPage() {
                   )}
                 </button>
               )}
-              <a href="/" target="_blank" className="nav-cta text-xs" style={{ padding: '8px 16px' }}>
-                View Site <span className="arrow">↗</span>
+              
+              <a href="/" target="_blank" className="nav-cta text-xs flex items-center gap-1.5" style={{ padding: '10px 20px' }}>
+                Launch Portal <ExternalLink className="w-3 h-3" />
               </a>
             </div>
           </header>
@@ -1715,45 +1750,44 @@ export default function AdminPage() {
                     TAB 1: WAITLIST COMMAND CENTER
                     =================================================================== */}
                 {activeTab === "registrations" && (
-                  <div className="space-y-8">
+                  <div className="space-y-8 animate-in fade-in duration-200">
                     
-                    {/* Metric cards — homepage feature-card style */}
+                    {/* Metric cards — premium bento layout */}
                     <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6">
                       {[
-                        { label: "Global Waitlist", value: totalCount, color: 'var(--ink)', Icon: Users },
-                        { label: "Verified Artists", value: verifiedCount, color: 'var(--brand-3)', Icon: CheckCircle2 },
-                        { label: "Pending Review", value: pendingCount, color: 'var(--brand-1)', Icon: Flame },
-                        { label: "Portfolio Setup", value: portfolioCompleteCount, color: 'var(--brand-2)', Icon: User },
-                        { label: "Suspended", value: blockedCount, color: 'var(--hot)', Icon: XCircle },
+                        { label: "Global Waitlist", value: totalCount, color: 'var(--ink)', Icon: Users, glow: 'rgba(124,92,255,0.15)' },
+                        { label: "Verified Artists", value: verifiedCount, color: 'var(--brand-3)', Icon: CheckCircle2, glow: 'rgba(124,92,255,0.2)' },
+                        { label: "Pending Review", value: pendingCount, color: 'var(--brand-1)', Icon: Flame, glow: 'rgba(242,90,43,0.15)' },
+                        { label: "Portfolio Setup", value: portfolioCompleteCount, color: 'var(--brand-2)', Icon: User, glow: 'rgba(212,86,122,0.15)' },
+                        { label: "Suspended", value: blockedCount, color: 'var(--hot)', Icon: XCircle, glow: 'rgba(255,75,75,0.15)' },
                       ].map((card, i) => (
                         <GlowingAdminCard
                           key={card.label}
                           idx={i}
-                          initial={{ opacity: 0, y: 30 }}
+                          initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.08, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                          className={`bg-bg-soft border border-line-soft rounded-[28px] p-5 md:p-8 cursor-default group backdrop-blur-md ${
+                          transition={{ delay: i * 0.05, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                          className={`bg-[#121217]/40 border border-white/[0.04] rounded-3xl p-6 md:p-8 cursor-default group backdrop-blur-xl relative overflow-hidden shadow-lg ${
                             i === 4 ? "col-span-2 lg:col-span-1 sm:col-span-1" : ""
                           }`}
+                          style={{
+                            boxShadow: `0 10px 30px -10px ${card.glow}`
+                          }}
                         >
-                          {/* Watermark number */}
-                          <div className="absolute top-3 right-5 select-none pointer-events-none" style={{
-                            fontFamily: 'var(--font-display)',
-                            fontWeight: 700,
-                            fontSize: '72px',
-                            lineHeight: 0.8,
-                            color: 'rgba(255,255,255,0.03)'
-                          }}>{String(i + 1).padStart(2, '0')}</div>
+                          {/* Decorative Watermark Number */}
+                          <div className="absolute top-2 right-4 select-none pointer-events-none font-display font-black text-6xl text-white/[0.02] tracking-tighter">
+                            {String(i + 1).padStart(2, '0')}
+                          </div>
 
                           <div className="flex justify-between items-start mb-6">
-                            <div className="w-14 h-14 rounded-[18px] flex items-center justify-center bg-bg-card border border-line-soft shadow-sm">
-                              <card.Icon className="w-6 h-6 text-brand" />
+                            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-white/[0.02] border border-white/5 shadow-inner">
+                              <card.Icon className="w-5 h-5 text-[#7C5CFF] group-hover:scale-110 transition-transform duration-300" />
                             </div>
                           </div>
 
                           <div>
-                            <p className="text-4xl font-display font-bold tracking-tight" style={{ color: card.color }}>{card.value}</p>
-                            <p className="text-[11px] font-mono font-semibold tracking-[0.12em] uppercase mt-2" style={{ color: 'var(--brand-1)' }}>{card.label}</p>
+                            <p className="text-3xl font-display font-bold tracking-tight text-white">{card.value}</p>
+                            <p className="text-[10px] font-mono font-bold tracking-[0.15em] uppercase mt-2.5 text-ink-3 group-hover:text-white transition-colors">{card.label}</p>
                           </div>
                         </GlowingAdminCard>
                       ))}
@@ -1763,422 +1797,392 @@ export default function AdminPage() {
                     {autoVerifyCount > 0 && (
                       <GlowingAdminCard 
                         idx={4}
-                        className="bg-bg-soft border border-line-soft rounded-[28px] p-8"
+                        className="bg-gradient-to-r from-[#22C55E]/5 to-[#7C5CFF]/5 border border-[#22C55E]/20 rounded-[2rem] p-8 shadow-[0_15px_40px_-15px_rgba(34,197,94,0.15)] backdrop-blur-xl"
                       >
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                           <div className="flex items-start gap-4">
-                            <div className="w-14 h-14 rounded-[18px] flex items-center justify-center flex-shrink-0 bg-bg-card border border-line-soft shadow-sm">
-                              <Sparkles className="w-6 h-6 text-brand" />
+                            <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#22C55E]/10 border border-[#22C55E]/20 shadow-md">
+                              <Sparkles className="w-5 h-5 text-[#22C55E] animate-pulse" />
                             </div>
                             <div>
-                              <h4 className="font-display font-bold text-ink text-lg uppercase tracking-tight">
-                                Auto-Verify Available
+                              <h4 className="font-display font-bold text-white text-lg uppercase tracking-tight flex items-center gap-2">
+                                System Recommendation Available
+                                <span className="inline-flex w-2.5 h-2.5 rounded-full bg-[#22C55E] animate-ping" />
                               </h4>
-                              <p className="text-sm text-ink-2 mt-1 max-w-2xl leading-relaxed">
-                                {autoVerifyCount} pending registration(s) match the complete validation heuristics profile.
+                              <p className="text-xs text-zinc-400 mt-1 max-w-2xl leading-relaxed">
+                                {autoVerifyCount} pending registration(s) match the complete validation heuristics profile and can be auto-cleared.
                               </p>
                             </div>
                           </div>
                           <button
                             onClick={runAutoVerifyEngine}
-                            className="nav-cta text-xs flex items-center gap-2 flex-shrink-0"
-                            style={{ padding: '12px 24px' }}
+                            className="bg-gradient-to-r from-[#22C55E] to-[#7C5CFF] hover:opacity-95 text-white font-mono text-[10px] font-bold uppercase tracking-[0.08em] flex items-center gap-2 flex-shrink-0 py-3.5 px-6 rounded-full transition-all duration-300 shadow-[0_4px_16px_-4px_rgba(34,197,94,0.4)] cursor-pointer"
                           >
                             <CheckCircle2 className="w-4 h-4" />
-                            Auto-Verify {autoVerifyCount}
+                            Auto-Verify {autoVerifyCount} Candidates
                           </button>
                         </div>
                       </GlowingAdminCard>
                     )}
 
-            {/* Toolbar */}
-            <div className="bg-bg-soft border border-line-soft p-4 md:p-5 rounded-[28px] flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
-              <div className="relative w-full md:w-80">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-3" />
-                <input
-                  type="text"
-                  placeholder="Search name, handle, email..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-bg border border-line-soft rounded-full pl-11 pr-4 py-2.5 text-sm text-ink placeholder-ink-3 focus:outline-none transition-all"
-                  style={{ borderColor: searchQuery ? 'var(--brand-1)' : '' }}
-                />
-              </div>
+                    {/* Toolbar */}
+                    <div className="bg-[#111116]/40 border border-white/[0.04] p-5 rounded-3xl flex flex-col md:flex-row gap-4 items-center justify-between backdrop-blur-md">
+                      <div className="relative w-full md:w-80">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-3" />
+                        <input
+                          type="text"
+                          placeholder="Search name, handle, email..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="w-full bg-[#0a0a0f] border border-white/[0.06] focus:border-[#7C5CFF] focus:ring-4 focus:ring-[#7C5CFF]/15 text-sm text-white placeholder-zinc-500 rounded-2xl pl-12 pr-4 py-3 transition-all outline-none"
+                          style={{ borderColor: searchQuery ? 'var(--brand-3)' : '' }}
+                        />
+                      </div>
 
-              <div className="grid grid-cols-2 md:flex md:flex-wrap items-center gap-3 w-full md:w-auto font-mono text-xs text-ink-2">
-                {/* View Mode Toggle */}
-                <div className="col-span-2 flex rounded-full p-0.5" style={{ background: 'var(--bg-2)', border: '1px solid rgba(255,255,255,0.04)' }}>
-                  <button
-                    onClick={() => setViewMode("table")}
-                    className="flex-1 md:flex-initial px-4 py-2 rounded-full transition-all flex items-center justify-center gap-1.5 text-[11px] font-bold tracking-[0.06em] uppercase cursor-pointer"
-                    style={viewMode === "table" ? {
-                      background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
-                      color: 'white',
-                      boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)',
-                    } : { color: 'var(--ink-3)' }}
-                  >
-                    <Layers className="w-3.5 h-3.5" />
-                    Table
-                  </button>
-                  <button
-                    onClick={() => setViewMode("card")}
-                    className="flex-1 md:flex-initial px-4 py-2 rounded-full transition-all flex items-center justify-center gap-1.5 text-[11px] font-bold tracking-[0.06em] uppercase cursor-pointer"
-                    style={viewMode === "card" ? {
-                      background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
-                      color: 'white',
-                      boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)',
-                    } : { color: 'var(--ink-3)' }}
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    Cards
-                  </button>
-                </div>
+                      <div className="flex flex-col sm:flex-row items-center gap-3.5 w-full md:w-auto text-[11px] font-mono text-ink-2">
+                        {/* View Mode Toggle */}
+                        <div className="flex rounded-xl p-1 bg-[#0a0a0f] border border-white/[0.06] w-full sm:w-auto">
+                          <button
+                            onClick={() => setViewMode("table")}
+                            className="flex-1 sm:flex-initial px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 font-bold uppercase tracking-[0.06em] cursor-pointer"
+                            style={viewMode === "table" ? {
+                              background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
+                              color: 'white',
+                              boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)',
+                            } : { color: 'var(--ink-3)' }}
+                          >
+                            <Layers className="w-3.5 h-3.5" />
+                            Table
+                          </button>
+                          <button
+                            onClick={() => setViewMode("card")}
+                            className="flex-1 sm:flex-initial px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 font-bold uppercase tracking-[0.06em] cursor-pointer"
+                            style={viewMode === "card" ? {
+                              background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
+                              color: 'white',
+                              boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)',
+                            } : { color: 'var(--ink-3)' }}
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            Cards
+                          </button>
+                        </div>
 
-                <select
-                  value={roleFilter}
-                  onChange={(e) => setRoleFilter(e.target.value)}
-                  className="w-full rounded-full px-4 py-2.5 text-[11px] font-bold tracking-[0.06em] uppercase focus:outline-none text-ink cursor-pointer text-center md:text-left"
-                  style={{ background: 'var(--bg-2)', border: '1px solid rgba(255,255,255,0.04)' }}
-                >
-                  <option value="all">All Roles</option>
-                  <option value="artist">Artist</option>
-                  <option value="venue">Venue</option>
-                  <option value="vendor">Vendor</option>
-                  <option value="fan">Fan</option>
-                </select>
+                        <select
+                          value={roleFilter}
+                          onChange={(e) => setRoleFilter(e.target.value)}
+                          className="w-full sm:w-auto bg-[#0a0a0f] border border-white/[0.06] rounded-xl px-4 py-2.5 font-bold uppercase tracking-[0.06em] focus:outline-none text-white cursor-pointer text-center"
+                        >
+                          <option value="all">All Roles</option>
+                          <option value="artist">Artist</option>
+                          <option value="venue">Venue</option>
+                          <option value="vendor">Vendor</option>
+                          <option value="fan">Fan</option>
+                        </select>
 
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full rounded-full px-4 py-2.5 text-[11px] font-bold tracking-[0.06em] uppercase focus:outline-none text-ink cursor-pointer text-center md:text-left"
-                  style={{ background: 'var(--bg-2)', border: '1px solid rgba(255,255,255,0.04)' }}
-                >
-                  <option value="all">All Status</option>
-                  <option value="verified">Verified</option>
-                  <option value="pending">Pending</option>
-                  <option value="blocked">Blocked</option>
-                </select>
-              </div>
-            </div>
+                        <select
+                          value={statusFilter}
+                          onChange={(e) => setStatusFilter(e.target.value)}
+                          className="w-full sm:w-auto bg-[#0a0a0f] border border-white/[0.06] rounded-xl px-4 py-2.5 font-bold uppercase tracking-[0.06em] focus:outline-none text-white cursor-pointer text-center"
+                        >
+                          <option value="all">All Status</option>
+                          <option value="verified">Verified</option>
+                          <option value="pending">Pending</option>
+                          <option value="blocked">Blocked</option>
+                        </select>
+                      </div>
+                    </div>
 
-            {/* Data View */}
-            {viewMode === "table" ? (
-              <div className="bg-bg-soft border border-line-soft rounded-[28px] overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse text-left text-sm">
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }} className="text-ink-3 text-[10px] font-mono font-bold uppercase tracking-[0.12em]">
-                        <th className="px-8 py-5">Artist</th>
-                        <th className="px-6 py-5">Role</th>
-                        <th className="px-6 py-5">Contact</th>
-                        <th className="px-6 py-5">Position</th>
-                        <th className="px-6 py-5">Status</th>
-                        <th className="px-6 py-5 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredRegistrations.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="px-6 py-12 text-center text-ink-2 font-mono">
-                            No matching waitlist nodes found.
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredRegistrations.map((reg) => {
-                          const heuristics = evaluateAutoVerify(reg);
-                          return (
-                            <tr 
-                              key={reg.id} 
-                              onClick={() => setSelectedReg(reg)}
-                              className={`hover:bg-ink/[0.02] transition-all duration-150 cursor-pointer ${
-                                reg.is_blocked ? "opacity-40" : ""
-                              }`}
-                            >
-                              <td className="px-6 py-4">
-                                <div>
-                                  <div className="font-bold text-ink flex items-center gap-2">
-                                    {reg.display_name || "Unspecified Node"}
+                    {/* Data View */}
+                    {viewMode === "table" ? (
+                      <div className="bg-[#121218]/30 border border-white/[0.04] rounded-3xl overflow-hidden backdrop-blur-md shadow-2xl">
+                        <div className="overflow-x-auto">
+                          <table className="w-full border-collapse text-left text-sm">
+                            <thead>
+                              <tr className="border-b border-white/[0.04] text-zinc-500 text-[9px] font-mono font-bold uppercase tracking-[0.18em]">
+                                <th className="px-8 py-5">Artist Node</th>
+                                <th className="px-6 py-5">Cleared Role</th>
+                                <th className="px-6 py-5">Communication</th>
+                                <th className="px-6 py-5">Position</th>
+                                <th className="px-6 py-5">Clearance</th>
+                                <th className="px-8 py-5 text-right">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/[0.02]">
+                              {filteredRegistrations.length === 0 ? (
+                                <tr>
+                                  <td colSpan={6} className="px-8 py-14 text-center text-zinc-500 font-mono text-xs">
+                                    No matching waitlist nodes found.
+                                  </td>
+                                </tr>
+                              ) : (
+                                filteredRegistrations.map((reg) => {
+                                  const heuristics = evaluateAutoVerify(reg);
+                                  const initials = (reg.display_name || reg.username || 'U')[0].toUpperCase();
+                                  return (
+                                    <tr 
+                                      key={reg.id} 
+                                      onClick={() => setSelectedReg(reg)}
+                                      className={`hover:bg-white/[0.02] transition-colors cursor-pointer duration-150 ${
+                                        reg.is_blocked ? "opacity-30" : ""
+                                      }`}
+                                    >
+                                      <td className="px-8 py-4.5">
+                                        <div className="flex items-center gap-3">
+                                          <div className="w-9 h-9 rounded-xl flex items-center justify-center font-display font-bold text-sm text-white shrink-0"
+                                            style={{ background: 'linear-gradient(135deg, var(--brand-3), var(--brand-1))' }}
+                                          >
+                                            {initials}
+                                          </div>
+                                          <div>
+                                            <div className="font-bold text-white flex items-center gap-2 text-sm">
+                                              {reg.display_name || "Unspecified Node"}
+                                              {reg.is_verified && (
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[8px] font-mono font-bold tracking-[0.08em] bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] text-white">
+                                                  VERIFIED
+                                                </span>
+                                              )}
+                                              {heuristics.eligible && (
+                                                 <span 
+                                                   className="inline-flex items-center px-2 py-0.5 rounded-full text-[8px] font-mono font-bold tracking-[0.08em] bg-white/5 text-[#22C55E] border border-[#22C55E]/20"
+                                                   title={`Auto-verify candidate: ${heuristics.reasons.join(", ")}`}
+                                                 >
+                                                   SUGGESTED
+                                                 </span>
+                                               )}
+                                            </div>
+                                            <div className="text-[11px] font-mono mt-0.5 text-brand">
+                                              @{reg.username}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-4.5">
+                                        <div>
+                                          <span className="inline-block px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-[0.08em]" style={{
+                                            background: 'rgba(255,255,255,0.02)',
+                                            color: reg.role === 'artist' ? 'var(--brand-3)' : reg.role === 'venue' ? 'var(--brand-2)' : reg.role === 'vendor' ? 'var(--brand-1)' : 'var(--ink-3)',
+                                            border: `1px solid color-mix(in srgb, ${reg.role === 'artist' ? 'var(--brand-3)' : reg.role === 'venue' ? 'var(--brand-2)' : reg.role === 'vendor' ? 'var(--brand-1)' : 'var(--ink-3)'} 15%, transparent)`,
+                                          }}>
+                                            {reg.role || "fan"}
+                                          </span>
+                                          {reg.category && (
+                                            <span className="block text-[10px] text-zinc-500 mt-1 capitalize font-mono">
+                                              {reg.category.replace("_", " ")}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-4.5 font-mono text-[11px] text-zinc-400 space-y-0.5">
+                                        <div className="text-white/80">{reg.email}</div>
+                                        {reg.phone && <div className="text-zinc-500">{reg.phone}</div>}
+                                      </td>
+                                      <td className="px-6 py-4.5">
+                                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                          <input
+                                            type="number"
+                                            placeholder="Auto"
+                                            value={reg.position_override ?? ""}
+                                            onChange={(e) => {
+                                              const val = e.target.value === "" ? null : parseInt(e.target.value, 10);
+                                              handleSavePositionOverride(reg.user_id, val);
+                                            }}
+                                            className="w-14 bg-black/60 border border-white/10 rounded-lg py-1 px-1.5 text-xs text-white text-center font-mono focus:outline-none focus:border-brand transition-all"
+                                          />
+                                          <span className="text-[10px] font-mono text-zinc-500">
+                                            {reg.position_override ? `#${reg.position_override}` : "Queue"}
+                                          </span>
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-4.5">
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); handleVerifyAndLock(reg); }}
+                                          className="py-1 px-3.5 rounded-full text-[9px] font-mono font-bold tracking-[0.06em] uppercase transition-all cursor-pointer"
+                                          style={reg.is_verified ? {
+                                            background: 'rgba(255,255,255,0.03)',
+                                            color: 'var(--brand-3)',
+                                            border: '1px solid rgba(124,92,255,0.2)',
+                                          } : {
+                                            background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
+                                            color: 'white',
+                                            border: 'none',
+                                            boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)',
+                                          }}
+                                        >
+                                          {reg.is_verified ? "Locked" : "Verify"}
+                                        </button>
+                                      </td>
+                                      <td className="px-8 py-4.5 text-right">
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); handleToggleBlock(reg); }}
+                                          className="py-1 px-3.5 rounded-full text-[9px] font-mono font-bold tracking-[0.06em] uppercase transition-all cursor-pointer"
+                                          style={reg.is_blocked ? {
+                                            background: 'rgba(255,75,75,0.1)',
+                                            color: 'var(--hot)',
+                                            border: '1px solid rgba(255,75,75,0.2)',
+                                          } : {
+                                            background: 'rgba(255,255,255,0.02)',
+                                            color: 'var(--ink-3)',
+                                            border: '1px solid rgba(255,255,255,0.04)',
+                                          }}
+                                        >
+                                          {reg.is_blocked ? "Restore" : "Suspend"}
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  );
+                                })
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {filteredRegistrations.length === 0 ? (
+                          <div className="col-span-full py-12 text-center text-zinc-500 font-mono bg-[#121217]/40 rounded-[2rem] border border-white/[0.04]">
+                            No matching registrations found.
+                          </div>
+                        ) : (
+                          filteredRegistrations.map((reg, idx) => {
+                            const heuristics = evaluateAutoVerify(reg);
+                            const roleColors: Record<string, string> = {
+                              artist: 'var(--brand-3)',
+                              venue: 'var(--brand-2)',
+                              vendor: 'var(--brand-1)',
+                            };
+                            const roleColor = roleColors[reg.role || ''] || 'var(--ink-3)';
+                            const initials = (reg.display_name || reg.username || 'U')[0].toUpperCase();
+
+                            return (
+                              <GlowingAdminCard 
+                                key={reg.id}
+                                idx={idx}
+                                onClick={() => setSelectedReg(reg)}
+                                className={`bg-[#121217]/40 border border-white/[0.04] rounded-[2rem] p-7 flex flex-col gap-0 cursor-pointer hover:border-white/10 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 ${
+                                  reg.is_blocked ? "opacity-40" : ""
+                                }`}
+                                style={{ minHeight: '390px' }}
+                              >
+                                {/* Watermark initial */}
+                                <div className="absolute top-2 right-6 select-none pointer-events-none font-display font-black text-7xl text-white/[0.02]">
+                                  {initials}
+                                </div>
+
+                                {/* Top: Icon + Status badges */}
+                                <div className="flex justify-between items-start mb-5 z-10">
+                                  <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-white/[0.02] border border-white/5 font-display font-bold text-sm text-brand shadow-inner">
+                                    {initials}
+                                  </div>
+                                  <div className="flex flex-col gap-1.5 items-end">
                                     {reg.is_verified && (
-                                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold tracking-[0.08em]" style={{
-                                        background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
-                                        color: 'white',
-                                        boxShadow: '0 4px 12px -4px rgba(242,90,43,0.35)',
-                                      }}>
+                                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold tracking-[0.08em] bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] text-white">
                                         VERIFIED
                                       </span>
                                     )}
                                     {heuristics.eligible && (
-                                       <span 
-                                         className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-mono font-bold tracking-[0.08em]"
-                                         style={{
-                                           background: 'var(--bg-2)',
-                                           color: 'var(--brand-3)',
-                                           border: '1px solid rgba(124,92,255,0.2)',
-                                         }}
-                                         title={`Auto-verify candidate: ${heuristics.reasons.join(", ")}`}
-                                       >
-                                         SUGGESTED
-                                       </span>
-                                     )}
-                                   </div>
-                                   <div className="text-xs font-mono mt-0.5" style={{ color: 'var(--brand-1)' }}>
-                                     @{reg.username}
-                                   </div>
-                                 </div>
-                               </td>
-                              <td className="px-6 py-4">
-                                 <div>
-                                   <span className="inline-block px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-[0.08em]" style={{
-                                     background: 'var(--bg-2)',
-                                     color: reg.role === 'artist' ? 'var(--brand-3)' : reg.role === 'venue' ? 'var(--brand-2)' : reg.role === 'vendor' ? 'var(--brand-1)' : 'var(--ink-3)',
-                                     border: `1px solid color-mix(in srgb, ${reg.role === 'artist' ? 'var(--brand-3)' : reg.role === 'venue' ? 'var(--brand-2)' : reg.role === 'vendor' ? 'var(--brand-1)' : 'var(--ink-3)'} 20%, transparent)`,
-                                   }}>
-                                     {reg.role || "fan"}
-                                   </span>
-                                   {reg.category && (
-                                     <span className="block text-xs text-ink-2 mt-1 capitalize font-mono text-[11px]">
-                                       Category: {reg.category.replace("_", " ")}
-                                     </span>
-                                   )}
-                                   {reg.genres && reg.genres.length > 0 && (
-                                     <div className="flex flex-wrap gap-1 mt-1.5">
-                                       {reg.genres.map(g => (
-                                         <span key={g} className="text-[9px] font-mono px-2 py-0.5 rounded-full text-ink-2" style={{
-                                           background: 'var(--bg-2)',
-                                           border: '1px solid rgba(255,255,255,0.04)',
-                                         }}>
-                                           #{g}
-                                         </span>
-                                       ))}
-                                     </div>
-                                   )}
-                                 </div>
-                               </td>
-                              <td className="px-6 py-4 font-mono text-xs text-ink-2 space-y-0.5">
-                                <div className="text-ink/80">{reg.email}</div>
-                                {reg.phone && <div className="text-neutral-500">{reg.phone}</div>}
-                              </td>
-                              <td className="px-6 py-4">
-                                 <div className="flex items-center gap-2">
-                                   <input
-                                     type="number"
-                                     placeholder="Auto"
-                                     value={reg.position_override ?? ""}
-                                     onChange={(e) => {
-                                       const val = e.target.value === "" ? null : parseInt(e.target.value, 10);
-                                       handleSavePositionOverride(reg.user_id, val);
-                                     }}
-                                     className="w-16 bg-bg border border-line-soft rounded-full px-2 py-1 text-xs text-ink text-center font-mono focus:outline-none focus:border-brand-1 transition-all"
-                                   />
-                                   <span className="text-[10px] font-mono text-neutral-500">
-                                     {reg.position_override ? `#${reg.position_override}` : "Queue"}
-                                   </span>
-                                 </div>
-                               </td>
-                              <td className="px-6 py-4">
-                                 <button
-                                   onClick={() => handleVerifyAndLock(reg)}
-                                   className="py-1.5 px-4 rounded-full text-[10px] font-mono font-bold tracking-[0.06em] uppercase transition-all"
-                                   style={reg.is_verified ? {
-                                     background: 'var(--bg-2)',
-                                     color: 'var(--brand-3)',
-                                     border: '1px solid rgba(124,92,255,0.2)',
-                                   } : {
-                                     background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
-                                     color: 'white',
-                                     border: 'none',
-                                     boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)',
-                                   }}
-                                 >
-                                   {reg.is_verified ? "Locked" : "Verify"}
-                                 </button>
-                               </td>
-                              <td className="px-6 py-4 text-right">
-                                 <button
-                                   onClick={() => handleToggleBlock(reg)}
-                                   className="py-1.5 px-4 rounded-full text-[10px] font-mono font-bold tracking-[0.06em] uppercase transition-all"
-                                   style={reg.is_blocked ? {
-                                     background: 'rgba(255,75,75,0.1)',
-                                     color: 'var(--hot)',
-                                     border: '1px solid rgba(255,75,75,0.2)',
-                                   } : {
-                                     background: 'var(--bg-2)',
-                                     color: 'var(--ink-3)',
-                                     border: '1px solid rgba(255,255,255,0.04)',
-                                   }}
-                                 >
-                                   {reg.is_blocked ? "Restore" : "Suspend"}
-                                 </button>
-                               </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredRegistrations.length === 0 ? (
-                  <div className="col-span-full py-12 text-center text-ink-2 font-mono bg-bg-soft rounded-[28px] border border-line-soft">
-                    No matching registrations found.
-                  </div>
-                ) : (
-                  filteredRegistrations.map((reg, idx) => {
-                    const heuristics = evaluateAutoVerify(reg);
-                    const roleColors: Record<string, string> = {
-                      artist: 'var(--brand-3)',
-                      venue: 'var(--brand-2)',
-                      vendor: 'var(--brand-1)',
-                    };
-                    const roleColor = roleColors[reg.role || ''] || 'var(--ink-3)';
-                    const initials = (reg.display_name || 'U')[0].toUpperCase();
-
-                    return (
-                      <GlowingAdminCard 
-                        key={reg.id}
-                        idx={idx}
-                        onClick={() => setSelectedReg(reg)}
-                        className={`bg-bg-soft border border-line-soft rounded-[28px] p-8 flex flex-col gap-0 cursor-pointer ${
-                          reg.is_blocked ? "opacity-50" : ""
-                        }`}
-                        style={{ minHeight: '380px', cursor: 'pointer' }}
-                      >
-                        {/* Watermark initial */}
-                        <div className="absolute top-3 right-6 select-none pointer-events-none" style={{
-                          fontFamily: 'var(--font-display)',
-                          fontWeight: 700,
-                          fontSize: '80px',
-                          lineHeight: 0.8,
-                          color: 'rgba(255,255,255,0.03)'
-                        }}>{initials}</div>
-
-                        {/* Top: Icon + Status badges */}
-                        <div className="flex justify-between items-start mb-5 z-10">
-                          <div className="w-14 h-14 rounded-[18px] flex items-center justify-center bg-bg-card border border-line-soft shadow-sm text-brand font-display font-bold text-xl">
-                            {initials}
-                          </div>
-                          <div className="flex flex-col gap-1.5 items-end">
-                            {reg.is_verified && (
-                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-mono font-bold tracking-[0.08em] bg-brand text-white shadow-[0_4px_12px_-4px_rgba(242,90,43,0.25)]">
-                                VERIFIED
-                              </span>
-                            )}
-                            {heuristics.eligible && (
-                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-mono font-bold tracking-[0.08em] cursor-help" style={{
-                                background: 'var(--bg-2)',
-                                color: 'var(--brand-3)',
-                                border: '1px solid rgba(124,92,255,0.2)',
-                              }} title={`Auto-verify: ${heuristics.reasons.join(", ")}`}>
-                                SUGGESTED
-                              </span>
-                            )}
-                            {reg.is_blocked && (
-                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-mono font-bold tracking-[0.08em]" style={{
-                                background: 'rgba(255,75,75,0.1)',
-                                color: 'var(--hot)',
-                                border: '1px solid rgba(255,75,75,0.2)',
-                              }}>
-                                SUSPENDED
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Identity */}
-                        <div className="mb-1 z-10">
-                          <h3 className="font-display font-bold text-xl text-ink uppercase tracking-tight leading-tight pr-4">
-                            {reg.display_name || "Unknown"}
-                          </h3>
-                          <p className="text-sm font-mono mt-1" style={{ color: 'var(--brand-1)' }}>
-                            @{reg.username}
-                          </p>
-                        </div>
-
-                        {/* Role & Tags */}
-                        <div className="mb-auto z-10 pt-3">
-                          <span className="inline-block px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-[0.08em]" style={{
-                            background: 'var(--bg-2)',
-                            color: roleColor,
-                            border: `1px solid color-mix(in srgb, ${roleColor} 20%, transparent)`,
-                          }}>
-                            {reg.role || "fan"}
-                          </span>
-                          
-                          {(reg.category || (reg.genres && reg.genres.length > 0)) && (
-                            <div className="mt-3 space-y-2">
-                              {reg.category && (
-                                <p className="text-xs text-ink-2 capitalize">
-                                  <span className="text-ink-3">Category:</span> {reg.category.replace("_", " ")}
-                                </p>
-                              )}
-                              {reg.genres && reg.genres.length > 0 && (
-                                <div className="flex flex-wrap gap-1.5">
-                                  {reg.genres.map(g => (
-                                    <span key={g} className="text-[10px] font-mono px-2 py-0.5 rounded-full text-ink-2" style={{
-                                      background: 'var(--bg-2)',
-                                      border: '1px solid rgba(255,255,255,0.04)',
-                                    }}>
-                                      #{g}
-                                    </span>
-                                  ))}
+                                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold tracking-[0.08em] bg-white/5 text-[#22C55E] border border-[#22C55E]/20" title={`Auto-verify: ${heuristics.reasons.join(", ")}`}>
+                                        SUGGESTED
+                                      </span>
+                                    )}
+                                    {reg.is_blocked && (
+                                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold tracking-[0.08em] bg-hot/10 text-hot border border-hot/20">
+                                        SUSPENDED
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
 
-                        {/* Contact info */}
-                        <div className="text-xs text-ink-2 space-y-1 mt-4 pt-4 z-10" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                          <div className="flex items-center gap-2">
-                            <Mail className="w-3.5 h-3.5 text-ink-3" />
-                            <span>{reg.email}</span>
-                          </div>
-                          {reg.phone && (
-                            <div className="flex items-center gap-2">
-                              <Smartphone className="w-3.5 h-3.5 text-ink-3" />
-                              <span>{reg.phone}</span>
-                            </div>
-                          )}
-                        </div>
+                                {/* Identity */}
+                                <div className="mb-1 z-10">
+                                  <h3 className="font-display font-bold text-lg text-white uppercase tracking-tight leading-tight pr-4 truncate">
+                                    {reg.display_name || "Unknown"}
+                                  </h3>
+                                  <p className="text-xs font-mono mt-1 text-brand">
+                                    @{reg.username}
+                                  </p>
+                                </div>
 
-                        {/* Card Footer — matching homepage card-footer */}
-                        <div className="mt-4 pt-4 flex items-center gap-3 z-10" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                          <button
-                            onClick={() => handleVerifyAndLock(reg)}
-                            className="flex-1 py-2.5 rounded-full text-[11px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-2 transition-all"
-                            style={reg.is_verified ? {
-                              background: 'var(--bg-2)',
-                              color: 'var(--brand-3)',
-                              border: '1px solid rgba(124,92,255,0.2)',
-                            } : {
-                              background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
-                              color: 'white',
-                              border: 'none',
-                              boxShadow: '0 4px 16px -4px rgba(242,90,43,0.4)',
-                            }}
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            {reg.is_verified ? "Locked" : "Verify"}
-                          </button>
-                          
-                          <button
-                            onClick={() => handleToggleBlock(reg)}
-                            className="flex-1 py-2.5 rounded-full text-[11px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-2 transition-all"
-                            style={reg.is_blocked ? {
-                              background: 'rgba(255,75,75,0.1)',
-                              color: 'var(--hot)',
-                              border: '1px solid rgba(255,75,75,0.2)',
-                            } : {
-                              background: 'var(--bg-2)',
-                              color: 'var(--ink-3)',
-                              border: '1px solid rgba(255,255,255,0.04)',
-                            }}
-                          >
-                            <XCircle className="w-3.5 h-3.5" />
-                            {reg.is_blocked ? "Restore" : "Suspend"}
-                          </button>
+                                {/* Role & Tags */}
+                                <div className="mb-auto z-10 pt-3">
+                                  <span className="inline-block px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-[0.08em]" style={{
+                                    background: 'rgba(255,255,255,0.02)',
+                                    color: roleColor,
+                                    border: `1px solid color-mix(in srgb, ${roleColor} 15%, transparent)`,
+                                  }}>
+                                    {reg.role || "fan"}
+                                  </span>
+                                  
+                                  {(reg.category || (reg.genres && reg.genres.length > 0)) && (
+                                    <div className="mt-3.5 space-y-2">
+                                      {reg.category && (
+                                        <p className="text-[11px] text-zinc-400 capitalize">
+                                          <span className="text-zinc-500 font-mono">Category:</span> {reg.category.replace("_", " ")}
+                                        </p>
+                                      )}
+                                      {reg.genres && reg.genres.length > 0 && (
+                                        <div className="flex flex-wrap gap-1.5">
+                                          {reg.genres.map(g => (
+                                            <span key={g} className="text-[9px] font-mono px-2 py-0.5 rounded-full text-zinc-400 bg-white/[0.01] border border-white/[0.03]">
+                                              #{g}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Contact info */}
+                                <div className="text-xs text-zinc-400 space-y-1.5 mt-5 pt-4 z-10 border-t border-white/[0.04]">
+                                  <div className="flex items-center gap-2">
+                                    <Mail className="w-3.5 h-3.5 text-zinc-500" />
+                                    <span className="truncate">{reg.email}</span>
+                                  </div>
+                                  {reg.phone && (
+                                    <div className="flex items-center gap-2">
+                                      <Smartphone className="w-3.5 h-3.5 text-zinc-500" />
+                                      <span>{reg.phone}</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Card Actions */}
+                                <div className="mt-5 pt-4 flex items-center gap-2.5 z-10 border-t border-white/[0.04]" onClick={(e) => e.stopPropagation()}>
+                                  <button
+                                    onClick={() => handleVerifyAndLock(reg)}
+                                    className="flex-1 py-2 rounded-xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                                    style={reg.is_verified ? {
+                                      background: 'rgba(255,255,255,0.02)',
+                                      color: 'var(--brand-3)',
+                                      border: '1px solid rgba(124,92,255,0.2)',
+                                    } : {
+                                      background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
+                                      color: 'white',
+                                      border: 'none',
+                                      boxShadow: '0 4px 16px -4px rgba(242,90,43,0.4)',
+                                    }}
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    {reg.is_verified ? "Locked" : "Verify"}
+                                  </button>
+                                  
+                                  <button
+                                    onClick={() => handleToggleBlock(reg)}
+                                    className="flex-1 py-2 rounded-xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                                    style={reg.is_blocked ? {
+                                      background: 'rgba(255,75,75,0.1)',
+                                      color: 'var(--hot)',
+                                      border: '1px solid rgba(255,75,75,0.2)',
+                                    } : {
+                                      background: 'rgba(255,255,255,0.02)',
+                                      color: 'var(--ink-3)',
+                                      border: '1px solid rgba(255,255,255,0.04)',
+                                    }}
+                                  >
+                                    <XCircle className="w-3.5 h-3.5" />
+                                    {reg.is_blocked ? "Restore" : "Suspend"}
+                                  </button>
                         </div>
                       </GlowingAdminCard>
                     );
@@ -2197,42 +2201,38 @@ export default function AdminPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               
               {/* Points Leaderboard */}
-              <GlowingAdminCard idx={0} className="bg-bg-soft border border-line-soft rounded-[28px] overflow-hidden flex flex-col h-[600px]">
-                <div className="p-8 flex items-center gap-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div className="w-12 h-12 rounded-[16px] flex items-center justify-center flex-shrink-0 bg-bg-card border border-line-soft shadow-sm">
+              <GlowingAdminCard idx={0} className="bg-[#121217]/40 border border-white/[0.04] rounded-3xl overflow-hidden flex flex-col h-[600px] backdrop-blur-md">
+                <div className="p-8 flex items-center gap-4 border-b border-white/[0.04]">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/[0.02] border border-white/5 shadow-inner">
                     <Trophy className="w-5 h-5 text-brand" />
                   </div>
                   <div>
-                    <h3 className="font-display font-bold text-ink text-lg uppercase tracking-tight">Points Ranking</h3>
-                    <p className="text-[11px] font-mono font-semibold tracking-[0.12em] uppercase mt-0.5" style={{ color: 'var(--brand-1)' }}>Base 100 + 50 per referral</p>
+                    <h3 className="font-display font-bold text-white text-lg uppercase tracking-tight">Points Ranking</h3>
+                    <p className="text-[10px] font-mono font-bold tracking-[0.12em] uppercase mt-1 text-[#F25A2B]">Base 100 + 50 per referral</p>
                   </div>
                 </div>
                 <div className="overflow-y-auto flex-1 p-6 space-y-2">
                   {leaderboards.map((user, idx) => (
-                    <div key={`pts-${user.id}`} className="flex items-center justify-between p-4 rounded-2xl transition-all" style={{
-                      background: idx < 3 ? 'var(--bg-2)' : 'transparent',
-                      border: idx < 3 ? '1px solid rgba(255,255,255,0.04)' : '1px solid transparent',
-                    }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-2)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.04)'; }}
-                    onMouseLeave={(e) => { if (idx >= 3) { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.borderColor = 'transparent'; } }}
-                    >
+                    <div key={`pts-${user.id}`} className={`flex items-center justify-between p-4 rounded-xl border border-transparent transition-all duration-200 hover:bg-white/[0.03] hover:border-white/[0.05] ${
+                      idx < 3 ? 'bg-white/[0.01] border-white/[0.02]' : ''
+                    }`}>
                       <div className="flex items-center gap-4">
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-mono font-bold text-[11px] ${
-                          idx === 0 ? "text-amber-400" :
-                          idx === 1 ? "text-slate-300" :
-                          idx === 2 ? "text-amber-600" :
-                          "text-ink-3"
-                        }`} style={{ background: idx < 3 ? 'rgba(255,255,255,0.05)' : 'var(--bg-2)' }}>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-mono font-bold text-xs ${
+                          idx === 0 ? "text-amber-400 bg-amber-400/10 border border-amber-400/20 shadow-[0_0_12px_rgba(251,191,36,0.15)]" :
+                          idx === 1 ? "text-zinc-300 bg-zinc-300/10 border border-zinc-300/20" :
+                          idx === 2 ? "text-[#b45309] bg-[#b45309]/10 border border-[#b45309]/20" :
+                          "text-zinc-500 bg-white/[0.01]"
+                        }`}>
                           #{idx + 1}
                         </div>
                         <div>
-                          <p className="font-semibold text-ink text-sm">{user.display_name || user.username}</p>
-                          <p className="text-[11px] font-mono text-ink-3">@{user.username}</p>
+                          <p className="font-bold text-white text-sm">{user.display_name || user.username}</p>
+                          <p className="text-[10px] font-mono text-zinc-500">@{user.username}</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-display font-bold" style={{ color: 'var(--brand-1)' }}>{user.points}</p>
-                        <p className="text-[10px] font-mono text-ink-3 uppercase tracking-[0.08em]">pts</p>
+                        <p className="text-lg font-display font-extrabold text-[#F25A2B]">{user.points}</p>
+                        <p className="text-[9px] font-mono text-zinc-500 uppercase tracking-[0.08em]">points</p>
                       </div>
                     </div>
                   ))}
@@ -2240,44 +2240,40 @@ export default function AdminPage() {
               </GlowingAdminCard>
 
               {/* Referrals Leaderboard */}
-              <GlowingAdminCard idx={1} className="bg-bg-soft border border-line-soft rounded-[28px] overflow-hidden flex flex-col h-[600px]">
-                <div className="p-8 flex items-center gap-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div className="w-12 h-12 rounded-[16px] flex items-center justify-center flex-shrink-0 bg-bg-card border border-line-soft shadow-sm">
+              <GlowingAdminCard idx={1} className="bg-[#121217]/40 border border-white/[0.04] rounded-3xl overflow-hidden flex flex-col h-[600px] backdrop-blur-md">
+                <div className="p-8 flex items-center gap-4 border-b border-white/[0.04]">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/[0.02] border border-white/5 shadow-inner">
                     <Users className="w-5 h-5 text-brand" />
                   </div>
                   <div>
-                    <h3 className="font-display font-bold text-ink text-lg uppercase tracking-tight">Network Builders</h3>
-                    <p className="text-[11px] font-mono font-semibold tracking-[0.12em] uppercase mt-0.5" style={{ color: 'var(--brand-1)' }}>Ranked by referrals</p>
+                    <h3 className="font-display font-bold text-white text-lg uppercase tracking-tight">Network Builders</h3>
+                    <p className="text-[10px] font-mono font-bold tracking-[0.12em] uppercase mt-1 text-[#7C5CFF]">Ranked by total referrals</p>
                   </div>
                 </div>
                 <div className="overflow-y-auto flex-1 p-6 space-y-2">
                   {[...leaderboards]
                     .sort((a, b) => (b.refs || 0) - (a.refs || 0))
                     .map((user, idx) => (
-                    <div key={`ref-${user.id}`} className="flex items-center justify-between p-4 rounded-2xl transition-all" style={{
-                      background: idx < 3 ? 'var(--bg-2)' : 'transparent',
-                      border: idx < 3 ? '1px solid rgba(255,255,255,0.04)' : '1px solid transparent',
-                    }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-2)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.04)'; }}
-                    onMouseLeave={(e) => { if (idx >= 3) { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.borderColor = 'transparent'; } }}
-                    >
+                    <div key={`ref-${user.id}`} className={`flex items-center justify-between p-4 rounded-xl border border-transparent transition-all duration-200 hover:bg-white/[0.03] hover:border-white/[0.05] ${
+                      idx < 3 ? 'bg-white/[0.01] border-white/[0.02]' : ''
+                    }`}>
                       <div className="flex items-center gap-4">
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-mono font-bold text-[11px] ${
-                          idx === 0 ? "text-amber-400" :
-                          idx === 1 ? "text-slate-300" :
-                          idx === 2 ? "text-amber-600" :
-                          "text-ink-3"
-                        }`} style={{ background: idx < 3 ? 'rgba(255,255,255,0.05)' : 'var(--bg-2)' }}>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-mono font-bold text-xs ${
+                          idx === 0 ? "text-amber-400 bg-amber-400/10 border border-amber-400/20 shadow-[0_0_12px_rgba(251,191,36,0.15)]" :
+                          idx === 1 ? "text-zinc-300 bg-zinc-300/10 border border-zinc-300/20" :
+                          idx === 2 ? "text-[#b45309] bg-[#b45309]/10 border border-[#b45309]/20" :
+                          "text-zinc-500 bg-white/[0.01]"
+                        }`}>
                           #{idx + 1}
                         </div>
                         <div>
-                          <p className="font-semibold text-ink text-sm">{user.display_name || user.username}</p>
-                          <p className="text-[11px] font-mono text-ink-3">@{user.username}</p>
+                          <p className="font-bold text-white text-sm">{user.display_name || user.username}</p>
+                          <p className="text-[10px] font-mono text-zinc-500">@{user.username}</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-display font-bold" style={{ color: 'var(--brand-3)' }}>{user.refs || 0}</p>
-                        <p className="text-[10px] font-mono text-ink-3 uppercase tracking-[0.08em]">refs</p>
+                        <p className="text-lg font-display font-extrabold text-[#7C5CFF]">{user.refs || 0}</p>
+                        <p className="text-[9px] font-mono text-zinc-500 uppercase tracking-[0.08em]">referrals</p>
                       </div>
                     </div>
                   ))}
@@ -2295,67 +2291,67 @@ export default function AdminPage() {
           <div className="space-y-8 animate-in fade-in duration-200">
             {/* Overview cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-bg-soft border border-line-soft rounded-[24px] p-6 relative overflow-hidden">
+              <div className="bg-[#121217]/40 border border-white/[0.04] rounded-3xl p-6 relative overflow-hidden backdrop-blur-md shadow-lg">
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-[11px] font-mono text-ink-3 uppercase tracking-wider">Total Traffic (Visits)</p>
-                    <h3 className="text-3xl font-display font-bold mt-2 text-ink">
+                    <p className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider">Total Traffic (Visits)</p>
+                    <h3 className="text-3xl font-display font-extrabold mt-2 text-white">
                       {activityLogs.filter(l => l.action_type === 'visit').length}
                     </h3>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-bg-card border border-line-soft flex items-center justify-center">
-                    <Globe className="w-5 h-5 text-ink-2" />
+                  <div className="w-10 h-10 rounded-xl bg-white/[0.02] border border-white/10 flex items-center justify-center">
+                    <Globe className="w-5 h-5 text-brand" />
                   </div>
                 </div>
               </div>
 
-              <div className="bg-bg-soft border border-line-soft rounded-[24px] p-6 relative overflow-hidden">
+              <div className="bg-[#121217]/40 border border-white/[0.04] rounded-3xl p-6 relative overflow-hidden backdrop-blur-md shadow-lg">
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-[11px] font-mono text-ink-3 uppercase tracking-wider">Distinct Logins</p>
-                    <h3 className="text-3xl font-display font-bold mt-2 text-ink">
+                    <p className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider">Distinct Logins</p>
+                    <h3 className="text-3xl font-display font-extrabold mt-2 text-white">
                       {new Set(activityLogs.filter(l => l.action_type === 'login').map(l => l.email || l.user_id)).size}
                     </h3>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-bg-card border border-line-soft flex items-center justify-center">
-                    <Lock className="w-5 h-5 text-ink-2" />
+                  <div className="w-10 h-10 rounded-xl bg-white/[0.02] border border-white/10 flex items-center justify-center">
+                    <Lock className="w-5 h-5 text-brand" />
                   </div>
                 </div>
               </div>
 
-              <div className="bg-bg-soft border border-line-soft rounded-[24px] p-6 relative overflow-hidden">
+              <div className="bg-[#121217]/40 border border-white/[0.04] rounded-3xl p-6 relative overflow-hidden backdrop-blur-md shadow-lg">
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-[11px] font-mono text-ink-3 uppercase tracking-wider">Total Waitlisted</p>
-                    <h3 className="text-3xl font-display font-bold mt-2 text-ink">
+                    <p className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider">Total Waitlisted</p>
+                    <h3 className="text-3xl font-display font-extrabold mt-2 text-white">
                       {registrations.length}
                     </h3>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-bg-card border border-line-soft flex items-center justify-center">
-                    <Users className="w-5 h-5 text-ink-2" />
+                  <div className="w-10 h-10 rounded-xl bg-white/[0.02] border border-white/10 flex items-center justify-center">
+                    <Users className="w-5 h-5 text-brand" />
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Filter and Table Card */}
-            <div className="bg-bg-soft border border-line-soft rounded-[28px] p-8 space-y-6">
+            <div className="bg-[#121218]/30 border border-white/[0.04] rounded-3xl p-8 space-y-6 backdrop-blur-md shadow-2xl">
               <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
                 <div>
-                  <h3 className="text-lg font-display font-bold text-ink">Recent Session Actions</h3>
-                  <p className="text-xs text-ink-3 mt-1">Real-time interactions on the Artistant platform</p>
+                  <h3 className="text-lg font-display font-bold text-white uppercase tracking-tight">Recent Session Actions</h3>
+                  <p className="text-xs text-zinc-400 mt-1">Real-time developer & visitor logs on the platform</p>
                 </div>
                 
                 <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                   {/* Search */}
                   <div className="relative flex-1 sm:w-64">
-                    <Search className="w-4 h-4 text-ink-3 absolute left-4 top-1/2 -translate-y-1/2" />
+                    <Search className="w-4 h-4 text-zinc-500 absolute left-4 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
                       placeholder="Search email, user..."
                       value={activitySearch}
                       onChange={(e) => setActivitySearch(e.target.value)}
-                      className="w-full bg-bg-card border border-line-soft text-ink rounded-2xl pl-10 pr-4 py-2.5 text-xs font-mono focus:outline-none focus:border-ink transition-all"
+                      className="w-full bg-[#0a0a0f] border border-white/[0.06] text-white rounded-xl pl-10 pr-4 py-2.5 text-xs font-mono focus:border-[#7C5CFF] focus:ring-4 focus:ring-[#7C5CFF]/15 transition-all outline-none"
                     />
                   </div>
 
@@ -2363,7 +2359,7 @@ export default function AdminPage() {
                   <select
                     value={activityFilter}
                     onChange={(e) => setActivityFilter(e.target.value)}
-                    className="bg-bg-card border border-line-soft text-ink rounded-2xl px-4 py-2.5 text-xs focus:outline-none focus:border-ink transition-all cursor-pointer"
+                    className="bg-[#0a0a0f] border border-white/[0.06] text-white rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-[#7C5CFF] transition-all cursor-pointer font-mono font-bold uppercase tracking-wider"
                   >
                     <option value="all">All Events</option>
                     <option value="visit">Visits Only</option>
@@ -2377,15 +2373,15 @@ export default function AdminPage() {
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                   <thead>
-                    <tr className="border-b border-line-soft text-[10px] font-mono text-ink-3 uppercase tracking-wider text-left">
-                      <th className="pb-3 font-semibold">Time</th>
-                      <th className="pb-3 font-semibold">Event</th>
-                      <th className="pb-3 font-semibold">User Ident</th>
-                      <th className="pb-3 font-semibold">Browser / OS</th>
-                      <th className="pb-3 font-semibold">Referrer</th>
+                    <tr className="border-b border-white/[0.04] text-[9px] font-mono text-zinc-500 uppercase tracking-widest text-left">
+                      <th className="pb-3.5 font-bold">Time</th>
+                      <th className="pb-3.5 font-bold">Event Node</th>
+                      <th className="pb-3.5 font-bold">User Identity</th>
+                      <th className="pb-3.5 font-bold">Browser / OS</th>
+                      <th className="pb-3.5 font-bold">Referrer</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-line-soft/50">
+                  <tbody className="divide-y divide-white/[0.02]">
                     {activityLogs
                       .filter(log => {
                         if (activityFilter !== "all" && log.action_type !== activityFilter) return false;
@@ -2399,37 +2395,37 @@ export default function AdminPage() {
                         return true;
                       })
                       .map((log) => (
-                        <tr key={log.id} className="text-xs font-mono hover:bg-bg-card/30 transition-colors">
-                          <td className="py-4 text-ink-2">{new Date(log.created_at).toLocaleString()}</td>
+                        <tr key={log.id} className="text-xs font-mono hover:bg-white/[0.02] transition-colors">
+                          <td className="py-4 text-zinc-400">{new Date(log.created_at).toLocaleString()}</td>
                           <td className="py-4">
                             {log.action_type === 'visit' && (
-                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-zinc-800/50 text-zinc-300 border border-zinc-700/50">
-                                Visit
+                              <span className="px-2.5 py-0.5 rounded-full text-[8px] font-bold uppercase bg-white/5 text-zinc-400 border border-white/10">
+                                VISIT
                               </span>
                             )}
                             {log.action_type === 'login' && (
-                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-blue-950/40 text-blue-300 border border-blue-900/50">
-                                Login
+                              <span className="px-2.5 py-0.5 rounded-full text-[8px] font-bold uppercase bg-[#7C5CFF]/10 text-[#7C5CFF] border border-[#7C5CFF]/20">
+                                LOGIN
                               </span>
                             )}
                             {log.action_type === 'waitlist_register' && (
-                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-amber-950/40 text-amber-300 border border-amber-900/50">
-                                Waitlist
+                              <span className="px-2.5 py-0.5 rounded-full text-[8px] font-bold uppercase bg-[#F25A2B]/10 text-[#F25A2B] border border-[#F25A2B]/20">
+                                REGISTRATION
                               </span>
                             )}
                           </td>
-                          <td className="py-4 font-semibold text-ink">
+                          <td className="py-4 font-bold text-white">
                             {log.username ? `@${log.username}` : (log.email || "Anonymous Visitor")}
                           </td>
-                          <td className="py-4 text-ink-3 truncate max-w-[200px]" title={log.user_agent}>
+                          <td className="py-4 text-zinc-500 truncate max-w-[200px]" title={log.user_agent}>
                             {parseUserAgent(log.user_agent)}
                           </td>
-                          <td className="py-4 text-ink-2">{log.referrer || "Direct"}</td>
+                          <td className="py-4 text-zinc-400">{log.referrer || "Direct Link"}</td>
                         </tr>
                       ))}
                     {activityLogs.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="py-8 text-center text-ink-3">No activity logs captured yet.</td>
+                        <td colSpan={5} className="py-8 text-center text-zinc-500">No activity logs captured yet.</td>
                       </tr>
                     )}
                   </tbody>
@@ -2446,28 +2442,28 @@ export default function AdminPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-200">
             {/* Left form column */}
             <div className="lg:col-span-1 space-y-6">
-              <div className="bg-bg-soft border border-line-soft p-8 rounded-[28px] space-y-6">
-                <div className="border-b border-line-soft pb-5">
-                  <h3 className="text-lg font-display font-bold text-ink">Grant Clearance</h3>
-                  <p className="text-xs text-ink-3 mt-1">Authorize a team member to access this console.</p>
+              <div className="bg-[#121217]/40 border border-white/[0.04] p-8 rounded-3xl space-y-6 backdrop-blur-md shadow-lg">
+                <div className="border-b border-white/[0.04] pb-5">
+                  <h3 className="text-lg font-display font-bold text-white uppercase tracking-tight">Grant Clearance</h3>
+                  <p className="text-xs text-zinc-400 mt-1">Authorize a team member to access this console.</p>
                 </div>
 
                 <form onSubmit={handleAddAdmin} className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-mono uppercase tracking-[0.08em] text-ink-3">Google Account Email</label>
+                  <div className="space-y-2.5">
+                    <label className="text-[9px] font-mono font-bold uppercase tracking-[0.12em] text-zinc-500">Google Account Email</label>
                     <input
                       type="email"
                       required
                       placeholder="developer@artistant.in"
                       value={newAdminEmail}
                       onChange={(e) => setNewAdminEmail(e.target.value)}
-                      className="w-full bg-bg-card border border-line-soft text-ink rounded-2xl px-4 py-3.5 text-xs font-mono focus:outline-none focus:border-ink transition-all"
+                      className="w-full bg-[#0a0a0f] border border-white/[0.06] text-white rounded-xl px-4 py-3.5 text-xs font-mono focus:border-[#7C5CFF] focus:ring-4 focus:ring-[#7C5CFF]/15 transition-all outline-none"
                     />
                   </div>
 
                   <button
                     type="submit"
-                    className="w-full bg-ink text-bg font-display font-bold tracking-wider py-3.5 rounded-2xl flex items-center justify-center gap-2 hover:opacity-90 transition-all cursor-pointer text-xs uppercase"
+                    className="w-full bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] text-white font-display font-bold tracking-wider py-3.5 rounded-xl flex items-center justify-center gap-2 hover:opacity-95 active:scale-[0.98] transition-all cursor-pointer text-xs uppercase shadow-[0_4px_16px_-4px_rgba(242,90,43,0.3)]"
                   >
                     <Plus className="w-4 h-4" />
                     Grant Admin Role
@@ -2478,35 +2474,35 @@ export default function AdminPage() {
 
             {/* Right table list column */}
             <div className="lg:col-span-2 space-y-6">
-              <div className="bg-bg-soft border border-line-soft p-8 rounded-[28px] space-y-6">
-                <div className="border-b border-line-soft pb-5">
-                  <h3 className="text-lg font-display font-bold text-ink">Authorized Administrators</h3>
-                  <p className="text-xs text-ink-3 mt-1">Active console credentials with full table write privileges.</p>
+              <div className="bg-[#121217]/40 border border-white/[0.04] p-8 rounded-3xl space-y-6 backdrop-blur-md shadow-lg">
+                <div className="border-b border-white/[0.04] pb-5">
+                  <h3 className="text-lg font-display font-bold text-white uppercase tracking-tight">Authorized Administrators</h3>
+                  <p className="text-xs text-zinc-400 mt-1">Active console credentials with full table write privileges.</p>
                 </div>
 
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse">
                     <thead>
-                      <tr className="border-b border-line-soft text-[10px] font-mono text-ink-3 uppercase tracking-wider text-left">
-                        <th className="pb-3 font-semibold">User Email</th>
-                        <th className="pb-3 font-semibold">Granted By</th>
-                        <th className="pb-3 font-semibold">Access Date</th>
-                        <th className="pb-3 text-right font-semibold">Action</th>
+                      <tr className="border-b border-white/[0.04] text-[9px] font-mono text-zinc-500 uppercase tracking-widest text-left">
+                        <th className="pb-3.5 font-bold">User Email</th>
+                        <th className="pb-3.5 font-bold">Granted By</th>
+                        <th className="pb-3.5 font-bold">Access Date</th>
+                        <th className="pb-3.5 text-right font-bold">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-line-soft/50">
+                    <tbody className="divide-y divide-white/[0.02]">
                       {/* Seed default hardcoded super admin display */}
-                      <tr className="text-xs font-mono hover:bg-bg-card/30 transition-colors">
-                        <td className="py-4 flex items-center gap-3 font-semibold text-ink">
-                          <div className="w-8 h-8 rounded-lg bg-indigo-950/30 text-indigo-300 flex items-center justify-center font-display font-bold">
+                      <tr className="text-xs font-mono hover:bg-white/[0.02] transition-colors">
+                        <td className="py-4 flex items-center gap-3 font-bold text-white">
+                          <div className="w-8 h-8 rounded-lg bg-[#7C5CFF]/10 text-[#7C5CFF] border border-[#7C5CFF]/20 flex items-center justify-center font-display font-bold">
                             S
                           </div>
                           <span>anudeepdash2004@gmail.com</span>
                         </td>
-                        <td className="py-4 text-ink-2">system</td>
-                        <td className="py-4 text-ink-3">Jul 1, 2026</td>
+                        <td className="py-4 text-zinc-400">system</td>
+                        <td className="py-4 text-zinc-500">Jul 1, 2026</td>
                         <td className="py-4 text-right">
-                          <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-zinc-800 text-zinc-400 border border-zinc-700">
+                          <span className="px-2.5 py-0.5 rounded-full text-[8px] font-bold uppercase bg-white/5 text-zinc-400 border border-white/10">
                             Super-Admin
                           </span>
                         </td>
@@ -2515,19 +2511,19 @@ export default function AdminPage() {
                       {adminUsers
                         .filter(admin => admin.email !== 'anudeepdash2004@gmail.com')
                         .map((admin) => (
-                          <tr key={admin.id} className="text-xs font-mono hover:bg-bg-card/30 transition-colors">
-                            <td className="py-4 flex items-center gap-3 font-semibold text-ink">
-                              <div className="w-8 h-8 rounded-lg bg-bg-card border border-line-soft text-ink flex items-center justify-center font-display font-bold">
+                          <tr key={admin.id} className="text-xs font-mono hover:bg-white/[0.02] transition-colors">
+                            <td className="py-4 flex items-center gap-3 font-bold text-white">
+                              <div className="w-8 h-8 rounded-lg bg-white/[0.02] border border-white/10 text-white flex items-center justify-center font-display font-bold">
                                 {admin.email.substring(0, 1).toUpperCase()}
                               </div>
                               <span>{admin.email}</span>
                             </td>
-                            <td className="py-4 text-ink-2">{admin.added_by || "unknown"}</td>
-                            <td className="py-4 text-ink-3">{new Date(admin.created_at).toLocaleDateString()}</td>
+                            <td className="py-4 text-zinc-400">{admin.added_by || "unknown"}</td>
+                            <td className="py-4 text-zinc-500">{new Date(admin.created_at).toLocaleDateString()}</td>
                             <td className="py-4 text-right">
                               <button
                                 onClick={() => handleRemoveAdmin(admin.email)}
-                                className="p-2 bg-red-950/20 text-red-400 hover:text-red-300 rounded-lg border border-red-900/30 hover:border-red-900 transition-colors cursor-pointer"
+                                className="p-2 bg-red-950/20 text-red-400 hover:text-red-300 rounded-lg border border-red-900/30 hover:border-red-500/50 transition-colors cursor-pointer"
                                 title="Revoke access"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -2553,20 +2549,20 @@ export default function AdminPage() {
             <div className="lg:col-span-5 space-y-8">
               
               {/* Studio Settings */}
-              <div className="bg-bg-soft border border-line-soft p-8 rounded-[28px] space-y-6">
-                <div className="flex items-center gap-4 border-b border-line-soft pb-5">
-                  <div className="w-12 h-12 rounded-[16px] flex items-center justify-center flex-shrink-0 bg-bg-card border border-line-soft shadow-sm">
+              <div className="bg-[#121217]/40 border border-white/[0.04] p-8 rounded-3xl space-y-6 backdrop-blur-md shadow-lg">
+                <div className="flex items-center gap-4 border-b border-white/[0.04] pb-5">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/[0.02] border border-white/5 shadow-inner">
                     <Settings className="w-5 h-5 text-brand" />
                   </div>
                   <div>
-                    <h3 className="font-display font-bold text-ink text-lg uppercase tracking-tight">Graphics Parameters</h3>
-                    <p className="text-[11px] font-mono font-semibold tracking-[0.12em] uppercase mt-0.5" style={{ color: 'var(--brand-1)' }}>Configure unified studio output</p>
+                    <h3 className="font-display font-bold text-white text-lg uppercase tracking-tight">Graphics Parameters</h3>
+                    <p className="text-[10px] font-mono font-bold tracking-[0.12em] uppercase mt-1 text-[#7C5CFF]">Configure unified studio output</p>
                   </div>
                 </div>
 
                 {/* Switch Graphic Type Mode */}
                 <div>
-                  <label className="block text-[10px] font-mono font-semibold uppercase text-ink-3 tracking-[0.12em] mb-3">
+                  <label className="block text-[9px] font-mono font-bold uppercase text-zinc-500 tracking-[0.15em] mb-3">
                     Studio Generation Target
                   </label>
                   <div className="grid grid-cols-3 gap-2">
@@ -2578,14 +2574,14 @@ export default function AdminPage() {
                       <button
                         key={t.type}
                         onClick={() => setGraphicType(t.type as any)}
-                        className="py-2.5 rounded-full font-mono text-[11px] font-bold uppercase tracking-[0.06em] transition-all border"
+                        className="py-2.5 rounded-xl font-mono text-[10px] font-bold uppercase tracking-[0.06em] transition-all border cursor-pointer"
                         style={graphicType === t.type ? {
                           background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
                           color: 'white',
                           border: 'none',
                           boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)',
                         } : {
-                          background: 'var(--bg-2)',
+                          background: 'rgba(255,255,255,0.02)',
                           color: 'var(--ink-3)',
                           borderColor: 'rgba(255,255,255,0.04)',
                         }}
@@ -2598,20 +2594,20 @@ export default function AdminPage() {
 
                 {/* Aspect Layout Ratio dimensions */}
                 <div>
-                  <label className="block text-[10px] font-mono font-semibold uppercase text-ink-3 tracking-[0.12em] mb-3">
+                  <label className="block text-[9px] font-mono font-bold uppercase text-zinc-500 tracking-[0.15em] mb-3">
                     Output Aspect Ratio
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => setCanvasLayout("square")}
-                      className="py-2.5 rounded-full font-mono text-[11px] font-bold uppercase tracking-[0.06em] transition-all border"
+                      className="py-2.5 rounded-xl font-mono text-[10px] font-bold uppercase tracking-[0.06em] transition-all border cursor-pointer"
                       style={canvasLayout === "square" ? {
                         background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
                         color: 'white',
                         border: 'none',
                         boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)',
                       } : {
-                        background: 'var(--bg-2)',
+                        background: 'rgba(255,255,255,0.02)',
                         color: 'var(--ink-3)',
                         borderColor: 'rgba(255,255,255,0.04)',
                       }}
@@ -2620,14 +2616,14 @@ export default function AdminPage() {
                     </button>
                     <button
                       onClick={() => setCanvasLayout("portrait")}
-                      className="py-2.5 rounded-full font-mono text-[11px] font-bold uppercase tracking-[0.06em] transition-all border"
+                      className="py-2.5 rounded-xl font-mono text-[10px] font-bold uppercase tracking-[0.06em] transition-all border cursor-pointer"
                       style={canvasLayout === "portrait" ? {
                         background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
                         color: 'white',
                         border: 'none',
                         boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)',
                       } : {
-                        background: 'var(--bg-2)',
+                        background: 'rgba(255,255,255,0.02)',
                         color: 'var(--ink-3)',
                         borderColor: 'rgba(255,255,255,0.04)',
                       }}
@@ -2639,7 +2635,7 @@ export default function AdminPage() {
 
                 {/* Theme Selector */}
                 <div>
-                  <label className="block text-[10px] font-mono font-semibold uppercase text-ink-3 tracking-[0.12em] mb-3">
+                  <label className="block text-[9px] font-mono font-bold uppercase text-zinc-500 tracking-[0.15em] mb-3">
                     Creative Glow Theme
                   </label>
                   <div className="grid grid-cols-3 gap-2">
@@ -2651,9 +2647,9 @@ export default function AdminPage() {
                       <button
                         key={theme.key}
                         onClick={() => setUnifiedTheme(theme.key as any)}
-                        className="py-2 rounded-xl border text-[10px] font-mono flex flex-col items-center gap-1.5 transition-all"
+                        className="py-2 rounded-xl border text-[10px] font-mono flex flex-col items-center gap-1.5 transition-all cursor-pointer"
                         style={unifiedTheme === theme.key ? {
-                          background: 'var(--bg-2)',
+                          background: 'rgba(255,255,255,0.03)',
                           color: 'var(--ink)',
                           borderColor: theme.dot,
                         } : {
@@ -2671,30 +2667,29 @@ export default function AdminPage() {
               </div>
 
               {/* Dynamic Parameter Editor Panel */}
-              <div className="bg-bg-soft border border-line-soft p-8 rounded-[28px] space-y-6">
+              <div className="bg-[#121217]/40 border border-white/[0.04] p-8 rounded-3xl space-y-6 backdrop-blur-md shadow-lg">
                 
                 {graphicType === "milestone" && (
                   <>
-                    <h3 className="text-base font-display font-bold text-ink border-b border-line-soft pb-3 flex items-center gap-2">
-                      <Sparkles className="w-4 h-4" style={{ color: 'var(--brand-1)' }} />
+                    <h3 className="text-base font-display font-bold text-white border-b border-white/[0.04] pb-3 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-[#F25A2B]" />
                       Milestone Settings
                     </h3>
                     <div>
-                      <label className="block text-xs font-mono uppercase text-ink-2 tracking-wider mb-2">Live Metric Count</label>
+                      <label className="block text-[10px] font-mono font-bold uppercase text-zinc-500 tracking-wider mb-2">Live Metric Count</label>
                       <div className="flex gap-2">
                         <input
                           type="text"
                           value={gMilestoneStat}
                           onChange={(e) => setGMilestoneStat(e.target.value)}
-                          className="flex-1 bg-bg border border-line-soft rounded-2xl px-4 py-2.5 text-sm text-ink focus:outline-none focus:border-brand-1 transition-all"
+                          className="flex-1 bg-[#0a0a0f] border border-white/[0.06] rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#7C5CFF] transition-all font-mono"
                         />
                         <button
                           onClick={() => {
                             setGMilestoneStat(`${totalCount}+`);
                             showToast("Pulled live database count!");
                           }}
-                          className="px-4 py-2.5 rounded-2xl text-xs hover:text-ink transition-all font-mono"
-                          style={{ background: 'var(--bg-2)', border: '1px solid rgba(255,255,255,0.04)' }}
+                          className="px-4 py-2.5 rounded-xl text-xs hover:text-white transition-all font-mono cursor-pointer text-zinc-400 bg-white/[0.02] border border-white/10"
                           title="Pull Live Total"
                         >
                           Live DB
@@ -2702,12 +2697,12 @@ export default function AdminPage() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-mono uppercase text-ink-2 tracking-wider mb-2">Headline Title</label>
+                      <label className="block text-[10px] font-mono font-bold uppercase text-zinc-500 tracking-wider mb-2">Headline Title</label>
                       <input
                         type="text"
                         value={gMilestoneTitle}
                         onChange={(e) => setGMilestoneTitle(e.target.value)}
-                        className="w-full bg-bg border border-line-soft rounded-2xl px-4 py-2.5 text-sm text-ink focus:outline-none focus:border-brand-1 transition-all"
+                        className="w-full bg-[#0a0a0f] border border-white/[0.06] rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#7C5CFF] transition-all"
                       />
                     </div>
                   </>
@@ -2715,22 +2710,22 @@ export default function AdminPage() {
 
                 {graphicType === "feature" && (
                   <>
-                    <h3 className="text-base font-display font-bold text-ink border-b border-line-soft pb-3 flex items-center gap-2">
-                      <Layers className="w-4 h-4" style={{ color: 'var(--brand-3)' }} />
+                    <h3 className="text-base font-display font-bold text-white border-b border-white/[0.04] pb-3 flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-[#7C5CFF]" />
                       Feature Drop Spotlight
                     </h3>
                     <div>
-                      <label className="block text-xs font-mono uppercase text-ink-2 tracking-wider mb-2">Spotlight Core Title</label>
+                      <label className="block text-[10px] font-mono font-bold uppercase text-zinc-500 tracking-wider mb-2">Spotlight Core Title</label>
                       <input
                         type="text"
                         value={gHeadline}
                         onChange={(e) => setGHeadline(e.target.value)}
-                        className="w-full bg-bg border border-line-soft rounded-2xl px-4 py-2.5 text-sm text-ink focus:outline-none focus:border-brand-1 transition-all"
+                        className="w-full bg-[#0a0a0f] border border-white/[0.06] rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#7C5CFF] transition-all"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-mono uppercase text-ink-2 tracking-wider mb-2">Feature Presets</label>
-                      <div className="grid grid-cols-2 gap-2 mt-1">
+                      <label className="block text-[10px] font-mono font-bold uppercase text-zinc-500 tracking-wider mb-2">Feature Presets</label>
+                      <div className="grid grid-cols-1 gap-2 mt-1">
                         {[
                           { key: "bookability", label: "Bookability Score™", desc: "DATA-BACKED RELIABILITY RATING FOR PERFORMERS" },
                           { key: "escrow", label: "GigSafe Escrow", desc: "SECURED PAYMENT PROTOCOLS FOR THE ENTERTAINMENT ECONOMY" },
@@ -2742,7 +2737,7 @@ export default function AdminPage() {
                               setGHeadline(preset.label);
                               setGSubtext(preset.desc);
                             }}
-                            className="px-3 py-2 rounded-xl bg-bg border border-line-soft text-[10px] font-mono hover:border-brand-1 transition-all text-neutral-400 text-left"
+                            className="px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/[0.04] text-[10px] font-mono hover:border-white/20 transition-all text-left text-zinc-400 hover:text-white cursor-pointer"
                           >
                             {preset.label}
                           </button>
@@ -2754,17 +2749,17 @@ export default function AdminPage() {
 
                 {graphicType === "countdown" && (
                   <>
-                    <h3 className="text-base font-display font-bold text-ink border-b border-line-soft pb-3 flex items-center gap-2">
-                      <CalendarIcon className="w-4 h-4" style={{ color: 'var(--brand-2)' }} />
+                    <h3 className="text-base font-display font-bold text-white border-b border-white/[0.04] pb-3 flex items-center gap-2">
+                      <CalendarIcon className="w-4 h-4 text-brand-2" />
                       Beta Countdown Settings
                     </h3>
                     <div>
-                      <label className="block text-xs font-mono uppercase text-ink-2 tracking-wider mb-2">Target Beta Launch Date</label>
+                      <label className="block text-[10px] font-mono font-bold uppercase text-zinc-500 tracking-wider mb-2">Target Beta Launch Date</label>
                       <input
                         type="date"
                         value={gCountdownTarget}
                         onChange={(e) => setGCountdownTarget(e.target.value)}
-                        className="w-full bg-bg border border-line-soft rounded-2xl px-4 py-2.5 text-sm text-ink focus:outline-none focus:border-brand-1 transition-all font-mono"
+                        className="w-full bg-[#0a0a0f] border border-white/[0.06] rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#7C5CFF] transition-all font-mono"
                       />
                     </div>
                   </>
@@ -2773,19 +2768,19 @@ export default function AdminPage() {
                 {/* Subtext description editor (common for Milestone & Feature) */}
                 {graphicType !== "countdown" && (
                   <div>
-                    <label className="block text-xs font-mono uppercase text-ink-2 tracking-wider mb-2">Description Subtext</label>
+                    <label className="block text-[10px] font-mono font-bold uppercase text-zinc-500 tracking-wider mb-2">Description Subtext</label>
                     <textarea
                       value={gSubtext}
                       onChange={(e) => setGSubtext(e.target.value)}
                       rows={3}
-                      className="w-full bg-bg border border-line-soft rounded-2xl px-4 py-2.5 text-sm text-ink focus:outline-none focus:border-brand-1 transition-all resize-none"
+                      className="w-full bg-[#0a0a0f] border border-white/[0.06] rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#7C5CFF] transition-all resize-none"
                     />
                   </div>
                 )}
 
                 {/* Proactive strategic data triggers */}
-                <div className="p-4 bg-bg border border-line-soft rounded-2xl font-mono text-[10px] text-ink-3 space-y-1.5">
-                  <p className="font-bold text-brand-1">PROACTIVE FLEX PRESETS:</p>
+                <div className="p-4 bg-[#0a0a0f] border border-white/[0.04] rounded-2xl font-mono text-[9px] text-zinc-500 space-y-2">
+                  <p className="font-bold text-[#F25A2B]">PROACTIVE FLEX PRESETS:</p>
                   <button
                     onClick={() => {
                       setGraphicType("milestone");
@@ -2793,7 +2788,7 @@ export default function AdminPage() {
                       setGMilestoneTitle("PAYMENT DELAYS");
                       setGSubtext("68% of performers report payment delays of 30+ days in the industry. We cure this on Artistant.");
                     }}
-                    className="block text-left underline hover:text-ink transition-colors"
+                    className="block text-left underline hover:text-white transition-colors cursor-pointer"
                   >
                     Load Stat: "68% Payment Delays..."
                   </button>
@@ -2803,7 +2798,7 @@ export default function AdminPage() {
                       setGHeadline("REPLACEMENT ASSURED");
                       setGSubtext("Organizers book with absolute safety. Equivalent standby performers dispatched automatically on cancellations.");
                     }}
-                    className="block text-left underline hover:text-ink transition-colors"
+                    className="block text-left underline hover:text-white transition-colors cursor-pointer"
                   >
                     Load Spotlight: "Replacement Backup..."
                   </button>
@@ -2812,7 +2807,7 @@ export default function AdminPage() {
                 <div className="flex gap-4 pt-2">
                   <button
                     onClick={handleDownloadUnified}
-                    className="flex-grow py-3 rounded-full text-[11px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-2 transition-all"
+                    className="flex-grow py-3 rounded-full text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-2 transition-all cursor-pointer"
                     style={{
                       background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
                       color: 'white',
@@ -2826,8 +2821,7 @@ export default function AdminPage() {
                     onClick={() => {
                       showToast("Proactive: Unified content pushed directly to launch story queue!");
                     }}
-                    className="px-4 py-3 rounded-full flex items-center justify-center hover:text-ink transition-all text-ink-3"
-                    style={{ background: 'var(--bg-2)', border: '1px solid rgba(255,255,255,0.04)' }}
+                    className="px-4 py-3 rounded-full flex items-center justify-center hover:text-white hover:bg-white/[0.04] transition-all text-zinc-400 bg-white/[0.02] border border-white/10 cursor-pointer"
                     title="Push directly to Instagram/LinkedIn Queue"
                   >
                     <ArrowUpRight className="w-4 h-4" />
@@ -2840,18 +2834,18 @@ export default function AdminPage() {
 
             {/* Right Graphics Preview Pane */}
             <div className="lg:col-span-7 space-y-4">
-              <div className="bg-bg-soft border border-line-soft p-8 rounded-[28px] flex flex-col items-center">
+              <div className="bg-[#121217]/40 border border-white/[0.04] p-8 rounded-3xl flex flex-col items-center backdrop-blur-md shadow-lg">
                 <div className="w-full flex justify-between items-center mb-5">
-                  <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--brand-1)' }}>Graphics preview canvas pane</span>
-                  <span className="text-xs font-mono text-ink-3">
+                  <span className="text-[9px] font-mono font-bold uppercase tracking-[0.15em] text-[#F25A2B]">Graphics preview canvas pane</span>
+                  <span className="text-xs font-mono text-zinc-500">
                     {canvasLayout === "square" ? "1080 x 1080 (Square)" : "1080 x 1920 (Portrait 9:16)"}
                   </span>
                 </div>
 
-                <div className="w-full bg-bg border border-line-soft p-4 rounded-2xl flex items-center justify-center overflow-auto shadow-inner relative" style={{ minHeight: '350px' }}>
+                <div className="w-full bg-[#0a0a0f]/60 border border-white/[0.04] p-6 rounded-2xl flex items-center justify-center overflow-auto shadow-inner relative" style={{ minHeight: '350px' }}>
                   <canvas 
                     ref={canvasRef} 
-                    className="h-auto border border-line-soft shadow-2xl rounded-2xl max-w-[280px] sm:max-w-[320px] md:max-w-[380px] lg:max-w-[400px]"
+                    className="h-auto border border-white/10 shadow-2xl rounded-2xl max-w-[280px] sm:max-w-[320px] md:max-w-[380px] lg:max-w-[400px]"
                   />
                 </div>
               </div>
@@ -2865,13 +2859,13 @@ export default function AdminPage() {
             =================================================================== */}
         {activeTab === "calendar" && (
           <div className="space-y-8 animate-in fade-in duration-200">
-            <div className="bg-bg-soft border border-line-soft p-8 rounded-[28px] flex items-center gap-4">
-              <div className="w-12 h-12 rounded-[16px] flex items-center justify-center flex-shrink-0 bg-bg-card border border-line-soft shadow-sm">
+            <div className="bg-[#121217]/40 border border-white/[0.04] p-8 rounded-3xl flex items-center gap-4 backdrop-blur-md shadow-lg">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/[0.02] border border-white/5 shadow-inner">
                 <CalendarIcon className="w-5 h-5 text-brand" />
               </div>
               <div>
-                <h3 className="font-display font-bold text-ink text-lg uppercase tracking-tight">Launch Post Schedule</h3>
-                <p className="text-[11px] font-mono font-semibold tracking-[0.12em] uppercase mt-0.5" style={{ color: 'var(--brand-1)' }}>Draft, preview and queue social graphics</p>
+                <h3 className="font-display font-bold text-white text-lg uppercase tracking-tight">Launch Post Schedule</h3>
+                <p className="text-[10px] font-mono font-bold tracking-[0.12em] uppercase mt-1 text-[#7C5CFF]">Draft, preview and queue social graphics</p>
               </div>
             </div>
 
@@ -2880,42 +2874,32 @@ export default function AdminPage() {
                 <GlowingAdminCard 
                   key={post.id} 
                   idx={idx}
-                  className="bg-bg-soft border border-line-soft rounded-[28px] p-8 flex flex-col justify-between"
+                  className="bg-[#121217]/40 border border-white/[0.04] rounded-3xl p-8 flex flex-col justify-between backdrop-blur-md shadow-lg"
                 >
                   <div>
                     <div className="flex justify-between items-center mb-5">
-                      <span className="text-[10px] font-mono font-bold text-ink-3 flex items-center gap-1.5 uppercase tracking-[0.08em]">
+                      <span className="text-[9px] font-mono font-bold text-zinc-500 flex items-center gap-1.5 uppercase tracking-wider">
                         <CalendarIcon className="w-3.5 h-3.5" />
                         {post.date} @ {post.time}
                       </span>
-                      <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-[0.08em]" style={{
-                        background: 'var(--bg-2)',
-                        color: 'var(--brand-1)',
-                        border: '1px solid rgba(255,255,255,0.04)',
-                      }}>
+                      <span className="px-2.5 py-1 rounded-full text-[9px] font-mono font-bold uppercase tracking-[0.08em] bg-[#7C5CFF]/10 text-[#7C5CFF] border border-[#7C5CFF]/20">
                         {post.platform}
                       </span>
                     </div>
 
-                    <h4 className="text-base font-display font-bold text-ink uppercase tracking-tight mb-3">
+                    <h4 className="text-base font-display font-bold text-white uppercase tracking-tight mb-3">
                       {post.title}
                     </h4>
 
-                    <p className="text-xs text-ink-2 leading-relaxed mb-6 italic bg-bg p-4 rounded-2xl border border-line-soft line-clamp-3">
+                    <p className="text-xs text-zinc-400 leading-relaxed mb-6 italic bg-black/40 p-4 rounded-2xl border border-white/[0.03] line-clamp-3">
                       {post.caption}
                     </p>
                   </div>
 
-                  <div className="flex gap-2 mt-4 pt-4 border-t border-line-soft">
+                  <div className="flex gap-2 mt-4 pt-4 border-t border-white/[0.04]">
                     <button
                       onClick={() => handleApplyPreset(post)}
-                      className="flex-1 py-2.5 rounded-full text-[11px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-2 transition-all"
-                      style={{
-                        background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
-                        color: 'white',
-                        border: 'none',
-                        boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)',
-                      }}
+                      className="flex-1 py-2.5 rounded-xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-2 transition-all cursor-pointer bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] text-white shadow-[0_4px_12px_-4px_rgba(242,90,43,0.3)]"
                     >
                       <ImageIcon className="w-3.5 h-3.5" />
                       Load Preset
@@ -2925,8 +2909,7 @@ export default function AdminPage() {
                         navigator.clipboard.writeText(post.caption);
                         showToast("Caption copied!");
                       }}
-                      className="px-4 py-2.5 rounded-full text-[11px] font-mono font-bold tracking-[0.06em] uppercase transition-all"
-                      style={{ background: 'var(--bg-2)', border: '1px solid rgba(255,255,255,0.04)' }}
+                      className="px-4 py-2.5 rounded-xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase transition-all bg-white/[0.02] border border-white/10 hover:bg-white/[0.04] hover:text-white text-zinc-400 cursor-pointer"
                     >
                       Copy
                     </button>
@@ -2936,22 +2919,14 @@ export default function AdminPage() {
               
               {/* Custom Scheduler slot */}
               <div 
-                className="border-2 border-dashed border-line-soft hover:border-brand-1 rounded-[28px] p-8 flex flex-col justify-center items-center gap-4 text-center cursor-pointer min-h-[280px] transition-all bg-bg-soft/25"
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLElement).style.background = 'var(--bg-soft)';
-                  (e.currentTarget as HTMLElement).style.borderColor = 'var(--brand-1)';
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.background = 'var(--bg-soft)/25';
-                  (e.currentTarget as HTMLElement).style.borderColor = '';
-                }}
+                className="border border-dashed border-white/20 hover:border-[#7C5CFF]/50 rounded-3xl p-8 flex flex-col justify-center items-center gap-4 text-center cursor-pointer min-h-[280px] transition-all duration-300 bg-[#121217]/20 hover:bg-[#121217]/40 group"
               >
-                <div className="w-12 h-12 rounded-full bg-bg flex items-center justify-center border border-line-soft">
-                  <Plus className="w-5 h-5 text-ink-3" />
+                <div className="w-12 h-12 rounded-full bg-[#0a0a0f] flex items-center justify-center border border-white/10 group-hover:border-[#7C5CFF]/30 transition-colors">
+                  <Plus className="w-5 h-5 text-zinc-500 group-hover:text-white transition-colors" />
                 </div>
                 <div>
-                  <span className="font-display font-bold text-sm text-ink uppercase tracking-tight block">Add Custom Task</span>
-                  <span className="text-[11px] text-ink-3 max-w-[200px] mt-1.5 block leading-normal">Draft future drops and countdown releases.</span>
+                  <span className="font-display font-bold text-sm text-white uppercase tracking-tight block">Add Custom Task</span>
+                  <span className="text-[11px] text-zinc-500 max-w-[200px] mt-1.5 block leading-normal">Draft future drops and countdown releases.</span>
                 </div>
               </div>
             </div>
@@ -2966,24 +2941,24 @@ export default function AdminPage() {
             
             {/* Left Email Composer Form */}
             <div className="lg:col-span-6 space-y-6">
-              <div className="bg-bg-soft border border-line-soft p-8 rounded-[28px] space-y-6">
-                <div className="flex items-center gap-4 border-b border-line-soft pb-5">
-                  <div className="w-12 h-12 rounded-[16px] flex items-center justify-center flex-shrink-0 bg-bg-card border border-line-soft shadow-sm">
+              <div className="bg-[#121217]/40 border border-white/[0.04] p-8 rounded-3xl space-y-6 backdrop-blur-md shadow-lg">
+                <div className="flex items-center gap-4 border-b border-white/[0.04] pb-5">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/[0.02] border border-white/5 shadow-inner">
                     <Mail className="w-5 h-5 text-brand" />
                   </div>
                   <div>
-                    <h3 className="font-display font-bold text-ink text-lg uppercase tracking-tight">Campaign Composer</h3>
-                    <p className="text-[11px] font-mono font-semibold tracking-[0.12em] uppercase mt-0.5" style={{ color: 'var(--brand-1)' }}>Draft and broadcast mailers</p>
+                    <h3 className="font-display font-bold text-white text-lg uppercase tracking-tight">Campaign Composer</h3>
+                    <p className="text-[10px] font-mono font-bold tracking-[0.12em] uppercase mt-1 text-[#7C5CFF]">Draft and broadcast mailers</p>
                   </div>
                 </div>
 
                 {/* Sender Alias Selection */}
                 <div>
-                  <label className="block text-[10px] font-mono font-semibold uppercase text-ink-3 tracking-[0.12em] mb-2.5">Sender Alias</label>
+                  <label className="block text-[9px] font-mono font-bold uppercase text-zinc-500 tracking-[0.15em] mb-2.5">Sender Alias</label>
                   <select
                     value={emailAlias}
                     onChange={(e) => setEmailAlias(e.target.value)}
-                    className="w-full bg-bg border border-line-soft rounded-2xl px-4 py-3 text-sm text-ink focus:outline-none focus:border-brand-1 transition-all cursor-pointer"
+                    className="w-full bg-[#0a0a0f] border border-white/[0.06] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#7C5CFF] cursor-pointer"
                   >
                     <option value="official">ArtisTant Official (info@artistant.in)</option>
                     <option value="support">ArtisTant Support (support@artistant.in)</option>
@@ -2993,74 +2968,69 @@ export default function AdminPage() {
 
                 {/* Email Subject */}
                 <div>
-                  <label className="block text-[10px] font-mono font-semibold uppercase text-ink-3 tracking-[0.12em] mb-2.5">Campaign Subject</label>
+                  <label className="block text-[9px] font-mono font-bold uppercase text-zinc-500 tracking-[0.15em] mb-2.5">Campaign Subject</label>
                   <input
                     type="text"
                     value={emailSubject}
                     onChange={(e) => setEmailSubject(e.target.value)}
-                    className="w-full bg-bg border border-line-soft rounded-2xl px-4 py-3 text-sm text-ink focus:outline-none focus:border-brand-1 transition-all"
+                    className="w-full bg-[#0a0a0f] border border-white/[0.06] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#7C5CFF] transition-all"
                   />
                 </div>
 
                 {/* Email Header banner line */}
                 <div>
-                  <label className="block text-[10px] font-mono font-semibold uppercase text-ink-3 tracking-[0.12em] mb-2.5">Email Header Greeting</label>
+                  <label className="block text-[9px] font-mono font-bold uppercase text-zinc-500 tracking-[0.15em] mb-2.5">Email Header Greeting</label>
                   <input
                     type="text"
                     value={emailHeader}
                     onChange={(e) => setEmailHeader(e.target.value)}
-                    className="w-full bg-bg border border-line-soft rounded-2xl px-4 py-3 text-sm text-ink focus:outline-none focus:border-brand-1 transition-all"
+                    className="w-full bg-[#0a0a0f] border border-white/[0.06] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#7C5CFF] transition-all"
                   />
                 </div>
 
                 {/* Email Body text */}
                 <div>
-                  <label className="block text-[10px] font-mono font-semibold uppercase text-ink-3 tracking-[0.12em] mb-2.5">Message Body Copy (HTML supported)</label>
+                  <label className="block text-[9px] font-mono font-bold uppercase text-zinc-500 tracking-[0.15em] mb-2.5">Message Body Copy (HTML supported)</label>
                   <textarea
                     value={emailBody}
                     onChange={(e) => setEmailBody(e.target.value)}
                     rows={6}
-                    className="w-full bg-bg border border-line-soft rounded-2xl px-4 py-3.5 text-sm text-ink focus:outline-none focus:border-brand-1 transition-all resize-none"
+                    className="w-full bg-[#0a0a0f] border border-white/[0.06] rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-[#7C5CFF] transition-all resize-none"
                   />
                 </div>
 
                 {/* Call To Action Buttons configs */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-mono font-semibold uppercase text-ink-3 tracking-[0.12em] mb-2.5">CTA Link Text</label>
+                    <label className="block text-[9px] font-mono font-bold uppercase text-zinc-500 tracking-[0.15em] mb-2.5">CTA Link Text</label>
                     <input
                       type="text"
                       value={emailCtaText}
                       onChange={(e) => setEmailCtaText(e.target.value)}
-                      className="w-full bg-bg border border-line-soft rounded-2xl px-4 py-3 text-sm text-ink focus:outline-none focus:border-brand-1 transition-all"
+                      className="w-full bg-[#0a0a0f] border border-white/[0.06] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#7C5CFF] transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-mono font-semibold uppercase text-ink-3 tracking-[0.12em] mb-2.5">CTA Destination URL</label>
+                    <label className="block text-[9px] font-mono font-bold uppercase text-zinc-500 tracking-[0.15em] mb-2.5">CTA Destination URL</label>
                     <input
                       type="text"
                       value={emailCtaUrl}
                       onChange={(e) => setEmailCtaUrl(e.target.value)}
-                      className="w-full bg-bg border border-line-soft rounded-2xl px-4 py-3 text-sm text-ink focus:outline-none focus:border-brand-1 transition-all font-mono"
+                      className="w-full bg-[#0a0a0f] border border-white/[0.06] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#7C5CFF] transition-all font-mono"
                     />
                   </div>
                 </div>
 
                 {/* Sending stats readout */}
-                <div className="p-5 bg-bg border border-line-soft rounded-[20px] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="p-5 bg-white/[0.01] border border-white/[0.04] rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div>
-                    <span className="text-[10px] font-mono font-bold text-ink-3 block uppercase tracking-[0.08em]">Active Targets List</span>
-                    <span className="text-base font-bold text-ink mt-0.5 block">{getSelectedRecipientsList().filter(r=>!r.is_blocked).length} users ready</span>
+                    <span className="text-[9px] font-mono font-bold text-zinc-500 block uppercase tracking-[0.08em]">Active Targets List</span>
+                    <span className="text-sm font-bold text-white mt-0.5 block">{getSelectedRecipientsList().filter(r=>!r.is_blocked).length} users ready</span>
                   </div>
                   <button
                     onClick={handleSendEmailBroadcast}
                     disabled={emailSending}
-                    className="w-full sm:w-auto py-3 px-6 rounded-full text-[11px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-                    style={{
-                      background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
-                      color: 'white',
-                      boxShadow: '0 4px 16px -4px rgba(242,90,43,0.4)',
-                    }}
+                    className="w-full sm:w-auto py-3.5 px-6 rounded-full text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer text-white bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] shadow-[0_4px_16px_-4px_rgba(242,90,43,0.4)]"
                   >
                     {emailSending ? (
                       <RefreshCw className="w-4 h-4 animate-spin" />
@@ -3077,22 +3047,24 @@ export default function AdminPage() {
             <div className="lg:col-span-6 space-y-6">
               
               {/* Interactive preview display */}
-              <div className="bg-bg-soft border border-line-soft p-8 rounded-[28px] space-y-5">
-                <div className="flex justify-between items-center border-b border-line-soft pb-4">
-                  <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--brand-1)' }}>Email client live preview</span>
-                  <div className="flex rounded-full p-0.5" style={{ background: 'var(--bg-2)', border: '1px solid rgba(255,255,255,0.04)' }}>
+              <div className="bg-[#121217]/40 border border-white/[0.04] p-8 rounded-3xl space-y-5 backdrop-blur-md shadow-lg">
+                <div className="flex justify-between items-center border-b border-white/[0.04] pb-4">
+                  <span className="text-[9px] font-mono font-bold uppercase tracking-[0.15em] text-[#F25A2B]">Email client live preview</span>
+                  <div className="flex rounded-xl p-1 bg-[#0a0a0f] border border-white/[0.06]">
                     <button
                       onClick={() => setEmailPreviewMode("mobile")}
-                      className="p-2 rounded-full transition-all text-ink-3 hover:text-ink"
-                      style={emailPreviewMode === "mobile" ? { background: 'var(--bg-card)', color: 'var(--brand-1)' } : {}}
+                      className={`p-2 rounded-lg transition-all cursor-pointer ${
+                        emailPreviewMode === "mobile" ? "bg-white/[0.05] text-[#7C5CFF] border border-white/5" : "text-zinc-500 hover:text-white"
+                      }`}
                       title="Mobile View"
                     >
                       <Smartphone className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => setEmailPreviewMode("desktop")}
-                      className="p-2 rounded-full transition-all text-ink-3 hover:text-ink"
-                      style={emailPreviewMode === "desktop" ? { background: 'var(--bg-card)', color: 'var(--brand-1)' } : {}}
+                      className={`p-2 rounded-lg transition-all cursor-pointer ${
+                        emailPreviewMode === "desktop" ? "bg-white/[0.05] text-[#7C5CFF] border border-white/5" : "text-zinc-500 hover:text-white"
+                      }`}
                       title="Desktop View"
                     >
                       <Monitor className="w-4 h-4" />
@@ -3101,14 +3073,13 @@ export default function AdminPage() {
                 </div>
 
                 {/* Email template frame wrapper strictly matching brand HTML welcome style */}
-                <div className="flex justify-center bg-bg border border-line-soft p-4 rounded-[20px] overflow-y-auto max-h-[500px]">
+                <div className="flex justify-center bg-black/60 border border-white/[0.04] p-4 rounded-2xl overflow-y-auto max-h-[500px]">
                   <div 
-                    className={`bg-[#0B1120] text-ink text-left p-6 border rounded-xl relative ${
+                    className={`bg-[#0a0a0f] text-white text-left p-6 border border-white/[0.06] rounded-xl relative ${
                       emailPreviewMode === "mobile" ? "w-[320px]" : "w-full max-w-[500px]"
                     }`}
                     style={{
-                      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-                      borderColor: '#1E2A42'
+                      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
                     }}
                   >
                     {/* Watermark preview simulation overlay */}
@@ -3124,16 +3095,16 @@ export default function AdminPage() {
 
                     {/* Wordmark logo banner */}
                     <div className="text-center mb-6">
-                      <span className="font-bold text-lg tracking-widest text-ink font-display">ARTISTANT</span>
+                      <span className="font-bold text-sm tracking-widest text-white font-display">ARTISTANT</span>
                     </div>
 
-                    <div className="p-px bg-line-soft rounded-xl">
-                      <div className="bg-[#0B1120] p-5 rounded-lg space-y-4">
-                        <p className="text-ink font-bold text-sm">Hey username,</p>
+                    <div className="p-px bg-white/[0.04] rounded-xl">
+                      <div className="bg-[#0e0e14] p-5 rounded-lg space-y-4">
+                        <p className="text-white font-bold text-xs">Hey username,</p>
                         
-                        <p className="font-bold text-xs uppercase tracking-wider" style={{ color: 'var(--brand-1)' }}>{emailHeader}</p>
+                        <p className="font-bold text-[10px] uppercase tracking-wider text-[#F25A2B]">{emailHeader}</p>
                         
-                        <p className="text-[#9BA4B8] text-xs leading-relaxed whitespace-pre-wrap">
+                        <p className="text-zinc-400 text-[11px] leading-relaxed whitespace-pre-wrap">
                           {emailBody}
                         </p>
 
@@ -3142,7 +3113,7 @@ export default function AdminPage() {
                             <a 
                               href={emailCtaUrl} 
                               target="_blank" 
-                              className="inline-block px-5 py-2.5 text-white font-bold text-xs rounded-full transition-all bg-brand"
+                              className="inline-block px-5 py-2.5 text-white font-bold text-[10px] rounded-full transition-all bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF]"
                               style={{ 
                                 textDecoration: 'none'
                               }}
@@ -3154,9 +3125,9 @@ export default function AdminPage() {
                       </div>
                     </div>
 
-                    <div className="mt-6 pt-4 border-t border-[#1E2A42] text-center space-y-2">
-                      <p className="text-[10px] text-neutral-500">You are receiving this official launch communication as part of the Artistant waitlist.</p>
-                      <p className="text-[10px] text-[#FF4B4B] font-mono">Bengaluru, IN | artistant.in</p>
+                    <div className="mt-6 pt-4 border-t border-white/[0.04] text-center space-y-2">
+                      <p className="text-[9px] text-zinc-600">You are receiving this official launch communication as part of the Artistant waitlist.</p>
+                      <p className="text-[9px] text-[#F25A2B] font-mono">Bengaluru, IN | artistant.in</p>
                     </div>
                   </div>
                 </div>
@@ -3164,25 +3135,25 @@ export default function AdminPage() {
 
               {/* Execution progress terminal */}
               {showLogTerminal && (
-                <div className="bg-bg-soft border border-line-soft rounded-[28px] overflow-hidden shadow-2xl animate-slide-up">
-                  <div className="bg-bg px-6 py-4 border-b border-line-soft flex justify-between items-center">
-                    <span className="text-[10px] font-mono font-bold text-ink-3 flex items-center gap-1.5 uppercase tracking-[0.08em]">
+                <div className="bg-[#121217]/40 border border-white/[0.04] rounded-3xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom duration-300">
+                  <div className="bg-black/40 px-6 py-4 border-b border-white/[0.04] flex justify-between items-center">
+                    <span className="text-[9px] font-mono font-bold text-zinc-500 flex items-center gap-1.5 uppercase tracking-[0.08em]">
                       <div className={`w-2 h-2 rounded-full ${emailSending ? "bg-amber-500 animate-ping" : "bg-[#22C55E]"}`} />
                       Execution Broadcast Terminal
                     </span>
                     <button 
                       onClick={() => setShowLogTerminal(false)}
-                      className="text-ink-3 hover:text-ink text-xs font-mono uppercase tracking-[0.06em] font-bold"
+                      className="text-zinc-400 hover:text-white text-xs font-mono uppercase tracking-[0.06em] font-bold cursor-pointer"
                     >
                       Close
                     </button>
                   </div>
-                  <pre className="p-6 max-h-48 overflow-y-auto text-[10px] font-mono text-ink-2 space-y-1.5 bg-bg text-left">
+                  <pre className="p-6 max-h-48 overflow-y-auto text-[10px] font-mono text-zinc-400 space-y-1.5 bg-black/60 text-left">
                     {emailLogs.length === 0 ? (
-                      <span className="text-ink-3 italic">No execution logs active.</span>
+                      <span className="text-zinc-600 italic">No execution logs active.</span>
                     ) : (
                       emailLogs.map((logStr, i) => (
-                        <div key={i} className={logStr.includes("FAILED") ? "text-hot" : logStr.includes("SUCCESS") ? "text-brand-3" : ""}>
+                        <div key={i} className={logStr.includes("FAILED") ? "text-hot" : logStr.includes("SUCCESS") ? "text-[#22C55E]" : ""}>
                           {logStr}
                         </div>
                       ))
@@ -3213,7 +3184,7 @@ export default function AdminPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.25 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] cursor-pointer"
+              className="fixed inset-0 bg-black/70 backdrop-blur-md z-[60] cursor-pointer"
               onClick={() => setSelectedReg(null)}
             />
 
@@ -3222,26 +3193,29 @@ export default function AdminPage() {
               initial={{ x: '100%', opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: '100%', opacity: 0 }}
-              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              className="fixed right-0 top-0 bottom-0 w-[480px] max-w-full z-[70] bg-bg border-l border-line-soft overflow-y-auto shadow-2xl"
+              transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+              className="fixed right-0 top-0 bottom-0 w-[490px] max-w-full z-[70] bg-[#0c0c12]/95 border-l border-white/[0.08] overflow-y-auto shadow-2xl flex flex-col backdrop-blur-2xl"
             >
               {/* Header */}
-              <div className="sticky top-0 z-10 backdrop-blur-xl px-8 py-5 flex items-center justify-between border-b border-line-soft" style={{ background: 'color-mix(in srgb, var(--bg) 85%, transparent)' }}>
-                <h3 className="text-sm font-mono font-bold uppercase tracking-[0.12em] text-ink">User Profile</h3>
+              <div className="sticky top-0 z-10 backdrop-blur-xl px-8 py-6 flex items-center justify-between border-b border-white/[0.06] bg-[#0c0c12]/80">
+                <div>
+                  <span className="text-[9px] font-mono font-bold tracking-[0.2em] text-[#7C5CFF] uppercase">Credentials Profile</span>
+                  <h3 className="text-sm font-mono font-bold uppercase tracking-[0.12em] text-white mt-0.5">User Inspector</h3>
+                </div>
                 <button
                   onClick={() => setSelectedReg(null)}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center bg-bg-soft border border-line-soft text-ink-3 hover:text-ink hover:bg-bg-card transition-all cursor-pointer"
+                  className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/[0.02] border border-white/10 text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-all cursor-pointer"
                 >
                   <XCircle className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="p-8 space-y-6">
+              <div className="p-8 space-y-6 flex-1">
 
                 {/* ── Profile Hero ── */}
                 <div className="flex items-center gap-5">
-                  <div className="w-20 h-20 rounded-[20px] flex-shrink-0 overflow-hidden border border-line-soft shadow-lg" style={{
-                    background: selectedReg.profile_photo_url ? undefined : 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
+                  <div className="w-20 h-20 rounded-2xl flex-shrink-0 overflow-hidden border border-white/10 shadow-lg relative" style={{
+                    background: selectedReg.profile_photo_url ? undefined : 'linear-gradient(135deg, var(--brand-3), var(--brand-1))',
                   }}>
                     {selectedReg.profile_photo_url ? (
                       <img src={selectedReg.profile_photo_url} alt="" className="w-full h-full object-cover" />
@@ -3252,50 +3226,46 @@ export default function AdminPage() {
                     )}
                   </div>
                   <div className="min-w-0">
-                    <h2 className="text-xl font-display font-bold text-ink tracking-tight truncate">
+                    <h2 className="text-xl font-display font-bold text-white tracking-tight truncate">
                       {selectedReg.display_name || 'Unknown'}
                     </h2>
-                    <p className="text-sm font-mono mt-0.5" style={{ color: 'var(--brand-1)' }}>
+                    <p className="text-sm font-mono mt-0.5 text-brand">
                       @{selectedReg.username}
                     </p>
                     {selectedReg.bio && (
-                      <p className="text-xs text-ink-2 mt-2 leading-relaxed line-clamp-3">{selectedReg.bio}</p>
+                      <p className="text-xs text-zinc-400 mt-2.5 leading-relaxed line-clamp-3 bg-white/[0.01] p-2.5 rounded-xl border border-white/[0.03]">{selectedReg.bio}</p>
                     )}
                   </div>
                 </div>
 
                 {/* ── Status Badges ── */}
-                <div className="flex flex-wrap gap-2">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold tracking-[0.08em]" style={
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-mono font-bold tracking-[0.08em]" style={
                     selectedReg.is_verified
                       ? { background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)', color: 'white', boxShadow: '0 4px 12px -4px rgba(242,90,43,0.35)' }
-                      : { background: 'var(--bg-2)', color: 'var(--ink-3)', border: '1px solid rgba(255,255,255,0.04)' }
+                      : { background: 'rgba(255,255,255,0.02)', color: 'var(--ink-3)', border: '1px solid rgba(255,255,255,0.04)' }
                   }>
                     <CheckCircle2 className="w-3 h-3" />
                     {selectedReg.is_verified ? 'VERIFIED' : 'PENDING'}
                   </span>
 
                   {selectedReg.is_blocked && (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold tracking-[0.08em]" style={{
-                      background: 'rgba(255,75,75,0.1)', color: 'var(--hot)', border: '1px solid rgba(255,75,75,0.2)'
-                    }}>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-mono font-bold tracking-[0.08em] bg-hot/10 text-hot border border-hot/20">
                       <XCircle className="w-3 h-3" />
                       SUSPENDED
                     </span>
                   )}
 
                   {selectedReg.feature_founding_card && (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold tracking-[0.08em]" style={{
-                      background: 'rgba(124,92,255,0.1)', color: 'var(--brand-3)', border: '1px solid rgba(124,92,255,0.2)'
-                    }}>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-mono font-bold tracking-[0.08em] bg-brand-3/10 text-brand-3 border border-brand-3/20 shadow-[0_0_12px_rgba(124,92,255,0.15)]">
                       <Sparkles className="w-3 h-3" />
                       FOUNDING CARD
                     </span>
                   )}
 
                   {selectedReg.role && (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-[0.08em]" style={{
-                      background: 'var(--bg-2)',
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-[0.08em]" style={{
+                      background: 'rgba(255,255,255,0.02)',
                       color: selectedReg.role === 'artist' ? 'var(--brand-3)' : selectedReg.role === 'venue' ? 'var(--brand-2)' : selectedReg.role === 'vendor' ? 'var(--brand-1)' : 'var(--ink-3)',
                       border: '1px solid rgba(255,255,255,0.04)'
                     }}>
@@ -3305,14 +3275,14 @@ export default function AdminPage() {
                 </div>
 
                 {/* ── Quick Actions ── */}
-                <div className="bg-bg-soft border border-line-soft rounded-[20px] p-5 space-y-3">
-                  <p className="text-[10px] font-mono font-semibold uppercase tracking-[0.12em] text-ink-3 mb-3">Admin Actions</p>
-                  <div className="grid grid-cols-3 gap-3">
+                <div className="bg-[#121217]/55 border border-white/[0.04] rounded-2xl p-5 space-y-4">
+                  <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-zinc-500">Clearance Actions</p>
+                  <div className="grid grid-cols-3 gap-2.5">
                     <button
                       onClick={() => handleVerifyAndLock(selectedReg)}
                       className="py-2.5 rounded-xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                       style={selectedReg.is_verified ? {
-                        background: 'var(--bg-2)', color: 'var(--brand-3)', border: '1px solid rgba(124,92,255,0.2)',
+                        background: 'rgba(255,255,255,0.02)', color: 'var(--brand-3)', border: '1px solid rgba(124,92,255,0.2)',
                       } : {
                         background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)', color: 'white', border: 'none',
                         boxShadow: '0 4px 16px -4px rgba(242,90,43,0.4)',
@@ -3328,7 +3298,7 @@ export default function AdminPage() {
                       style={selectedReg.is_blocked ? {
                         background: 'rgba(255,75,75,0.1)', color: 'var(--hot)', border: '1px solid rgba(255,75,75,0.2)',
                       } : {
-                        background: 'var(--bg-2)', color: 'var(--ink-3)', border: '1px solid rgba(255,255,255,0.04)',
+                        background: 'rgba(255,255,255,0.02)', color: 'var(--ink-3)', border: '1px solid rgba(255,255,255,0.04)',
                       }}
                     >
                       <XCircle className="w-3 h-3" />
@@ -3341,7 +3311,7 @@ export default function AdminPage() {
                       style={selectedReg.feature_founding_card ? {
                         background: 'rgba(124,92,255,0.1)', color: 'var(--brand-3)', border: '1px solid rgba(124,92,255,0.2)',
                       } : {
-                        background: 'var(--bg-2)', color: 'var(--ink-3)', border: '1px solid rgba(255,255,255,0.04)',
+                        background: 'rgba(255,255,255,0.02)', color: 'var(--ink-3)', border: '1px solid rgba(255,255,255,0.04)',
                       }}
                     >
                       <Sparkles className="w-3 h-3" />
@@ -3350,21 +3320,19 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                <div className="h-px bg-line-soft" />
+                <div className="h-px bg-white/[0.04]" />
 
                 {/* ── Category & Genres ── */}
                 {(selectedReg.category || (selectedReg.genres && selectedReg.genres.length > 0)) && (
                   <div>
-                    <p className="text-[10px] font-mono font-semibold uppercase tracking-[0.12em] text-ink-3 mb-3">Category & Genres</p>
+                    <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-zinc-500 mb-3">Classification & Genres</p>
                     {selectedReg.category && (
-                      <p className="text-sm text-ink capitalize mb-2">{selectedReg.category.replace('_', ' ')}</p>
+                      <p className="text-sm text-white capitalize mb-2.5 font-semibold">{selectedReg.category.replace('_', ' ')}</p>
                     )}
                     {selectedReg.genres && selectedReg.genres.length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
                         {selectedReg.genres.map(g => (
-                          <span key={g} className="text-[10px] font-mono px-2.5 py-1 rounded-full text-ink-2" style={{
-                            background: 'var(--bg-2)', border: '1px solid rgba(255,255,255,0.04)'
-                          }}>#{g}</span>
+                          <span key={g} className="text-[10px] font-mono px-2.5 py-1 rounded-lg text-zinc-300 bg-white/[0.02] border border-white/[0.04]">#{g}</span>
                         ))}
                       </div>
                     )}
@@ -3373,28 +3341,28 @@ export default function AdminPage() {
 
                 {/* ── Contact Info ── */}
                 <div>
-                  <p className="text-[10px] font-mono font-semibold uppercase tracking-[0.12em] text-ink-3 mb-3">Contact Information</p>
-                  <div className="space-y-2.5">
-                    <div className="flex items-center gap-3 text-sm">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-bg-soft border border-line-soft">
-                        <Mail className="w-3.5 h-3.5 text-ink-3" />
+                  <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-zinc-500 mb-3">System Contact Details</p>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3 text-sm bg-white/[0.01] p-2.5 rounded-xl border border-white/[0.03]">
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/[0.02] border border-white/10 shrink-0">
+                        <Mail className="w-3.5 h-3.5 text-zinc-400" />
                       </div>
-                      <span className="text-ink font-mono text-xs truncate">{selectedReg.email}</span>
+                      <span className="text-white font-mono text-xs truncate flex-1">{selectedReg.email}</span>
                     </div>
                     {selectedReg.phone && (
-                      <div className="flex items-center gap-3 text-sm">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-bg-soft border border-line-soft">
-                          <Smartphone className="w-3.5 h-3.5 text-ink-3" />
+                      <div className="flex items-center gap-3 text-sm bg-white/[0.01] p-2.5 rounded-xl border border-white/[0.03]">
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/[0.02] border border-white/10 shrink-0">
+                          <Smartphone className="w-3.5 h-3.5 text-zinc-400" />
                         </div>
-                        <span className="text-ink font-mono text-xs">{selectedReg.phone}</span>
+                        <span className="text-white font-mono text-xs flex-1">{selectedReg.phone}</span>
                       </div>
                     )}
                     {selectedReg.city && (
-                      <div className="flex items-center gap-3 text-sm">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-bg-soft border border-line-soft">
-                          <MapPin className="w-3.5 h-3.5 text-ink-3" />
+                      <div className="flex items-center gap-3 text-sm bg-white/[0.01] p-2.5 rounded-xl border border-white/[0.03]">
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/[0.02] border border-white/10 shrink-0">
+                          <MapPin className="w-3.5 h-3.5 text-zinc-400" />
                         </div>
-                        <span className="text-ink text-xs">{selectedReg.city}</span>
+                        <span className="text-white text-xs flex-1 font-medium">{selectedReg.city}</span>
                       </div>
                     )}
                   </div>
@@ -3403,38 +3371,38 @@ export default function AdminPage() {
                 {/* ── Social Links ── */}
                 {(selectedReg.instagram_url || selectedReg.spotify_url || selectedReg.youtube_url || selectedReg.youtube_channel_url) && (
                   <>
-                    <div className="h-px bg-line-soft" />
+                    <div className="h-px bg-white/[0.04]" />
                     <div>
-                      <p className="text-[10px] font-mono font-semibold uppercase tracking-[0.12em] text-ink-3 mb-3">Social Profiles</p>
-                      <div className="space-y-2">
+                      <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-zinc-500 mb-3">External Portals</p>
+                      <div className="grid grid-cols-2 gap-2">
                         {selectedReg.instagram_url && (
                           <a href={selectedReg.instagram_url.startsWith('http') ? selectedReg.instagram_url : `https://instagram.com/${selectedReg.instagram_url}`} target="_blank" rel="noopener noreferrer"
-                            className="flex items-center gap-3 p-3 rounded-xl bg-bg-soft border border-line-soft hover:bg-bg-card transition-all group">
-                            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)', }}>
-                              <span className="text-white text-xs font-bold">IG</span>
+                            className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05] hover:border-white/10 transition-all group">
+                            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)', }}>
+                              <span className="text-white text-[9px] font-black">IG</span>
                             </div>
-                            <span className="text-xs font-mono text-ink truncate flex-1">Instagram</span>
-                            <ExternalLink className="w-3.5 h-3.5 text-ink-3 group-hover:text-ink transition-colors" />
+                            <span className="text-xs font-mono text-zinc-400 truncate flex-1 group-hover:text-white">Instagram</span>
+                            <ExternalLink className="w-3.5 h-3.5 text-zinc-500 group-hover:text-white transition-colors" />
                           </a>
                         )}
                         {selectedReg.spotify_url && (
                           <a href={selectedReg.spotify_url.startsWith('http') ? selectedReg.spotify_url : `https://open.spotify.com/artist/${selectedReg.spotify_url}`} target="_blank" rel="noopener noreferrer"
-                            className="flex items-center gap-3 p-3 rounded-xl bg-bg-soft border border-line-soft hover:bg-bg-card transition-all group">
-                            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#1DB954]">
-                              <span className="text-white text-xs font-bold">SP</span>
+                            className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05] hover:border-white/10 transition-all group">
+                            <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-[#1DB954] shrink-0">
+                              <span className="text-white text-[9px] font-black">SP</span>
                             </div>
-                            <span className="text-xs font-mono text-ink truncate flex-1">Spotify</span>
-                            <ExternalLink className="w-3.5 h-3.5 text-ink-3 group-hover:text-ink transition-colors" />
+                            <span className="text-xs font-mono text-zinc-400 truncate flex-1 group-hover:text-white">Spotify</span>
+                            <ExternalLink className="w-3.5 h-3.5 text-zinc-500 group-hover:text-white transition-colors" />
                           </a>
                         )}
                         {(selectedReg.youtube_url || selectedReg.youtube_channel_url) && (
                           <a href={(selectedReg.youtube_channel_url || selectedReg.youtube_url || '').startsWith('http') ? (selectedReg.youtube_channel_url || selectedReg.youtube_url || '') : `https://youtube.com/@${selectedReg.youtube_channel_url || selectedReg.youtube_url}`} target="_blank" rel="noopener noreferrer"
-                            className="flex items-center gap-3 p-3 rounded-xl bg-bg-soft border border-line-soft hover:bg-bg-card transition-all group">
-                            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#FF0000]">
-                              <span className="text-white text-xs font-bold">YT</span>
+                            className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05] hover:border-white/10 transition-all group col-span-2">
+                            <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-[#FF0000] shrink-0">
+                              <span className="text-white text-[9px] font-black">YT</span>
                             </div>
-                            <span className="text-xs font-mono text-ink truncate flex-1">YouTube</span>
-                            <ExternalLink className="w-3.5 h-3.5 text-ink-3 group-hover:text-ink transition-colors" />
+                            <span className="text-xs font-mono text-zinc-400 truncate flex-1 group-hover:text-white">YouTube</span>
+                            <ExternalLink className="w-3.5 h-3.5 text-zinc-500 group-hover:text-white transition-colors" />
                           </a>
                         )}
                       </div>
@@ -3445,12 +3413,12 @@ export default function AdminPage() {
                 {/* ── Gallery Photos ── */}
                 {selectedReg.gallery_photos && selectedReg.gallery_photos.length > 0 && (
                   <>
-                    <div className="h-px bg-line-soft" />
+                    <div className="h-px bg-white/[0.04]" />
                     <div>
-                      <p className="text-[10px] font-mono font-semibold uppercase tracking-[0.12em] text-ink-3 mb-3">Gallery ({selectedReg.gallery_photos.length})</p>
+                      <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-zinc-500 mb-3">Gallery Nodes ({selectedReg.gallery_photos.length})</p>
                       <div className="grid grid-cols-2 gap-2">
                         {selectedReg.gallery_photos.map((photo, i) => (
-                          <img key={i} src={photo} alt="" className="w-full aspect-square object-cover rounded-xl border border-line-soft" />
+                          <img key={i} src={photo} alt="" className="w-full aspect-square object-cover rounded-xl border border-white/[0.04]" />
                         ))}
                       </div>
                     </div>
@@ -3460,23 +3428,23 @@ export default function AdminPage() {
                 {/* ── Custom Status ── */}
                 {selectedReg.custom_status_message && (
                   <>
-                    <div className="h-px bg-line-soft" />
+                    <div className="h-px bg-white/[0.04]" />
                     <div>
-                      <p className="text-[10px] font-mono font-semibold uppercase tracking-[0.12em] text-ink-3 mb-3">Custom Status</p>
-                      <p className="text-sm text-ink bg-bg-soft border border-line-soft rounded-xl p-4 italic">
+                      <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-zinc-500 mb-3">Custom Status</p>
+                      <p className="text-xs text-zinc-300 bg-white/[0.01] border border-white/[0.03] rounded-xl p-4 italic">
                         &ldquo;{selectedReg.custom_status_message}&rdquo;
                       </p>
                     </div>
                   </>
                 )}
 
-                <div className="h-px bg-line-soft" />
+                <div className="h-px bg-white/[0.04]" />
 
                 {/* ── Position & Meta ── */}
-                <div className="bg-bg-soft border border-line-soft rounded-[20px] p-5 space-y-4">
-                  <p className="text-[10px] font-mono font-semibold uppercase tracking-[0.12em] text-ink-3">Queue Management</p>
+                <div className="bg-[#121217]/55 border border-white/[0.04] rounded-2xl p-5 space-y-4">
+                  <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-zinc-500">Queue Management & Metrics</p>
                   <div className="flex items-center gap-3">
-                    <span className="text-xs text-ink-2 font-mono">Position Override:</span>
+                    <span className="text-xs text-zinc-400 font-mono">Queue Override:</span>
                     <input
                       type="number"
                       placeholder="Auto"
@@ -3485,28 +3453,31 @@ export default function AdminPage() {
                         const val = e.target.value === '' ? null : parseInt(e.target.value, 10);
                         handleSavePositionOverride(selectedReg.user_id, val);
                       }}
-                      className="w-20 bg-bg border border-line-soft rounded-full px-3 py-1.5 text-xs text-ink text-center font-mono focus:outline-none focus:border-brand transition-all"
+                      className="w-16 bg-black/60 border border-white/10 rounded-lg py-1 px-1.5 text-xs text-white text-center font-mono focus:outline-none focus:border-brand transition-all animate-pulse"
                     />
-                    <span className="text-[10px] font-mono text-ink-3">
-                      {selectedReg.position_override ? `#${selectedReg.position_override}` : 'Queue'}
+                    <span className="text-[10px] font-mono text-zinc-500">
+                      {selectedReg.position_override ? `#${selectedReg.position_override}` : 'Auto-Queue'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-ink-2 font-mono">
-                    <span className="text-ink-3">Registered:</span>
-                    <span>{new Date(selectedReg.reserved_at).toLocaleString()}</span>
+                  
+                  <div className="space-y-2 pt-2 border-t border-white/[0.03] text-[11px] font-mono text-zinc-400">
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Registered At:</span>
+                      <span>{new Date(selectedReg.reserved_at).toLocaleString()}</span>
+                    </div>
+                    {selectedReg.referred_by && (
+                      <div className="flex justify-between">
+                        <span className="text-zinc-500">Referred By:</span>
+                        <span className="text-brand">@{selectedReg.referred_by}</span>
+                      </div>
+                    )}
+                    {selectedReg.profile_visitors_count !== undefined && selectedReg.profile_visitors_count > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-zinc-500">Profile Views:</span>
+                        <span className="text-white">{selectedReg.profile_visitors_count}</span>
+                      </div>
+                    )}
                   </div>
-                  {selectedReg.referred_by && (
-                    <div className="flex items-center gap-3 text-xs text-ink-2 font-mono">
-                      <span className="text-ink-3">Referred by:</span>
-                      <span style={{ color: 'var(--brand-1)' }}>@{selectedReg.referred_by}</span>
-                    </div>
-                  )}
-                  {selectedReg.profile_visitors_count !== undefined && selectedReg.profile_visitors_count > 0 && (
-                    <div className="flex items-center gap-3 text-xs text-ink-2 font-mono">
-                      <span className="text-ink-3">Profile views:</span>
-                      <span>{selectedReg.profile_visitors_count}</span>
-                    </div>
-                  )}
                 </div>
 
                 {/* Portfolio link */}
@@ -3514,10 +3485,10 @@ export default function AdminPage() {
                   href={`/${selectedReg.username}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-[11px] font-mono font-bold tracking-[0.06em] uppercase transition-all cursor-pointer bg-bg-soft border border-line-soft hover:bg-bg-card text-ink"
+                  className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl text-[10px] font-mono font-bold tracking-[0.08em] uppercase transition-all cursor-pointer bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.06] hover:border-white/10 text-white shadow-md"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
-                  View Portfolio Page
+                  Inspect Live Page
                 </a>
               </div>
             </motion.div>
