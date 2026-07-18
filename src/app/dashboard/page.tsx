@@ -658,7 +658,7 @@ export default function ProfilePage() {
       const loadLogo = new Promise((resolve) => {
         logoImg.onload = resolve;
         logoImg.onerror = resolve;
-        logoImg.src = '/logo_wordmark.png';
+        logoImg.src = '/logo_wordmark_flat.png';
       });
 
       const loadWatermark = new Promise((resolve) => {
@@ -752,7 +752,7 @@ export default function ProfilePage() {
           textXOffset = 76;
         }
 
-        ctx.font = 'bold 20px monospace';
+        ctx.font = 'bold 20px "Geist Mono", monospace';
         ctx.fillStyle = accentColor;
         ctx.textAlign = 'left';
         ctx.fillText('FOUNDING CARD', x + textXOffset, y + 52);
@@ -763,7 +763,7 @@ export default function ProfilePage() {
         ctx.fillText('FOUNDING ARTIST', x + w - 40, y + 52);
         ctx.globalAlpha = 1;
 
-        // Divider line
+        // Divider
         ctx.strokeStyle = borderColor;
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -776,7 +776,7 @@ export default function ProfilePage() {
         ctx.fillStyle = textColor;
         ctx.font = `900 96px "Space Grotesk", sans-serif`;
         ctx.fillText(`#${waitlistPos || '---'}`, x + w / 2, y + h / 2 + 12);
-        ctx.font = 'bold 16px monospace';
+        ctx.font = 'bold 16px "Geist Mono", monospace';
         ctx.fillStyle = textColor;
         ctx.globalAlpha = 0.35;
         ctx.fillText('WAITLIST POSITION', x + w / 2, y + h / 2 + 48);
@@ -787,7 +787,7 @@ export default function ProfilePage() {
         ctx.fillStyle = textColor;
         ctx.font = `bold 30px "Space Grotesk", sans-serif`;
         ctx.fillText(`@${reservation.username}`, x + 40, y + h - 48);
-        ctx.font = 'bold 14px monospace';
+        ctx.font = 'bold 14px "Geist Mono", monospace';
         ctx.fillStyle = textColor;
         ctx.globalAlpha = 0.3;
         ctx.fillText('VERIFIED ARTIST', x + 40, y + h - 22);
@@ -795,10 +795,10 @@ export default function ProfilePage() {
 
         // Bottom-right: barcode placeholder
         ctx.textAlign = 'right';
-        ctx.fillStyle = accentColor;
+        ctx.fillStyle = invertLogo ? '#7C5CFF' : '#FFFFFF';
         ctx.globalAlpha = 0.2;
-        ctx.font = 'bold 20px monospace';
-        ctx.fillText('||||| | |||| | |||', x + w - 40, y + h - 30);
+        ctx.font = 'bold 20px "Geist Mono", monospace';
+        ctx.fillText('||||| | ||||', x + w - 40, y + h - 30);
         ctx.globalAlpha = 1;
 
         ctx.restore();
@@ -815,7 +815,7 @@ export default function ProfilePage() {
       ) => {
         features.forEach((feat, idx) => {
           ctx.save();
-          ctx.font = 'bold 20px monospace';
+          ctx.font = 'bold 20px "Geist Mono", monospace';
           const textWidth = ctx.measureText(feat).width;
           const checkText = "✓ ";
           const checkWidth = ctx.measureText(checkText).width;
@@ -826,7 +826,7 @@ export default function ProfilePage() {
           const pillX = cx - pillW / 2;
           const pillY = startY + idx * 82; // 82px vertical spacing between features
           
-          const pillBg = isLightTheme ? 'rgba(124, 92, 255, 0.03)' : 'rgba(255, 255, 255, 0.03)';
+          const pillBg = isLightTheme ? 'rgba(124, 92, 255, 0.04)' : 'rgba(255, 255, 255, 0.04)';
           const pillBorder = isLightTheme ? 'rgba(124, 92, 255, 0.08)' : 'rgba(255, 255, 255, 0.06)';
           fillRoundRect(pillX, pillY, pillW, pillH, 32, pillBg);
           strokeRoundRect(pillX, pillY, pillW, pillH, 32, pillBorder, 1);
@@ -847,9 +847,6 @@ export default function ProfilePage() {
           ctx.restore();
         });
       };
-      // ═════════════════════════════════════════
-      // TEMPLATE 0: DARK NOIR
-      // ═════════════════════════════════════════
       // ═════════════════════════════════════════
       // TEMPLATE 0: DARK NOIR
       // ═════════════════════════════════════════
@@ -882,8 +879,8 @@ export default function ProfilePage() {
         // Watermark background
         drawWatermark(540, 960, 750, 0.05, false);
 
-        // Logo
-        drawLogo(540, 60, 460, false);
+        // Logo (Centered horizontally at 540, vertically aligned over top border of card starting at 240)
+        drawLogo(540, 206, 360, false);
 
         // Card (shifted slightly down to y=240 to balance whitespace)
         const cardGrad = ctx.createLinearGradient(100, 250, 980, 630);
@@ -899,7 +896,7 @@ export default function ProfilePage() {
         ctx.fillText('MIDDLEMEN.', 540, 870);
 
         // Accent subtitle
-        ctx.font = 'bold 22px monospace';
+        ctx.font = 'bold 22px "Geist Mono", monospace';
         const accentGrad = ctx.createLinearGradient(300, 0, 780, 0);
         accentGrad.addColorStop(0, '#F25A2B');
         accentGrad.addColorStop(1, '#7C5CFF');
@@ -920,19 +917,18 @@ export default function ProfilePage() {
           'DIRECT CLIENT-TO-ARTIST ROUTING',
           'GIGSAFE ESCROW PAYMENT SECURITY',
           'AUTO-SYNCED AVAILABILITY BOOKING'
-        ], 'rgba(255,255,255,0.5)', '#F25A2B', false);
+        ], 'rgba(255,255,255,0.65)', '#F25A2B', false);
 
         // CTA box (highlighted & distributed spacing)
         fillRoundRect(240, 1380, 600, 90, 45, 'rgba(255,255,255,0.06)');
         strokeRoundRect(240, 1380, 600, 90, 45, '#F25A2B', 2);
-        ctx.textAlign = 'center';
-        ctx.font = `bold 18px monospace`;
+        ctx.font = `bold 22px "Geist Mono", monospace`;
         ctx.fillStyle = '#FFFFFF';
         ctx.fillText('SECURE YOUR NAME BEFORE SOMEONE ELSE DOES', 540, 1435);
 
         // Bottom branding (pushed up to leave room for Link sticker)
-        ctx.fillStyle = 'rgba(255,255,255,0.15)';
-        ctx.font = 'bold 16px monospace';
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.font = 'bold 16px "Geist Mono", monospace';
         ctx.fillText('ARTISTANT.IN', 540, 1580);
 
       // ═════════════════════════════════════════
@@ -958,13 +954,13 @@ export default function ProfilePage() {
         // Watermark background
         drawWatermark(540, 960, 750, 0.05, false);
 
-        // Logo
-        drawLogo(540, 60, 460, false);
+        // Logo (Centered horizontally at 540, vertically aligned over top border of card starting at 240)
+        drawLogo(540, 206, 360, false);
 
         // Card (dark glass, y=240)
         const cardBg = ctx.createLinearGradient(100, 240, 980, 620);
-        cardBg.addColorStop(0, 'rgba(10,10,15,0.8)');
-        cardBg.addColorStop(1, 'rgba(5,5,8,0.9)');
+        cardBg.addColorStop(0, 'rgba(10,10,15,0.75)');
+        cardBg.addColorStop(1, 'rgba(5,5,8,0.85)');
         drawPassCard(100, 240, 880, 380, cardBg, 'rgba(255,255,255,0.12)', '#FFFFFF', '#F25A2B', false);
 
         // Headline
@@ -974,8 +970,8 @@ export default function ProfilePage() {
         ctx.fillText('BUILT FOR STAGE.', 540, 810);
         ctx.fillText('ARTIST FIRST.', 540, 885);
 
-        ctx.font = 'bold 22px monospace';
-        ctx.fillStyle = 'rgba(255,255,255,0.65)';
+        ctx.font = 'bold 22px "Geist Mono", monospace';
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
         ctx.fillText('RECLAIMING CREATIVE VALUE', 540, 955);
 
         // Divider
@@ -987,19 +983,19 @@ export default function ProfilePage() {
           'DIRECT CLIENT BOOKINGS',
           'GIGSAFE ESCROW GUARANTEES',
           'CUSTOM PORTFOLIO @HANDLE'
-        ], 'rgba(255,255,255,0.6)', '#FFFFFF', false);
+        ], 'rgba(255,255,255,0.65)', '#FFFFFF', false);
 
         // CTA box (highlighted)
         fillRoundRect(240, 1380, 600, 90, 45, 'rgba(255,255,255,0.15)');
         strokeRoundRect(240, 1380, 600, 90, 45, 'rgba(255,255,255,0.4)', 2);
         ctx.textAlign = 'center';
-        ctx.font = `bold 18px monospace`;
+        ctx.font = `bold 28px "Geist Mono", monospace`;
         ctx.fillStyle = '#FFFFFF';
         ctx.fillText('CLAIM YOUR @HANDLE NOW', 540, 1435);
 
         // Bottom branding
-        ctx.fillStyle = 'rgba(255,255,255,0.25)';
-        ctx.font = 'bold 16px monospace';
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.font = 'bold 16px "Geist Mono", monospace';
         ctx.fillText('ARTISTANT.IN', 540, 1580);
 
       // ═════════════════════════════════════════
@@ -1023,8 +1019,8 @@ export default function ProfilePage() {
         // Watermark background
         drawWatermark(540, 960, 750, 0.04, true);
 
-        // Logo
-        drawLogo(540, 60, 460, true);
+        // Logo (Centered horizontally at 540, vertically aligned over top border of card starting at 240)
+        drawLogo(540, 206, 360, true);
 
         // Outer card shadow (y=240)
         ctx.save();
@@ -1035,7 +1031,7 @@ export default function ProfilePage() {
         ctx.restore();
         
         // Redraw the card cleanly on top of shadow
-        drawPassCard(100, 240, 880, 380, '#FFFFFF', 'rgba(124, 92, 255, 0.12)', '#0F0F14', '#7C5CFF', true);
+        drawPassCard(100, 240, 880, 380, 'rgba(255, 255, 255, 0.8)', 'rgba(124, 92, 255, 0.12)', '#0F0F14', '#7C5CFF', true);
 
         // Headline
         ctx.textAlign = 'center';
@@ -1044,7 +1040,7 @@ export default function ProfilePage() {
         ctx.fillText('BUILT FOR ARTISTS.', 540, 810);
         ctx.fillText('NOT PLATFORMS.', 540, 880);
 
-        ctx.font = 'bold 22px monospace';
+        ctx.font = 'bold 22px "Geist Mono", monospace';
         ctx.fillStyle = '#7C5CFF';
         ctx.fillText(`COHORT ${cohort} · FOUNDING ARTIST`, 540, 950);
 
@@ -1068,14 +1064,14 @@ export default function ProfilePage() {
         fillRoundRect(240, 1380, 600, 90, 45, 'rgba(124, 92, 255, 0.06)');
         strokeRoundRect(240, 1380, 600, 90, 45, '#7C5CFF', 2);
         ctx.textAlign = 'center';
-        ctx.font = `bold 18px monospace`;
+        ctx.font = `bold 24px "Geist Mono", monospace`;
         ctx.fillStyle = '#7C5CFF';
         ctx.fillText('SECURE YOUR NAME BEFORE IT\'S TAKEN', 540, 1435);
 
         // Bottom branding
         ctx.fillStyle = '#7C5CFF';
-        ctx.globalAlpha = 0.35;
-        ctx.font = 'bold 16px monospace';
+        ctx.globalAlpha = 0.3;
+        ctx.font = 'bold 16px "Geist Mono", monospace';
         ctx.fillText('ARTISTANT.IN', 540, 1580);
         ctx.globalAlpha = 1;
 
@@ -1111,8 +1107,8 @@ export default function ProfilePage() {
         // Watermark background
         drawWatermark(540, 960, 750, 0.06, false);
 
-        // Logo
-        drawLogo(540, 60, 460, false);
+        // Logo (Centered horizontally at 540, vertically aligned over top border of card starting at 240)
+        drawLogo(540, 206, 360, false);
 
         // Card (dark semi-transparent, y=240)
         const cardBg = ctx.createLinearGradient(100, 240, 980, 620);
@@ -1146,13 +1142,13 @@ export default function ProfilePage() {
         fillRoundRect(180, 1380, 720, 90, 45, 'rgba(124, 92, 255, 0.12)');
         strokeRoundRect(180, 1380, 720, 90, 45, '#7C5CFF', 2);
         ctx.textAlign = 'center';
-        ctx.font = `bold 18px monospace`;
+        ctx.font = `bold 22px "Geist Mono", monospace`;
         ctx.fillStyle = '#FFFFFF';
         ctx.fillText(`GO CHECK MY PROFILE OUT ON ARTISTANT.IN/${reservation.username.toUpperCase()}`, 540, 1435);
 
         // Bottom branding
-        ctx.fillStyle = 'rgba(255,255,255,0.25)';
-        ctx.font = 'bold 16px monospace';
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.font = 'bold 16px "Geist Mono", monospace';
         ctx.fillText('ARTISTANT.IN', 540, 1580);
       }
 
@@ -2446,7 +2442,7 @@ export default function ProfilePage() {
                           <div className="w-full flex flex-col items-center gap-3">
                             {/* Highlighted CTA Box */}
                             <div 
-                              className="px-3 py-1.5 rounded-full border text-[6px] font-mono font-bold tracking-wider uppercase text-center w-[90%] backdrop-blur-sm shadow-sm"
+                              className="px-3 py-1.5 rounded-full border text-[7.5px] font-mono font-bold tracking-wider uppercase text-center w-[90%] backdrop-blur-sm shadow-sm"
                               style={{
                                 background: activeStoryTemplate === 0 
                                   ? 'rgba(255,255,255,0.06)' 
