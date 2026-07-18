@@ -879,8 +879,8 @@ export default function ProfilePage() {
         // Watermark background
         drawWatermark(540, 960, 750, 0.05, false);
 
-        // Logo (Centered horizontally at 540, vertically aligned over top border of card starting at 240)
-        drawLogo(540, 206, 360, false);
+        // Logo (Centered horizontally at 540, positioned above the card)
+        drawLogo(540, 115, 360, false);
 
         // Card (shifted slightly down to y=240 to balance whitespace)
         const cardGrad = ctx.createLinearGradient(100, 250, 980, 630);
@@ -954,8 +954,8 @@ export default function ProfilePage() {
         // Watermark background
         drawWatermark(540, 960, 750, 0.05, false);
 
-        // Logo (Centered horizontally at 540, vertically aligned over top border of card starting at 240)
-        drawLogo(540, 206, 360, false);
+        // Logo (Centered horizontally at 540, positioned above the card)
+        drawLogo(540, 115, 360, false);
 
         // Card (dark glass, y=240)
         const cardBg = ctx.createLinearGradient(100, 240, 980, 620);
@@ -1019,8 +1019,8 @@ export default function ProfilePage() {
         // Watermark background
         drawWatermark(540, 960, 750, 0.04, true);
 
-        // Logo (Centered horizontally at 540, vertically aligned over top border of card starting at 240)
-        drawLogo(540, 206, 360, true);
+        // Logo (Centered horizontally at 540, positioned above the card)
+        drawLogo(540, 115, 360, true);
 
         // Outer card shadow (y=240)
         ctx.save();
@@ -1107,8 +1107,8 @@ export default function ProfilePage() {
         // Watermark background
         drawWatermark(540, 960, 750, 0.06, false);
 
-        // Logo (Centered horizontally at 540, vertically aligned over top border of card starting at 240)
-        drawLogo(540, 206, 360, false);
+        // Logo (Centered horizontally at 540, positioned above the card)
+        drawLogo(540, 115, 360, false);
 
         // Card (dark semi-transparent, y=240)
         const cardBg = ctx.createLinearGradient(100, 240, 980, 620);
@@ -2313,9 +2313,9 @@ export default function ProfilePage() {
                           {/* Top Section: Logo & Card */}
                           <div className="w-full flex flex-col items-center gap-3">
                             {/* Logo */}
-                            <div className="text-center flex flex-col items-center select-none -mt-[18px] -mb-[22px]">
+                            <div className="text-center flex flex-col items-center select-none mt-1 mb-1">
                               <img 
-                                src="/logo_wordmark.png" 
+                                src="/logo_wordmark_flat.png" 
                                 alt="Artistant" 
                                 className="w-28 h-auto object-contain transition-all duration-300" 
                                 style={{ filter: activeStoryTemplate === 2 ? 'brightness(0)' : 'none' }}
