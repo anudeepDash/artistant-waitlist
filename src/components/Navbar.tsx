@@ -7,6 +7,7 @@ import { type User } from 'firebase/auth';
 import { type WaitlistEntry } from '@/lib/waitlist';
 import { usePathname, useRouter } from 'next/navigation';
 import { deleteAccountDataAction } from '@/lib/account-actions';
+import { checkIsAdminAction } from '@/lib/admin-actions';
 
 interface NavbarProps {
   user: User | null;
@@ -23,6 +24,24 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
   const [showSettings, setShowSettings] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      setIsAdmin(false);
+      return;
+    }
+    const checkAccess = async () => {
+      try {
+        const idToken = await user.getIdToken();
+        const res = await checkIsAdminAction(idToken);
+        setIsAdmin(res);
+      } catch (err) {
+        setIsAdmin(false);
+      }
+    };
+    checkAccess();
+  }, [user]);
 
   const pathname = usePathname();
   const router = useRouter();
@@ -168,6 +187,20 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
                 </svg>
                 <span>{foundingPoints} Founding Points</span>
               </div>
+            )}
+
+            {isAdmin && (
+              <a
+                href="/admin"
+                className="
+                  inline-flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-full
+                  bg-purple-600/10 hover:bg-purple-600/20 border border-purple-500/20
+                  text-purple-600 dark:text-purple-400 font-mono text-[9px] md:text-xs uppercase tracking-wider font-bold
+                  transition-all duration-200 cursor-pointer
+                "
+              >
+                Admin
+              </a>
             )}
 
             <ThemeToggle />
@@ -322,6 +355,25 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
                               </svg>
                               {userReservation?.username ? `@${userReservation.username}'s Dashboard` : 'My Dashboard'}
                             </button>
+
+                            {isAdmin && (
+                              <button
+                                onClick={() => {
+                                  setProfileDropdownOpen(false);
+                                  router.push('/admin');
+                                }}
+                                className="
+                                  flex items-center gap-3 w-full px-4 py-3 rounded-xl
+                                  text-left text-sm font-semibold text-purple-600 dark:text-purple-400 cursor-pointer
+                                  hover:bg-purple-600/10 transition-all duration-200
+                                "
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                </svg>
+                                Admin Dashboard
+                              </button>
+                            )}
 
                             <button
                               onClick={async () => {

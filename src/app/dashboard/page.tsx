@@ -1732,9 +1732,10 @@ export default function ProfilePage() {
       <main className="max-w-6xl mx-auto px-6 pt-20 pb-10 md:pt-32 md:pb-16 space-y-12 relative z-10">
         
         {/* ── DASHBOARD GREETING ── */}
-        <section className="flex flex-col items-center text-center max-w-3xl mx-auto mb-10">
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="flex flex-col items-center w-full mb-4">
-            <h1 className="text-3xl md:text-5xl font-black tracking-tight text-[var(--ink)] uppercase" style={{ fontFamily: 'var(--font-display)' }}>
+        <section className="flex flex-col items-center text-center max-w-3xl mx-auto mb-6">
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="flex flex-col items-center w-full">
+            <span className="text-[10px] font-mono font-bold tracking-[0.25em] text-[#7C5CFF] uppercase mb-3">Founding Network Portal</span>
+            <h1 className="text-4xl md:text-6xl font-display font-extrabold tracking-tight text-white uppercase leading-none">
               {greeting},<br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF]">@{reservation.username}</span>
             </h1>
@@ -1742,63 +1743,32 @@ export default function ProfilePage() {
         </section>
 
         {/* ── DASHBOARD SUB-NAVIGATION TAB BAR ── */}
-        <div className="flex justify-center mb-8 relative z-30">
-          <div className={`flex flex-wrap items-center justify-center p-1.5 rounded-3xl border backdrop-blur-md gap-1 ${
-            isLight ? 'bg-black/5 border-black/5' : 'bg-white/[0.02] dark:bg-black/30 border border-white/5'
-          }`}>
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`flex items-center gap-2 px-3 py-2 md:px-5 md:py-2.5 rounded-2xl text-xs font-bold font-mono uppercase tracking-wider transition-all duration-300 relative cursor-pointer ${
-                activeTab === 'dashboard' ? 'text-white' : isLight ? 'text-black/45 hover:text-black/70' : 'text-white/40 hover:text-white/70'
-              }`}
-            >
-              {activeTab === 'dashboard' && (
-                <motion.div
-                  layoutId="activeDashboardTab"
-                  className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF]"
-                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                  style={{ zIndex: -1 }}
-                />
-              )}
-              <LayoutGrid className="w-3.5 h-3.5 transition-colors duration-300" />
-              <span className="hidden sm:inline">Dashboard</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('portfolio')}
-              className={`flex items-center gap-2 px-3 py-2 md:px-5 md:py-2.5 rounded-2xl text-xs font-bold font-mono uppercase tracking-wider transition-all duration-300 relative cursor-pointer ${
-                activeTab === 'portfolio' ? 'text-white' : isLight ? 'text-black/45 hover:text-black/70' : 'text-white/40 hover:text-white/70'
-              }`}
-            >
-              {activeTab === 'portfolio' && (
-                <motion.div
-                  layoutId="activeDashboardTab"
-                  className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF]"
-                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                  style={{ zIndex: -1 }}
-                />
-              )}
-              <Smartphone className="w-3.5 h-3.5 transition-colors duration-300" />
-              <span className="hidden sm:inline">Portfolio</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('leaderboard')}
-              className={`flex items-center gap-2 px-3 py-2 md:px-5 md:py-2.5 rounded-2xl text-xs font-bold font-mono uppercase tracking-wider transition-all duration-300 relative cursor-pointer ${
-                activeTab === 'leaderboard' ? 'text-white' : isLight ? 'text-black/45 hover:text-black/70' : 'text-white/40 hover:text-white/70'
-              }`}
-            >
-              {activeTab === 'leaderboard' && (
-                <motion.div
-                  layoutId="activeDashboardTab"
-                  className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF]"
-                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                  style={{ zIndex: -1 }}
-                />
-              )}
-              <Trophy className="w-3.5 h-3.5 transition-colors duration-300" />
-              <span className="hidden sm:inline">Leaderboard</span>
-            </button>
+        <div className="flex justify-center mb-10 relative z-30">
+          <div className="flex flex-wrap items-center justify-center p-1 rounded-2xl bg-[#111116]/40 border border-white/[0.04] backdrop-blur-md gap-1">
+            {[
+              { id: 'dashboard', label: 'Dashboard', Icon: LayoutGrid },
+              { id: 'portfolio', label: 'Portfolio', Icon: Smartphone },
+              { id: 'leaderboard', label: 'Leaderboard', Icon: Trophy },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[11px] font-bold font-mono uppercase tracking-wider transition-all duration-300 relative cursor-pointer ${
+                  activeTab === tab.id ? 'text-white' : 'text-zinc-500 hover:text-white'
+                }`}
+              >
+                {activeTab === tab.id && (
+                  <motion.div
+                    layoutId="activeDashboardTab"
+                    className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF]"
+                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                    style={{ zIndex: -1 }}
+                  />
+                )}
+                <tab.Icon className="w-3.5 h-3.5" />
+                <span>{tab.label}</span>
+              </button>
+            ))}
           </div>
         </div>
 
@@ -1806,15 +1776,11 @@ export default function ProfilePage() {
         {activeTab === 'dashboard' && (
           <div className="space-y-8 relative z-10 text-left">
             {/* ── BANNERS SECTION ── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
               {/* Edit Portfolio Banner */}
               <div 
                 onClick={() => setActiveTab('portfolio')}
-                className={`p-4 md:p-5 rounded-3xl border text-left relative overflow-hidden group cursor-pointer transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] h-full ${
-                  isLight 
-                    ? 'bg-white border-[#7C5CFF]/10 hover:border-[#7C5CFF]/30 shadow-[0_8px_30px_rgba(124,92,255,0.08)]' 
-                    : 'bg-[#0A0A0F] border-white/5 hover:border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.4)]'
-                }`}
+                className="p-6 rounded-3xl border border-white/[0.04] bg-[#121217]/40 hover:bg-[#121217]/60 hover:border-white/[0.08] text-left relative overflow-hidden group cursor-pointer transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] h-full backdrop-blur-md shadow-lg"
                 style={{
                   isolation: 'isolate',
                   WebkitMaskImage: '-webkit-radial-gradient(white, black)'
@@ -1824,15 +1790,15 @@ export default function ProfilePage() {
                   className="absolute -right-6 -top-6 w-20 h-20 rounded-full group-hover:scale-125 transition-transform duration-500 pointer-events-none"
                   style={{ background: 'radial-gradient(circle, rgba(124,92,255,0.12) 0%, rgba(242,90,43,0.06) 50%, transparent 70%)' }}
                 />
-                <div className="flex items-start gap-3.5 z-10 relative">
-                  <div className="w-9 h-9 rounded-2xl bg-[#7C5CFF]/10 flex items-center justify-center text-[#7C5CFF] shrink-0 border border-[#7C5CFF]/20 group-hover:bg-[#7C5CFF] group-hover:text-white group-hover:border-[#7C5CFF] group-hover:rotate-12 transition-all duration-300">
+                <div className="flex items-start gap-4 z-10 relative">
+                  <div className="w-10 h-10 rounded-xl bg-white/[0.02] border border-white/5 shadow-inner flex items-center justify-center text-[#7C5CFF] shrink-0 group-hover:bg-[#7C5CFF] group-hover:text-white group-hover:rotate-12 transition-all duration-300">
                     <Smartphone className="w-4 h-4" />
                   </div>
                   <div className="space-y-1">
-                    <h4 className={`text-xs font-bold flex items-center gap-1.5 uppercase font-mono tracking-wider ${isLight ? 'text-black' : 'text-white'}`}>
+                    <h4 className="text-xs font-bold flex items-center gap-1.5 uppercase font-mono tracking-wider text-white">
                       Portfolio Designer
                     </h4>
-                    <p className={`text-[10px] leading-relaxed font-sans ${isLight ? 'text-black/60' : 'text-white/50'}`}>
+                    <p className="text-[10px] leading-relaxed text-zinc-400">
                       Want to update your bio, upload gig photos, or add a video showreel? Visit the Portfolio tab to edit details.
                     </p>
                   </div>
@@ -1842,11 +1808,7 @@ export default function ProfilePage() {
               {/* View Public Portfolio Page Banner */}
               <div 
                 onClick={() => window.open(`/${reservation.username}`, '_blank')}
-                className={`p-4 md:p-5 rounded-3xl border text-left relative overflow-hidden group cursor-pointer transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] h-full ${
-                  isLight 
-                    ? 'bg-white border-[#F25A2B]/10 hover:border-[#F25A2B]/30 shadow-[0_8px_30px_rgba(242,90,43,0.08)]' 
-                    : 'bg-[#0A0A0F] border-white/5 hover:border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.4)]'
-                }`}
+                className="p-6 rounded-3xl border border-white/[0.04] bg-[#121217]/40 hover:bg-[#121217]/60 hover:border-white/[0.08] text-left relative overflow-hidden group cursor-pointer transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] h-full backdrop-blur-md shadow-lg"
                 style={{
                   isolation: 'isolate',
                   WebkitMaskImage: '-webkit-radial-gradient(white, black)'
@@ -1856,15 +1818,15 @@ export default function ProfilePage() {
                   className="absolute -right-6 -top-6 w-20 h-20 rounded-full group-hover:scale-125 transition-transform duration-500 pointer-events-none"
                   style={{ background: 'radial-gradient(circle, rgba(242,90,43,0.12) 0%, rgba(212,86,122,0.06) 50%, transparent 70%)' }}
                 />
-                <div className="flex items-start gap-3.5 z-10 relative">
-                  <div className="w-9 h-9 rounded-2xl bg-[#F25A2B]/10 flex items-center justify-center text-[#F25A2B] shrink-0 border border-[#F25A2B]/20 group-hover:bg-[#F25A2B] group-hover:text-white group-hover:border-[#F25A2B] group-hover:scale-105 transition-all duration-300">
+                <div className="flex items-start gap-4 z-10 relative">
+                  <div className="w-10 h-10 rounded-xl bg-white/[0.02] border border-white/5 shadow-inner flex items-center justify-center text-[#F25A2B] shrink-0 group-hover:bg-[#F25A2B] group-hover:text-white group-hover:scale-105 transition-all duration-300">
                     <Globe className="w-4 h-4" />
                   </div>
                   <div className="space-y-1">
-                    <h4 className={`text-xs font-bold flex items-center gap-1.5 uppercase font-mono tracking-wider ${isLight ? 'text-black' : 'text-white'}`}>
+                    <h4 className="text-xs font-bold flex items-center gap-1.5 uppercase font-mono tracking-wider text-white">
                       Live Portfolio Page
                     </h4>
-                    <p className={`text-[10px] leading-relaxed font-sans ${isLight ? 'text-black/60' : 'text-white/50'}`}>
+                    <p className="text-[10px] leading-relaxed text-zinc-400">
                       Your booking page is online and ready for clients! Share your custom handle to take escrow-secured bookings.
                     </p>
                   </div>
@@ -1877,12 +1839,12 @@ export default function ProfilePage() {
               {/* LEFT COLUMN: VOUCH & STANDING (7 Columns) */}
               <div className="lg:col-span-7 space-y-6">
                 {/* Founding Network Status Card */}
-                <div className="rounded-[2.5rem] p-[1.5px] bg-gradient-to-b from-[var(--line)] to-transparent shadow-2xl relative overflow-hidden group">
-                  <div className="bg-bg-card/95 rounded-[2.4rem] p-6 md:p-8 backdrop-blur-xl border border-line-soft relative">
+                <div className="bg-[#121217]/40 border border-white/[0.04] p-px rounded-[2.5rem] relative overflow-hidden group backdrop-blur-md shadow-lg">
+                  <div className="bg-[#121217]/40 rounded-[2.4rem] p-6 md:p-8 backdrop-blur-xl relative">
                     <div className="absolute -left-20 -top-20 w-48 h-48 rounded-full bg-[#7C5CFF]/3 blur-[80px] pointer-events-none" />
 
                     <div className="flex justify-between items-center mb-6">
-                      <h3 className="font-mono text-[10px] font-bold text-ink-2 uppercase tracking-[0.2em] flex items-center gap-2">
+                      <h3 className="font-mono text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] flex items-center gap-2">
                         <TrendingUp className="w-3.5 h-3.5 text-[#7C5CFF]" /> Founding Status
                       </h3>
                       <motion.button 
@@ -1902,7 +1864,7 @@ export default function ProfilePage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center mb-6">
                       <div>
                         <div className="flex items-center gap-1.5 mb-1">
-                          <span className="font-mono text-[9px] text-ink-3 tracking-widest block uppercase font-bold">Current Standing</span>
+                          <span className="font-mono text-[9px] text-zinc-500 tracking-widest block uppercase font-bold">Current Standing</span>
                           <motion.button 
                             onClick={() => setActiveInfo('vouch-points')}
                             animate={{ width: isHelpExpanded ? 80 : 16 }}
@@ -1916,26 +1878,26 @@ export default function ProfilePage() {
                             )}
                           </motion.button>
                         </div>
-                        <div className="font-display font-black text-5xl mt-2 tracking-tight text-ink drop-shadow-[0_4px_12px_var(--shadow-base)] flex items-baseline gap-1.5">
+                        <div className="font-display font-black text-5xl mt-2 tracking-tight text-white flex items-baseline gap-1.5">
                           {points} <span className="font-mono text-xs font-bold text-[#7C5CFF]">PTS</span>
                         </div>
-                        <p className="text-[10px] text-ink-2 mt-2 font-mono">
+                        <p className="text-[9px] text-zinc-500 mt-2 font-mono">
                           Base 100 PTS + 50 PTS per verified referral + 80 PTS for Story task.
                         </p>
                       </div>
 
                       {/* Vouch Slots Progress Panel */}
-                      <div className="w-full h-32 bg-black/5 dark:bg-black/30 border border-line-soft rounded-3xl p-4 shadow-inner">
+                      <div className="w-full h-32 bg-black/40 border border-white/[0.06] rounded-2xl p-4 shadow-inner">
                         <div className="grid grid-cols-3 gap-3 w-full h-full items-center">
                           {Array.from({ length: 3 }).map((_, idx) => {
                             const active = idx < verifiedReferrals;
                             return (
                               <div 
                                 key={idx}
-                                className={`flex flex-col items-center justify-center p-2 rounded-2xl border transition-all duration-300 relative overflow-hidden ${
+                                className={`flex flex-col items-center justify-center p-2 rounded-xl border transition-all duration-300 relative overflow-hidden ${
                                   active 
-                                    ? 'bg-gradient-to-b from-[#7C5CFF]/12 to-[#D4567A]/4 border-[#7C5CFF]/20 shadow-[0_4px_12px_rgba(124,92,255,0.08)]' 
-                                    : isLight ? 'bg-black/5 border-black/5' : 'bg-white/[0.01] dark:bg-white/[0.01] border-line-soft'
+                                    ? 'bg-[#7C5CFF]/10 border-[#7C5CFF]/20 shadow-[0_4px_12px_rgba(124,92,255,0.08)] text-white' 
+                                    : 'bg-white/[0.01] border-white/[0.04] text-zinc-500'
                                 }`}
                                 style={{ height: '96px' }}
                               >
@@ -1945,15 +1907,15 @@ export default function ProfilePage() {
                                       <Check className="w-3.5 h-3.5" />
                                     </div>
                                     <span className="font-mono text-[9px] uppercase tracking-wider text-[#34D399] font-bold">Vouched</span>
-                                    <span className="font-mono text-[7px] text-ink-3 uppercase tracking-widest mt-0.5 font-bold">Artist {idx + 1}</span>
+                                    <span className="font-mono text-[7px] text-zinc-500 uppercase tracking-widest mt-0.5 font-bold">Artist {idx + 1}</span>
                                   </>
                                 ) : (
                                   <>
-                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-ink-3 mb-2 border ${isLight ? 'bg-black/10 border-black/5' : 'bg-black/20 dark:bg-white/5 border-line-soft'}`}>
-                                      <LockKeyhole className="w-3 h-3 opacity-40 text-ink-3" />
+                                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-zinc-600 mb-2 border border-white/5 bg-[#0a0a0f]">
+                                      <LockKeyhole className="w-3 h-3 opacity-40 text-zinc-500" />
                                     </div>
-                                    <span className="font-mono text-[9px] uppercase tracking-wider text-ink-3 opacity-60">Locked</span>
-                                    <span className="font-mono text-[7px] text-ink-3 uppercase tracking-widest mt-0.5">Artist {idx + 1}</span>
+                                    <span className="font-mono text-[9px] uppercase tracking-wider text-zinc-600">Locked</span>
+                                    <span className="font-mono text-[7px] text-zinc-600 uppercase tracking-widest mt-0.5">Artist {idx + 1}</span>
                                   </>
                                 )}
                               </div>
@@ -1965,16 +1927,16 @@ export default function ProfilePage() {
 
                     <div className="relative space-y-4">
                       <div>
-                        <p className="font-mono text-[9px] text-ink-2 uppercase tracking-wider mb-2.5 leading-relaxed">
+                        <p className="font-mono text-[9px] text-zinc-500 uppercase tracking-wider mb-2.5 leading-relaxed">
                           Progress to Founding Artist Badge:
                         </p>
 
                         {/* Segmented hardware-style progress track */}
-                        <div className="relative w-full h-3 rounded-full bg-black/10 dark:bg-black/40 border border-line-soft overflow-hidden p-0.5 shadow-inner">
+                        <div className="relative w-full h-3 rounded-full bg-black/40 border border-white/[0.06] overflow-hidden p-0.5 shadow-inner">
                           <div className="absolute inset-0 flex pointer-events-none z-20">
-                            <div className="w-px h-full bg-black/10 dark:bg-white/10" style={{ marginLeft: '25%' }} />
-                            <div className="w-px h-full bg-black/10 dark:bg-white/10" style={{ marginLeft: '50%' }} />
-                            <div className="w-px h-full bg-black/10 dark:bg-white/10" style={{ marginLeft: '75%' }} />
+                            <div className="w-px h-full bg-white/10" style={{ marginLeft: '25%' }} />
+                            <div className="w-px h-full bg-white/10" style={{ marginLeft: '50%' }} />
+                            <div className="w-px h-full bg-white/10" style={{ marginLeft: '75%' }} />
                           </div>
                           <motion.div 
                             className="h-full rounded-full bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF]" 
@@ -1986,14 +1948,14 @@ export default function ProfilePage() {
                         </div>
 
                         <div className="flex justify-between items-center mt-3">
-                          <span className="text-[9px] text-ink-3 font-mono uppercase tracking-widest">Founding Artist Level (500 PTS)</span>
-                          <span className="text-[9px] text-ink-3 font-mono uppercase tracking-widest font-bold">{points}/500 PTS</span>
+                          <span className="text-[9px] text-zinc-500 font-mono uppercase tracking-widest">Founding Artist Level (500 PTS)</span>
+                          <span className="text-[9px] text-zinc-400 font-mono uppercase tracking-widest font-bold">{points}/500 PTS</span>
                         </div>
                       </div>
 
                       {/* Unverified Referrals pending notice */}
                       {unverifiedReferrals > 0 && (
-                        <div className="px-4 py-3 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-amber-500/90 text-[10px] font-mono flex items-center gap-2.5 shadow-inner">
+                        <div className="px-4 py-3 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-amber-500 font-mono flex items-center gap-2.5 shadow-inner text-[10px]">
                           <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0 shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
                           <span>Your referrals are being verified. Once approved, points will unlock and climb your rank! ({unverifiedReferrals} pending)</span>
                         </div>
@@ -2001,11 +1963,11 @@ export default function ProfilePage() {
 
                       {/* Dynamic competitive notification */}
                       {verifiedReferrals >= 3 ? (
-                        <div className="px-4 py-3 rounded-2xl bg-[#7C5CFF]/10 border border-[#7C5CFF]/20 text-[var(--ink)] text-[10px] font-mono leading-relaxed shadow-sm">
+                        <div className="px-4 py-3 rounded-2xl bg-[#7C5CFF]/5 border border-[#7C5CFF]/10 text-zinc-300 text-[10px] font-mono leading-relaxed shadow-sm">
                           🚀 **You've referred {verifiedReferrals} peers! But don't stop there.** Earning more points helps you climb the leaderboard, secure your priority position in **Cohort 001**, and prevents other artists from overtaking your rank!
                         </div>
                       ) : (
-                        <div className="text-[9px] font-mono text-ink-3 text-left">
+                        <div className="text-[9px] font-mono text-zinc-500 text-left">
                           Refer active artists to earn points, climb the leaderboard, and claim a spot in Cohort 1.
                         </div>
                       )}
@@ -2014,12 +1976,13 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Referral Invite & Vouch Engine Card */}
-                <div className="rounded-[2.5rem] p-[1.5px] bg-gradient-to-b from-[var(--line)] to-transparent shadow-2xl relative overflow-hidden group">
-                  <div className="bg-bg-card/95 rounded-[2.4rem] p-6 md:p-8 backdrop-blur-xl border border-line-soft relative">
+                {/* Referral Invite & Vouch Engine Card */}
+                <div className="bg-[#121217]/40 border border-white/[0.04] p-px rounded-[2.5rem] relative overflow-hidden group backdrop-blur-md shadow-lg">
+                  <div className="bg-[#121217]/40 rounded-[2.4rem] p-6 md:p-8 backdrop-blur-xl relative">
                     <div className="absolute -right-20 -bottom-20 w-48 h-48 rounded-full bg-[#F25A2B]/2 blur-[80px] pointer-events-none" />
 
                     <div className="flex justify-between items-center mb-4">
-                      <h3 className="font-mono text-[10px] font-bold text-ink-2 uppercase tracking-[0.2em] flex items-center gap-2">
+                      <h3 className="font-mono text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] flex items-center gap-2">
                         <Users className="w-3.5 h-3.5 text-[#F25A2B]" /> Vouch Engine
                       </h3>
                       <div className="flex items-center gap-2">
@@ -2047,23 +2010,23 @@ export default function ProfilePage() {
                       </div>
                     </div>
 
-                    <h4 className="text-xl font-display font-black text-ink uppercase tracking-tight mb-2.5">
+                    <h4 className="text-xl font-display font-black text-white uppercase tracking-tight mb-2.5">
                       Fast-Track to Cohort 1 & Founding Status
                     </h4>
-                    <p className="text-xs text-ink-2 mb-6 leading-relaxed">
-                      Access is released in rollouts. Earn <strong className="text-ink">250 PTS</strong> to qualify for Cohort 1 priority access (includes first gig platform fee waived), and reach <strong className="text-ink">500 PTS</strong> to claim a permanent verified <strong className="text-ink">"Founding Artist"</strong> badge. The first 50 Founding Artists receive a lifetime <strong className="text-ink">0% Platform Fee</strong> guarantee!
+                    <p className="text-xs text-zinc-400 mb-6 leading-relaxed">
+                      Access is released in rollouts. Earn <strong className="text-white font-bold">250 PTS</strong> to qualify for Cohort 1 priority access (includes first gig platform fee waived), and reach <strong className="text-white font-bold">500 PTS</strong> to claim a permanent verified <strong className="text-white font-bold">"Founding Artist"</strong> badge. The first 50 Founding Artists receive a lifetime <strong className="text-white font-bold">0% Platform Fee</strong> guarantee!
                     </p>
 
                     {/* Share Tools */}
                     <div className="space-y-4 mb-6">
                       {/* Copy Link Input Bar */}
-                      <div className="flex items-center gap-3 bg-black/5 dark:bg-black/40 border border-line-soft p-1.5 rounded-2xl shadow-inner">
-                        <div className="flex-1 px-4 py-2 text-ink-2 font-mono text-xs truncate select-all">
+                      <div className="flex items-center gap-3 bg-black/40 border border-white/[0.06] p-1.5 rounded-2xl shadow-inner">
+                        <div className="flex-1 px-4 py-2 text-zinc-300 font-mono text-xs truncate select-all">
                           artistant.in/?ref={reservation.username}
                         </div>
                         <button 
                           onClick={copyReferralLink} 
-                          className="h-10 px-4 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 border border-black/10 dark:border-white/10 text-ink font-mono text-[10px] uppercase font-bold tracking-widest shadow-md active:scale-95 transition-all shrink-0 flex items-center gap-1.5"
+                          className="h-10 px-4 rounded-xl bg-white/[0.02] hover:bg-white/[0.06] border border-white/5 text-white font-mono text-[10px] uppercase font-bold tracking-widest shadow-md active:scale-95 transition-all shrink-0 flex items-center gap-1.5 cursor-pointer"
                         >
                           {copied ? (
                             <>
@@ -2081,7 +2044,7 @@ export default function ProfilePage() {
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <button 
                           onClick={() => handleShareStory('whatsapp')}
-                          className="flex items-center justify-center gap-2.5 h-12 rounded-xl bg-[#25D366]/8 hover:bg-[#25D366]/18 border border-[#25D366]/30 text-[#25D366] font-mono text-[10px] uppercase tracking-wider font-bold transition-all duration-300 active:scale-95 cursor-pointer"
+                          className="flex items-center justify-center gap-2.5 h-12 rounded-xl bg-[#25D366]/5 hover:bg-[#25D366]/10 border border-[#25D366]/20 text-[#25D366] font-mono text-[10px] uppercase tracking-wider font-bold transition-all duration-300 active:scale-95 cursor-pointer"
                         >
                           <span>Share via</span>
                           <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 448 512">
@@ -2090,7 +2053,7 @@ export default function ProfilePage() {
                         </button>
                         <button 
                           onClick={() => handleShareStory('instagram')}
-                          className="flex items-center justify-center gap-2.5 h-12 rounded-xl bg-[#E1306C]/8 hover:bg-[#E1306C]/18 border border-[#E1306C]/30 text-[#E1306C] font-mono text-[10px] uppercase tracking-wider font-bold transition-all duration-300 active:scale-95 cursor-pointer"
+                          className="flex items-center justify-center gap-2.5 h-12 rounded-xl bg-[#E1306C]/5 hover:bg-[#E1306C]/10 border border-[#E1306C]/20 text-[#E1306C] font-mono text-[10px] uppercase tracking-wider font-bold transition-all duration-300 active:scale-95 cursor-pointer"
                         >
                           <span>Share via</span>
                           <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
@@ -2099,11 +2062,7 @@ export default function ProfilePage() {
                         </button>
                         <button 
                           onClick={() => handleShareStory('x')}
-                          className={`flex items-center justify-center gap-2.5 h-12 rounded-xl font-mono text-[10px] uppercase tracking-wider font-bold transition-all duration-300 active:scale-95 cursor-pointer flex-1 sm:flex-none ${
-                            isLight 
-                              ? 'bg-black/[0.04] hover:bg-black/[0.08] border border-black/15 text-black' 
-                              : 'bg-white/[0.03] hover:bg-white/[0.08] border border-white/20 text-white'
-                          }`}
+                          className="flex items-center justify-center gap-2.5 h-12 rounded-xl bg-white/[0.02] hover:bg-white/[0.08] border border-white/20 text-white font-mono text-[10px] uppercase tracking-wider font-bold transition-all duration-300 active:scale-95 cursor-pointer flex-1 sm:flex-none"
                         >
                           <span>Share via</span>
                           <svg className="w-3.5 h-3.5 fill-current shrink-0" viewBox="0 0 24 24">
@@ -2114,10 +2073,10 @@ export default function ProfilePage() {
                     </div>
 
                     {/* Expandable Message Box */}
-                    <div className="border-t border-line-soft pt-4">
+                    <div className="border-t border-white/[0.04] pt-4">
                       <button 
                         onClick={() => setRawTextOpen(!rawTextOpen)}
-                        className="w-full flex items-center justify-between text-[9px] font-mono uppercase text-ink-3 hover:text-ink transition-colors py-1"
+                        className="w-full flex items-center justify-between text-[9px] font-mono uppercase text-zinc-500 hover:text-white transition-colors py-1 cursor-pointer"
                       >
                         <span>Show Invite Copywriting Template</span>
                         <span>{rawTextOpen ? '[-]' : '[+]'}</span>
@@ -2131,8 +2090,8 @@ export default function ProfilePage() {
                             exit={{ opacity: 0, height: 0 }}
                             className="overflow-hidden mt-3"
                           >
-                            <div className="flex items-start gap-3 bg-black/5 dark:bg-black/50 border border-line-soft p-4 rounded-2xl shadow-inner text-left relative group/raw">
-                              <p className="flex-1 text-[11px] font-mono text-ink-2 leading-relaxed select-all">
+                            <div className="flex items-start gap-3 bg-black/50 border border-white/[0.06] p-4 rounded-2xl shadow-inner text-left relative group/raw">
+                              <p className="flex-1 text-[11px] font-mono text-zinc-300 leading-relaxed select-all">
                                 Hey! I just locked my booking handle on Artistant. It lets you take direct client bookings, handles your contracts, and secures your money in escrow before you even perform. Claim your name before someone else takes it: artistant.in/?ref={reservation.username}
                               </p>
                               <button 
@@ -2141,7 +2100,7 @@ export default function ProfilePage() {
                                   navigator.clipboard.writeText(shareText);
                                   showToast("Invite template copied!");
                                 }}
-                                className="p-2.5 rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 border border-black/10 dark:border-white/10 text-ink-2 hover:text-ink transition-colors"
+                                className="p-2.5 rounded-lg bg-white/[0.02] border border-white/5 hover:bg-white/[0.06] text-zinc-300 hover:text-white transition-colors cursor-pointer"
                                 title="Copy raw text"
                               >
                                 <Copy className="w-3.5 h-3.5" />
@@ -2165,64 +2124,54 @@ export default function ProfilePage() {
                     onMouseLeave={handleMouseLeave}
                     animate={{ rotateX, rotateY }}
                     transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                    className={`w-full h-full relative rounded-[2.5rem] p-[1.5px] overflow-hidden group cursor-pointer ${isLight ? 'shadow-[0_20px_50px_rgba(124,92,255,0.08)]' : 'shadow-[0_30px_90px_-20px_rgba(0,0,0,0.9)]'}`}
+                    className="w-full h-full relative rounded-3xl p-px overflow-hidden group cursor-pointer shadow-2xl"
                     style={{
-                      background: isLight 
-                        ? 'linear-gradient(135deg, rgba(124,92,255,0.2), rgba(242,90,43,0.1) 40%, rgba(255,255,255,0.5))'
-                        : 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.01) 40%, rgba(124,92,255,0.2))',
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.01) 40%, rgba(124,92,255,0.2))',
                       transformStyle: 'preserve-3d',
                     }}
                   >
                     <div 
-                      className={`relative w-full h-full ${isLight ? 'bg-[#FFFFFF]/90' : 'bg-[#050508]/90'} rounded-[2.4rem] p-5 md:p-6 flex flex-col justify-between overflow-hidden border ${isLight ? 'border-[#7C5CFF]/15' : 'border-white/5'}`}
+                      className="relative w-full h-full bg-[#0a0a0f]/90 rounded-[23px] p-5 md:p-6 flex flex-col justify-between overflow-hidden border border-white/5"
                       style={{
                         isolation: 'isolate',
                         WebkitMaskImage: '-webkit-radial-gradient(white, black)'
                       }}
                     >
-                      <div className={`absolute -right-20 -bottom-20 w-80 h-80 rounded-full border ${isLight ? 'border-[#7C5CFF]/5' : 'border-white/[0.02]'} flex items-center justify-center pointer-events-none`}>
-                        <div className={`w-60 h-60 rounded-full border ${isLight ? 'border-[#7C5CFF]/5' : 'border-white/[0.01]'} flex items-center justify-center`} />
+                      <div className="absolute -right-20 -bottom-20 w-80 h-80 rounded-full border border-white/[0.02] flex items-center justify-center pointer-events-none">
+                        <div className="w-60 h-60 rounded-full border border-white/[0.01] flex items-center justify-center" />
                       </div>
 
                       {/* Top Row */}
                       <div className="flex justify-between items-start z-10 w-full">
                         <div className="flex items-center gap-2">
                           <img src="/logo_a.png" alt="A" className="w-6 h-6 object-contain opacity-80" />
-                          <span className="font-mono text-[9px] font-bold tracking-[0.2em] text-[var(--ink-2)]">FOUNDING CARD</span>
+                          <span className="font-mono text-[9px] font-bold tracking-[0.2em] text-zinc-500">FOUNDING CARD</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <span 
                             className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-mono text-[9px] font-bold uppercase tracking-wider relative overflow-hidden transition-all duration-300 ${
                               points >= 500 
-                                ? isLight
-                                  ? 'bg-emerald-50 border border-emerald-200 text-emerald-700 shadow-sm'
-                                  : 'bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 text-emerald-400 shadow-[0_2px_10px_rgba(16,185,129,0.1)]' 
-                                : isLight
-                                  ? 'bg-black/[0.04] border border-black/8 text-black/45 shadow-sm'
-                                  : 'bg-white/[0.02] border border-white/5 text-white/40 shadow-sm'
+                                ? 'bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 text-emerald-400 shadow-[0_2px_10px_rgba(16,185,129,0.1)]' 
+                                : 'bg-white/[0.02] border border-white/5 text-zinc-400 shadow-sm'
                             }`}
                             style={{
                               backdropFilter: 'blur(8px)',
                               WebkitBackdropFilter: 'blur(8px)',
                               boxShadow: points >= 500
-                                ? isLight
-                                  ? 'none'
-                                  : 'inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.2), 0 2px 8px rgba(16,185,129,0.08)'
-                                : isLight
-                                  ? 'inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -1px 0 rgba(0,0,0,0.03)'
-                                  : 'inset 0 1px 0 rgba(255,255,255,0.03), inset 0 -1px 0 rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.15)',
+                                ? 'inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.2), 0 2px 8px rgba(16,185,129,0.08)'
+                                : 'inset 0 1px 0 rgba(255,255,255,0.03), inset 0 -1px 0 rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.15)',
                             }}
                           >
                             {points >= 500 ? (
                               <>
-                                <span className={`w-1.5 h-1.5 rounded-full ${isLight ? 'bg-emerald-500' : 'bg-emerald-400 animate-pulse shadow-[0_0_8px_#34D399]'}`} />
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34D399]" />
                                 <span>Founding Artist</span>
                               </>
                             ) : (
                               <>
-                                <span className={`w-1.5 h-1.5 rounded-full ${isLight ? 'bg-black/20' : 'bg-white/20'}`} />
+                                <span className="w-1.5 h-1.5 rounded-full bg-white/20" />
                                 <span>Founding Artist</span>
-                                <LockKeyhole className={`w-2.5 h-2.5 ${isLight ? 'text-black/35' : 'text-white/30'} ml-0.5 shrink-0`} />
+                                <LockKeyhole className="w-2.5 h-2.5 text-zinc-500 ml-0.5 shrink-0" />
                               </>
                             )}
                           </span>
@@ -2231,11 +2180,11 @@ export default function ProfilePage() {
 
                       {/* Rank Pos (Center) */}
                       <div className="flex flex-col items-center justify-center z-10 flex-1 my-1 md:my-2">
-                        <h1 className="font-display font-black leading-none text-[var(--ink)] tracking-tighter text-4xl md:text-6xl" style={{ textShadow: isLight ? '0 10px 30px rgba(124,92,255,0.06)' : '0 10px 30px rgba(0,0,0,0.5)' }}>
+                        <h1 className="font-display font-black leading-none text-white tracking-tighter text-4xl md:text-6xl drop-shadow-[0_4px_16px_rgba(124,92,255,0.35)]">
                           #{waitlistPos || '---'}
                         </h1>
                         <div className="flex flex-col items-center mt-1.5 md:mt-2.5">
-                          <span className="font-mono text-[8px] sm:text-[9px] font-bold tracking-[0.2em] sm:tracking-[0.3em] text-[var(--ink-3)] whitespace-nowrap">WAITLIST RANK • COHORT {cohort}</span>
+                          <span className="font-mono text-[8px] sm:text-[9px] font-bold tracking-[0.2em] sm:tracking-[0.3em] text-zinc-500 whitespace-nowrap">WAITLIST RANK • COHORT {cohort}</span>
                           <span className="font-mono text-[7.5px] sm:text-[8px] font-bold tracking-[0.12em] sm:tracking-[0.15em] text-[#F25A2B] whitespace-nowrap">{isCohort1 ? 'BETA ACCESS GRANTED' : 'POSITION SECURED'}</span>
                         </div>
                       </div>
@@ -2243,11 +2192,11 @@ export default function ProfilePage() {
                       {/* Bottom Row */}
                       <div className="flex justify-between items-center z-10">
                         <div className="flex flex-col text-left">
-                          <span className="font-display text-xl md:text-2xl font-black tracking-tight text-[var(--ink)]">@{reservation.username}</span>
-                          <span className="text-[9px] uppercase font-mono tracking-widest text-[var(--ink-3)] mt-0.5">Verified Artist</span>
+                          <span className="font-display text-xl md:text-2xl font-black tracking-tight text-white">@{reservation.username}</span>
+                          <span className="text-[9px] uppercase font-mono tracking-widest text-zinc-500 mt-0.5">Verified Artist</span>
                         </div>
                         <div className="flex flex-col items-end">
-                          <img src="/logo_wordmark.png" alt="ArtisTant" className="w-24 md:w-32 h-auto object-contain opacity-85 dark:invert-0 invert -my-3 md:-my-4" />
+                          <img src="/logo_wordmark.png" alt="ArtisTant" className="w-24 md:w-32 h-auto object-contain opacity-85 -my-3 md:-my-4" />
                         </div>
                       </div>
                     </div>
@@ -2255,12 +2204,12 @@ export default function ProfilePage() {
                 </div>
 
                 {/* ── STORY STUDIO WORKSPACE ── */}
-                <div className="w-full rounded-[2.5rem] p-[1.5px] bg-gradient-to-b from-[var(--line)] to-transparent shadow-2xl relative overflow-hidden group">
-                  <div className="bg-bg-card/95 rounded-[2.4rem] p-6 md:p-8 backdrop-blur-xl border border-line-soft flex flex-col items-center">
+                <div className="bg-[#121217]/40 border border-white/[0.04] p-px rounded-[2.5rem] relative overflow-hidden group backdrop-blur-md shadow-lg w-full">
+                  <div className="bg-[#121217]/40 rounded-[2.4rem] p-6 md:p-8 backdrop-blur-xl flex flex-col items-center relative">
                     
                     {/* Header */}
                     <div className="flex justify-between items-center w-full mb-2">
-                      <h3 className="font-mono text-[10px] font-bold text-ink-2 uppercase tracking-[0.2em]">
+                      <h3 className="font-mono text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">
                         Story Generator
                       </h3>
                       <div>
@@ -2276,8 +2225,8 @@ export default function ProfilePage() {
                       </div>
                     </div>
 
-                    <p className="text-[11px] text-ink-2 leading-relaxed self-start mb-5">
-                      Generate and share your Founding Card as an Instagram or WhatsApp story. <strong className="text-ink">To claim points, you must mention @artistant and put your referral link: `artistant.in/?ref={reservation.username}` on your Story!</strong>
+                    <p className="text-[11px] text-zinc-400 leading-relaxed self-start mb-5">
+                      Generate and share your Founding Card as an Instagram or WhatsApp story. <strong className="text-white font-bold">To claim points, you must mention @artistant and put your referral link: `artistant.in/?ref={reservation.username}` on your Story!</strong>
                     </p>
 
                     {/* ── Template Selector Tabs ── */}
@@ -2294,7 +2243,7 @@ export default function ProfilePage() {
                           className={`flex-1 h-9 rounded-full font-mono text-[8px] uppercase tracking-wider font-bold transition-all duration-300 cursor-pointer border ${
                             activeStoryTemplate === idx 
                               ? 'border-[#F25A2B]/50 shadow-[0_0_12px_rgba(242,90,43,0.15)] scale-[1.02]' 
-                              : 'border-line-soft hover:border-line opacity-60 hover:opacity-100'
+                              : 'border-white/5 bg-white/[0.01] hover:border-white/20 text-zinc-400 hover:text-white opacity-60 hover:opacity-100'
                           }`}
                           style={{
                             background: idx === 1 ? 'linear-gradient(135deg, #7C5CFF, #D4567A, #F25A2B)' : tmpl.bg,
@@ -2359,7 +2308,8 @@ export default function ProfilePage() {
                           <img 
                             src="/logo_a_watermark.png" 
                             alt="Watermark" 
-                            className={`w-3/4 h-auto object-contain ${activeStoryTemplate === 2 ? 'invert' : ''}`} 
+                            className="w-3/4 h-auto object-contain" 
+                            style={{ filter: activeStoryTemplate === 2 ? 'invert(1)' : 'none' }}
                           />
                         </div>
 
@@ -2371,9 +2321,8 @@ export default function ProfilePage() {
                               <img 
                                 src="/logo_wordmark.png" 
                                 alt="Artistant" 
-                                className={`w-28 h-auto object-contain transition-all duration-300 ${
-                                  activeStoryTemplate === 2 ? 'brightness-0' : ''
-                                }`} 
+                                className="w-28 h-auto object-contain transition-all duration-300" 
+                                style={{ filter: activeStoryTemplate === 2 ? 'brightness(0)' : 'none' }}
                               />
                             </div>
 
@@ -2393,7 +2342,7 @@ export default function ProfilePage() {
                             >
                               <div className="flex justify-between items-center text-[4.5px] font-mono font-bold">
                                 <div className="flex items-center gap-1">
-                                  <img src="/logo_a.png" alt="A" className={`w-2 h-2 object-contain ${activeStoryTemplate === 2 ? 'brightness-0' : ''}`} />
+                                  <img src="/logo_a.png" alt="A" className="w-2.5 h-2.5 object-contain" style={{ filter: activeStoryTemplate === 2 ? 'brightness(0)' : 'none' }} />
                                   <span style={{ color: activeStoryTemplate === 2 ? '#7C5CFF' : '#F25A2B' }}>FOUNDING CARD</span>
                                 </div>
                                 <span style={{ color: activeStoryTemplate === 2 ? '#0F0F14' : '#FFFFFF', opacity: 0.5 }}>FOUNDING ARTIST</span>
@@ -2542,7 +2491,7 @@ export default function ProfilePage() {
                           className={`rounded-full transition-all duration-300 cursor-pointer ${
                             activeStoryTemplate === idx 
                               ? 'w-5 h-1.5 bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF]' 
-                              : 'w-1.5 h-1.5 bg-ink-3/30 hover:bg-ink-3/50'
+                              : 'w-1.5 h-1.5 bg-white/10 hover:bg-white/20'
                           }`}
                         />
                       ))}

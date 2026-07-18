@@ -35,7 +35,8 @@ import {
   Image as ImageIcon, 
   Eye, 
   Settings, 
-  Sparkles, 
+  Cpu,
+  Award, 
   AlertCircle,
   Copy,
   ChevronRight,
@@ -384,11 +385,12 @@ export default function AdminPage() {
   const [activityFilter, setActivityFilter] = useState("all");
   const [activitySearch, setActivitySearch] = useState("");
   
-  // Tabs: registrations | leaderboards | members | admins | graphics | calendar | emailing
-  const [activeTab, setActiveTab] = useState<"registrations" | "leaderboards" | "members" | "admins" | "graphics" | "calendar" | "emailing">("registrations");
+  // Tabs: registrations | leaderboards | members | admins
+  const [activeTab, setActiveTab] = useState<"registrations" | "leaderboards" | "members" | "admins">("registrations");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [growthExpanded, setGrowthExpanded] = useState(true);
   const [selectedReg, setSelectedReg] = useState<AdminWaitlistEntry | null>(null);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [showEmailComposer, setShowEmailComposer] = useState(false);
 
   // Notification Toast
   const [successToast, setSuccessToast] = useState<string | null>(null);
@@ -463,23 +465,7 @@ export default function AdminPage() {
     checkAccess();
   }, [user, authLoading, isUnlocked]);
 
-  // Redraw Canvas on change
-  useEffect(() => {
-    if (isUnlocked && (activeTab === "graphics" || activeTab === "calendar")) {
-      drawUnifiedCanvas();
-    }
-  }, [
-    isUnlocked, 
-    activeTab, 
-    graphicType, 
-    canvasLayout, 
-    unifiedTheme, 
-    gHeadline, 
-    gSubtext, 
-    gMilestoneStat, 
-    gMilestoneTitle, 
-    gCountdownTarget
-  ]);
+
 
   // Toast Timer
   useEffect(() => {
@@ -870,263 +856,14 @@ export default function AdminPage() {
     showToast(`Engine Complete: Auto-verified ${count} registrations & fired onboarding templates.`);
   };
 
-  // ---------------------------------------------------------------------------
-  // Unified Graphics Canvas Engine
-  // ---------------------------------------------------------------------------
-  const drawUnifiedCanvas = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const width = 1080;
-    const height = canvasLayout === "square" ? 1080 : 1920; // 1:1 or 9:16 portrait
-    canvas.width = width;
-    canvas.height = height;
-
-    // 1. strictly Onyx Black Base with dynamic theme gradient overlays
-    let grad = ctx.createLinearGradient(0, 0, width, height);
-    if (unifiedTheme === "cyber") {
-      grad.addColorStop(0, "#121212");
-      grad.addColorStop(0.5, "#181D26");
-      grad.addColorStop(1, "#121212");
-    } else if (unifiedTheme === "sunset") {
-      grad.addColorStop(0, "#121212");
-      grad.addColorStop(0.5, "#26191A");
-      grad.addColorStop(1, "#121212");
-    } else {
-      grad.addColorStop(0, "#121212");
-      grad.addColorStop(0.5, "#1D192C");
-      grad.addColorStop(1, "#121212");
-    }
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, width, height);
-
-    // Grid rendering (10% borders look)
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.02)";
-    ctx.lineWidth = 1.5;
-    const gridSize = 60;
-    for (let x = 0; x < width; x += gridSize) {
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
-    }
-    for (let y = 0; y < height; y += gridSize) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
-    }
-
-    // Centered glow radial overlay
-    const radial = ctx.createRadialGradient(width/2, height/2, 50, width/2, height/2, 550);
-    if (unifiedTheme === "cyber") {
-      radial.addColorStop(0, "rgba(0, 240, 255, 0.07)");
-      radial.addColorStop(1, "rgba(0,0,0,0)");
-    } else if (unifiedTheme === "sunset") {
-      radial.addColorStop(0, "rgba(255, 75, 75, 0.07)");
-      radial.addColorStop(1, "rgba(0,0,0,0)");
-    } else {
-      radial.addColorStop(0, "rgba(90, 50, 250, 0.07)");
-      radial.addColorStop(1, "rgba(0,0,0,0)");
-    }
-    ctx.fillStyle = radial;
-    ctx.fillRect(0, 0, width, height);
-
-    // Decorative corner anchors (Electric Indigo / Cyan / Coral accents)
-    const offset = 60;
-    const size = 35;
-    ctx.strokeStyle = unifiedTheme === "cyber" ? "#00F0FF" : unifiedTheme === "sunset" ? "#FF4B4B" : "#5A32FA";
-    ctx.lineWidth = 4.5;
-    // Top-Left
-    ctx.beginPath(); ctx.moveTo(offset, offset + size); ctx.lineTo(offset, offset); ctx.lineTo(offset + size, offset); ctx.stroke();
-    // Top-Right
-    ctx.beginPath(); ctx.moveTo(width - offset - size, offset); ctx.lineTo(width - offset, offset); ctx.lineTo(width - offset, offset + size); ctx.stroke();
-    // Bottom-Left
-    ctx.beginPath(); ctx.moveTo(offset, height - offset - size); ctx.lineTo(offset, height - offset); ctx.lineTo(offset + size, height - offset); ctx.stroke();
-    // Bottom-Right
-    ctx.beginPath(); ctx.moveTo(width - offset - size, height - offset); ctx.lineTo(width - offset, height - offset); ctx.lineTo(width - offset, height - offset - size); ctx.stroke();
-
-    // 2. Logo Branding
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "center";
-    ctx.font = "bold 28px 'Space Grotesk', sans-serif";
-    ctx.letterSpacing = "6px";
-    const brandY = 140;
-
-    ctx.textAlign = "right";
-    ctx.fillStyle = "#FF4B4B"; // Coral
-    ctx.fillText("ARTIS", width / 2 - 4, brandY);
-    ctx.textAlign = "left";
-    ctx.fillStyle = "#5A32FA"; // Electric Indigo
-    ctx.fillText("TANT", width / 2 + 4, brandY);
-
-    ctx.beginPath();
-    ctx.fillStyle = "#00F0FF"; // Cyan Dot
-    ctx.arc(width / 2, brandY + 30, 4.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 3. Dynamic Rendering based on Type
-    ctx.textAlign = "center";
-    if (graphicType === "milestone") {
-      ctx.shadowBlur = 40;
-      ctx.shadowColor = unifiedTheme === "cyber" ? "rgba(0, 240, 255, 0.3)" : unifiedTheme === "sunset" ? "rgba(255, 75, 75, 0.3)" : "rgba(90, 50, 250, 0.3)";
-      ctx.font = "900 190px 'Big Shoulders Display', sans-serif";
-      ctx.fillStyle = "#ffffff";
-      const statY = height / 2 - 20;
-      ctx.fillText(gMilestoneStat, width / 2, statY);
-      ctx.shadowBlur = 0; // reset
-
-      // Milestone Title in Space Grotesk
-      ctx.font = "bold 40px 'Space Grotesk', sans-serif";
-      ctx.fillStyle = unifiedTheme === "cyber" ? "#00F0FF" : unifiedTheme === "sunset" ? "#FF4B4B" : "#5A32FA";
-      ctx.letterSpacing = "4px";
-      ctx.fillText(gMilestoneTitle.toUpperCase(), width / 2, statY + 120);
-
-      // Description/Subtext
-      ctx.font = "400 20px 'Inter', sans-serif";
-      ctx.fillStyle = "#A3A3A3";
-      ctx.letterSpacing = "0px";
-      wrapText(ctx, gSubtext, width / 2, statY + 190, width - 260, 32);
-
-    } else if (graphicType === "feature") {
-      const iconX = width / 2;
-      const iconY = height / 2 - 130;
-
-      // Glow bubble
-      ctx.beginPath();
-      ctx.fillStyle = "rgba(255, 255, 255, 0.02)";
-      ctx.arc(iconX, iconY, 75, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Feature icon vectors
-      ctx.lineWidth = 5;
-      ctx.strokeStyle = unifiedTheme === "cyber" ? "#00F0FF" : unifiedTheme === "sunset" ? "#FF4B4B" : "#5A32FA";
-      ctx.beginPath();
-      if (gHeadline.toLowerCase().includes("bookability")) {
-        ctx.moveTo(iconX - 30, iconY + 15);
-        ctx.lineTo(iconX - 10, iconY - 15);
-        ctx.lineTo(iconX + 10, iconY + 5);
-        ctx.lineTo(iconX + 30, iconY - 20);
-      } else if (gHeadline.toLowerCase().includes("escrow") || gHeadline.toLowerCase().includes("gigsafe")) {
-        ctx.moveTo(iconX - 25, iconY - 25);
-        ctx.lineTo(iconX + 25, iconY - 25);
-        ctx.lineTo(iconX + 25, iconY + 5);
-        ctx.bezierCurveTo(iconX + 25, iconY + 20, iconX, iconY + 35, iconX, iconY + 35);
-        ctx.bezierCurveTo(iconX, iconY + 35, iconX - 25, iconY + 20, iconX - 25, iconY + 5);
-        ctx.closePath();
-      } else {
-        // Connected grid node
-        ctx.arc(iconX - 20, iconY - 15, 6, 0, Math.PI * 2);
-        ctx.arc(iconX + 20, iconY - 15, 6, 0, Math.PI * 2);
-        ctx.arc(iconX, iconY + 20, 6, 0, Math.PI * 2);
-        ctx.moveTo(iconX - 14, iconY - 15); ctx.lineTo(iconX + 14, iconY - 15);
-        ctx.moveTo(iconX - 16, iconY - 10); ctx.lineTo(iconX - 4, iconY + 14);
-        ctx.moveTo(iconX + 16, iconY - 10); ctx.lineTo(iconX + 4, iconY + 14);
-      }
-      ctx.stroke();
-
-      // Spotlight Header (Space Grotesk)
-      ctx.font = "900 68px 'Big Shoulders Display', sans-serif";
-      ctx.fillStyle = "#ffffff";
-      ctx.fillText(gHeadline.toUpperCase(), width / 2, height / 2 + 50);
-
-      // Feature Sub-tag
-      ctx.font = "bold 20px 'Space Grotesk', sans-serif";
-      ctx.fillStyle = unifiedTheme === "cyber" ? "#00F0FF" : unifiedTheme === "sunset" ? "#FF4B4B" : "#5A32FA";
-      ctx.letterSpacing = "4px";
-      ctx.fillText("CORE PLATFORM INFRASTRUCTURE DROP", width / 2, height / 2 + 105);
-
-      // Spotlight body text
-      ctx.font = "400 20px 'Inter', sans-serif";
-      ctx.fillStyle = "#A3A3A3";
-      ctx.letterSpacing = "0px";
-      wrapText(ctx, gSubtext, width / 2, height / 2 + 155, width - 220, 32);
-
-    } else if (graphicType === "countdown") {
-      const target = new Date(gCountdownTarget).getTime();
-      const now = new Date().getTime();
-      const diff = target - now;
-      const daysLeft = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-
-      ctx.shadowBlur = 40;
-      ctx.shadowColor = unifiedTheme === "cyber" ? "rgba(0, 240, 255, 0.3)" : unifiedTheme === "sunset" ? "rgba(255, 75, 75, 0.3)" : "rgba(90, 50, 250, 0.3)";
-      ctx.font = "900 220px 'Big Shoulders Display', sans-serif";
-      ctx.fillStyle = "#ffffff";
-      const countY = height / 2 - 30;
-      ctx.fillText(daysLeft.toString(), width / 2, countY);
-      ctx.shadowBlur = 0; // reset
-
-      // Countdown Title
-      ctx.font = "bold 42px 'Space Grotesk', sans-serif";
-      ctx.fillStyle = unifiedTheme === "cyber" ? "#00F0FF" : unifiedTheme === "sunset" ? "#FF4B4B" : "#5A32FA";
-      ctx.letterSpacing = "5px";
-      ctx.fillText("DAYS UNTIL BETA LAUNCH", width / 2, countY + 120);
-
-      // Details
-      ctx.font = "400 20px 'Inter', sans-serif";
-      ctx.fillStyle = "#A3A3A3";
-      ctx.letterSpacing = "0px";
-      ctx.fillText(`Target Launch Date: ${new Date(gCountdownTarget).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}`, width / 2, countY + 185);
-      ctx.font = "italic 18px 'Inter', sans-serif";
-      ctx.fillStyle = "#737373";
-      ctx.fillText("Claim handles and reserve priority placements at artistant.in", width / 2, countY + 230);
-    }
-
-    // 4. Footer link (Space Grotesk)
-    ctx.font = "bold 20px 'Space Grotesk', sans-serif";
-    ctx.fillStyle = "#525252";
-    ctx.letterSpacing = "4px";
-    ctx.fillText("ARTISTANT.IN  |  JOIN THE ECONOMY", width / 2, height - 130);
-  };
-
-  const wrapText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number) => {
-    const words = text.split(" ");
-    let line = "";
-    let currentY = y;
-
-    for (let n = 0; n < words.length; n++) {
-      let testLine = line + words[n] + " ";
-      let metrics = ctx.measureText(testLine);
-      let testWidth = metrics.width;
-      if (testWidth > maxWidth && n > 0) {
-        ctx.fillText(line, x, currentY);
-        line = words[n] + " ";
-        currentY += lineHeight;
-      } else {
-        line = testLine;
-      }
-    }
-    ctx.fillText(line, x, currentY);
-  };
-
-  const handleDownloadUnified = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const url = canvas.toDataURL("image/png");
-    const link = document.createElement("a");
-    link.download = `artistant_${graphicType}_${canvasLayout}.png`;
-    link.href = url;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast("Premium Graphic PNG Exported!");
-  };
-
-  const handleApplyPreset = (post: SocialPost) => {
-    setActiveTab("graphics");
-    setGraphicType(post.type);
-    setUnifiedTheme(post.graphicPreset.theme);
-    if (post.type === "milestone") {
-      setGMilestoneStat(post.graphicPreset.stat || "500+");
-      setGMilestoneTitle(post.graphicPreset.title);
-      setGSubtext(post.graphicPreset.subText);
-    } else if (post.type === "feature") {
-      setGHeadline(post.graphicPreset.title);
-      setGSubtext(post.graphicPreset.subText);
-    }
-    showToast(`Preset: "${post.title}" loaded in Graphics Studio.`);
-  };
 
   // ---------------------------------------------------------------------------
   // Email Dispatch Campaign Builder
   // ---------------------------------------------------------------------------
   const getSelectedRecipientsList = () => {
+    if (selectedUserIds.length > 0) {
+      return registrations.filter(r => selectedUserIds.includes(r.id));
+    }
     if (roleFilter === "all" && statusFilter === "all" && !searchQuery) {
       return registrations;
     }
@@ -1280,26 +1017,18 @@ export default function AdminPage() {
             
             {/* Giant Graphic Watermark */}
             <img 
-              src="/logo_a_watermark.png" 
+              src="/logo_a.png" 
               alt="" 
-              className="absolute -bottom-[15%] -left-[15%] h-[110%] w-auto max-w-none opacity-[0.08] pointer-events-none z-0 select-none"
+              className="absolute -bottom-[10%] -left-[10%] h-[100%] w-auto max-w-none opacity-40 pointer-events-none z-0 select-none"
             />
-            
-            <div className="relative z-10">
-              <img
-                src="/logo_wordmark.png"
-                alt="ArtisTant"
-                className="h-[24px] w-auto object-contain dark:invert-0 invert-0"
-              />
-            </div>
 
             <div className="relative z-10 mt-auto">
-              <span className="text-[10px] font-mono font-bold tracking-[0.25em] text-[#F25A2B] uppercase block mb-3">System Clearance Required</span>
+              <span className="text-[10px] font-mono font-bold tracking-[0.25em] text-[#7C5CFF] uppercase block mb-3">Restricted Area</span>
               <h3 className="font-display text-4xl font-bold text-white leading-tight mb-4 tracking-tight">
-                Backstage<br />Command Center.
+                Admin Portal
               </h3>
               <p className="text-white/50 text-sm leading-relaxed font-medium">
-                Verify system access keys, orchestrate priority queue overrides, monitor live session logs, and manage outreach broadcasts.
+                Access to this dashboard is restricted to authorized personnel only. Please sign in to verify your credentials.
               </p>
             </div>
           </div>
@@ -1308,24 +1037,28 @@ export default function AdminPage() {
           <div className="w-full md:w-1/2 p-10 sm:p-14 relative flex flex-col justify-center min-h-[520px]">
             <div className="text-center mb-8">
               <h2 className="font-display text-3xl font-bold text-white tracking-tight">
-                Security clearance
+                Sign In
               </h2>
-              <p className="text-xs text-white/40 font-mono uppercase tracking-wider mt-1.5">Sign in to confirm admin status</p>
+              <p className="text-xs text-white/40 font-mono uppercase tracking-wider mt-1.5">Verify Administrator Account</p>
             </div>
 
             <div className="space-y-6 relative z-10">
               {authLoading || checkingAdmin ? (
-                <div className="flex flex-col items-center justify-center py-10 gap-4">
-                  <RefreshCw className="w-8 h-8 animate-spin text-[#7C5CFF]" />
-                  <span className="text-[11px] font-mono text-white/30 uppercase tracking-widest">Checking clearance...</span>
+                <div className="flex flex-col items-center justify-center py-10 gap-3">
+                  <div className="relative w-10 h-10 flex items-center justify-center">
+                    <div className="absolute inset-0 rounded-full border border-[#7C5CFF]/15" />
+                    <div className="absolute inset-0 rounded-full border border-transparent border-t-[#7C5CFF] animate-spin" />
+                    <div className="w-2 h-2 rounded-full bg-[#7C5CFF] animate-ping" />
+                  </div>
+                  <span className="text-[9px] font-mono font-bold text-zinc-500 uppercase tracking-widest mt-2">Verifying Credentials</span>
                 </div>
               ) : user ? (
                 !isAdmin ? (
                   <div className="text-center space-y-6">
                     <div className="flex flex-col items-center gap-3 text-sm font-mono bg-hot/5 border border-hot/15 p-6 rounded-2xl text-hot">
                       <ShieldAlert className="w-8 h-8 shrink-0 mb-1" />
-                      <span className="font-bold tracking-tight text-base">Clearance Denied</span>
-                      <span className="text-xs text-white/60 leading-relaxed">Your account credentials do not match any authenticated administrator nodes.</span>
+                      <span className="font-bold tracking-tight text-base">Access Denied</span>
+                      <span className="text-xs text-white/60 leading-relaxed">Your account is not registered as an administrator. Please contact support if you believe this is an error.</span>
                     </div>
                     <button
                       onClick={handleLogout}
@@ -1338,19 +1071,19 @@ export default function AdminPage() {
                   <div className="text-center space-y-6">
                     <div className="flex flex-col items-center justify-center gap-4 text-sm font-mono bg-white/[0.02] border border-white/5 p-6 rounded-[24px]">
                       <Lock className="w-6 h-6 text-[#7C5CFF] shrink-0 mb-1 animate-pulse" />
-                      <span className="text-white/70 text-xs">Credentials verified. Ready to establish database tunnel.</span>
+                      <span className="text-white/70 text-xs">Credentials verified. Access authorized.</span>
                       <button 
                         onClick={() => verifyAndLoad()}
                         disabled={isLoading}
                         className="w-full mt-2 bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] text-white font-bold py-4 rounded-xl disabled:opacity-50 hover:opacity-95 active:scale-[0.99] transition-all cursor-pointer text-sm shadow-[0_4px_20px_-5px_rgba(124,92,255,0.4)]"
                       >
-                        {isLoading ? 'Establishing...' : 'Initialize Console'}
+                        {isLoading ? 'Loading...' : 'Enter Dashboard'}
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div className="flex justify-center items-center py-8 text-sm font-mono animate-pulse text-[#7C5CFF] tracking-wider">
-                    Establishing Secure Tunnel...
+                    Redirecting to Dashboard...
                   </div>
                 )
               ) : (
@@ -1485,7 +1218,7 @@ export default function AdminPage() {
           className="fixed bottom-8 right-8 z-50 bg-bg-card border border-line-soft text-ink text-sm px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3"
         >
           <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-bg-soft border border-line-soft">
-            <Sparkles className="w-4 h-4 text-brand" />
+            <CheckCircle2 className="w-4 h-4 text-brand" />
           </div>
           <span>{successToast}</span>
         </motion.div>
@@ -1509,12 +1242,7 @@ export default function AdminPage() {
           initial={{ x: -300, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className={`fixed md:relative top-0 bottom-0 left-0 w-[290px] flex flex-col flex-shrink-0 z-40 transition-transform duration-300 md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} md:my-5 md:ml-5 md:rounded-[2rem] border-r md:border border-line-soft`}
-          style={{
-            background: 'rgba(30, 30, 38, 0.45)',
-            backdropFilter: 'blur(30px)',
-            WebkitBackdropFilter: 'blur(30px)',
-          }}
+          className={`fixed md:relative top-0 bottom-0 left-0 w-[290px] flex flex-col flex-shrink-0 z-40 transition-transform duration-300 md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} md:my-5 md:ml-5 md:rounded-[2rem] border-r md:border border-line-soft bg-bg-card shadow-xl md:shadow-2xl dark:shadow-none`}
         >
           {/* Brand Logo & Console Tag */}
           <div className="px-8 pt-8 pb-5">
@@ -1522,9 +1250,9 @@ export default function AdminPage() {
               <img
                 src="/logo_wordmark.png"
                 alt="ArtisTant"
-                className="h-[28px] w-auto object-contain dark:invert-0 invert-0"
+                className="h-[72px] w-auto object-contain dark:invert-0 invert"
               />
-              <div className="flex items-center gap-1.5 mt-2">
+              <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="inline-flex w-1.5 h-1.5 rounded-full bg-brand animate-pulse" />
                 <p className="text-[10px] font-mono font-bold tracking-[0.15em] uppercase text-[#F25A2B]">
                   Command center
@@ -1536,7 +1264,7 @@ export default function AdminPage() {
           <div className="h-px mx-6 bg-gradient-to-r from-transparent via-line-soft to-transparent" />
 
           {/* Navigation Links */}
-          <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-1.5 relative">
+          <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-1.5 relative text-left">
             <p className="text-[9px] font-mono font-bold tracking-[0.18em] uppercase px-4 pb-2 text-ink-3">
               Management Suite
             </p>
@@ -1551,13 +1279,13 @@ export default function AdminPage() {
                 <button
                   key={item.id}
                   onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
-                  className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl transition-all text-xs font-semibold relative group overflow-hidden"
+                  className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl transition-all text-xs font-semibold relative group overflow-hidden cursor-pointer"
                 >
                   {/* Sliding active pill indicator */}
                   {activeTab === item.id && (
                     <motion.div
                       layoutId="activeSidebarTab"
-                      className="absolute inset-0 rounded-xl bg-white/[0.03] border border-white/[0.07]"
+                      className="absolute inset-0 rounded-xl bg-bg-soft dark:bg-white/[0.03] border border-line-soft"
                       transition={{ type: "spring", stiffness: 380, damping: 30 }}
                       style={{
                         boxShadow: `0 4px 15px -4px color-mix(in srgb, ${item.accent} 20%, transparent)`
@@ -1567,121 +1295,46 @@ export default function AdminPage() {
                   
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center transition-all border z-10"
                     style={{
-                      backgroundColor: activeTab === item.id ? item.accent : 'rgba(255,255,255,0.01)',
+                      backgroundColor: activeTab === item.id ? item.accent : 'var(--bg-soft)',
                       borderColor: activeTab === item.id ? 'transparent' : 'var(--line-soft)'
                     }}
                   >
                     <item.icon className="w-3.5 h-3.5 transition-transform group-hover:scale-105 duration-300" style={{ color: activeTab === item.id ? '#ffffff' : 'var(--ink-3)' }} />
                   </div>
-                  <span className={`font-semibold z-10 transition-colors duration-200 ${activeTab === item.id ? "text-white" : "text-ink-2 group-hover:text-white"}`}>
+                  <span className={`font-semibold z-10 transition-colors duration-200 ${activeTab === item.id ? "text-ink font-bold" : "text-ink-2 group-hover:text-ink"}`}>
                     {item.label}
                   </span>
                 </button>
               ))}
             </div>
-
-            <button 
-              onClick={() => setGrowthExpanded(!growthExpanded)}
-              className="w-full flex items-center justify-between pt-5 pb-2 px-4 text-ink-3 hover:text-white transition-colors cursor-pointer group"
-            >
-              <span className="text-[9px] font-mono font-bold tracking-[0.18em] uppercase">
-                Growth & Campaigns
-              </span>
-              <ChevronDown 
-                className={`w-3.5 h-3.5 transition-transform duration-300 ${growthExpanded ? 'rotate-0' : '-rotate-90'}`} 
-              />
-            </button>
-
-            <AnimatePresence initial={false}>
-              {growthExpanded && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2, ease: "easeInOut" }}
-                  className="overflow-hidden space-y-1"
-                >
-                  {([
-                    { id: "graphics", label: "Content Wall", icon: ImageIcon, accent: 'var(--brand-3)' },
-                    { id: "calendar", label: "Social Calendar", icon: CalendarIcon, accent: 'var(--hot)' },
-                    { id: "emailing", label: "Broadcasts", icon: Mail, accent: 'var(--brand-4)' },
-                  ] as const).map(item => (
-                    <button
-                      key={item.id}
-                      onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
-                      className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl transition-all text-xs font-semibold relative group overflow-hidden"
-                    >
-                      {activeTab === item.id && (
-                        <motion.div
-                          layoutId="activeSidebarTab"
-                          className="absolute inset-0 rounded-xl bg-white/[0.03] border border-white/[0.07]"
-                          transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                          style={{
-                            boxShadow: `0 4px 15px -4px color-mix(in srgb, ${item.accent} 20%, transparent)`
-                          }}
-                        />
-                      )}
-                      
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center transition-all border z-10"
-                        style={{
-                          backgroundColor: activeTab === item.id ? item.accent : 'rgba(255,255,255,0.01)',
-                          borderColor: activeTab === item.id ? 'transparent' : 'var(--line-soft)'
-                        }}
-                      >
-                        <item.icon className="w-3.5 h-3.5 transition-transform group-hover:scale-105 duration-300" style={{ color: activeTab === item.id ? '#ffffff' : 'var(--ink-3)' }} />
-                      </div>
-                      <span className={`font-semibold z-10 transition-colors duration-200 ${activeTab === item.id ? "text-white" : "text-ink-2 group-hover:text-white"}`}>
-                        {item.label}
-                      </span>
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
           </nav>
 
           {/* Console Profile & System Health readout */}
           <div className="p-4 border-t border-line-soft">
-            <div className="bg-[#121217]/55 border border-white/[0.04] rounded-2xl p-4 backdrop-blur-md">
+            <div className="bg-bg-soft/50 border border-line-soft rounded-2xl p-4 backdrop-blur-md">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-display font-bold text-xs overflow-hidden shrink-0" style={{
-                  background: user?.photoURL ? 'transparent' : 'linear-gradient(135deg, var(--brand-3), var(--brand-1))',
-                  boxShadow: '0 4px 12px -4px rgba(124,92,255,0.35)',
-                  border: user?.photoURL ? '1px solid var(--line-soft)' : 'none'
-                }}>
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-mono font-bold text-sm shrink-0 bg-gradient-to-br from-[#7C5CFF] to-[#D4567A] shadow-[0_4px_12px_rgba(124,92,255,0.25)] border border-white/10 relative overflow-hidden">
                   {user?.photoURL ? (
                     <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
                   ) : (
-                    userDisplayName[0].toUpperCase()
+                    <span>{userDisplayName ? userDisplayName[0].toUpperCase() : "A"}</span>
                   )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-white truncate" title={userDisplayName}>{userDisplayName}</p>
-                  <p className="text-[9px] font-mono tracking-[0.1em] uppercase mt-0.5 text-ink-3">{userRole}</p>
+                <div className="flex-1 min-w-0 text-left">
+                  <p className="text-xs font-bold text-ink truncate" title={userDisplayName}>{userDisplayName}</p>
+                  <p className="text-[9px] font-mono tracking-[0.1em] uppercase mt-0.5 text-ink-3 font-bold">{userRole || "Administrator"}</p>
                 </div>
-                <button onClick={handleLogout} className="text-ink-3 hover:text-hot transition-colors p-1.5 cursor-pointer rounded-lg hover:bg-white/[0.04]" title="Lock Dashboard">
+                <button onClick={handleLogout} className="text-ink-3 hover:text-red-400 transition-colors p-1.5 cursor-pointer rounded-lg hover:bg-bg-soft/80" title="Sign Out">
                   <LogOut className="w-3.5 h-3.5" />
                 </button>
               </div>
 
-              {/* Dynamic Console Stats */}
-              <div className="mt-3.5 pt-3.5 border-t border-white/[0.04] space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-1.5 h-1.5 rounded-full ${isLiveMode ? "bg-[#22C55E] shadow-[0_0_8px_#22C55E]" : "bg-amber-500 shadow-[0_0_8px_orange]"} animate-pulse`} />
-                    <span className="text-[9px] font-mono tracking-[0.08em] uppercase text-ink-3">{isLiveMode ? "LIVE DB TUNNEL" : "SANDBOX POOL"}</span>
-                  </div>
-                  <span className="text-[8px] font-mono text-neutral-600">v1.2.0</span>
+              <div className="mt-3 pt-3 border-t border-line-soft flex items-center justify-between text-[10px] font-mono">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
+                  <span className="text-ink-2 font-bold uppercase tracking-wider">Database Connection</span>
                 </div>
-                
-                {/* Simulated Server/Connection Latency Widget */}
-                <div className="flex items-center gap-1 bg-white/[0.01] p-1.5 rounded-lg border border-white/[0.02]">
-                  <Activity className="w-3 h-3 text-[#22C55E]" />
-                  <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
-                    <div className="w-4/5 h-full bg-[#22C55E] rounded-full animate-[pulse_1.5s_infinite]" />
-                  </div>
-                  <span className="text-[8px] font-mono text-[#22C55E]">18ms</span>
-                </div>
+                <span className="text-emerald-600 dark:text-emerald-400 font-bold uppercase">Active</span>
               </div>
             </div>
           </div>
@@ -1690,26 +1343,23 @@ export default function AdminPage() {
         {/* ─── Main Content Canvas ─── */}
         <main className="flex-1 overflow-y-auto relative scroll-smooth flex flex-col h-screen">
           {/* Premium Header */}
-          <header className="sticky top-0 z-30 backdrop-blur-xl border-b border-line-soft px-6 md:px-10 py-5 flex items-center justify-between" style={{ background: 'rgba(10, 10, 14, 0.8)' }}>
+          <header className="sticky top-0 z-30 backdrop-blur-xl border-b border-line-soft px-6 md:px-10 py-5 flex items-center justify-between" style={{ background: 'transparent' }}>
             <div className="flex items-center gap-4">
               <button 
                 onClick={() => setSidebarOpen(true)}
-                className="md:hidden p-2.5 rounded-xl border border-line-soft bg-bg-soft text-ink-2 hover:text-ink cursor-pointer hover:bg-bg-card transition-all"
+                className="md:hidden p-2.5 rounded-xl border border-line-soft bg-bg-card/50 text-ink-2 hover:text-ink cursor-pointer hover:bg-bg-soft transition-all"
                 aria-label="Open sidebar"
               >
                 <Menu className="w-4 h-4" />
               </button>
               
-              <div className="flex flex-col">
-                <span className="text-[9px] font-mono font-bold tracking-[0.2em] text-[#7C5CFF] uppercase">Backstage Console</span>
-                <h2 className="text-xl font-display font-bold tracking-tight text-white uppercase mt-0.5">
-                  {activeTab === "registrations" && "Waitlist Management"}
+              <div className="flex flex-col text-left">
+                <span className="text-[9px] font-mono font-bold tracking-[0.25em] text-[#7C5CFF] uppercase">Admin Console</span>
+                <h2 className="text-lg font-display font-bold tracking-tight text-ink uppercase mt-0.5" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
+                  {activeTab === "registrations" && "Waitlist Directory"}
                   {activeTab === "leaderboards" && "Leaderboard Rankings"}
                   {activeTab === "members" && "Visitor Activity Logs"}
-                  {activeTab === "admins" && "Manage System Admins"}
-                  {activeTab === "graphics" && "Dynamic Content Wall"}
-                  {activeTab === "calendar" && "Social Outreach Schedule"}
-                  {activeTab === "emailing" && "Campaign Broadcasts"}
+                  {activeTab === "admins" && "System Administrators"}
                 </h2>
               </div>
             </div>
@@ -1718,7 +1368,7 @@ export default function AdminPage() {
               {mounted && (
                 <button
                   onClick={() => setTheme(resolvedTheme === "light" ? "dark" : "light")}
-                  className="p-2.5 rounded-xl border border-line-soft bg-bg-soft/50 text-ink-2 hover:text-ink cursor-pointer hover:bg-bg-card transition-all"
+                  className="p-2.5 rounded-xl border border-line-soft bg-bg-card/30 hover:bg-bg-soft text-ink-2 hover:text-ink cursor-pointer transition-all"
                   aria-label="Toggle Theme"
                   title={resolvedTheme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
                 >
@@ -1730,8 +1380,12 @@ export default function AdminPage() {
                 </button>
               )}
               
-              <a href="/" target="_blank" className="nav-cta text-xs flex items-center gap-1.5" style={{ padding: '10px 20px' }}>
-                Launch Portal <ExternalLink className="w-3 h-3" />
+              <a 
+                href="/" 
+                target="_blank" 
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-[#7C5CFF]/30 bg-[#7C5CFF]/10 hover:bg-[#7C5CFF]/20 text-[#7C5CFF] hover:text-[#7C5CFF] dark:hover:text-white text-xs font-mono font-bold uppercase tracking-wider transition-all duration-300 shadow-sm"
+              >
+                Launch Portal <ArrowUpRight className="w-3.5 h-3.5" />
               </a>
             </div>
           </header>
@@ -1755,11 +1409,11 @@ export default function AdminPage() {
                     {/* Metric cards — premium bento layout */}
                     <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6">
                       {[
-                        { label: "Global Waitlist", value: totalCount, color: 'var(--ink)', Icon: Users, glow: 'rgba(124,92,255,0.15)' },
-                        { label: "Verified Artists", value: verifiedCount, color: 'var(--brand-3)', Icon: CheckCircle2, glow: 'rgba(124,92,255,0.2)' },
-                        { label: "Pending Review", value: pendingCount, color: 'var(--brand-1)', Icon: Flame, glow: 'rgba(242,90,43,0.15)' },
-                        { label: "Portfolio Setup", value: portfolioCompleteCount, color: 'var(--brand-2)', Icon: User, glow: 'rgba(212,86,122,0.15)' },
-                        { label: "Suspended", value: blockedCount, color: 'var(--hot)', Icon: XCircle, glow: 'rgba(255,75,75,0.15)' },
+                        { label: "Global Waitlist", value: totalCount, glow: 'rgba(124,92,255,0.06)' },
+                        { label: "Verified Artists", value: verifiedCount, glow: 'rgba(124,92,255,0.08)' },
+                        { label: "Pending Review", value: pendingCount, glow: 'rgba(242,90,43,0.06)' },
+                        { label: "Portfolio Setup", value: portfolioCompleteCount, glow: 'rgba(212,86,122,0.06)' },
+                        { label: "Suspended", value: blockedCount, glow: 'rgba(255,75,75,0.06)' },
                       ].map((card, i) => (
                         <GlowingAdminCard
                           key={card.label}
@@ -1767,66 +1421,53 @@ export default function AdminPage() {
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: i * 0.05, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                          className={`bg-[#121217]/40 border border-white/[0.04] rounded-3xl p-6 md:p-8 cursor-default group backdrop-blur-xl relative overflow-hidden shadow-lg ${
+                          className={`bg-bg-card border border-line-soft rounded-3xl p-6 md:p-8 cursor-default group backdrop-blur-xl relative overflow-hidden ${
                             i === 4 ? "col-span-2 lg:col-span-1 sm:col-span-1" : ""
                           }`}
                           style={{
                             boxShadow: `0 10px 30px -10px ${card.glow}`
                           }}
                         >
-                          {/* Decorative Watermark Number */}
-                          <div className="absolute top-2 right-4 select-none pointer-events-none font-display font-black text-6xl text-white/[0.02] tracking-tighter">
-                            {String(i + 1).padStart(2, '0')}
-                          </div>
-
-                          <div className="flex justify-between items-start mb-6">
-                            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-white/[0.02] border border-white/5 shadow-inner">
-                              <card.Icon className="w-5 h-5 text-[#7C5CFF] group-hover:scale-110 transition-transform duration-300" />
-                            </div>
-                          </div>
-
-                          <div>
-                            <p className="text-3xl font-display font-bold tracking-tight text-white">{card.value}</p>
-                            <p className="text-[10px] font-mono font-bold tracking-[0.15em] uppercase mt-2.5 text-ink-3 group-hover:text-white transition-colors">{card.label}</p>
+                          <div className="flex flex-col gap-1 text-left">
+                            <span className="text-[10px] font-mono font-bold tracking-[0.15em] uppercase text-ink-3">{card.label}</span>
+                            <span className="text-4xl font-display font-black tracking-tight text-ink mt-1">{card.value}</span>
                           </div>
                         </GlowingAdminCard>
                       ))}
                     </div>
 
-                    {/* Heuristics suggestion banner */}
-                    {autoVerifyCount > 0 && (
-                      <GlowingAdminCard 
-                        idx={4}
-                        className="bg-gradient-to-r from-[#22C55E]/5 to-[#7C5CFF]/5 border border-[#22C55E]/20 rounded-[2rem] p-8 shadow-[0_15px_40px_-15px_rgba(34,197,94,0.15)] backdrop-blur-xl"
-                      >
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                          <div className="flex items-start gap-4">
-                            <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#22C55E]/10 border border-[#22C55E]/20 shadow-md">
-                              <Sparkles className="w-5 h-5 text-[#22C55E] animate-pulse" />
-                            </div>
-                            <div>
-                              <h4 className="font-display font-bold text-white text-lg uppercase tracking-tight flex items-center gap-2">
-                                System Recommendation Available
-                                <span className="inline-flex w-2.5 h-2.5 rounded-full bg-[#22C55E] animate-ping" />
-                              </h4>
-                              <p className="text-xs text-zinc-400 mt-1 max-w-2xl leading-relaxed">
-                                {autoVerifyCount} pending registration(s) match the complete validation heuristics profile and can be auto-cleared.
-                              </p>
-                            </div>
-                          </div>
-                          <button
-                            onClick={runAutoVerifyEngine}
-                            className="bg-gradient-to-r from-[#22C55E] to-[#7C5CFF] hover:opacity-95 text-white font-mono text-[10px] font-bold uppercase tracking-[0.08em] flex items-center gap-2 flex-shrink-0 py-3.5 px-6 rounded-full transition-all duration-300 shadow-[0_4px_16px_-4px_rgba(34,197,94,0.4)] cursor-pointer"
-                          >
-                            <CheckCircle2 className="w-4 h-4" />
-                            Auto-Verify {autoVerifyCount} Candidates
-                          </button>
-                        </div>
-                      </GlowingAdminCard>
-                    )}
+                     {/* Heuristics suggestion banner */}
+                     {autoVerifyCount > 0 && (
+                       <GlowingAdminCard 
+                         idx={4}
+                         className="bg-emerald-500/10 dark:bg-emerald-500/5 border border-emerald-500/20 rounded-[1.5rem] p-6 shadow-lg backdrop-blur-xl animate-in fade-in duration-300 text-left"
+                       >
+                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                           <div className="flex items-center gap-3">
+                             <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-emerald-500/10 dark:bg-[#22C55E]/10 border border-emerald-500/20 dark:border-[#22C55E]/20">
+                               <Cpu className="w-4 h-4 text-[#22C55E]" />
+                             </div>
+                             <div>
+                               <h4 className="font-mono text-xs font-bold text-[#22C55E] uppercase tracking-wider flex items-center gap-1.5">
+                                 Suggested Approvals
+                               </h4>
+                               <p className="text-[11px] text-ink-2 mt-0.5">
+                                 {autoVerifyCount} pending artist(s) have completed their profiles and can be automatically approved.
+                               </p>
+                             </div>
+                           </div>
+                           <button
+                             onClick={runAutoVerifyEngine}
+                             className="bg-[#22C55E]/10 hover:bg-[#22C55E]/20 text-[#22C55E] border border-[#22C55E]/20 font-mono text-[9px] font-bold uppercase tracking-wider py-2 px-4 rounded-xl transition-all duration-300 shadow-sm cursor-pointer whitespace-nowrap"
+                           >
+                             Auto-Approve {autoVerifyCount} Artists
+                           </button>
+                         </div>
+                       </GlowingAdminCard>
+                     )}
 
                     {/* Toolbar */}
-                    <div className="bg-[#111116]/40 border border-white/[0.04] p-5 rounded-3xl flex flex-col md:flex-row gap-4 items-center justify-between backdrop-blur-md">
+                    <div className="bg-bg-card border border-line-soft p-5 rounded-3xl flex flex-col md:flex-row gap-4 items-center justify-between backdrop-blur-md">
                       <div className="relative w-full md:w-80">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-3" />
                         <input
@@ -1834,14 +1475,14 @@ export default function AdminPage() {
                           placeholder="Search name, handle, email..."
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          className="w-full bg-[#0a0a0f] border border-white/[0.06] focus:border-[#7C5CFF] focus:ring-4 focus:ring-[#7C5CFF]/15 text-sm text-white placeholder-zinc-500 rounded-2xl pl-12 pr-4 py-3 transition-all outline-none"
+                          className="w-full bg-bg-soft/40 border border-line-soft focus:border-[#7C5CFF] focus:ring-4 focus:ring-[#7C5CFF]/15 text-sm text-ink placeholder-ink-3 rounded-2xl pl-12 pr-4 py-3 transition-all outline-none"
                           style={{ borderColor: searchQuery ? 'var(--brand-3)' : '' }}
                         />
                       </div>
 
                       <div className="flex flex-col sm:flex-row items-center gap-3.5 w-full md:w-auto text-[11px] font-mono text-ink-2">
                         {/* View Mode Toggle */}
-                        <div className="flex rounded-xl p-1 bg-[#0a0a0f] border border-white/[0.06] w-full sm:w-auto">
+                        <div className="flex rounded-xl p-1 bg-bg-soft/40 border border-line-soft w-full sm:w-auto">
                           <button
                             onClick={() => setViewMode("table")}
                             className="flex-1 sm:flex-initial px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 font-bold uppercase tracking-[0.06em] cursor-pointer"
@@ -1871,7 +1512,7 @@ export default function AdminPage() {
                         <select
                           value={roleFilter}
                           onChange={(e) => setRoleFilter(e.target.value)}
-                          className="w-full sm:w-auto bg-[#0a0a0f] border border-white/[0.06] rounded-xl px-4 py-2.5 font-bold uppercase tracking-[0.06em] focus:outline-none text-white cursor-pointer text-center"
+                          className="w-full sm:w-auto bg-bg-soft/40 border border-line-soft rounded-xl px-4 py-2.5 font-bold uppercase tracking-[0.06em] focus:outline-none text-ink cursor-pointer text-center"
                         >
                           <option value="all">All Roles</option>
                           <option value="artist">Artist</option>
@@ -1883,23 +1524,309 @@ export default function AdminPage() {
                         <select
                           value={statusFilter}
                           onChange={(e) => setStatusFilter(e.target.value)}
-                          className="w-full sm:w-auto bg-[#0a0a0f] border border-white/[0.06] rounded-xl px-4 py-2.5 font-bold uppercase tracking-[0.06em] focus:outline-none text-white cursor-pointer text-center"
+                          className="w-full sm:w-auto bg-bg-soft/40 border border-line-soft rounded-xl px-4 py-2.5 font-bold uppercase tracking-[0.06em] focus:outline-none text-ink cursor-pointer text-center"
                         >
                           <option value="all">All Status</option>
                           <option value="verified">Verified</option>
                           <option value="pending">Pending</option>
                           <option value="blocked">Blocked</option>
                         </select>
+
+                        {/* Broadcast composer toggle button */}
+                        <button
+                          onClick={() => setShowEmailComposer(!showEmailComposer)}
+                          className="w-full sm:w-auto py-2.5 px-4.5 rounded-xl border text-[11px] font-mono font-bold uppercase tracking-[0.06em] flex items-center justify-center gap-2 cursor-pointer transition-all duration-300"
+                          style={showEmailComposer ? {
+                            background: 'rgba(124, 92, 255, 0.1)',
+                            color: '#7C5CFF',
+                            borderColor: 'rgba(124, 92, 255, 0.3)',
+                          } : {
+                            background: 'var(--bg-soft)',
+                            color: 'var(--ink-2)',
+                            borderColor: 'var(--line-soft)',
+                          }}
+                        >
+                          <Mail className="w-3.5 h-3.5" />
+                          Broadcast
+                          {selectedUserIds.length > 0 && (
+                            <span className="bg-[#7C5CFF] text-white px-1.5 py-0.5 rounded-full text-[8px] font-mono leading-none">
+                              {selectedUserIds.length}
+                            </span>
+                          )}
+                        </button>
                       </div>
                     </div>
 
+                    {/* Collapsible Email Composer */}
+                    <AnimatePresence>
+                      {showEmailComposer && (
+                        <motion.div 
+                          initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                          animate={{ opacity: 1, height: "auto", marginBottom: 24 }}
+                          exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                          transition={{ duration: 0.3 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="bg-bg-card border border-line-soft p-6 md:p-8 rounded-[2rem] backdrop-blur-md shadow-2xl relative overflow-hidden text-left mt-6">
+                            <div className="flex justify-between items-center border-b border-line-soft pb-4 mb-6">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[#7C5CFF]/10 border border-[#7C5CFF]/20">
+                                  <Mail className="w-4 h-4 text-[#7C5CFF]" />
+                                </div>
+                                <div>
+                                  <h3 className="font-mono text-xs font-bold text-ink uppercase tracking-wider">Campaign Email Composer</h3>
+                                  <p className="text-[10px] text-ink-3 uppercase font-mono tracking-wider mt-0.5">
+                                    {selectedUserIds.length > 0 
+                                      ? `Target: ${selectedUserIds.length} Selected Artist(s)` 
+                                      : `Target: All Registered Users (${filteredRegistrations.filter(r => !r.is_blocked).length})`
+                                    }
+                                  </p>
+                                </div>
+                              </div>
+                              <button 
+                                onClick={() => setShowEmailComposer(false)}
+                                className="text-ink-3 hover:text-ink font-mono text-[10px] uppercase font-bold tracking-wider cursor-pointer bg-bg-soft/50 border border-line-soft px-3 py-1.5 rounded-lg hover:bg-bg-soft"
+                              >
+                                Close
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                              {/* Composer Fields */}
+                              <div className="lg:col-span-7 space-y-5">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="block text-[9px] font-mono font-bold uppercase text-ink-3 tracking-wider mb-2">Sender Alias</label>
+                                    <select
+                                      value={emailAlias}
+                                      onChange={(e) => setEmailAlias(e.target.value)}
+                                      className="w-full bg-bg-soft/30 border border-line-soft rounded-xl px-3.5 py-2.5 text-xs text-ink focus:outline-none focus:border-[#7C5CFF] cursor-pointer"
+                                    >
+                                      <option value="official">ArtisTant Official (info@artistant.in)</option>
+                                      <option value="support">ArtisTant Support (support@artistant.in)</option>
+                                      <option value="founder">ArtisTant Founder (founder@artistant.in)</option>
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label className="block text-[9px] font-mono font-bold uppercase text-ink-3 tracking-wider mb-2">Email Subject</label>
+                                    <input
+                                      type="text"
+                                      value={emailSubject}
+                                      onChange={(e) => setEmailSubject(e.target.value)}
+                                      className="w-full bg-bg-soft/30 border border-line-soft rounded-xl px-3.5 py-2.5 text-xs text-ink focus:outline-none focus:border-[#7C5CFF] transition-all"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <label className="block text-[9px] font-mono font-bold uppercase text-ink-3 tracking-wider mb-2">Email Heading (Pill Tag Header)</label>
+                                  <input
+                                    type="text"
+                                    value={emailHeader}
+                                    onChange={(e) => setEmailHeader(e.target.value)}
+                                    className="w-full bg-bg-soft/30 border border-line-soft rounded-xl px-3.5 py-2.5 text-xs text-ink focus:outline-none focus:border-[#7C5CFF] transition-all"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-[9px] font-mono font-bold uppercase text-ink-3 tracking-wider mb-2">Message Body (HTML supported)</label>
+                                  <textarea
+                                    value={emailBody}
+                                    onChange={(e) => setEmailBody(e.target.value)}
+                                    rows={8}
+                                    className="w-full bg-bg-soft/30 border border-line-soft rounded-xl px-3.5 py-2.5 text-xs text-ink focus:outline-none focus:border-[#7C5CFF] transition-all resize-none"
+                                  />
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="block text-[9px] font-mono font-bold uppercase text-ink-3 tracking-wider mb-2">CTA Link Text</label>
+                                    <input
+                                      type="text"
+                                      value={emailCtaText}
+                                      onChange={(e) => setEmailCtaText(e.target.value)}
+                                      className="w-full bg-bg-soft/30 border border-line-soft rounded-xl px-3.5 py-2.5 text-xs text-ink focus:outline-none focus:border-[#7C5CFF] transition-all"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[9px] font-mono font-bold uppercase text-ink-3 tracking-wider mb-2">CTA Destination URL</label>
+                                    <input
+                                      type="text"
+                                      value={emailCtaUrl}
+                                      onChange={(e) => setEmailCtaUrl(e.target.value)}
+                                      className="w-full bg-bg-soft/30 border border-line-soft rounded-xl px-3.5 py-2.5 text-xs text-ink focus:outline-none focus:border-[#7C5CFF] transition-all font-mono"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="p-4 bg-bg-soft/20 border border-line-soft rounded-xl flex items-center justify-between">
+                                  <span className="text-[10px] font-mono text-ink-2">
+                                    Targets: <strong className="text-ink">{getSelectedRecipientsList().filter(r => !r.is_blocked).length}</strong> recipient(s) selected
+                                  </span>
+                                  <button
+                                    onClick={handleSendEmailBroadcast}
+                                    disabled={emailSending}
+                                    className="py-2.5 px-5 rounded-xl text-[10px] font-mono font-bold tracking-wider uppercase flex items-center gap-2 text-white bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] hover:opacity-90 disabled:opacity-50 transition-all cursor-pointer shadow-md"
+                                  >
+                                    {emailSending ? (
+                                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                    ) : (
+                                      <Send className="w-3.5 h-3.5" />
+                                    )}
+                                    Send Broadcast
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Live Email Preview */}
+                              <div className="lg:col-span-5 space-y-4">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-ink-3">Live Brand Preview</span>
+                                  <div className="flex rounded-lg p-1 bg-bg-soft/40 border border-line-soft">
+                                    <button
+                                      onClick={() => setEmailPreviewMode("mobile")}
+                                      className={`p-1.5 rounded transition-all cursor-pointer ${
+                                        emailPreviewMode === "mobile" ? "bg-bg-soft text-[#7C5CFF] border border-line-soft" : "text-ink-3 hover:text-ink"
+                                      }`}
+                                      title="Mobile View"
+                                    >
+                                      <Smartphone className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => setEmailPreviewMode("desktop")}
+                                      className={`p-1.5 rounded transition-all cursor-pointer ${
+                                        emailPreviewMode === "desktop" ? "bg-bg-soft text-[#7C5CFF] border border-line-soft" : "text-ink-3 hover:text-ink"
+                                      }`}
+                                      title="Desktop View"
+                                    >
+                                      <Monitor className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="flex justify-center bg-bg-soft/40 border border-line-soft p-4 rounded-2xl overflow-y-auto max-h-[440px] shadow-inner">
+                                  <div 
+                                    className={`bg-white text-slate-800 text-left rounded-2xl overflow-hidden border border-slate-200 transition-all duration-300 relative shadow-lg ${
+                                      emailPreviewMode === "mobile" ? "w-[280px]" : "w-full"
+                                    }`}
+                                    style={{
+                                      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+                                    }}
+                                  >
+                                    {/* Branded Dark Header */}
+                                    <div className="bg-[#0b1120] px-5 py-4 flex items-center justify-between">
+                                      <img 
+                                        src="/logo_wordmark.png" 
+                                        alt="Artistant" 
+                                        className="h-5 w-auto object-contain"
+                                        style={{ filter: 'none' }}
+                                      />
+                                    </div>
+                                    
+                                    {/* Top gradient line */}
+                                    <div className="h-1 bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF]" />
+                                    
+                                    {/* Content Area */}
+                                    <div className="p-6 bg-white space-y-4">
+                                      {/* Pill Badge */}
+                                      <div className="inline-block bg-[#FFF0EB] border border-[#FFD4C7] text-[#F25A2B] text-[8px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider">
+                                        ⚡ WAITLIST ACTIVE
+                                      </div>
+                                      
+                                      {/* Heading */}
+                                      <h1 className="font-bold text-slate-900 text-base leading-tight pr-4">
+                                        Welcome to the stage. <br />
+                                        <span className="text-[#F25A2B]">@username</span> is officially stashed.
+                                      </h1>
+                                      
+                                      <p className="text-slate-900 font-bold text-[11px]">Hey stageName,</p>
+                                      
+                                      {emailHeader && (
+                                        <p className="font-bold text-[10px] uppercase tracking-wider text-[#F25A2B]">{emailHeader}</p>
+                                      )}
+                                      
+                                      <p className="text-slate-600 text-[10px] leading-relaxed whitespace-pre-wrap">
+                                        {emailBody}
+                                      </p>
+ 
+                                      {emailCtaText && (
+                                        <div className="pt-2 text-center">
+                                          <a 
+                                            href={emailCtaUrl} 
+                                            onClick={(e) => e.preventDefault()}
+                                            className="inline-block px-5 py-2.5 text-white font-mono font-bold text-[9px] rounded-lg transition-all bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] uppercase tracking-wide shadow-sm"
+                                            style={{ textDecoration: 'none' }}
+                                          >
+                                            {emailCtaText}
+                                          </a>
+                                        </div>
+                                      )}
+                                    </div>
+ 
+                                    {/* Footer */}
+                                    <div className="bg-slate-50 border-t border-slate-100 px-6 py-5 text-center space-y-2">
+                                      <p className="text-[8px] text-slate-400 leading-normal">You are receiving this official launch communication as part of the Artistant waitlist.</p>
+                                      <p className="text-[8px] text-[#F25A2B] font-mono tracking-wider font-bold">Bengaluru, IN | artistant.in</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Logs Terminal */}
+                            {showLogTerminal && (
+                              <div className="mt-6 bg-bg-soft/40 border border-line-soft rounded-2xl overflow-hidden shadow-inner">
+                                <div className="bg-bg-soft/50 px-5 py-3 border-b border-line-soft flex justify-between items-center">
+                                  <span className="text-[9px] font-mono font-bold text-ink-3 flex items-center gap-1.5 uppercase tracking-wider">
+                                    <span className={`w-1.5 h-1.5 rounded-full ${emailSending ? "bg-amber-500 animate-ping" : "bg-[#22C55E]"}`} />
+                                    Execution Broadcast Terminal
+                                  </span>
+                                  <button 
+                                    onClick={() => setShowLogTerminal(false)}
+                                    className="text-ink-3 hover:text-ink text-[9px] font-mono uppercase tracking-wider font-bold cursor-pointer"
+                                  >
+                                    Close
+                                  </button>
+                                </div>
+                                <pre className="p-4 max-h-36 overflow-y-auto text-[9px] font-mono bg-bg-soft/30 border border-line-soft text-ink-2 text-left">
+                                  {emailLogs.length === 0 ? (
+                                    <span className="text-zinc-600 italic">No execution logs active.</span>
+                                  ) : (
+                                    emailLogs.map((logStr, i) => (
+                                      <div key={i} className={logStr.includes("FAILED") ? "text-red-400" : logStr.includes("SUCCESS") ? "text-[#22C55E]" : ""}>
+                                        {logStr}
+                                      </div>
+                                    ))
+                                  )}
+                                </pre>
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
                     {/* Data View */}
                     {viewMode === "table" ? (
-                      <div className="bg-[#121218]/30 border border-white/[0.04] rounded-3xl overflow-hidden backdrop-blur-md shadow-2xl">
+                      <div className="bg-bg-card border border-line-soft rounded-3xl overflow-hidden backdrop-blur-md shadow-2xl">
                         <div className="overflow-x-auto">
                           <table className="w-full border-collapse text-left text-sm">
                             <thead>
-                              <tr className="border-b border-white/[0.04] text-zinc-500 text-[9px] font-mono font-bold uppercase tracking-[0.18em]">
+                              <tr className="border-b border-line-soft text-ink-3 text-[9px] font-mono font-bold uppercase tracking-[0.18em]">
+                                <th className="px-6 py-5 w-12 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={filteredRegistrations.length > 0 && filteredRegistrations.every(r => selectedUserIds.includes(r.id))}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedUserIds(filteredRegistrations.map(r => r.id));
+                                      } else {
+                                        setSelectedUserIds([]);
+                                      }
+                                    }}
+                                    className="w-4 h-4 rounded border-line-soft bg-bg-soft/40 text-[#7C5CFF] focus:ring-0 cursor-pointer"
+                                  />
+                                </th>
                                 <th className="px-8 py-5">Artist Node</th>
                                 <th className="px-6 py-5">Cleared Role</th>
                                 <th className="px-6 py-5">Communication</th>
@@ -1908,10 +1835,10 @@ export default function AdminPage() {
                                 <th className="px-8 py-5 text-right">Actions</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-white/[0.02]">
+                            <tbody className="divide-y divide-line-soft/30">
                               {filteredRegistrations.length === 0 ? (
                                 <tr>
-                                  <td colSpan={6} className="px-8 py-14 text-center text-zinc-500 font-mono text-xs">
+                                  <td colSpan={7} className="px-8 py-14 text-center text-ink-3 font-mono text-xs">
                                     No matching waitlist nodes found.
                                   </td>
                                 </tr>
@@ -1923,19 +1850,37 @@ export default function AdminPage() {
                                     <tr 
                                       key={reg.id} 
                                       onClick={() => setSelectedReg(reg)}
-                                      className={`hover:bg-white/[0.02] transition-colors cursor-pointer duration-150 ${
+                                      className={`hover:bg-bg-card-hover/20 transition-colors cursor-pointer duration-150 ${
                                         reg.is_blocked ? "opacity-30" : ""
                                       }`}
                                     >
+                                      <td className="px-6 py-5 w-12 text-center" onClick={(e) => e.stopPropagation()}>
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedUserIds.includes(reg.id)}
+                                          onChange={() => {
+                                            if (selectedUserIds.includes(reg.id)) {
+                                              setSelectedUserIds(selectedUserIds.filter(id => id !== reg.id));
+                                            } else {
+                                              setSelectedUserIds([...selectedUserIds, reg.id]);
+                                            }
+                                          }}
+                                          className="w-4 h-4 rounded border-line-soft bg-bg-soft/40 text-[#7C5CFF] focus:ring-0 cursor-pointer"
+                                        />
+                                      </td>
                                       <td className="px-8 py-4.5">
                                         <div className="flex items-center gap-3">
-                                          <div className="w-9 h-9 rounded-xl flex items-center justify-center font-display font-bold text-sm text-white shrink-0"
-                                            style={{ background: 'linear-gradient(135deg, var(--brand-3), var(--brand-1))' }}
-                                          >
-                                            {initials}
+                                          <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center font-display font-bold text-sm text-white shrink-0 bg-bg-soft">
+                                            {reg.profile_photo_url ? (
+                                              <img src={reg.profile_photo_url} alt="" className="w-full h-full object-cover" />
+                                            ) : (
+                                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#7C5CFF] to-[#D4567A]">
+                                                {initials}
+                                              </div>
+                                            )}
                                           </div>
                                           <div>
-                                            <div className="font-bold text-white flex items-center gap-2 text-sm">
+                                            <div className="font-bold text-ink flex items-center gap-2 text-sm">
                                               {reg.display_name || "Unspecified Node"}
                                               {reg.is_verified && (
                                                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[8px] font-mono font-bold tracking-[0.08em] bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] text-white">
@@ -1944,7 +1889,7 @@ export default function AdminPage() {
                                               )}
                                               {heuristics.eligible && (
                                                  <span 
-                                                   className="inline-flex items-center px-2 py-0.5 rounded-full text-[8px] font-mono font-bold tracking-[0.08em] bg-white/5 text-[#22C55E] border border-[#22C55E]/20"
+                                                   className="inline-flex items-center px-2 py-0.5 rounded-full text-[8px] font-mono font-bold tracking-[0.08em] bg-bg-soft text-[#22C55E] border border-[#22C55E]/20"
                                                    title={`Auto-verify candidate: ${heuristics.reasons.join(", ")}`}
                                                  >
                                                    SUGGESTED
@@ -1960,22 +1905,22 @@ export default function AdminPage() {
                                       <td className="px-6 py-4.5">
                                         <div>
                                           <span className="inline-block px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-[0.08em]" style={{
-                                            background: 'rgba(255,255,255,0.02)',
+                                            background: 'var(--bg-soft)',
                                             color: reg.role === 'artist' ? 'var(--brand-3)' : reg.role === 'venue' ? 'var(--brand-2)' : reg.role === 'vendor' ? 'var(--brand-1)' : 'var(--ink-3)',
                                             border: `1px solid color-mix(in srgb, ${reg.role === 'artist' ? 'var(--brand-3)' : reg.role === 'venue' ? 'var(--brand-2)' : reg.role === 'vendor' ? 'var(--brand-1)' : 'var(--ink-3)'} 15%, transparent)`,
                                           }}>
                                             {reg.role || "fan"}
                                           </span>
                                           {reg.category && (
-                                            <span className="block text-[10px] text-zinc-500 mt-1 capitalize font-mono">
+                                            <span className="block text-[10px] text-ink-3 mt-1 capitalize font-mono">
                                               {reg.category.replace("_", " ")}
                                             </span>
                                           )}
                                         </div>
                                       </td>
-                                      <td className="px-6 py-4.5 font-mono text-[11px] text-zinc-400 space-y-0.5">
-                                        <div className="text-white/80">{reg.email}</div>
-                                        {reg.phone && <div className="text-zinc-500">{reg.phone}</div>}
+                                      <td className="px-6 py-4.5 font-mono text-[11px] text-ink-2 space-y-0.5 text-left">
+                                        <div className="text-ink flex items-center">{reg.email}</div>
+                                        {reg.phone && <div className="text-ink-3">{reg.phone}</div>}
                                       </td>
                                       <td className="px-6 py-4.5">
                                         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
@@ -1987,9 +1932,9 @@ export default function AdminPage() {
                                               const val = e.target.value === "" ? null : parseInt(e.target.value, 10);
                                               handleSavePositionOverride(reg.user_id, val);
                                             }}
-                                            className="w-14 bg-black/60 border border-white/10 rounded-lg py-1 px-1.5 text-xs text-white text-center font-mono focus:outline-none focus:border-brand transition-all"
+                                            className="w-14 bg-bg-soft border border-line-soft rounded-lg py-1 px-1.5 text-xs text-ink text-center font-mono focus:outline-none focus:border-brand transition-all"
                                           />
-                                          <span className="text-[10px] font-mono text-zinc-500">
+                                          <span className="text-[10px] font-mono text-ink-3">
                                             {reg.position_override ? `#${reg.position_override}` : "Queue"}
                                           </span>
                                         </div>
@@ -1999,7 +1944,7 @@ export default function AdminPage() {
                                           onClick={(e) => { e.stopPropagation(); handleVerifyAndLock(reg); }}
                                           className="py-1 px-3.5 rounded-full text-[9px] font-mono font-bold tracking-[0.06em] uppercase transition-all cursor-pointer"
                                           style={reg.is_verified ? {
-                                            background: 'rgba(255,255,255,0.03)',
+                                            background: 'var(--bg-soft)',
                                             color: 'var(--brand-3)',
                                             border: '1px solid rgba(124,92,255,0.2)',
                                           } : {
@@ -2021,9 +1966,9 @@ export default function AdminPage() {
                                             color: 'var(--hot)',
                                             border: '1px solid rgba(255,75,75,0.2)',
                                           } : {
-                                            background: 'rgba(255,255,255,0.02)',
+                                            background: 'var(--bg-soft)',
                                             color: 'var(--ink-3)',
-                                            border: '1px solid rgba(255,255,255,0.04)',
+                                            border: '1px solid var(--line-soft)',
                                           }}
                                         >
                                           {reg.is_blocked ? "Restore" : "Suspend"}
@@ -2040,7 +1985,7 @@ export default function AdminPage() {
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                         {filteredRegistrations.length === 0 ? (
-                          <div className="col-span-full py-12 text-center text-zinc-500 font-mono bg-[#121217]/40 rounded-[2rem] border border-white/[0.04]">
+                          <div className="col-span-full py-12 text-center text-ink-3 font-mono bg-bg-card border border-line-soft rounded-[2rem]">
                             No matching registrations found.
                           </div>
                         ) : (
@@ -2059,20 +2004,37 @@ export default function AdminPage() {
                                 key={reg.id}
                                 idx={idx}
                                 onClick={() => setSelectedReg(reg)}
-                                className={`bg-[#121217]/40 border border-white/[0.04] rounded-[2rem] p-7 flex flex-col gap-0 cursor-pointer hover:border-white/10 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 ${
+                                className={`bg-bg-card border border-line-soft rounded-[2rem] p-7 flex flex-col gap-0 cursor-pointer hover:border-white/10 hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 ${
                                   reg.is_blocked ? "opacity-40" : ""
                                 }`}
                                 style={{ minHeight: '390px' }}
                               >
-                                {/* Watermark initial */}
-                                <div className="absolute top-2 right-6 select-none pointer-events-none font-display font-black text-7xl text-white/[0.02]">
-                                  {initials}
-                                </div>
-
                                 {/* Top: Icon + Status badges */}
                                 <div className="flex justify-between items-start mb-5 z-10">
-                                  <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-white/[0.02] border border-white/5 font-display font-bold text-sm text-brand shadow-inner">
-                                    {initials}
+                                  <div className="flex items-center gap-3">
+                                    <div className="relative flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedUserIds.includes(reg.id)}
+                                        onChange={() => {
+                                          if (selectedUserIds.includes(reg.id)) {
+                                            setSelectedUserIds(selectedUserIds.filter(id => id !== reg.id));
+                                          } else {
+                                            setSelectedUserIds([...selectedUserIds, reg.id]);
+                                          }
+                                        }}
+                                        className="w-4 h-4 rounded border-line-soft bg-bg-soft/40 text-[#7C5CFF] focus:ring-0 cursor-pointer z-10"
+                                      />
+                                      <div className="w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center bg-bg-soft border border-line-soft font-display font-bold text-sm text-ink shadow-inner">
+                                        {reg.profile_photo_url ? (
+                                          <img src={reg.profile_photo_url} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#7C5CFF] to-[#D4567A] text-white">
+                                            {initials}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
                                   </div>
                                   <div className="flex flex-col gap-1.5 items-end">
                                     {reg.is_verified && (
@@ -2081,7 +2043,7 @@ export default function AdminPage() {
                                       </span>
                                     )}
                                     {heuristics.eligible && (
-                                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold tracking-[0.08em] bg-white/5 text-[#22C55E] border border-[#22C55E]/20" title={`Auto-verify: ${heuristics.reasons.join(", ")}`}>
+                                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold tracking-[0.08em] bg-bg-soft text-[#22C55E] border border-[#22C55E]/20" title={`Auto-verify: ${heuristics.reasons.join(", ")}`}>
                                         SUGGESTED
                                       </span>
                                     )}
@@ -2094,8 +2056,8 @@ export default function AdminPage() {
                                 </div>
 
                                 {/* Identity */}
-                                <div className="mb-1 z-10">
-                                  <h3 className="font-display font-bold text-lg text-white uppercase tracking-tight leading-tight pr-4 truncate">
+                                <div className="mb-1 z-10 text-left">
+                                  <h3 className="font-display font-bold text-lg text-ink uppercase tracking-tight leading-tight pr-4 truncate">
                                     {reg.display_name || "Unknown"}
                                   </h3>
                                   <p className="text-xs font-mono mt-1 text-brand">
@@ -2104,9 +2066,9 @@ export default function AdminPage() {
                                 </div>
 
                                 {/* Role & Tags */}
-                                <div className="mb-auto z-10 pt-3">
+                                <div className="mb-auto z-10 pt-3 text-left">
                                   <span className="inline-block px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-[0.08em]" style={{
-                                    background: 'rgba(255,255,255,0.02)',
+                                    background: 'var(--bg-soft)',
                                     color: roleColor,
                                     border: `1px solid color-mix(in srgb, ${roleColor} 15%, transparent)`,
                                   }}>
@@ -2116,14 +2078,14 @@ export default function AdminPage() {
                                   {(reg.category || (reg.genres && reg.genres.length > 0)) && (
                                     <div className="mt-3.5 space-y-2">
                                       {reg.category && (
-                                        <p className="text-[11px] text-zinc-400 capitalize">
-                                          <span className="text-zinc-500 font-mono">Category:</span> {reg.category.replace("_", " ")}
+                                        <p className="text-[11px] text-ink-2 capitalize">
+                                          <span className="text-ink-3 font-mono">Category:</span> {reg.category.replace("_", " ")}
                                         </p>
                                       )}
                                       {reg.genres && reg.genres.length > 0 && (
                                         <div className="flex flex-wrap gap-1.5">
                                           {reg.genres.map(g => (
-                                            <span key={g} className="text-[9px] font-mono px-2 py-0.5 rounded-full text-zinc-400 bg-white/[0.01] border border-white/[0.03]">
+                                            <span key={g} className="text-[9px] font-mono px-2 py-0.5 rounded-full text-ink-2 bg-bg-soft/20 border border-line-soft">
                                               #{g}
                                             </span>
                                           ))}
@@ -2134,26 +2096,26 @@ export default function AdminPage() {
                                 </div>
 
                                 {/* Contact info */}
-                                <div className="text-xs text-zinc-400 space-y-1.5 mt-5 pt-4 z-10 border-t border-white/[0.04]">
+                                <div className="text-xs text-ink-2 space-y-1.5 mt-5 pt-4 z-10 border-t border-line-soft text-left">
                                   <div className="flex items-center gap-2">
-                                    <Mail className="w-3.5 h-3.5 text-zinc-500" />
+                                    <Mail className="w-3.5 h-3.5 text-ink-3" />
                                     <span className="truncate">{reg.email}</span>
                                   </div>
                                   {reg.phone && (
                                     <div className="flex items-center gap-2">
-                                      <Smartphone className="w-3.5 h-3.5 text-zinc-500" />
+                                      <Smartphone className="w-3.5 h-3.5 text-ink-3" />
                                       <span>{reg.phone}</span>
                                     </div>
                                   )}
                                 </div>
 
                                 {/* Card Actions */}
-                                <div className="mt-5 pt-4 flex items-center gap-2.5 z-10 border-t border-white/[0.04]" onClick={(e) => e.stopPropagation()}>
+                                <div className="mt-5 pt-4 flex items-center gap-2.5 z-10 border-t border-line-soft" onClick={(e) => e.stopPropagation()}>
                                   <button
                                     onClick={() => handleVerifyAndLock(reg)}
                                     className="flex-1 py-2 rounded-xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                                     style={reg.is_verified ? {
-                                      background: 'rgba(255,255,255,0.02)',
+                                      background: 'var(--bg-soft)',
                                       color: 'var(--brand-3)',
                                       border: '1px solid rgba(124,92,255,0.2)',
                                     } : {
@@ -2175,23 +2137,23 @@ export default function AdminPage() {
                                       color: 'var(--hot)',
                                       border: '1px solid rgba(255,75,75,0.2)',
                                     } : {
-                                      background: 'rgba(255,255,255,0.02)',
+                                      background: 'var(--bg-soft)',
                                       color: 'var(--ink-3)',
-                                      border: '1px solid rgba(255,255,255,0.04)',
+                                      border: '1px solid var(--line-soft)',
                                     }}
                                   >
                                     <XCircle className="w-3.5 h-3.5" />
                                     {reg.is_blocked ? "Restore" : "Suspend"}
                                   </button>
-                        </div>
-                      </GlowingAdminCard>
-                    );
-                  })
+                                </div>
+                              </GlowingAdminCard>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* ===================================================================
             TAB X: LEADERBOARDS
@@ -2201,38 +2163,38 @@ export default function AdminPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               
               {/* Points Leaderboard */}
-              <GlowingAdminCard idx={0} className="bg-[#121217]/40 border border-white/[0.04] rounded-3xl overflow-hidden flex flex-col h-[600px] backdrop-blur-md">
-                <div className="p-8 flex items-center gap-4 border-b border-white/[0.04]">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/[0.02] border border-white/5 shadow-inner">
+              <GlowingAdminCard idx={0} className="bg-bg-card border border-line-soft rounded-3xl overflow-hidden flex flex-col h-[600px] backdrop-blur-md">
+                <div className="p-8 flex items-center gap-4 border-b border-line-soft text-left">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-bg-soft border border-line-soft shadow-inner">
                     <Trophy className="w-5 h-5 text-brand" />
                   </div>
                   <div>
-                    <h3 className="font-display font-bold text-white text-lg uppercase tracking-tight">Points Ranking</h3>
+                    <h3 className="font-display font-bold text-ink text-lg uppercase tracking-tight">Points Ranking</h3>
                     <p className="text-[10px] font-mono font-bold tracking-[0.12em] uppercase mt-1 text-[#F25A2B]">Base 100 + 50 per referral</p>
                   </div>
                 </div>
                 <div className="overflow-y-auto flex-1 p-6 space-y-2">
                   {leaderboards.map((user, idx) => (
-                    <div key={`pts-${user.id}`} className={`flex items-center justify-between p-4 rounded-xl border border-transparent transition-all duration-200 hover:bg-white/[0.03] hover:border-white/[0.05] ${
-                      idx < 3 ? 'bg-white/[0.01] border-white/[0.02]' : ''
+                    <div key={`pts-${user.id}`} className={`flex items-center justify-between p-4 rounded-xl border border-transparent transition-all duration-200 hover:bg-bg-card-hover/20 hover:border-line-soft ${
+                      idx < 3 ? 'bg-bg-soft/20 border-line-soft/30' : ''
                     }`}>
                       <div className="flex items-center gap-4">
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-mono font-bold text-xs ${
-                          idx === 0 ? "text-amber-400 bg-amber-400/10 border border-amber-400/20 shadow-[0_0_12px_rgba(251,191,36,0.15)]" :
+                          idx === 0 ? "text-amber-500 bg-amber-400/10 border border-amber-400/20 shadow-[0_0_12px_rgba(251,191,36,0.15)]" :
                           idx === 1 ? "text-zinc-300 bg-zinc-300/10 border border-zinc-300/20" :
                           idx === 2 ? "text-[#b45309] bg-[#b45309]/10 border border-[#b45309]/20" :
-                          "text-zinc-500 bg-white/[0.01]"
+                          "text-ink-3 bg-bg-soft/40"
                         }`}>
                           #{idx + 1}
                         </div>
-                        <div>
-                          <p className="font-bold text-white text-sm">{user.display_name || user.username}</p>
-                          <p className="text-[10px] font-mono text-zinc-500">@{user.username}</p>
+                        <div className="text-left">
+                          <p className="font-bold text-ink text-sm">{user.display_name || user.username}</p>
+                          <p className="text-[10px] font-mono text-ink-3">@{user.username}</p>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className="text-lg font-display font-extrabold text-[#F25A2B]">{user.points}</p>
-                        <p className="text-[9px] font-mono text-zinc-500 uppercase tracking-[0.08em]">points</p>
+                        <p className="text-[9px] font-mono text-ink-3 uppercase tracking-[0.08em]">points</p>
                       </div>
                     </div>
                   ))}
@@ -2240,13 +2202,13 @@ export default function AdminPage() {
               </GlowingAdminCard>
 
               {/* Referrals Leaderboard */}
-              <GlowingAdminCard idx={1} className="bg-[#121217]/40 border border-white/[0.04] rounded-3xl overflow-hidden flex flex-col h-[600px] backdrop-blur-md">
-                <div className="p-8 flex items-center gap-4 border-b border-white/[0.04]">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/[0.02] border border-white/5 shadow-inner">
+              <GlowingAdminCard idx={1} className="bg-bg-card border border-line-soft rounded-3xl overflow-hidden flex flex-col h-[600px] backdrop-blur-md">
+                <div className="p-8 flex items-center gap-4 border-b border-line-soft text-left">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-bg-soft border border-line-soft shadow-inner">
                     <Users className="w-5 h-5 text-brand" />
                   </div>
                   <div>
-                    <h3 className="font-display font-bold text-white text-lg uppercase tracking-tight">Network Builders</h3>
+                    <h3 className="font-display font-bold text-ink text-lg uppercase tracking-tight">Network Builders</h3>
                     <p className="text-[10px] font-mono font-bold tracking-[0.12em] uppercase mt-1 text-[#7C5CFF]">Ranked by total referrals</p>
                   </div>
                 </div>
@@ -2254,26 +2216,26 @@ export default function AdminPage() {
                   {[...leaderboards]
                     .sort((a, b) => (b.refs || 0) - (a.refs || 0))
                     .map((user, idx) => (
-                    <div key={`ref-${user.id}`} className={`flex items-center justify-between p-4 rounded-xl border border-transparent transition-all duration-200 hover:bg-white/[0.03] hover:border-white/[0.05] ${
-                      idx < 3 ? 'bg-white/[0.01] border-white/[0.02]' : ''
+                    <div key={`ref-${user.id}`} className={`flex items-center justify-between p-4 rounded-xl border border-transparent transition-all duration-200 hover:bg-bg-card-hover/20 hover:border-line-soft ${
+                      idx < 3 ? 'bg-bg-soft/20 border-line-soft/30' : ''
                     }`}>
                       <div className="flex items-center gap-4">
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-mono font-bold text-xs ${
                           idx === 0 ? "text-amber-400 bg-amber-400/10 border border-amber-400/20 shadow-[0_0_12px_rgba(251,191,36,0.15)]" :
                           idx === 1 ? "text-zinc-300 bg-zinc-300/10 border border-zinc-300/20" :
                           idx === 2 ? "text-[#b45309] bg-[#b45309]/10 border border-[#b45309]/20" :
-                          "text-zinc-500 bg-white/[0.01]"
+                          "text-ink-3 bg-bg-soft/40"
                         }`}>
                           #{idx + 1}
                         </div>
-                        <div>
-                          <p className="font-bold text-white text-sm">{user.display_name || user.username}</p>
-                          <p className="text-[10px] font-mono text-zinc-500">@{user.username}</p>
+                        <div className="text-left">
+                          <p className="font-bold text-ink text-sm">{user.display_name || user.username}</p>
+                          <p className="text-[10px] font-mono text-ink-3">@{user.username}</p>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className="text-lg font-display font-extrabold text-[#7C5CFF]">{user.refs || 0}</p>
-                        <p className="text-[9px] font-mono text-zinc-500 uppercase tracking-[0.08em]">referrals</p>
+                        <p className="text-[9px] font-mono text-ink-3 uppercase tracking-[0.08em]">referrals</p>
                       </div>
                     </div>
                   ))}
@@ -2291,43 +2253,43 @@ export default function AdminPage() {
           <div className="space-y-8 animate-in fade-in duration-200">
             {/* Overview cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-[#121217]/40 border border-white/[0.04] rounded-3xl p-6 relative overflow-hidden backdrop-blur-md shadow-lg">
+              <div className="bg-bg-card border border-line-soft rounded-3xl p-6 relative overflow-hidden backdrop-blur-md shadow-lg text-left">
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider">Total Traffic (Visits)</p>
-                    <h3 className="text-3xl font-display font-extrabold mt-2 text-white">
+                    <p className="text-[10px] font-mono font-bold text-ink-3 uppercase tracking-wider">Total Traffic (Visits)</p>
+                    <h3 className="text-3xl font-display font-extrabold mt-2 text-ink">
                       {activityLogs.filter(l => l.action_type === 'visit').length}
                     </h3>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-white/[0.02] border border-white/10 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-bg-soft border border-line-soft flex items-center justify-center">
                     <Globe className="w-5 h-5 text-brand" />
                   </div>
                 </div>
               </div>
 
-              <div className="bg-[#121217]/40 border border-white/[0.04] rounded-3xl p-6 relative overflow-hidden backdrop-blur-md shadow-lg">
+              <div className="bg-bg-card border border-line-soft rounded-3xl p-6 relative overflow-hidden backdrop-blur-md shadow-lg text-left">
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider">Distinct Logins</p>
-                    <h3 className="text-3xl font-display font-extrabold mt-2 text-white">
+                    <p className="text-[10px] font-mono font-bold text-ink-3 uppercase tracking-wider">Distinct Logins</p>
+                    <h3 className="text-3xl font-display font-extrabold mt-2 text-ink">
                       {new Set(activityLogs.filter(l => l.action_type === 'login').map(l => l.email || l.user_id)).size}
                     </h3>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-white/[0.02] border border-white/10 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-bg-soft border border-line-soft flex items-center justify-center">
                     <Lock className="w-5 h-5 text-brand" />
                   </div>
                 </div>
               </div>
 
-              <div className="bg-[#121217]/40 border border-white/[0.04] rounded-3xl p-6 relative overflow-hidden backdrop-blur-md shadow-lg">
+              <div className="bg-bg-card border border-line-soft rounded-3xl p-6 relative overflow-hidden backdrop-blur-md shadow-lg text-left">
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider">Total Waitlisted</p>
-                    <h3 className="text-3xl font-display font-extrabold mt-2 text-white">
+                    <p className="text-[10px] font-mono font-bold text-ink-3 uppercase tracking-wider">Total Waitlisted</p>
+                    <h3 className="text-3xl font-display font-extrabold mt-2 text-ink">
                       {registrations.length}
                     </h3>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-white/[0.02] border border-white/10 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-bg-soft border border-line-soft flex items-center justify-center">
                     <Users className="w-5 h-5 text-brand" />
                   </div>
                 </div>
@@ -2335,23 +2297,23 @@ export default function AdminPage() {
             </div>
 
             {/* Filter and Table Card */}
-            <div className="bg-[#121218]/30 border border-white/[0.04] rounded-3xl p-8 space-y-6 backdrop-blur-md shadow-2xl">
+            <div className="bg-bg-card border border-line-soft rounded-3xl p-8 space-y-6 backdrop-blur-md shadow-2xl">
               <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
-                <div>
-                  <h3 className="text-lg font-display font-bold text-white uppercase tracking-tight">Recent Session Actions</h3>
-                  <p className="text-xs text-zinc-400 mt-1">Real-time developer & visitor logs on the platform</p>
+                <div className="text-left">
+                  <h3 className="text-lg font-display font-bold text-ink uppercase tracking-tight">Recent Session Actions</h3>
+                  <p className="text-xs text-ink-2 mt-1">Real-time developer & visitor logs on the platform</p>
                 </div>
                 
                 <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                   {/* Search */}
                   <div className="relative flex-1 sm:w-64">
-                    <Search className="w-4 h-4 text-zinc-500 absolute left-4 top-1/2 -translate-y-1/2" />
+                    <Search className="w-4 h-4 text-ink-3 absolute left-4 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
                       placeholder="Search email, user..."
                       value={activitySearch}
                       onChange={(e) => setActivitySearch(e.target.value)}
-                      className="w-full bg-[#0a0a0f] border border-white/[0.06] text-white rounded-xl pl-10 pr-4 py-2.5 text-xs font-mono focus:border-[#7C5CFF] focus:ring-4 focus:ring-[#7C5CFF]/15 transition-all outline-none"
+                      className="w-full bg-bg-soft/40 border border-line-soft text-ink rounded-xl pl-10 pr-4 py-2.5 text-xs font-mono focus:border-[#7C5CFF] focus:ring-4 focus:ring-[#7C5CFF]/15 transition-all outline-none"
                     />
                   </div>
 
@@ -2359,7 +2321,7 @@ export default function AdminPage() {
                   <select
                     value={activityFilter}
                     onChange={(e) => setActivityFilter(e.target.value)}
-                    className="bg-[#0a0a0f] border border-white/[0.06] text-white rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-[#7C5CFF] transition-all cursor-pointer font-mono font-bold uppercase tracking-wider"
+                    className="bg-bg-soft/40 border border-line-soft text-ink rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-[#7C5CFF] transition-all cursor-pointer font-mono font-bold uppercase tracking-wider"
                   >
                     <option value="all">All Events</option>
                     <option value="visit">Visits Only</option>
@@ -2373,7 +2335,7 @@ export default function AdminPage() {
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                   <thead>
-                    <tr className="border-b border-white/[0.04] text-[9px] font-mono text-zinc-500 uppercase tracking-widest text-left">
+                    <tr className="border-b border-line-soft text-[9px] font-mono text-ink-3 uppercase tracking-widest text-left">
                       <th className="pb-3.5 font-bold">Time</th>
                       <th className="pb-3.5 font-bold">Event Node</th>
                       <th className="pb-3.5 font-bold">User Identity</th>
@@ -2381,7 +2343,7 @@ export default function AdminPage() {
                       <th className="pb-3.5 font-bold">Referrer</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/[0.02]">
+                  <tbody className="divide-y divide-line-soft/30">
                     {activityLogs
                       .filter(log => {
                         if (activityFilter !== "all" && log.action_type !== activityFilter) return false;
@@ -2395,11 +2357,11 @@ export default function AdminPage() {
                         return true;
                       })
                       .map((log) => (
-                        <tr key={log.id} className="text-xs font-mono hover:bg-white/[0.02] transition-colors">
-                          <td className="py-4 text-zinc-400">{new Date(log.created_at).toLocaleString()}</td>
+                        <tr key={log.id} className="text-xs font-mono hover:bg-bg-card-hover/20 transition-colors text-left">
+                          <td className="py-4 text-ink-2">{new Date(log.created_at).toLocaleString()}</td>
                           <td className="py-4">
                             {log.action_type === 'visit' && (
-                              <span className="px-2.5 py-0.5 rounded-full text-[8px] font-bold uppercase bg-white/5 text-zinc-400 border border-white/10">
+                              <span className="px-2.5 py-0.5 rounded-full text-[8px] font-bold uppercase bg-bg-soft text-ink-3 border border-line-soft">
                                 VISIT
                               </span>
                             )}
@@ -2414,18 +2376,18 @@ export default function AdminPage() {
                               </span>
                             )}
                           </td>
-                          <td className="py-4 font-bold text-white">
+                          <td className="py-4 font-bold text-ink">
                             {log.username ? `@${log.username}` : (log.email || "Anonymous Visitor")}
                           </td>
-                          <td className="py-4 text-zinc-500 truncate max-w-[200px]" title={log.user_agent}>
+                          <td className="py-4 text-ink-3 truncate max-w-[200px]" title={log.user_agent}>
                             {parseUserAgent(log.user_agent)}
                           </td>
-                          <td className="py-4 text-zinc-400">{log.referrer || "Direct Link"}</td>
+                          <td className="py-4 text-ink-2">{log.referrer || "Direct Link"}</td>
                         </tr>
                       ))}
                     {activityLogs.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="py-8 text-center text-zinc-500">No activity logs captured yet.</td>
+                        <td colSpan={5} className="py-8 text-center text-ink-3">No activity logs captured yet.</td>
                       </tr>
                     )}
                   </tbody>
@@ -2442,22 +2404,22 @@ export default function AdminPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-200">
             {/* Left form column */}
             <div className="lg:col-span-1 space-y-6">
-              <div className="bg-[#121217]/40 border border-white/[0.04] p-8 rounded-3xl space-y-6 backdrop-blur-md shadow-lg">
-                <div className="border-b border-white/[0.04] pb-5">
-                  <h3 className="text-lg font-display font-bold text-white uppercase tracking-tight">Grant Clearance</h3>
-                  <p className="text-xs text-zinc-400 mt-1">Authorize a team member to access this console.</p>
+              <div className="bg-bg-card border border-line-soft p-8 rounded-3xl space-y-6 backdrop-blur-md shadow-lg text-left">
+                <div className="border-b border-line-soft pb-5">
+                  <h3 className="text-lg font-display font-bold text-ink uppercase tracking-tight">Grant Clearance</h3>
+                  <p className="text-xs text-ink-2 mt-1">Authorize a team member to access this console.</p>
                 </div>
 
                 <form onSubmit={handleAddAdmin} className="space-y-4">
                   <div className="space-y-2.5">
-                    <label className="text-[9px] font-mono font-bold uppercase tracking-[0.12em] text-zinc-500">Google Account Email</label>
+                    <label className="text-[9px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3">Google Account Email</label>
                     <input
                       type="email"
                       required
                       placeholder="developer@artistant.in"
                       value={newAdminEmail}
                       onChange={(e) => setNewAdminEmail(e.target.value)}
-                      className="w-full bg-[#0a0a0f] border border-white/[0.06] text-white rounded-xl px-4 py-3.5 text-xs font-mono focus:border-[#7C5CFF] focus:ring-4 focus:ring-[#7C5CFF]/15 transition-all outline-none"
+                      className="w-full bg-bg-soft/40 border border-line-soft text-ink rounded-xl px-4 py-3.5 text-xs font-mono focus:border-[#7C5CFF] focus:ring-4 focus:ring-[#7C5CFF]/15 transition-all outline-none"
                     />
                   </div>
 
@@ -2473,36 +2435,36 @@ export default function AdminPage() {
             </div>
 
             {/* Right table list column */}
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-[#121217]/40 border border-white/[0.04] p-8 rounded-3xl space-y-6 backdrop-blur-md shadow-lg">
-                <div className="border-b border-white/[0.04] pb-5">
-                  <h3 className="text-lg font-display font-bold text-white uppercase tracking-tight">Authorized Administrators</h3>
-                  <p className="text-xs text-zinc-400 mt-1">Active console credentials with full table write privileges.</p>
+            <div className="lg:col-span-2 space-y-6 text-left">
+              <div className="bg-bg-card border border-line-soft p-8 rounded-3xl space-y-6 backdrop-blur-md shadow-lg">
+                <div className="border-b border-line-soft pb-5">
+                  <h3 className="text-lg font-display font-bold text-ink uppercase tracking-tight">Authorized Administrators</h3>
+                  <p className="text-xs text-ink-2 mt-1">Active console credentials with full table write privileges.</p>
                 </div>
 
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse">
                     <thead>
-                      <tr className="border-b border-white/[0.04] text-[9px] font-mono text-zinc-500 uppercase tracking-widest text-left">
+                      <tr className="border-b border-line-soft text-[9px] font-mono text-ink-3 uppercase tracking-widest text-left">
                         <th className="pb-3.5 font-bold">User Email</th>
                         <th className="pb-3.5 font-bold">Granted By</th>
                         <th className="pb-3.5 font-bold">Access Date</th>
                         <th className="pb-3.5 text-right font-bold">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/[0.02]">
+                    <tbody className="divide-y divide-line-soft/30">
                       {/* Seed default hardcoded super admin display */}
-                      <tr className="text-xs font-mono hover:bg-white/[0.02] transition-colors">
-                        <td className="py-4 flex items-center gap-3 font-bold text-white">
+                      <tr className="text-xs font-mono hover:bg-bg-card-hover/20 transition-colors">
+                        <td className="py-4 flex items-center gap-3 font-bold text-ink text-left">
                           <div className="w-8 h-8 rounded-lg bg-[#7C5CFF]/10 text-[#7C5CFF] border border-[#7C5CFF]/20 flex items-center justify-center font-display font-bold">
                             S
                           </div>
                           <span>anudeepdash2004@gmail.com</span>
                         </td>
-                        <td className="py-4 text-zinc-400">system</td>
-                        <td className="py-4 text-zinc-500">Jul 1, 2026</td>
+                        <td className="py-4 text-ink-2">system</td>
+                        <td className="py-4 text-ink-3">Jul 1, 2026</td>
                         <td className="py-4 text-right">
-                          <span className="px-2.5 py-0.5 rounded-full text-[8px] font-bold uppercase bg-white/5 text-zinc-400 border border-white/10">
+                          <span className="px-2.5 py-0.5 rounded-full text-[8px] font-bold uppercase bg-bg-soft text-ink-3 border border-line-soft">
                             Super-Admin
                           </span>
                         </td>
@@ -2511,15 +2473,15 @@ export default function AdminPage() {
                       {adminUsers
                         .filter(admin => admin.email !== 'anudeepdash2004@gmail.com')
                         .map((admin) => (
-                          <tr key={admin.id} className="text-xs font-mono hover:bg-white/[0.02] transition-colors">
-                            <td className="py-4 flex items-center gap-3 font-bold text-white">
-                              <div className="w-8 h-8 rounded-lg bg-white/[0.02] border border-white/10 text-white flex items-center justify-center font-display font-bold">
+                          <tr key={admin.id} className="text-xs font-mono hover:bg-bg-card-hover/20 transition-colors">
+                            <td className="py-4 flex items-center gap-3 font-bold text-ink text-left">
+                              <div className="w-8 h-8 rounded-lg bg-bg-soft border border-line-soft text-ink flex items-center justify-center font-display font-bold">
                                 {admin.email.substring(0, 1).toUpperCase()}
                               </div>
                               <span>{admin.email}</span>
                             </td>
-                            <td className="py-4 text-zinc-400">{admin.added_by || "unknown"}</td>
-                            <td className="py-4 text-zinc-500">{new Date(admin.created_at).toLocaleDateString()}</td>
+                            <td className="py-4 text-ink-2">{admin.added_by || "unknown"}</td>
+                            <td className="py-4 text-ink-3">{new Date(admin.created_at).toLocaleDateString()}</td>
                             <td className="py-4 text-right">
                               <button
                                 onClick={() => handleRemoveAdmin(admin.email)}
@@ -2539,632 +2501,6 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ===================================================================
-            TAB 2: MARKETING CONTENT WALL
-            =================================================================== */}
-        {activeTab === "graphics" && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-200">
-            
-            {/* Left Graphics Parameter Control Panel */}
-            <div className="lg:col-span-5 space-y-8">
-              
-              {/* Studio Settings */}
-              <div className="bg-[#121217]/40 border border-white/[0.04] p-8 rounded-3xl space-y-6 backdrop-blur-md shadow-lg">
-                <div className="flex items-center gap-4 border-b border-white/[0.04] pb-5">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/[0.02] border border-white/5 shadow-inner">
-                    <Settings className="w-5 h-5 text-brand" />
-                  </div>
-                  <div>
-                    <h3 className="font-display font-bold text-white text-lg uppercase tracking-tight">Graphics Parameters</h3>
-                    <p className="text-[10px] font-mono font-bold tracking-[0.12em] uppercase mt-1 text-[#7C5CFF]">Configure unified studio output</p>
-                  </div>
-                </div>
-
-                {/* Switch Graphic Type Mode */}
-                <div>
-                  <label className="block text-[9px] font-mono font-bold uppercase text-zinc-500 tracking-[0.15em] mb-3">
-                    Studio Generation Target
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { type: "milestone", label: "Milestone" },
-                      { type: "feature", label: "Feature Drop" },
-                      { type: "countdown", label: "Countdown" }
-                    ].map(t => (
-                      <button
-                        key={t.type}
-                        onClick={() => setGraphicType(t.type as any)}
-                        className="py-2.5 rounded-xl font-mono text-[10px] font-bold uppercase tracking-[0.06em] transition-all border cursor-pointer"
-                        style={graphicType === t.type ? {
-                          background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
-                          color: 'white',
-                          border: 'none',
-                          boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)',
-                        } : {
-                          background: 'rgba(255,255,255,0.02)',
-                          color: 'var(--ink-3)',
-                          borderColor: 'rgba(255,255,255,0.04)',
-                        }}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Aspect Layout Ratio dimensions */}
-                <div>
-                  <label className="block text-[9px] font-mono font-bold uppercase text-zinc-500 tracking-[0.15em] mb-3">
-                    Output Aspect Ratio
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={() => setCanvasLayout("square")}
-                      className="py-2.5 rounded-xl font-mono text-[10px] font-bold uppercase tracking-[0.06em] transition-all border cursor-pointer"
-                      style={canvasLayout === "square" ? {
-                        background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
-                        color: 'white',
-                        border: 'none',
-                        boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)',
-                      } : {
-                        background: 'rgba(255,255,255,0.02)',
-                        color: 'var(--ink-3)',
-                        borderColor: 'rgba(255,255,255,0.04)',
-                      }}
-                    >
-                      Square (1:1)
-                    </button>
-                    <button
-                      onClick={() => setCanvasLayout("portrait")}
-                      className="py-2.5 rounded-xl font-mono text-[10px] font-bold uppercase tracking-[0.06em] transition-all border cursor-pointer"
-                      style={canvasLayout === "portrait" ? {
-                        background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
-                        color: 'white',
-                        border: 'none',
-                        boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)',
-                      } : {
-                        background: 'rgba(255,255,255,0.02)',
-                        color: 'var(--ink-3)',
-                        borderColor: 'rgba(255,255,255,0.04)',
-                      }}
-                    >
-                      Portrait (9:16)
-                    </button>
-                  </div>
-                </div>
-
-                {/* Theme Selector */}
-                <div>
-                  <label className="block text-[9px] font-mono font-bold uppercase text-zinc-500 tracking-[0.15em] mb-3">
-                    Creative Glow Theme
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { key: "cyber", label: "Cyber Neon", dot: "#D4567A" },
-                      { key: "sunset", label: "Retro Sunset", dot: "#F25A2B" },
-                      { key: "indigo", label: "Deep Indigo", dot: "#7C5CFF" }
-                    ].map(theme => (
-                      <button
-                        key={theme.key}
-                        onClick={() => setUnifiedTheme(theme.key as any)}
-                        className="py-2 rounded-xl border text-[10px] font-mono flex flex-col items-center gap-1.5 transition-all cursor-pointer"
-                        style={unifiedTheme === theme.key ? {
-                          background: 'rgba(255,255,255,0.03)',
-                          color: 'var(--ink)',
-                          borderColor: theme.dot,
-                        } : {
-                          background: 'transparent',
-                          color: 'var(--ink-3)',
-                          borderColor: 'rgba(255,255,255,0.04)',
-                        }}
-                      >
-                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: theme.dot }} />
-                        {theme.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Dynamic Parameter Editor Panel */}
-              <div className="bg-[#121217]/40 border border-white/[0.04] p-8 rounded-3xl space-y-6 backdrop-blur-md shadow-lg">
-                
-                {graphicType === "milestone" && (
-                  <>
-                    <h3 className="text-base font-display font-bold text-white border-b border-white/[0.04] pb-3 flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-[#F25A2B]" />
-                      Milestone Settings
-                    </h3>
-                    <div>
-                      <label className="block text-[10px] font-mono font-bold uppercase text-zinc-500 tracking-wider mb-2">Live Metric Count</label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={gMilestoneStat}
-                          onChange={(e) => setGMilestoneStat(e.target.value)}
-                          className="flex-1 bg-[#0a0a0f] border border-white/[0.06] rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#7C5CFF] transition-all font-mono"
-                        />
-                        <button
-                          onClick={() => {
-                            setGMilestoneStat(`${totalCount}+`);
-                            showToast("Pulled live database count!");
-                          }}
-                          className="px-4 py-2.5 rounded-xl text-xs hover:text-white transition-all font-mono cursor-pointer text-zinc-400 bg-white/[0.02] border border-white/10"
-                          title="Pull Live Total"
-                        >
-                          Live DB
-                        </button>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-mono font-bold uppercase text-zinc-500 tracking-wider mb-2">Headline Title</label>
-                      <input
-                        type="text"
-                        value={gMilestoneTitle}
-                        onChange={(e) => setGMilestoneTitle(e.target.value)}
-                        className="w-full bg-[#0a0a0f] border border-white/[0.06] rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#7C5CFF] transition-all"
-                      />
-                    </div>
-                  </>
-                )}
-
-                {graphicType === "feature" && (
-                  <>
-                    <h3 className="text-base font-display font-bold text-white border-b border-white/[0.04] pb-3 flex items-center gap-2">
-                      <Layers className="w-4 h-4 text-[#7C5CFF]" />
-                      Feature Drop Spotlight
-                    </h3>
-                    <div>
-                      <label className="block text-[10px] font-mono font-bold uppercase text-zinc-500 tracking-wider mb-2">Spotlight Core Title</label>
-                      <input
-                        type="text"
-                        value={gHeadline}
-                        onChange={(e) => setGHeadline(e.target.value)}
-                        className="w-full bg-[#0a0a0f] border border-white/[0.06] rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#7C5CFF] transition-all"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-mono font-bold uppercase text-zinc-500 tracking-wider mb-2">Feature Presets</label>
-                      <div className="grid grid-cols-1 gap-2 mt-1">
-                        {[
-                          { key: "bookability", label: "Bookability Score™", desc: "DATA-BACKED RELIABILITY RATING FOR PERFORMERS" },
-                          { key: "escrow", label: "GigSafe Escrow", desc: "SECURED PAYMENT PROTOCOLS FOR THE ENTERTAINMENT ECONOMY" },
-                          { key: "backstage", label: "Backstage™", desc: "YOUR COLLABORATIVE LOCAL GIG WORKFORCE AND CREW" }
-                        ].map(preset => (
-                          <button
-                            key={preset.key}
-                            onClick={() => {
-                              setGHeadline(preset.label);
-                              setGSubtext(preset.desc);
-                            }}
-                            className="px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/[0.04] text-[10px] font-mono hover:border-white/20 transition-all text-left text-zinc-400 hover:text-white cursor-pointer"
-                          >
-                            {preset.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {graphicType === "countdown" && (
-                  <>
-                    <h3 className="text-base font-display font-bold text-white border-b border-white/[0.04] pb-3 flex items-center gap-2">
-                      <CalendarIcon className="w-4 h-4 text-brand-2" />
-                      Beta Countdown Settings
-                    </h3>
-                    <div>
-                      <label className="block text-[10px] font-mono font-bold uppercase text-zinc-500 tracking-wider mb-2">Target Beta Launch Date</label>
-                      <input
-                        type="date"
-                        value={gCountdownTarget}
-                        onChange={(e) => setGCountdownTarget(e.target.value)}
-                        className="w-full bg-[#0a0a0f] border border-white/[0.06] rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#7C5CFF] transition-all font-mono"
-                      />
-                    </div>
-                  </>
-                )}
-
-                {/* Subtext description editor (common for Milestone & Feature) */}
-                {graphicType !== "countdown" && (
-                  <div>
-                    <label className="block text-[10px] font-mono font-bold uppercase text-zinc-500 tracking-wider mb-2">Description Subtext</label>
-                    <textarea
-                      value={gSubtext}
-                      onChange={(e) => setGSubtext(e.target.value)}
-                      rows={3}
-                      className="w-full bg-[#0a0a0f] border border-white/[0.06] rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#7C5CFF] transition-all resize-none"
-                    />
-                  </div>
-                )}
-
-                {/* Proactive strategic data triggers */}
-                <div className="p-4 bg-[#0a0a0f] border border-white/[0.04] rounded-2xl font-mono text-[9px] text-zinc-500 space-y-2">
-                  <p className="font-bold text-[#F25A2B]">PROACTIVE FLEX PRESETS:</p>
-                  <button
-                    onClick={() => {
-                      setGraphicType("milestone");
-                      setGMilestoneStat("68%");
-                      setGMilestoneTitle("PAYMENT DELAYS");
-                      setGSubtext("68% of performers report payment delays of 30+ days in the industry. We cure this on Artistant.");
-                    }}
-                    className="block text-left underline hover:text-white transition-colors cursor-pointer"
-                  >
-                    Load Stat: "68% Payment Delays..."
-                  </button>
-                  <button
-                    onClick={() => {
-                      setGraphicType("feature");
-                      setGHeadline("REPLACEMENT ASSURED");
-                      setGSubtext("Organizers book with absolute safety. Equivalent standby performers dispatched automatically on cancellations.");
-                    }}
-                    className="block text-left underline hover:text-white transition-colors cursor-pointer"
-                  >
-                    Load Spotlight: "Replacement Backup..."
-                  </button>
-                </div>
-
-                <div className="flex gap-4 pt-2">
-                  <button
-                    onClick={handleDownloadUnified}
-                    className="flex-grow py-3 rounded-full text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-2 transition-all cursor-pointer"
-                    style={{
-                      background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
-                      color: 'white',
-                      boxShadow: '0 4px 16px -4px rgba(242,90,43,0.4)',
-                    }}
-                  >
-                    <Download className="w-4 h-4" />
-                    Download PNG
-                  </button>
-                  <button
-                    onClick={() => {
-                      showToast("Proactive: Unified content pushed directly to launch story queue!");
-                    }}
-                    className="px-4 py-3 rounded-full flex items-center justify-center hover:text-white hover:bg-white/[0.04] transition-all text-zinc-400 bg-white/[0.02] border border-white/10 cursor-pointer"
-                    title="Push directly to Instagram/LinkedIn Queue"
-                  >
-                    <ArrowUpRight className="w-4 h-4" />
-                  </button>
-                </div>
-
-              </div>
-
-            </div>
-
-            {/* Right Graphics Preview Pane */}
-            <div className="lg:col-span-7 space-y-4">
-              <div className="bg-[#121217]/40 border border-white/[0.04] p-8 rounded-3xl flex flex-col items-center backdrop-blur-md shadow-lg">
-                <div className="w-full flex justify-between items-center mb-5">
-                  <span className="text-[9px] font-mono font-bold uppercase tracking-[0.15em] text-[#F25A2B]">Graphics preview canvas pane</span>
-                  <span className="text-xs font-mono text-zinc-500">
-                    {canvasLayout === "square" ? "1080 x 1080 (Square)" : "1080 x 1920 (Portrait 9:16)"}
-                  </span>
-                </div>
-
-                <div className="w-full bg-[#0a0a0f]/60 border border-white/[0.04] p-6 rounded-2xl flex items-center justify-center overflow-auto shadow-inner relative" style={{ minHeight: '350px' }}>
-                  <canvas 
-                    ref={canvasRef} 
-                    className="h-auto border border-white/10 shadow-2xl rounded-2xl max-w-[280px] sm:max-w-[320px] md:max-w-[380px] lg:max-w-[400px]"
-                  />
-                </div>
-              </div>
-            </div>
-
-          </div>
-        )}
-
-        {/* ===================================================================
-            TAB 3: SOCIAL POSTING CALENDAR
-            =================================================================== */}
-        {activeTab === "calendar" && (
-          <div className="space-y-8 animate-in fade-in duration-200">
-            <div className="bg-[#121217]/40 border border-white/[0.04] p-8 rounded-3xl flex items-center gap-4 backdrop-blur-md shadow-lg">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/[0.02] border border-white/5 shadow-inner">
-                <CalendarIcon className="w-5 h-5 text-brand" />
-              </div>
-              <div>
-                <h3 className="font-display font-bold text-white text-lg uppercase tracking-tight">Launch Post Schedule</h3>
-                <p className="text-[10px] font-mono font-bold tracking-[0.12em] uppercase mt-1 text-[#7C5CFF]">Draft, preview and queue social graphics</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {SOCIAL_CALENDAR.map((post, idx) => (
-                <GlowingAdminCard 
-                  key={post.id} 
-                  idx={idx}
-                  className="bg-[#121217]/40 border border-white/[0.04] rounded-3xl p-8 flex flex-col justify-between backdrop-blur-md shadow-lg"
-                >
-                  <div>
-                    <div className="flex justify-between items-center mb-5">
-                      <span className="text-[9px] font-mono font-bold text-zinc-500 flex items-center gap-1.5 uppercase tracking-wider">
-                        <CalendarIcon className="w-3.5 h-3.5" />
-                        {post.date} @ {post.time}
-                      </span>
-                      <span className="px-2.5 py-1 rounded-full text-[9px] font-mono font-bold uppercase tracking-[0.08em] bg-[#7C5CFF]/10 text-[#7C5CFF] border border-[#7C5CFF]/20">
-                        {post.platform}
-                      </span>
-                    </div>
-
-                    <h4 className="text-base font-display font-bold text-white uppercase tracking-tight mb-3">
-                      {post.title}
-                    </h4>
-
-                    <p className="text-xs text-zinc-400 leading-relaxed mb-6 italic bg-black/40 p-4 rounded-2xl border border-white/[0.03] line-clamp-3">
-                      {post.caption}
-                    </p>
-                  </div>
-
-                  <div className="flex gap-2 mt-4 pt-4 border-t border-white/[0.04]">
-                    <button
-                      onClick={() => handleApplyPreset(post)}
-                      className="flex-1 py-2.5 rounded-xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-2 transition-all cursor-pointer bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] text-white shadow-[0_4px_12px_-4px_rgba(242,90,43,0.3)]"
-                    >
-                      <ImageIcon className="w-3.5 h-3.5" />
-                      Load Preset
-                    </button>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(post.caption);
-                        showToast("Caption copied!");
-                      }}
-                      className="px-4 py-2.5 rounded-xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase transition-all bg-white/[0.02] border border-white/10 hover:bg-white/[0.04] hover:text-white text-zinc-400 cursor-pointer"
-                    >
-                      Copy
-                    </button>
-                  </div>
-                </GlowingAdminCard>
-              ))}
-              
-              {/* Custom Scheduler slot */}
-              <div 
-                className="border border-dashed border-white/20 hover:border-[#7C5CFF]/50 rounded-3xl p-8 flex flex-col justify-center items-center gap-4 text-center cursor-pointer min-h-[280px] transition-all duration-300 bg-[#121217]/20 hover:bg-[#121217]/40 group"
-              >
-                <div className="w-12 h-12 rounded-full bg-[#0a0a0f] flex items-center justify-center border border-white/10 group-hover:border-[#7C5CFF]/30 transition-colors">
-                  <Plus className="w-5 h-5 text-zinc-500 group-hover:text-white transition-colors" />
-                </div>
-                <div>
-                  <span className="font-display font-bold text-sm text-white uppercase tracking-tight block">Add Custom Task</span>
-                  <span className="text-[11px] text-zinc-500 max-w-[200px] mt-1.5 block leading-normal">Draft future drops and countdown releases.</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ===================================================================
-            TAB 4: EMAIL BROADCAST ENGINE
-            =================================================================== */}
-        {activeTab === "emailing" && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-200">
-            
-            {/* Left Email Composer Form */}
-            <div className="lg:col-span-6 space-y-6">
-              <div className="bg-[#121217]/40 border border-white/[0.04] p-8 rounded-3xl space-y-6 backdrop-blur-md shadow-lg">
-                <div className="flex items-center gap-4 border-b border-white/[0.04] pb-5">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/[0.02] border border-white/5 shadow-inner">
-                    <Mail className="w-5 h-5 text-brand" />
-                  </div>
-                  <div>
-                    <h3 className="font-display font-bold text-white text-lg uppercase tracking-tight">Campaign Composer</h3>
-                    <p className="text-[10px] font-mono font-bold tracking-[0.12em] uppercase mt-1 text-[#7C5CFF]">Draft and broadcast mailers</p>
-                  </div>
-                </div>
-
-                {/* Sender Alias Selection */}
-                <div>
-                  <label className="block text-[9px] font-mono font-bold uppercase text-zinc-500 tracking-[0.15em] mb-2.5">Sender Alias</label>
-                  <select
-                    value={emailAlias}
-                    onChange={(e) => setEmailAlias(e.target.value)}
-                    className="w-full bg-[#0a0a0f] border border-white/[0.06] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#7C5CFF] cursor-pointer"
-                  >
-                    <option value="official">ArtisTant Official (info@artistant.in)</option>
-                    <option value="support">ArtisTant Support (support@artistant.in)</option>
-                    <option value="founder">ArtisTant Founder (founder@artistant.in)</option>
-                  </select>
-                </div>
-
-                {/* Email Subject */}
-                <div>
-                  <label className="block text-[9px] font-mono font-bold uppercase text-zinc-500 tracking-[0.15em] mb-2.5">Campaign Subject</label>
-                  <input
-                    type="text"
-                    value={emailSubject}
-                    onChange={(e) => setEmailSubject(e.target.value)}
-                    className="w-full bg-[#0a0a0f] border border-white/[0.06] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#7C5CFF] transition-all"
-                  />
-                </div>
-
-                {/* Email Header banner line */}
-                <div>
-                  <label className="block text-[9px] font-mono font-bold uppercase text-zinc-500 tracking-[0.15em] mb-2.5">Email Header Greeting</label>
-                  <input
-                    type="text"
-                    value={emailHeader}
-                    onChange={(e) => setEmailHeader(e.target.value)}
-                    className="w-full bg-[#0a0a0f] border border-white/[0.06] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#7C5CFF] transition-all"
-                  />
-                </div>
-
-                {/* Email Body text */}
-                <div>
-                  <label className="block text-[9px] font-mono font-bold uppercase text-zinc-500 tracking-[0.15em] mb-2.5">Message Body Copy (HTML supported)</label>
-                  <textarea
-                    value={emailBody}
-                    onChange={(e) => setEmailBody(e.target.value)}
-                    rows={6}
-                    className="w-full bg-[#0a0a0f] border border-white/[0.06] rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-[#7C5CFF] transition-all resize-none"
-                  />
-                </div>
-
-                {/* Call To Action Buttons configs */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[9px] font-mono font-bold uppercase text-zinc-500 tracking-[0.15em] mb-2.5">CTA Link Text</label>
-                    <input
-                      type="text"
-                      value={emailCtaText}
-                      onChange={(e) => setEmailCtaText(e.target.value)}
-                      className="w-full bg-[#0a0a0f] border border-white/[0.06] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#7C5CFF] transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[9px] font-mono font-bold uppercase text-zinc-500 tracking-[0.15em] mb-2.5">CTA Destination URL</label>
-                    <input
-                      type="text"
-                      value={emailCtaUrl}
-                      onChange={(e) => setEmailCtaUrl(e.target.value)}
-                      className="w-full bg-[#0a0a0f] border border-white/[0.06] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#7C5CFF] transition-all font-mono"
-                    />
-                  </div>
-                </div>
-
-                {/* Sending stats readout */}
-                <div className="p-5 bg-white/[0.01] border border-white/[0.04] rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <div>
-                    <span className="text-[9px] font-mono font-bold text-zinc-500 block uppercase tracking-[0.08em]">Active Targets List</span>
-                    <span className="text-sm font-bold text-white mt-0.5 block">{getSelectedRecipientsList().filter(r=>!r.is_blocked).length} users ready</span>
-                  </div>
-                  <button
-                    onClick={handleSendEmailBroadcast}
-                    disabled={emailSending}
-                    className="w-full sm:w-auto py-3.5 px-6 rounded-full text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer text-white bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] shadow-[0_4px_16px_-4px_rgba(242,90,43,0.4)]"
-                  >
-                    {emailSending ? (
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Send className="w-4 h-4" />
-                    )}
-                    Launch Broadcast
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Email Preview frame & execution log terminal */}
-            <div className="lg:col-span-6 space-y-6">
-              
-              {/* Interactive preview display */}
-              <div className="bg-[#121217]/40 border border-white/[0.04] p-8 rounded-3xl space-y-5 backdrop-blur-md shadow-lg">
-                <div className="flex justify-between items-center border-b border-white/[0.04] pb-4">
-                  <span className="text-[9px] font-mono font-bold uppercase tracking-[0.15em] text-[#F25A2B]">Email client live preview</span>
-                  <div className="flex rounded-xl p-1 bg-[#0a0a0f] border border-white/[0.06]">
-                    <button
-                      onClick={() => setEmailPreviewMode("mobile")}
-                      className={`p-2 rounded-lg transition-all cursor-pointer ${
-                        emailPreviewMode === "mobile" ? "bg-white/[0.05] text-[#7C5CFF] border border-white/5" : "text-zinc-500 hover:text-white"
-                      }`}
-                      title="Mobile View"
-                    >
-                      <Smartphone className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => setEmailPreviewMode("desktop")}
-                      className={`p-2 rounded-lg transition-all cursor-pointer ${
-                        emailPreviewMode === "desktop" ? "bg-white/[0.05] text-[#7C5CFF] border border-white/5" : "text-zinc-500 hover:text-white"
-                      }`}
-                      title="Desktop View"
-                    >
-                      <Monitor className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Email template frame wrapper strictly matching brand HTML welcome style */}
-                <div className="flex justify-center bg-black/60 border border-white/[0.04] p-4 rounded-2xl overflow-y-auto max-h-[500px]">
-                  <div 
-                    className={`bg-[#0a0a0f] text-white text-left p-6 border border-white/[0.06] rounded-xl relative ${
-                      emailPreviewMode === "mobile" ? "w-[320px]" : "w-full max-w-[500px]"
-                    }`}
-                    style={{
-                      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-                    }}
-                  >
-                    {/* Watermark preview simulation overlay */}
-                    <div 
-                      className="absolute inset-0 opacity-[0.03] pointer-events-none"
-                      style={{
-                        backgroundImage: "url('/logo_a_watermark.png')",
-                        backgroundRepeat: 'no-repeat',
-                        backgroundPosition: 'center center',
-                        backgroundSize: '200px 200px'
-                      }}
-                    />
-
-                    {/* Wordmark logo banner */}
-                    <div className="text-center mb-6">
-                      <span className="font-bold text-sm tracking-widest text-white font-display">ARTISTANT</span>
-                    </div>
-
-                    <div className="p-px bg-white/[0.04] rounded-xl">
-                      <div className="bg-[#0e0e14] p-5 rounded-lg space-y-4">
-                        <p className="text-white font-bold text-xs">Hey username,</p>
-                        
-                        <p className="font-bold text-[10px] uppercase tracking-wider text-[#F25A2B]">{emailHeader}</p>
-                        
-                        <p className="text-zinc-400 text-[11px] leading-relaxed whitespace-pre-wrap">
-                          {emailBody}
-                        </p>
-
-                        {emailCtaText && (
-                          <div className="pt-2 text-center">
-                            <a 
-                              href={emailCtaUrl} 
-                              target="_blank" 
-                              className="inline-block px-5 py-2.5 text-white font-bold text-[10px] rounded-full transition-all bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF]"
-                              style={{ 
-                                textDecoration: 'none'
-                              }}
-                            >
-                              {emailCtaText}
-                            </a>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="mt-6 pt-4 border-t border-white/[0.04] text-center space-y-2">
-                      <p className="text-[9px] text-zinc-600">You are receiving this official launch communication as part of the Artistant waitlist.</p>
-                      <p className="text-[9px] text-[#F25A2B] font-mono">Bengaluru, IN | artistant.in</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Execution progress terminal */}
-              {showLogTerminal && (
-                <div className="bg-[#121217]/40 border border-white/[0.04] rounded-3xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom duration-300">
-                  <div className="bg-black/40 px-6 py-4 border-b border-white/[0.04] flex justify-between items-center">
-                    <span className="text-[9px] font-mono font-bold text-zinc-500 flex items-center gap-1.5 uppercase tracking-[0.08em]">
-                      <div className={`w-2 h-2 rounded-full ${emailSending ? "bg-amber-500 animate-ping" : "bg-[#22C55E]"}`} />
-                      Execution Broadcast Terminal
-                    </span>
-                    <button 
-                      onClick={() => setShowLogTerminal(false)}
-                      className="text-zinc-400 hover:text-white text-xs font-mono uppercase tracking-[0.06em] font-bold cursor-pointer"
-                    >
-                      Close
-                    </button>
-                  </div>
-                  <pre className="p-6 max-h-48 overflow-y-auto text-[10px] font-mono text-zinc-400 space-y-1.5 bg-black/60 text-left">
-                    {emailLogs.length === 0 ? (
-                      <span className="text-zinc-600 italic">No execution logs active.</span>
-                    ) : (
-                      emailLogs.map((logStr, i) => (
-                        <div key={i} className={logStr.includes("FAILED") ? "text-hot" : logStr.includes("SUCCESS") ? "text-[#22C55E]" : ""}>
-                          {logStr}
-                        </div>
-                      ))
-                    )}
-                  </pre>
-                </div>
-              )}
-
-            </div>
-          </div>
-        )}
 
               </motion.div>
             </AnimatePresence>
@@ -3194,27 +2530,27 @@ export default function AdminPage() {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: '100%', opacity: 0 }}
               transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-              className="fixed right-0 top-0 bottom-0 w-[490px] max-w-full z-[70] bg-[#0c0c12]/95 border-l border-white/[0.08] overflow-y-auto shadow-2xl flex flex-col backdrop-blur-2xl"
+              className="fixed right-0 top-0 bottom-0 w-[490px] max-w-full z-[70] bg-bg-card border-l border-line-soft overflow-y-auto shadow-2xl flex flex-col backdrop-blur-2xl"
             >
               {/* Header */}
-              <div className="sticky top-0 z-10 backdrop-blur-xl px-8 py-6 flex items-center justify-between border-b border-white/[0.06] bg-[#0c0c12]/80">
-                <div>
+              <div className="sticky top-0 z-10 backdrop-blur-xl px-8 py-6 flex items-center justify-between border-b border-line-soft bg-bg-card/80">
+                <div className="text-left">
                   <span className="text-[9px] font-mono font-bold tracking-[0.2em] text-[#7C5CFF] uppercase">Credentials Profile</span>
-                  <h3 className="text-sm font-mono font-bold uppercase tracking-[0.12em] text-white mt-0.5">User Inspector</h3>
+                  <h3 className="text-sm font-mono font-bold uppercase tracking-[0.12em] text-ink mt-0.5">Artist Profile</h3>
                 </div>
                 <button
                   onClick={() => setSelectedReg(null)}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/[0.02] border border-white/10 text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-all cursor-pointer"
+                  className="w-8 h-8 rounded-xl flex items-center justify-center bg-bg-soft border border-line-soft text-ink-3 hover:text-ink hover:bg-bg-soft-hover transition-all cursor-pointer"
                 >
                   <XCircle className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="p-8 space-y-6 flex-1">
+              <div className="p-8 space-y-6 flex-1 text-left">
 
                 {/* ── Profile Hero ── */}
                 <div className="flex items-center gap-5">
-                  <div className="w-20 h-20 rounded-2xl flex-shrink-0 overflow-hidden border border-white/10 shadow-lg relative" style={{
+                  <div className="w-20 h-20 rounded-2xl flex-shrink-0 overflow-hidden border border-line-soft shadow-lg relative" style={{
                     background: selectedReg.profile_photo_url ? undefined : 'linear-gradient(135deg, var(--brand-3), var(--brand-1))',
                   }}>
                     {selectedReg.profile_photo_url ? (
@@ -3225,15 +2561,15 @@ export default function AdminPage() {
                       </div>
                     )}
                   </div>
-                  <div className="min-w-0">
-                    <h2 className="text-xl font-display font-bold text-white tracking-tight truncate">
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-xl font-display font-bold text-ink tracking-tight truncate">
                       {selectedReg.display_name || 'Unknown'}
                     </h2>
                     <p className="text-sm font-mono mt-0.5 text-brand">
                       @{selectedReg.username}
                     </p>
                     {selectedReg.bio && (
-                      <p className="text-xs text-zinc-400 mt-2.5 leading-relaxed line-clamp-3 bg-white/[0.01] p-2.5 rounded-xl border border-white/[0.03]">{selectedReg.bio}</p>
+                      <p className="text-xs text-ink-2 mt-2.5 leading-relaxed line-clamp-3 bg-bg-soft/40 p-2.5 rounded-xl border border-line-soft">{selectedReg.bio}</p>
                     )}
                   </div>
                 </div>
@@ -3243,7 +2579,7 @@ export default function AdminPage() {
                   <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-mono font-bold tracking-[0.08em]" style={
                     selectedReg.is_verified
                       ? { background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)', color: 'white', boxShadow: '0 4px 12px -4px rgba(242,90,43,0.35)' }
-                      : { background: 'rgba(255,255,255,0.02)', color: 'var(--ink-3)', border: '1px solid rgba(255,255,255,0.04)' }
+                      : { background: 'var(--bg-soft)', color: 'var(--ink-3)', border: '1px solid var(--line-soft)' }
                   }>
                     <CheckCircle2 className="w-3 h-3" />
                     {selectedReg.is_verified ? 'VERIFIED' : 'PENDING'}
@@ -3258,16 +2594,16 @@ export default function AdminPage() {
 
                   {selectedReg.feature_founding_card && (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-mono font-bold tracking-[0.08em] bg-brand-3/10 text-brand-3 border border-brand-3/20 shadow-[0_0_12px_rgba(124,92,255,0.15)]">
-                      <Sparkles className="w-3 h-3" />
+                      <Award className="w-3 h-3" />
                       FOUNDING CARD
                     </span>
                   )}
 
                   {selectedReg.role && (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-[0.08em]" style={{
-                      background: 'rgba(255,255,255,0.02)',
+                      background: 'var(--bg-soft)',
                       color: selectedReg.role === 'artist' ? 'var(--brand-3)' : selectedReg.role === 'venue' ? 'var(--brand-2)' : selectedReg.role === 'vendor' ? 'var(--brand-1)' : 'var(--ink-3)',
-                      border: '1px solid rgba(255,255,255,0.04)'
+                      border: '1px solid var(--line-soft)'
                     }}>
                       {selectedReg.role}
                     </span>
@@ -3275,14 +2611,14 @@ export default function AdminPage() {
                 </div>
 
                 {/* ── Quick Actions ── */}
-                <div className="bg-[#121217]/55 border border-white/[0.04] rounded-2xl p-5 space-y-4">
-                  <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-zinc-500">Clearance Actions</p>
+                <div className="bg-bg-soft/30 border border-line-soft rounded-2xl p-5 space-y-4">
+                  <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3">Clearance Actions</p>
                   <div className="grid grid-cols-3 gap-2.5">
                     <button
                       onClick={() => handleVerifyAndLock(selectedReg)}
                       className="py-2.5 rounded-xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                       style={selectedReg.is_verified ? {
-                        background: 'rgba(255,255,255,0.02)', color: 'var(--brand-3)', border: '1px solid rgba(124,92,255,0.2)',
+                        background: 'var(--bg-soft)', color: 'var(--brand-3)', border: '1px solid rgba(124,92,255,0.2)',
                       } : {
                         background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)', color: 'white', border: 'none',
                         boxShadow: '0 4px 16px -4px rgba(242,90,43,0.4)',
@@ -3298,7 +2634,7 @@ export default function AdminPage() {
                       style={selectedReg.is_blocked ? {
                         background: 'rgba(255,75,75,0.1)', color: 'var(--hot)', border: '1px solid rgba(255,75,75,0.2)',
                       } : {
-                        background: 'rgba(255,255,255,0.02)', color: 'var(--ink-3)', border: '1px solid rgba(255,255,255,0.04)',
+                        background: 'var(--bg-soft)', color: 'var(--ink-3)', border: '1px solid var(--line-soft)',
                       }}
                     >
                       <XCircle className="w-3 h-3" />
@@ -3311,28 +2647,28 @@ export default function AdminPage() {
                       style={selectedReg.feature_founding_card ? {
                         background: 'rgba(124,92,255,0.1)', color: 'var(--brand-3)', border: '1px solid rgba(124,92,255,0.2)',
                       } : {
-                        background: 'rgba(255,255,255,0.02)', color: 'var(--ink-3)', border: '1px solid rgba(255,255,255,0.04)',
+                        background: 'var(--bg-soft)', color: 'var(--ink-3)', border: '1px solid var(--line-soft)',
                       }}
                     >
-                      <Sparkles className="w-3 h-3" />
+                      <Award className="w-3 h-3" />
                       {selectedReg.feature_founding_card ? 'Unfeat.' : 'Feature'}
                     </button>
                   </div>
                 </div>
 
-                <div className="h-px bg-white/[0.04]" />
+                <div className="h-px bg-line-soft" />
 
                 {/* ── Category & Genres ── */}
                 {(selectedReg.category || (selectedReg.genres && selectedReg.genres.length > 0)) && (
                   <div>
-                    <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-zinc-500 mb-3">Classification & Genres</p>
+                    <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3 mb-3">Classification & Genres</p>
                     {selectedReg.category && (
-                      <p className="text-sm text-white capitalize mb-2.5 font-semibold">{selectedReg.category.replace('_', ' ')}</p>
+                      <p className="text-sm text-ink capitalize mb-2.5 font-semibold">{selectedReg.category.replace('_', ' ')}</p>
                     )}
                     {selectedReg.genres && selectedReg.genres.length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
                         {selectedReg.genres.map(g => (
-                          <span key={g} className="text-[10px] font-mono px-2.5 py-1 rounded-lg text-zinc-300 bg-white/[0.02] border border-white/[0.04]">#{g}</span>
+                          <span key={g} className="text-[10px] font-mono px-2.5 py-1 rounded-lg text-ink-2 bg-bg-soft/40 border border-line-soft">#{g}</span>
                         ))}
                       </div>
                     )}
@@ -3341,28 +2677,28 @@ export default function AdminPage() {
 
                 {/* ── Contact Info ── */}
                 <div>
-                  <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-zinc-500 mb-3">System Contact Details</p>
+                  <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3 mb-3">System Contact Details</p>
                   <div className="space-y-2">
-                    <div className="flex items-center gap-3 text-sm bg-white/[0.01] p-2.5 rounded-xl border border-white/[0.03]">
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/[0.02] border border-white/10 shrink-0">
-                        <Mail className="w-3.5 h-3.5 text-zinc-400" />
+                    <div className="flex items-center gap-3 text-sm bg-bg-soft/20 p-2.5 rounded-xl border border-line-soft">
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-bg-soft border border-line-soft shrink-0">
+                        <Mail className="w-3.5 h-3.5 text-ink-2" />
                       </div>
-                      <span className="text-white font-mono text-xs truncate flex-1">{selectedReg.email}</span>
+                      <span className="text-ink font-mono text-xs truncate flex-1">{selectedReg.email}</span>
                     </div>
                     {selectedReg.phone && (
-                      <div className="flex items-center gap-3 text-sm bg-white/[0.01] p-2.5 rounded-xl border border-white/[0.03]">
-                        <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/[0.02] border border-white/10 shrink-0">
-                          <Smartphone className="w-3.5 h-3.5 text-zinc-400" />
+                      <div className="flex items-center gap-3 text-sm bg-bg-soft/20 p-2.5 rounded-xl border border-line-soft">
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-bg-soft border border-line-soft shrink-0">
+                          <Smartphone className="w-3.5 h-3.5 text-ink-2" />
                         </div>
-                        <span className="text-white font-mono text-xs flex-1">{selectedReg.phone}</span>
+                        <span className="text-ink font-mono text-xs flex-1">{selectedReg.phone}</span>
                       </div>
                     )}
                     {selectedReg.city && (
-                      <div className="flex items-center gap-3 text-sm bg-white/[0.01] p-2.5 rounded-xl border border-white/[0.03]">
-                        <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/[0.02] border border-white/10 shrink-0">
-                          <MapPin className="w-3.5 h-3.5 text-zinc-400" />
+                      <div className="flex items-center gap-3 text-sm bg-bg-soft/20 p-2.5 rounded-xl border border-line-soft">
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-bg-soft border border-line-soft shrink-0">
+                          <MapPin className="w-3.5 h-3.5 text-ink-2" />
                         </div>
-                        <span className="text-white text-xs flex-1 font-medium">{selectedReg.city}</span>
+                        <span className="text-ink text-xs flex-1 font-medium">{selectedReg.city}</span>
                       </div>
                     )}
                   </div>
@@ -3371,38 +2707,38 @@ export default function AdminPage() {
                 {/* ── Social Links ── */}
                 {(selectedReg.instagram_url || selectedReg.spotify_url || selectedReg.youtube_url || selectedReg.youtube_channel_url) && (
                   <>
-                    <div className="h-px bg-white/[0.04]" />
+                    <div className="h-px bg-line-soft" />
                     <div>
-                      <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-zinc-500 mb-3">External Portals</p>
+                      <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3 mb-3">External Portals</p>
                       <div className="grid grid-cols-2 gap-2">
                         {selectedReg.instagram_url && (
                           <a href={selectedReg.instagram_url.startsWith('http') ? selectedReg.instagram_url : `https://instagram.com/${selectedReg.instagram_url}`} target="_blank" rel="noopener noreferrer"
-                            className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05] hover:border-white/10 transition-all group">
+                            className="flex items-center gap-3 p-3 rounded-xl bg-bg-soft/40 border border-line-soft hover:bg-bg-soft hover:border-line-soft/80 transition-all group">
                             <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)', }}>
                               <span className="text-white text-[9px] font-black">IG</span>
                             </div>
-                            <span className="text-xs font-mono text-zinc-400 truncate flex-1 group-hover:text-white">Instagram</span>
-                            <ExternalLink className="w-3.5 h-3.5 text-zinc-500 group-hover:text-white transition-colors" />
+                            <span className="text-xs font-mono text-ink-2 truncate flex-1 group-hover:text-ink">Instagram</span>
+                            <ExternalLink className="w-3.5 h-3.5 text-ink-3 group-hover:text-ink transition-colors" />
                           </a>
                         )}
                         {selectedReg.spotify_url && (
                           <a href={selectedReg.spotify_url.startsWith('http') ? selectedReg.spotify_url : `https://open.spotify.com/artist/${selectedReg.spotify_url}`} target="_blank" rel="noopener noreferrer"
-                            className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05] hover:border-white/10 transition-all group">
+                            className="flex items-center gap-3 p-3 rounded-xl bg-bg-soft/40 border border-line-soft hover:bg-bg-soft hover:border-line-soft/80 transition-all group">
                             <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-[#1DB954] shrink-0">
                               <span className="text-white text-[9px] font-black">SP</span>
                             </div>
-                            <span className="text-xs font-mono text-zinc-400 truncate flex-1 group-hover:text-white">Spotify</span>
-                            <ExternalLink className="w-3.5 h-3.5 text-zinc-500 group-hover:text-white transition-colors" />
+                            <span className="text-xs font-mono text-ink-2 truncate flex-1 group-hover:text-ink">Spotify</span>
+                            <ExternalLink className="w-3.5 h-3.5 text-ink-3 group-hover:text-ink transition-colors" />
                           </a>
                         )}
                         {(selectedReg.youtube_url || selectedReg.youtube_channel_url) && (
                           <a href={(selectedReg.youtube_channel_url || selectedReg.youtube_url || '').startsWith('http') ? (selectedReg.youtube_channel_url || selectedReg.youtube_url || '') : `https://youtube.com/@${selectedReg.youtube_channel_url || selectedReg.youtube_url}`} target="_blank" rel="noopener noreferrer"
-                            className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05] hover:border-white/10 transition-all group col-span-2">
+                            className="flex items-center gap-3 p-3 rounded-xl bg-bg-soft/40 border border-line-soft hover:bg-bg-soft hover:border-line-soft/80 transition-all group col-span-2">
                             <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-[#FF0000] shrink-0">
                               <span className="text-white text-[9px] font-black">YT</span>
                             </div>
-                            <span className="text-xs font-mono text-zinc-400 truncate flex-1 group-hover:text-white">YouTube</span>
-                            <ExternalLink className="w-3.5 h-3.5 text-zinc-500 group-hover:text-white transition-colors" />
+                            <span className="text-xs font-mono text-ink-2 truncate flex-1 group-hover:text-ink">YouTube</span>
+                            <ExternalLink className="w-3.5 h-3.5 text-ink-3 group-hover:text-ink transition-colors" />
                           </a>
                         )}
                       </div>
@@ -3413,12 +2749,12 @@ export default function AdminPage() {
                 {/* ── Gallery Photos ── */}
                 {selectedReg.gallery_photos && selectedReg.gallery_photos.length > 0 && (
                   <>
-                    <div className="h-px bg-white/[0.04]" />
+                    <div className="h-px bg-line-soft" />
                     <div>
-                      <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-zinc-500 mb-3">Gallery Nodes ({selectedReg.gallery_photos.length})</p>
+                      <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3 mb-3">Gallery Nodes ({selectedReg.gallery_photos.length})</p>
                       <div className="grid grid-cols-2 gap-2">
                         {selectedReg.gallery_photos.map((photo, i) => (
-                          <img key={i} src={photo} alt="" className="w-full aspect-square object-cover rounded-xl border border-white/[0.04]" />
+                          <img key={i} src={photo} alt="" className="w-full aspect-square object-cover rounded-xl border border-line-soft" />
                         ))}
                       </div>
                     </div>
@@ -3428,23 +2764,23 @@ export default function AdminPage() {
                 {/* ── Custom Status ── */}
                 {selectedReg.custom_status_message && (
                   <>
-                    <div className="h-px bg-white/[0.04]" />
+                    <div className="h-px bg-line-soft" />
                     <div>
-                      <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-zinc-500 mb-3">Custom Status</p>
-                      <p className="text-xs text-zinc-300 bg-white/[0.01] border border-white/[0.03] rounded-xl p-4 italic">
+                      <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3 mb-3">Custom Status</p>
+                      <p className="text-xs text-ink bg-bg-soft/40 border border-line-soft rounded-xl p-4 italic">
                         &ldquo;{selectedReg.custom_status_message}&rdquo;
                       </p>
                     </div>
                   </>
                 )}
 
-                <div className="h-px bg-white/[0.04]" />
+                <div className="h-px bg-line-soft" />
 
                 {/* ── Position & Meta ── */}
-                <div className="bg-[#121217]/55 border border-white/[0.04] rounded-2xl p-5 space-y-4">
-                  <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-zinc-500">Queue Management & Metrics</p>
+                <div className="bg-bg-soft/30 border border-line-soft rounded-2xl p-5 space-y-4">
+                  <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3">Queue Management & Metrics</p>
                   <div className="flex items-center gap-3">
-                    <span className="text-xs text-zinc-400 font-mono">Queue Override:</span>
+                    <span className="text-xs text-ink-2 font-mono">Queue Override:</span>
                     <input
                       type="number"
                       placeholder="Auto"
@@ -3453,28 +2789,28 @@ export default function AdminPage() {
                         const val = e.target.value === '' ? null : parseInt(e.target.value, 10);
                         handleSavePositionOverride(selectedReg.user_id, val);
                       }}
-                      className="w-16 bg-black/60 border border-white/10 rounded-lg py-1 px-1.5 text-xs text-white text-center font-mono focus:outline-none focus:border-brand transition-all animate-pulse"
+                      className="w-16 bg-bg-soft border border-line-soft rounded-lg py-1 px-1.5 text-xs text-ink text-center font-mono focus:outline-none focus:border-brand transition-all animate-pulse"
                     />
-                    <span className="text-[10px] font-mono text-zinc-500">
+                    <span className="text-[10px] font-mono text-ink-3">
                       {selectedReg.position_override ? `#${selectedReg.position_override}` : 'Auto-Queue'}
                     </span>
                   </div>
                   
-                  <div className="space-y-2 pt-2 border-t border-white/[0.03] text-[11px] font-mono text-zinc-400">
+                  <div className="space-y-2 pt-2 border-t border-line-soft text-[11px] font-mono text-ink-2">
                     <div className="flex justify-between">
-                      <span className="text-zinc-500">Registered At:</span>
+                      <span className="text-ink-3">Registered At:</span>
                       <span>{new Date(selectedReg.reserved_at).toLocaleString()}</span>
                     </div>
                     {selectedReg.referred_by && (
                       <div className="flex justify-between">
-                        <span className="text-zinc-500">Referred By:</span>
+                        <span className="text-ink-3">Referred By:</span>
                         <span className="text-brand">@{selectedReg.referred_by}</span>
                       </div>
                     )}
                     {selectedReg.profile_visitors_count !== undefined && selectedReg.profile_visitors_count > 0 && (
                       <div className="flex justify-between">
-                        <span className="text-zinc-500">Profile Views:</span>
-                        <span className="text-white">{selectedReg.profile_visitors_count}</span>
+                        <span className="text-ink-3">Profile Views:</span>
+                        <span className="text-ink">{selectedReg.profile_visitors_count}</span>
                       </div>
                     )}
                   </div>
@@ -3485,7 +2821,7 @@ export default function AdminPage() {
                   href={`/${selectedReg.username}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl text-[10px] font-mono font-bold tracking-[0.08em] uppercase transition-all cursor-pointer bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.06] hover:border-white/10 text-white shadow-md"
+                  className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl text-[10px] font-mono font-bold tracking-[0.08em] uppercase transition-all cursor-pointer bg-bg-soft border border-line-soft hover:bg-bg-soft-hover text-ink shadow-md"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                   Inspect Live Page
