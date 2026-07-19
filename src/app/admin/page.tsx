@@ -1848,9 +1848,10 @@ export default function AdminPage() {
                                         <p className="font-bold text-[10px] uppercase tracking-wider text-[#F25A2B]">{emailHeader}</p>
                                       )}
                                       
-                                      <p className="text-slate-600 text-[10px] leading-relaxed whitespace-pre-wrap">
-                                        {emailBody}
-                                      </p>
+                                      <div 
+                                        className="text-slate-600 text-[10px] leading-relaxed whitespace-pre-wrap"
+                                        dangerouslySetInnerHTML={{ __html: emailBody }}
+                                      />
  
                                       {emailCtaText && (
                                         <div className="pt-2 text-center">

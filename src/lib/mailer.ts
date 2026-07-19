@@ -203,10 +203,11 @@ export async function sendCustomEmail({
     }
 
     // Process and substitute placeholders in the HTML
+    const formattedMessage = messageBody.replace(/\n/g, '<br />');
     let compiledHtml = htmlContent;
     compiledHtml = compiledHtml.replaceAll('{{name}}', escapeHtml(name || 'ArtisTant Member'));
     compiledHtml = compiledHtml.replaceAll('{{username}}', escapeHtml(username || 'artist'));
-    compiledHtml = compiledHtml.replaceAll('{{message}}', messageBody);
+    compiledHtml = compiledHtml.replaceAll('{{message}}', formattedMessage);
     compiledHtml = compiledHtml.replaceAll('{{cta_text}}', ctaText);
     compiledHtml = compiledHtml.replaceAll('{{cta_url}}', ctaUrl);
 
@@ -323,9 +324,10 @@ export async function sendNormalEmail({
       return { success: false, message: `Failed to load normal email template: ${readError instanceof Error ? readError.message : String(readError)}` };
     }
 
+    const formattedMessage = messageBody.replace(/\n/g, '<br />');
     let compiledHtml = htmlContent;
     compiledHtml = compiledHtml.replaceAll('{{name}}', escapeHtml(name || 'ArtisTant Member'));
-    compiledHtml = compiledHtml.replaceAll('{{message}}', messageBody);
+    compiledHtml = compiledHtml.replaceAll('{{message}}', formattedMessage);
     compiledHtml = compiledHtml.replaceAll('{{cta_text}}', ctaText);
     compiledHtml = compiledHtml.replaceAll('{{cta_url}}', ctaUrl);
 
