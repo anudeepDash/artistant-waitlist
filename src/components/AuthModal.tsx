@@ -187,6 +187,9 @@ function friendlyError(err: any): string {
         return 'The sign-in popup was blocked by your browser. Please enable popups for this site and try again.';
       case 'auth/cancelled-popup-request':
         return 'Sign-in was cancelled due to another request. Please try again.';
+      case 'auth/captcha-check-failed':
+      case 'auth/domain-not-allowed':
+        return 'Domain not authorized for phone verification. Please add this domain to Firebase Console under Authentication > Settings > Authorized domains.';
       default:
         return err.message;
     }
