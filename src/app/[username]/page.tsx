@@ -435,7 +435,7 @@ export default function PublicProfilePage() {
 
           {/* Artistant Wordmark Logo Badge */}
           <div className={`absolute left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-1 rounded-full backdrop-blur-md shadow-lg select-none ${isLight ? 'bg-white/80 border border-black/10' : 'bg-black/45 border border-white/10'}`}>
-            <img src="/logo_wordmark.png" alt="ArtisTant" className="h-[36px] w-auto object-contain dark:invert-0 invert" />
+            <img src="/logo_wordmark_flat.png" alt="ArtisTant" className="h-[18px] w-auto object-contain dark:invert-0 invert" />
             <span className={`text-[9px] font-mono font-bold tracking-[0.2em] border-l pl-2 uppercase ${isLight ? 'text-zinc-500 border-black/15' : 'text-white/50 border-white/15'}`}>PORTFOLIO</span>
           </div>
         </div>
@@ -492,7 +492,7 @@ export default function PublicProfilePage() {
 
         {/* Desktop Artistant Logo Portfolio Badge */}
         <div className={`absolute left-1/2 -translate-x-1/2 flex items-center gap-3.5 px-5 py-2.5 rounded-full backdrop-blur-md shadow-lg select-none ${isLight ? 'bg-white border border-black/10' : 'bg-white/[0.02] border border-white/10'}`}>
-          <img src="/logo_wordmark.png" alt="ArtisTant" className="h-[50px] w-auto object-contain dark:invert-0 invert" />
+          <img src="/logo_wordmark_flat.png" alt="ArtisTant" className="h-[22px] w-auto object-contain dark:invert-0 invert" />
           <span className={`text-[10px] font-mono font-bold tracking-[0.3em] border-l pl-3.5 uppercase ${isLight ? 'text-zinc-500 border-black/15' : 'text-white/50 border-white/15'}`}>PORTFOLIO</span>
         </div>
 

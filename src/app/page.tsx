@@ -11,6 +11,7 @@ import UIMockupSequence from '@/components/UIMockupSequence';
 import Navbar from '@/components/Navbar';
 import FeatureDetailsModal from '@/components/FeatureDetailsModal';
 import DashboardPrompt from '@/components/DashboardPrompt';
+import MobileBottomClaimBar from '@/components/MobileBottomClaimBar';
 import { getUserReservation, type WaitlistEntry } from '@/lib/waitlist';
 import { signInWithGoogle, signOut } from '@/lib/auth';
 import { useAuth } from '@/hooks/useAuth';
@@ -722,6 +723,7 @@ export default function Home() {
 
   const { user } = useAuth();
   const router = useRouter();
+  const { resolvedTheme } = useTheme();
   const [claimMessageIdx, setClaimMessageIdx] = useState(0);
 
   useEffect(() => {
@@ -747,6 +749,7 @@ export default function Home() {
   const [availStatus, setAvailStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'locked'>('idle');
   const [validationError, setValidationError] = useState<string | null>(null);
   const [reduceMotion, setReduceMotion] = useState(false);
+  const [bottomPillHighlighted, setBottomPillHighlighted] = useState(false);
   const [userReservation, setUserReservation] = useState<WaitlistEntry | null>(null);
   const [showDashboardPrompt, setShowDashboardPrompt] = useState(true);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -834,6 +837,16 @@ export default function Home() {
       if (input) {
         setTimeout(() => (input as HTMLInputElement).focus(), 800);
       }
+    }
+  };
+
+  const highlightBottomBarPill = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    setBottomPillHighlighted(true);
+    setTimeout(() => setBottomPillHighlighted(false), 2000);
+    const input = document.getElementById('bottom-username-input');
+    if (input) {
+      input.focus();
     }
   };
 
@@ -1124,7 +1137,7 @@ export default function Home() {
   };
 
   return (
-    <main style={{ background: 'var(--bg)', color: 'var(--ink)' }}>
+    <main className="bg-tech-grid" style={{ background: 'var(--bg)', color: 'var(--ink)' }}>
 
 
 
@@ -1324,7 +1337,7 @@ export default function Home() {
               transition={{ duration: 0.6, delay: 0.2, ease: 'easeOut' }}
             >
               <MagneticButton 
-                onClick={scrollToWaitlist} 
+                onClick={highlightBottomBarPill} 
                 className="btn-primary"
                 style={{
                   background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)',
@@ -2304,6 +2317,7 @@ export default function Home() {
               spellCheck="false"
               data-lpignore="true"
               data-1p-ignore="true"
+              className="placeholder-zinc-400 dark:placeholder-white/30 text-zinc-900 dark:text-white"
               style={{
                 background: 'rgba(255, 255, 255, 0.02)',
                 backdropFilter: 'blur(12px)',
@@ -2326,7 +2340,7 @@ export default function Home() {
                            'inset 0 2px 4px rgba(255, 255, 255, 0.02)',
                 borderRadius: '24px',
                 padding: isMobile ? '14px 44px 14px 38px' : '16px 50px 16px 44px',
-                color: '#FFFFFF',
+                color: resolvedTheme === 'dark' ? '#FFFFFF' : '#121212',
                 fontSize: '16px',
                 outline: 'none',
                 width: '100%',
@@ -2727,10 +2741,14 @@ export default function Home() {
             )}
           </AnimatePresence>
 
-          <MagneticButton 
+           <MagneticButton 
             type="submit"
             className="cta-btn"
             disabled={availStatus !== 'available' && availStatus !== 'locked'}
+            onClick={() => {
+              setBottomPillHighlighted(true);
+              setTimeout(() => setBottomPillHighlighted(false), 2000);
+            }}
             style={{
               background: 'rgba(255, 255, 255, 0.05)',
               color: availStatus === 'available' || availStatus === 'locked'
@@ -3025,7 +3043,7 @@ export default function Home() {
         phase={selectedPhase}
         onReserveClick={() => {
           setIsFeatureModalOpen(false);
-          scrollToWaitlist();
+          highlightBottomBarPill();
         }}
       />
 
@@ -3037,6 +3055,22 @@ export default function Home() {
           />
         )}
       </AnimatePresence>
+
+      <MobileBottomClaimBar
+        user={user}
+        userReservation={userReservation}
+        usernameInput={usernameInput}
+        setUsernameInput={setUsernameInput}
+        availStatus={availStatus}
+        validationError={validationError}
+        onSignInClick={openModal}
+        onSubmit={handleWaitlistSubmit}
+        onSignOut={handleSignOut}
+        suggestions={suggestions}
+        suggestionsLoading={suggestionsLoading}
+        onSuggestionClick={handleSuggestionClick}
+        isHighlighted={bottomPillHighlighted}
+      />
     </main>
   );
 }

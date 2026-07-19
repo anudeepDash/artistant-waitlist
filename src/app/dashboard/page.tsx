@@ -182,7 +182,7 @@ function StaticModulesShowcase({ cohort }: { cohort: string }) {
           <img src="/mockups/screen_9.jpg" alt="Booking" className="w-full h-full object-cover object-top opacity-40" />
           {/* Logo overlay on the center screen */}
           <div className="absolute inset-0 bg-[#0A0A0E]/90 flex flex-col items-center justify-center p-5 z-20">
-            <img src="/logo_wordmark.png" alt="Artistant" className="w-[125px] object-contain mb-3" />
+            <img src="/logo_wordmark_flat.png" alt="Artistant" className="w-[97px] object-contain mb-3" />
             <p className="text-[9px] font-mono text-[#9BA4B8] uppercase tracking-widest text-center">STAGE VERIFIED</p>
             <span className="font-mono text-[8px] text-[#5C6680] mt-1">COHORT {cohort}</span>
           </div>
@@ -1274,7 +1274,7 @@ export default function ProfilePage() {
                 &larr;
               </div>
               <div className={`absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1 rounded-full backdrop-blur-md shadow-sm select-none ${isLight ? 'bg-white/80 border border-black/10' : 'bg-black/45 border border-white/10'}`}>
-                <img src="/logo_wordmark.png" alt="ArtisTant" className="h-[28px] w-auto object-contain dark:invert-0 invert" />
+                <img src="/logo_wordmark_flat.png" alt="ArtisTant" className="h-[14px] w-auto object-contain dark:invert-0 invert" />
                 <span className={`text-[7px] font-mono font-bold tracking-[0.25em] border-l pl-2 uppercase ${isLight ? 'text-zinc-500 border-black/15' : 'text-white/50 border-white/15'}`}>PORTFOLIO</span>
               </div>
             </div>
@@ -1356,9 +1356,11 @@ export default function ProfilePage() {
                       {/* Rank Position */}
                       <div className="flex flex-col items-center justify-center z-10 flex-1 my-0.5">
                         <h1 className={`font-display font-black leading-none text-base ${isLight ? 'text-zinc-900' : 'text-white'}`}>
-                          #{waitlistPos || '---'}
+                          {cohortVal === 'TEAM' || waitlistPos === 0 ? 'TEAM' : `#${waitlistPos || '---'}`}
                         </h1>
-                        <span className={`text-[3.5px] font-mono tracking-[0.2em] uppercase mt-0.5 ${isLight ? 'text-zinc-400' : 'text-white/25'}`}>Waitlist Rank</span>
+                        <span className={`text-[3.5px] font-mono tracking-[0.2em] uppercase mt-0.5 ${isLight ? 'text-zinc-400' : 'text-white/25'}`}>
+                          {cohortVal === 'TEAM' || waitlistPos === 0 ? 'Waitlist Rank Excluded' : 'Waitlist Rank'}
+                        </span>
                       </div>
 
                       {/* Card Bottom Row */}
@@ -2177,11 +2179,15 @@ export default function ProfilePage() {
                       {/* Rank Pos (Center) */}
                       <div className="flex flex-col items-center justify-center z-10 flex-1 my-1 md:my-2">
                         <h1 className="font-display font-black leading-none text-white tracking-tighter text-4xl md:text-6xl drop-shadow-[0_4px_16px_rgba(124,92,255,0.35)]">
-                          #{waitlistPos || '---'}
+                          {cohortVal === 'TEAM' || waitlistPos === 0 ? 'TEAM' : `#${waitlistPos || '---'}`}
                         </h1>
                         <div className="flex flex-col items-center mt-1.5 md:mt-2.5">
-                          <span className="font-mono text-[8px] sm:text-[9px] font-bold tracking-[0.2em] sm:tracking-[0.3em] text-zinc-500 whitespace-nowrap">WAITLIST RANK • COHORT {cohort}</span>
-                          <span className="font-mono text-[7.5px] sm:text-[8px] font-bold tracking-[0.12em] sm:tracking-[0.15em] text-[#F25A2B] whitespace-nowrap">{isCohort1 ? 'BETA ACCESS GRANTED' : 'POSITION SECURED'}</span>
+                          <span className="font-mono text-[8px] sm:text-[9px] font-bold tracking-[0.2em] sm:tracking-[0.3em] text-zinc-500 whitespace-nowrap">
+                            {cohortVal === 'TEAM' || waitlistPos === 0 ? 'WAITLIST RANK • TEAM EXCLUDED' : `WAITLIST RANK • COHORT ${cohort}`}
+                          </span>
+                          <span className="font-mono text-[7.5px] sm:text-[8px] font-bold tracking-[0.12em] sm:tracking-[0.15em] text-[#F25A2B] whitespace-nowrap">
+                            {cohortVal === 'TEAM' || waitlistPos === 0 ? 'TEAM ACCESS GRANTED' : (isCohort1 ? 'BETA ACCESS GRANTED' : 'POSITION SECURED')}
+                          </span>
                         </div>
                       </div>
 
@@ -2192,7 +2198,7 @@ export default function ProfilePage() {
                           <span className="text-[9px] uppercase font-mono tracking-widest text-zinc-500 mt-0.5">Verified Artist</span>
                         </div>
                         <div className="flex flex-col items-end">
-                          <img src="/logo_wordmark.png" alt="ArtisTant" className="w-24 md:w-32 h-auto object-contain opacity-85 -my-3 md:-my-4" />
+                          <img src="/logo_wordmark_flat.png" alt="ArtisTant" className="w-24 md:w-32 h-auto object-contain opacity-85" />
                         </div>
                       </div>
                     </div>
@@ -2913,8 +2919,8 @@ export default function ProfilePage() {
       {/* ═══ FOOTER BAR ═══ */}
       <footer className="w-full px-8 md:px-16 pt-10 pb-20 md:pb-24 flex flex-col sm:flex-row items-center justify-between gap-6 bg-bg-soft border-t border-line-soft text-ink-2 relative z-10">
         <div className="flex items-center">
-          <a href="/" className="inline-block transition-transform duration-300 hover:scale-105 hover:opacity-90 -ml-4 md:-ml-6 -mt-18 -mb-18 md:-mt-24 md:-mb-24">
-            <img src="/logo_wordmark.png" alt="ArtisTant" className="w-[180px] md:w-[220px] h-auto object-contain object-left pointer-events-none dark:invert-0 invert" />
+          <a href="/" className="inline-block transition-transform duration-300 hover:scale-105 hover:opacity-90">
+            <img src="/logo_wordmark_flat.png" alt="ArtisTant" className="w-[140px] md:w-[170px] h-auto object-contain object-left pointer-events-none dark:invert-0 invert" />
           </a>
         </div>
         <div className="flex items-center gap-6">
@@ -2945,7 +2951,7 @@ export default function ProfilePage() {
             className="absolute w-full text-center flex items-center justify-center gap-2"
           >
             {CINEMATIC_FEATURES[textIndex].isLogo ? (
-              <img src="/logo_wordmark.png" alt="ArtisTant" className="h-8 md:h-10 w-auto object-contain opacity-90 drop-shadow-lg dark:invert-0 invert" />
+              <img src="/logo_wordmark_flat.png" alt="ArtisTant" className="h-4 md:h-5 w-auto object-contain opacity-90 drop-shadow-lg dark:invert-0 invert" />
             ) : (
               <div className="flex items-center gap-2 md:gap-3 px-4">
                 <span className="font-display text-[10px] md:text-xs font-black tracking-widest uppercase text-transparent bg-clip-text whitespace-nowrap" style={{ 

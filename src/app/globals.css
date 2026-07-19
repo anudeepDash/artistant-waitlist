@@ -22,6 +22,8 @@
   --color-glass-bg: var(--glass-bg);
   --color-glass-border: var(--glass-border);
   --color-bg-card-hover: var(--bg-card-hover);
+  --color-accent-high: var(--accent-high);
+  --color-accent-high-glow: var(--accent-high-glow);
 
   --font-display: "Space Grotesk", system-ui, sans-serif;
   --font-serif: "Space Grotesk", system-ui, sans-serif;
@@ -47,8 +49,10 @@
   --brand-3: #7C5CFF;
   --brand-4: #6B7CDB;
   --hot: #FF4B4B;
+  --accent-high: #7C5CFF;
+  --accent-high-glow: rgba(124, 92, 255, 0.2);
   --gutter: clamp(20px, 5vw, 80px);
-    --shadow-base: rgba(0, 0, 0, 0.08);
+  --shadow-base: rgba(0, 0, 0, 0.08);
   --shadow-heavy: rgba(0, 0, 0, 0.12);
   --glass-bg: rgba(255, 255, 255, 0.85);
   --glass-border: rgba(0, 0, 0, 0.08);
@@ -101,7 +105,9 @@
   --brand-3: #7C5CFF;
   --brand-4: #6B7CDB;
   --hot: #FF4B4B;
-    --shadow-base: rgba(0, 0, 0, 0.4);
+  --accent-high: #7C5CFF;
+  --accent-high-glow: rgba(124, 92, 255, 0.4);
+  --shadow-base: rgba(0, 0, 0, 0.4);
   --shadow-heavy: rgba(0, 0, 0, 0.75);
   --glass-bg: rgba(20, 24, 38, 0.95);
   --glass-border: rgba(255, 255, 255, 0.08);
@@ -2653,4 +2659,89 @@
   border-color: var(--brand-3) !important;
   box-shadow: 0 0 0 1px var(--brand-3) !important;
 }
+
+/* ═══ HIGH.LIVE-INSPIRED REDESIGN UTILITIES ═══ */
+
+/* Technical Repeating Grid Backdrop */
+.bg-tech-grid {
+  background-image: 
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* Neon Lime Highlights & Badges */
+.text-high {
+  color: var(--accent-high) !important;
+}
+.bg-high {
+  background-color: var(--accent-high) !important;
+}
+.border-high {
+  border-color: var(--accent-high) !important;
+}
+.focus-high:focus {
+  border-color: var(--accent-high) !important;
+  box-shadow: 0 0 0 3px var(--accent-high-glow) !important;
+}
+
+.badge-high {
+  background: rgba(124, 92, 255, 0.08);
+  border: 1px solid rgba(124, 92, 255, 0.15);
+  color: var(--accent-high);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 3.5px 9px;
+  border-radius: 99px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-high {
+  background: var(--accent-high);
+  color: #ffffff !important;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 99px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.btn-high:hover {
+  box-shadow: 0 0 20px var(--accent-high-glow);
+  transform: translateY(-1px);
+}
+.btn-high:active {
+  transform: translateY(0);
+}
+
+/* ============================================
+   Waitlist Input & Text Color Light Mode Fixes
+   ============================================ */
+.bottom-bar-input {
+  color: var(--ink) !important;
+}
+.bottom-bar-input::placeholder {
+  color: var(--ink-3) !important;
+  opacity: 0.65 !important;
+}
+
+#username-waitlist-input {
+  color: var(--ink) !important;
+}
+#username-waitlist-input::placeholder {
+  color: var(--ink-3) !important;
+  opacity: 0.65 !important;
+}
+
+.bottom-claim-btn:disabled {
+  background: var(--line-soft) !important;
+  color: var(--ink-3) !important;
+  opacity: 0.55 !important;
+}
+
 

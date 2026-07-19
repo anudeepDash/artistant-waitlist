@@ -18,8 +18,8 @@ export default function Footer() {
           
           {/* Brand Column */}
           <div className="flex flex-col items-start gap-1 lg:w-[45%]">
-            <Link href="/" className="inline-block transition-transform duration-300 hover:scale-105 hover:opacity-90 -ml-6 md:-ml-8 -mt-24 -mb-24 md:-mt-32 md:-mb-32">
-              <img src="/logo_wordmark.png" alt="ArtisTant" className="w-[240px] md:w-[320px] h-auto object-contain object-left pointer-events-none dark:invert-0 invert" />
+            <Link href="/" className="inline-block transition-transform duration-300 hover:scale-105 hover:opacity-90">
+              <img src="/logo_wordmark_flat.png" alt="ArtisTant" className="w-[180px] md:w-[240px] h-auto object-contain object-left pointer-events-none dark:invert-0 invert" />
             </Link>
             
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 relative z-10">

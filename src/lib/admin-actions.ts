@@ -6,6 +6,15 @@ import { headers } from 'next/headers';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { type AdminWaitlistEntry } from './waitlist';
 import { verifyAdminToken, verifyIdToken } from './firebase/admin';
+import {
+  sendAdminAccessGrantedEmail,
+  sendAdminAccessRevokedEmail,
+  sendProfileVerifiedEmail,
+  sendProfileVerificationRevokedEmail,
+  sendProfileBlockedEmail,
+  sendPositionUpdatedEmail,
+  sendFoundingCardFeaturedEmail
+} from './mailer';
 
 /**
  * Creates a server-side Supabase client.
@@ -84,12 +93,26 @@ export async function adminUpdateRegistrationAction(
   isVerified: boolean,
   isBlocked: boolean,
   positionOverride?: number | null,
-  featureFoundingCard?: boolean
+  featureFoundingCard?: boolean,
+  excludeFromWaitlist?: boolean
 ): Promise<void> {
   await verifyAdminToken(idToken);
 
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const client = createAdminClient();
+
+  // Fetch current status of this user registration to see what changes
+  let existing: any = null;
+  try {
+    const { data } = await client
+      .from('waitlist_users')
+      .select('email, display_name, username, is_verified, is_blocked, position_override, feature_founding_card, exclude_from_waitlist')
+      .eq('user_id', userId)
+      .maybeSingle();
+    existing = data;
+  } catch (e) {
+    console.error('Error fetching existing registration for email trigger:', e);
+  }
 
   if (serviceRoleKey) {
     // Service Role Client: update table directly bypassing RLS
@@ -100,6 +123,9 @@ export async function adminUpdateRegistrationAction(
     };
     if (featureFoundingCard !== undefined) {
       updatePayload.feature_founding_card = featureFoundingCard;
+    }
+    if (excludeFromWaitlist !== undefined) {
+      updatePayload.exclude_from_waitlist = excludeFromWaitlist;
     }
 
     const { error } = await client
@@ -119,11 +145,52 @@ export async function adminUpdateRegistrationAction(
       p_is_verified: isVerified,
       p_is_blocked: isBlocked,
       p_position_override: positionOverride !== undefined ? positionOverride : null,
+      p_feature_founding_card: featureFoundingCard !== undefined ? featureFoundingCard : false,
+      p_exclude_from_waitlist: excludeFromWaitlist !== undefined ? excludeFromWaitlist : false,
     });
 
     if (error) {
       console.error('Error calling admin_update_registration RPC: [REDACTED_ERROR]');
       const ref = crypto.randomUUID(); console.error('Error Ref:', ref, error); throw new Error('An internal error occurred. Ref: ' + ref);
+    }
+  }
+
+  // Send email alerts based on status transitions
+  if (existing) {
+    const email = existing.email;
+    const name = existing.display_name || existing.username;
+    const username = existing.username;
+
+    // 1. Verification status change
+    if (isVerified && !existing.is_verified) {
+      sendProfileVerifiedEmail(email, name, username).catch(err => {
+        console.error('Failed to send verification approved email:', err);
+      });
+    } else if (!isVerified && existing.is_verified) {
+      sendProfileVerificationRevokedEmail(email, name).catch(err => {
+        console.error('Failed to send verification revoked email:', err);
+      });
+    }
+
+    // 2. Block status change
+    if (isBlocked && !existing.is_blocked) {
+      sendProfileBlockedEmail(email, name).catch(err => {
+        console.error('Failed to send profile blocked email:', err);
+      });
+    }
+
+    // 3. Founding card status change
+    if (featureFoundingCard !== undefined && featureFoundingCard && !existing.feature_founding_card) {
+      sendFoundingCardFeaturedEmail(email, name, username).catch(err => {
+        console.error('Failed to send founding card featured email:', err);
+      });
+    }
+
+    // 4. Position override change
+    if (positionOverride !== undefined && positionOverride !== null && positionOverride !== existing.position_override) {
+      sendPositionUpdatedEmail(email, name, positionOverride).catch(err => {
+        console.error('Failed to send position updated email:', err);
+      });
     }
   }
 }
@@ -252,6 +319,26 @@ export async function adminAddAdminAction(
     console.error('Error adding admin member: [REDACTED_ERROR]');
     const ref = crypto.randomUUID(); console.error('Error Ref:', ref, error); throw new Error('An internal error occurred. Ref: ' + ref);
   }
+
+  // Retrieve user's display name if available to personalize the email
+  let name = 'ArtisTant Team Member';
+  try {
+    const { data } = await client
+      .from('waitlist_users')
+      .select('display_name')
+      .eq('email', email.trim().toLowerCase())
+      .maybeSingle();
+    if (data && data.display_name) {
+      name = data.display_name;
+    }
+  } catch (e) {
+    console.warn('Could not fetch name for admin access granted email:', e);
+  }
+
+  // Send access granted email
+  sendAdminAccessGrantedEmail(email.trim().toLowerCase(), name).catch(err => {
+    console.error('Failed to send admin access granted email:', err);
+  });
 }
 
 /**
@@ -268,6 +355,22 @@ export async function adminRemoveAdminAction(idToken: string, email: string): Pr
   }
 
   const client = createAdminClient();
+
+  // Retrieve user's display name if available before deleting, to personalize the email
+  let name = 'ArtisTant Team Member';
+  try {
+    const { data } = await client
+      .from('waitlist_users')
+      .select('display_name')
+      .eq('email', email.trim().toLowerCase())
+      .maybeSingle();
+    if (data && data.display_name) {
+      name = data.display_name;
+    }
+  } catch (e) {
+    console.warn('Could not fetch name for admin access revoked email:', e);
+  }
+
   const { error } = await client
     .from('admin_users')
     .delete()
@@ -277,6 +380,11 @@ export async function adminRemoveAdminAction(idToken: string, email: string): Pr
     console.error('Error removing admin member: [REDACTED_ERROR]');
     const ref = crypto.randomUUID(); console.error('Error Ref:', ref, error); throw new Error('An internal error occurred. Ref: ' + ref);
   }
+
+  // Send access revoked email
+  sendAdminAccessRevokedEmail(email.trim().toLowerCase(), name).catch(err => {
+    console.error('Failed to send admin access revoked email:', err);
+  });
 }
 
 /**
@@ -369,32 +477,33 @@ export async function getWaitlistDashboardDataAction(idToken: string): Promise<{
 
   const client = createAdminClient();
   
-  // 1. Fetch all registrations (with story_shared if available)
+  // 1. Fetch all registrations (with story_shared and exclude_from_waitlist if available)
   const { data, error } = await client
     .from('waitlist_users')
-    .select('user_id, username, display_name, role, is_verified, referred_by, reserved_at, story_shared')
+    .select('user_id, username, display_name, role, is_verified, referred_by, reserved_at, story_shared, exclude_from_waitlist')
     .eq('is_blocked', false);
     
   let users = data || [];
   
   if (error) {
-    // If story_shared column doesn't exist yet, retry without it
-    const isColumnError = 
+    // If exclude_from_waitlist/story_shared columns don't exist yet, retry without them
+    const isExcludeColumnError = 
       error.code === 'PGRST204' || 
       error.code === 'PGRST200' || 
       error.code === '42703' || 
       (error.message && (
+        error.message.includes('exclude_from_waitlist') ||
         error.message.includes('story_shared') || 
         error.message.includes('column') || 
         error.message.includes('does not exist')
       ));
-    if (isColumnError) {
+    if (isExcludeColumnError) {
       const { data: fallbackData, error: fallbackError } = await client
         .from('waitlist_users')
         .select('user_id, username, display_name, role, is_verified, referred_by, reserved_at')
         .eq('is_blocked', false);
       if (fallbackError) throw fallbackError;
-      users = (fallbackData || []).map(u => ({ ...u, story_shared: false }));
+      users = (fallbackData || []).map(u => ({ ...u, story_shared: false, exclude_from_waitlist: false }));
     } else {
       const ref = crypto.randomUUID(); console.error('Error Ref:', ref, error); throw new Error('An internal error occurred. Ref: ' + ref);
     }
@@ -431,7 +540,8 @@ export async function getWaitlistDashboardDataAction(idToken: string): Promise<{
       points,
       referrals_count: verifiedRefs,
       story_shared: storyShared,
-      reserved_at: u.reserved_at
+      reserved_at: u.reserved_at,
+      exclude_from_waitlist: u.exclude_from_waitlist === true
     };
   });
 
@@ -445,16 +555,16 @@ export async function getWaitlistDashboardDataAction(idToken: string): Promise<{
 
   // 5. Find current user stats (using verified userId from token, not client-supplied)
   let currentUserStats = null;
-  const userIdx = sorted.findIndex(item => item.user_id === userId);
-  if (userIdx !== -1) {
-    const userEntry = sorted[userIdx];
-    const rank = userIdx + 1;
-    let cohort = '003';
-    if (rank <= 100) {
-      cohort = '001';
-    } else if (rank <= 300) {
-      cohort = '002';
-    }
+  const userEntry = sorted.find(item => item.user_id === userId);
+  if (userEntry) {
+    const isExcluded = userEntry.exclude_from_waitlist === true;
+    
+    // For rank calculation, we only rank users who are NOT excluded.
+    const rankedUsers = sorted.filter(u => !u.exclude_from_waitlist);
+    const rankedIdx = rankedUsers.findIndex(item => item.user_id === userId);
+    
+    const rank = isExcluded ? 0 : (rankedIdx !== -1 ? rankedIdx + 1 : 0);
+    const cohort = isExcluded ? 'TEAM' : (rank <= 100 ? '001' : rank <= 300 ? '002' : '003');
     
     const usernameKey = userEntry.username.toLowerCase().trim();
     
@@ -468,9 +578,9 @@ export async function getWaitlistDashboardDataAction(idToken: string): Promise<{
     };
   }
 
-  // 6. Founding Artists are those who have points >= 500 AND role = 'artist'
+  // 6. Founding Artists are those who have points >= 500 AND role = 'artist' AND not excluded from waitlist
   const foundingArtists = sorted
-    .filter(u => u.role === 'artist' && u.points >= 500)
+    .filter(u => u.role === 'artist' && u.points >= 500 && !u.exclude_from_waitlist)
     .map(u => ({
       username: u.username,
       display_name: u.display_name,
@@ -484,16 +594,19 @@ export async function getWaitlistDashboardDataAction(idToken: string): Promise<{
   const totalArtistsCount = foundingArtists.length;
   const foundingLimit = totalArtistsCount >= 50 ? 100 : 50;
 
-  // Clean leaderboard for public consumption
-  const publicLeaderboard = sorted.slice(0, 50).map(u => ({
-    username: u.username,
-    display_name: u.display_name,
-    role: u.role,
-    is_verified: u.is_verified || u.points >= 500,
-    points: u.points,
-    referrals_count: u.referrals_count,
-    story_shared: u.story_shared === true
-  }));
+  // Clean leaderboard for public consumption (hide excluded users)
+  const publicLeaderboard = sorted
+    .filter(u => !u.exclude_from_waitlist)
+    .slice(0, 50)
+    .map(u => ({
+      username: u.username,
+      display_name: u.display_name,
+      role: u.role,
+      is_verified: u.is_verified || u.points >= 500,
+      points: u.points,
+      referrals_count: u.referrals_count,
+      story_shared: u.story_shared === true
+    }));
 
   return {
     leaderboard: publicLeaderboard,

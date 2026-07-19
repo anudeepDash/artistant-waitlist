@@ -123,6 +123,16 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const dropdownStyle = {
+    background: isDarkMode ? 'rgba(18, 20, 28, 0.45)' : 'rgba(255, 255, 255, 0.45)',
+    backdropFilter: 'blur(24px) saturate(190%)',
+    WebkitBackdropFilter: 'blur(24px) saturate(190%)',
+    border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(0, 0, 0, 0.08)',
+    boxShadow: isDarkMode
+      ? '0 8px 32px rgba(0, 0, 0, 0.25), inset 0 1px 0px rgba(255, 255, 255, 0.12)'
+      : '0 4px 30px rgba(0, 0, 0, 0.02), inset 0 1px 1px rgba(255, 255, 255, 0.4)'
+  };
+
   return (
     <motion.nav
       initial={{ opacity: 0, y: -20 }}
@@ -162,13 +172,13 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
             className="shrink-0 flex items-center"
           >
             <img
-              src="/logo_wordmark.png"
+              src="/logo_wordmark_flat.png"
               alt="ArtisTant"
               style={{
                 width: 'auto',
                 display: 'block'
               }}
-              className={`object-contain transition-all duration-300 dark:invert-0 invert ${scrolled ? 'h-[36px] md:h-[56px]' : 'h-[44px] md:h-[90px]'}`}
+              className={`object-contain transition-all duration-300 dark:invert-0 invert ${scrolled ? 'h-[18px] md:h-[24px]' : 'h-[24px] md:h-[32px]'}`}
             />
           </a>
 
@@ -252,11 +262,8 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 15, scale: 0.95 }}
                       transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                      className="
-                        absolute right-0 top-full mt-3 w-64 rounded-2xl overflow-hidden z-50
-                        border border-glass-border bg-glass-bg backdrop-blur-2xl
-                        shadow-2xl shadow-black/40 flex flex-col
-                      "
+                      className="absolute right-0 top-full mt-3 w-64 rounded-2xl overflow-hidden z-50 flex flex-col"
+                      style={dropdownStyle}
                     >
                       {showSettings ? (
                         <div className="flex flex-col text-left">

@@ -21,6 +21,20 @@ function escapeHtml(str: string): string {
 }
 
 /**
+ * Strips HTML tags for a clean plain text fallback email body
+ */
+function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .trim();
+}
+
+/**
  * Creates and returns a Nodemailer transporter.
  */
 function getTransporter() {
@@ -135,6 +149,7 @@ export async function sendWelcomeEmail({ email, name, username }: WelcomeEmailPa
       from: getSenderHeader('welcome'),
       to: email,
       subject: emailSubject,
+      text: stripHtml(bodyText), // plain text alternative
       html: compiledHtml,
     };
 
@@ -152,6 +167,7 @@ export async function sendWelcomeEmail({ email, name, username }: WelcomeEmailPa
 interface CustomEmailParams {
   toEmail: string;
   name: string;
+  username?: string;
   subject: string;
   messageBody: string;
   ctaText?: string;
@@ -165,6 +181,7 @@ interface CustomEmailParams {
 export async function sendCustomEmail({
   toEmail,
   name,
+  username,
   subject,
   messageBody,
   ctaText = 'Visit ArtisTant',
@@ -188,6 +205,7 @@ export async function sendCustomEmail({
     // Process and substitute placeholders in the HTML
     let compiledHtml = htmlContent;
     compiledHtml = compiledHtml.replaceAll('{{name}}', escapeHtml(name || 'ArtisTant Member'));
+    compiledHtml = compiledHtml.replaceAll('{{username}}', escapeHtml(username || 'artist'));
     compiledHtml = compiledHtml.replaceAll('{{message}}', messageBody);
     compiledHtml = compiledHtml.replaceAll('{{cta_text}}', ctaText);
     compiledHtml = compiledHtml.replaceAll('{{cta_url}}', ctaUrl);
@@ -197,6 +215,7 @@ export async function sendCustomEmail({
       from: getSenderHeader(senderAlias),
       to: toEmail,
       subject: subject,
+      text: stripHtml(messageBody), // plain text alternative
       html: compiledHtml,
     };
 
@@ -253,6 +272,7 @@ export async function sendPasswordResetEmail({
       from: getSenderHeader('security'),
       to: email,
       subject: emailSubject,
+      text: stripHtml(bodyText), // plain text alternative
       html: compiledHtml,
     };
 
@@ -266,3 +286,195 @@ export async function sendPasswordResetEmail({
     return { success: false, message: error.message || 'Unknown error occurred while sending password reset email.' };
   }
 }
+
+interface NormalEmailParams {
+  toEmail: string;
+  name: string;
+  subject: string;
+  messageBody: string;
+  ctaText?: string;
+  ctaUrl?: string;
+  senderAlias?: string;
+}
+
+/**
+ * Sends a generic styled email using the Artistant normal HTML template.
+ */
+export async function sendNormalEmail({
+  toEmail,
+  name,
+  subject,
+  messageBody,
+  ctaText = 'Visit ArtisTant',
+  ctaUrl = 'https://artistant.in',
+  senderAlias = 'hello',
+}: NormalEmailParams): Promise<{ success: boolean; message: string }> {
+  try {
+    const transporter = getTransporter();
+    
+    // Read the normal HTML email template
+    const templatePath = path.join(process.cwd(), 'src/templates/artistant-normal-mail-template.html');
+    let htmlContent = '';
+    
+    try {
+      htmlContent = fs.readFileSync(templatePath, 'utf8');
+    } catch (readError: unknown) {
+      console.error('Error reading normal email template file:', readError);
+      return { success: false, message: `Failed to load normal email template: ${readError instanceof Error ? readError.message : String(readError)}` };
+    }
+
+    let compiledHtml = htmlContent;
+    compiledHtml = compiledHtml.replaceAll('{{name}}', escapeHtml(name || 'ArtisTant Member'));
+    compiledHtml = compiledHtml.replaceAll('{{message}}', messageBody);
+    compiledHtml = compiledHtml.replaceAll('{{cta_text}}', ctaText);
+    compiledHtml = compiledHtml.replaceAll('{{cta_url}}', ctaUrl);
+
+    // Configure mail options
+    const mailOptions = {
+      from: getSenderHeader(senderAlias),
+      to: toEmail,
+      subject: subject,
+      text: stripHtml(messageBody), // plain text alternative
+      html: compiledHtml,
+    };
+
+    // Send the email
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`Normal email successfully sent to ${toEmail}. Message ID: ${info.messageId}`);
+    return { success: true, message: `Email sent. Message ID: ${info.messageId}` };
+
+  } catch (error: unknown) {
+    console.error('Error in sendNormalEmail service:', error);
+    return { success: false, message: error instanceof Error ? error.message : 'Unknown error occurred while sending email.' };
+  }
+}
+
+export async function sendAdminAccessGrantedEmail(email: string, name: string): Promise<{ success: boolean; message: string }> {
+  const subject = 'Welcome to the ArtisTant Admin Team! 🔑';
+  const messageBody = `You have been officially granted Administrator access on ArtisTant. You can now access the Admin Console to manage registrations, verify members, update waitlist standings, and run auto-verify operations.<br><br>Please log in to your account and navigate to the admin section.`;
+  const ctaText = 'Open Admin Console';
+  const ctaUrl = 'https://artistant.in/admin';
+  return sendNormalEmail({
+    toEmail: email,
+    name,
+    subject,
+    messageBody,
+    ctaText,
+    ctaUrl,
+    senderAlias: 'security'
+  });
+}
+
+export async function sendAdminAccessRevokedEmail(email: string, name: string): Promise<{ success: boolean; message: string }> {
+  const subject = 'ArtisTant Admin Access Revoked';
+  const messageBody = `Your administrator access on ArtisTant has been revoked. You will no longer be able to access the Admin Console or perform administrative operations.<br><br>If you believe this is an error, please reach out to the system administrator or reply to this email.`;
+  const ctaText = 'Visit ArtisTant';
+  const ctaUrl = 'https://artistant.in';
+  return sendNormalEmail({
+    toEmail: email,
+    name,
+    subject,
+    messageBody,
+    ctaText,
+    ctaUrl,
+    senderAlias: 'security'
+  });
+}
+
+export async function sendProfileVerifiedEmail(email: string, name: string, username: string): Promise<{ success: boolean; message: string }> {
+  const subject = 'Your ArtisTant Profile is verified! 🎉';
+  const messageBody = `Congratulations! Your ArtisTant profile has been reviewed and verified by our team.<br><br>As a verified member, your professional portfolio page at <strong>artistant.in/${username}</strong> is now live with a verified badge. Promoters and clients can visit your profile to view your credentials and make booking inquiries.<br><br>Log in to your dashboard to customize your profile, update your status, upload showreel media, and manage booking settings.`;
+  const ctaText = 'Go to Dashboard';
+  const ctaUrl = 'https://artistant.in/dashboard';
+  return sendNormalEmail({
+    toEmail: email,
+    name,
+    subject,
+    messageBody,
+    ctaText,
+    ctaUrl,
+    senderAlias: 'official'
+  });
+}
+
+export async function sendProfileVerificationRevokedEmail(email: string, name: string): Promise<{ success: boolean; message: string }> {
+  const subject = 'Update on your ArtisTant verification status';
+  const messageBody = `Your profile verification status on ArtisTant has been updated. The verification badge has been removed.<br><br>You still retain your claimed username and waitlist placement, but your public verified status is currently inactive.<br><br>If you have questions or want to update your application details, please contact our support team.`;
+  const ctaText = 'Go to Dashboard';
+  const ctaUrl = 'https://artistant.in/dashboard';
+  return sendNormalEmail({
+    toEmail: email,
+    name,
+    subject,
+    messageBody,
+    ctaText,
+    ctaUrl,
+    senderAlias: 'support'
+  });
+}
+
+export async function sendProfileBlockedEmail(email: string, name: string): Promise<{ success: boolean; message: string }> {
+  const subject = 'Your ArtisTant account has been suspended';
+  const messageBody = `Your profile on ArtisTant has been suspended due to violations of our community guidelines or other administrative actions.<br><br>Your public portfolio page is no longer visible, and you will not be able to log in or access your dashboard.<br><br>If you believe this decision was made in error and want to appeal, please contact support.`;
+  const ctaText = 'Contact Support';
+  const ctaUrl = 'mailto:support@artistant.in';
+  return sendNormalEmail({
+    toEmail: email,
+    name,
+    subject,
+    messageBody,
+    ctaText,
+    ctaUrl,
+    senderAlias: 'security'
+  });
+}
+
+export async function sendPositionUpdatedEmail(email: string, name: string, newPosition: number): Promise<{ success: boolean; message: string }> {
+  const subject = 'Your ArtisTant waitlist position has been updated! 📈';
+  const messageBody = `Great news! Your queue position on the ArtisTant waitlist has been updated. You have been moved up in the line!<br><br>Your new waitlist placement is now <strong>#${newPosition}</strong>. This moves you closer to priority beta access.<br><br>You can boost your ranking further and earn more points by inviting other creators using your referral link.`;
+  const ctaText = 'View Leaderboard';
+  const ctaUrl = 'https://artistant.in/dashboard';
+  return sendNormalEmail({
+    toEmail: email,
+    name,
+    subject,
+    messageBody,
+    ctaText,
+    ctaUrl,
+    senderAlias: 'official'
+  });
+}
+
+export async function sendFoundingCardFeaturedEmail(email: string, name: string, username: string): Promise<{ success: boolean; message: string }> {
+  const subject = "You've been featured on ArtisTant! 🌟";
+  const messageBody = `We're thrilled to let you know that your profile has been selected and featured as a <strong>Founding Card</strong> on ArtisTant!<br><br>This highlights your profile to our community and early promoters. You can now view your custom card layout, generate card mockups, and share your status on Instagram and Twitter/X.<br><br>Thank you for being a founding member of ArtisTant.`;
+  const ctaText = 'View Featured Card';
+  const ctaUrl = `https://artistant.in/${username}`;
+  return sendNormalEmail({
+    toEmail: email,
+    name,
+    subject,
+    messageBody,
+    ctaText,
+    ctaUrl,
+    senderAlias: 'welcome'
+  });
+}
+
+export async function sendContactInfoUpdatedEmail(email: string, name: string, updatedFields: string[]): Promise<{ success: boolean; message: string }> {
+  const fieldsStr = updatedFields.join(', ');
+  const subject = 'ArtisTant Security Notification: Contact Info Updated 🔒';
+  const messageBody = `This is a quick notification to confirm that your contact settings (${fieldsStr}) on ArtisTant were recently updated.<br><br>If you made these changes, no further action is required. If you did not make these changes, please secure your account immediately and contact support.`;
+  const ctaText = 'Review Security Settings';
+  const ctaUrl = 'https://artistant.in/dashboard';
+  return sendNormalEmail({
+    toEmail: email,
+    name,
+    subject,
+    messageBody,
+    ctaText,
+    ctaUrl,
+    senderAlias: 'security'
+  });
+}
+

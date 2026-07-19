@@ -64,6 +64,7 @@ import {
   Activity,
   MapPin,
   User,
+  UserMinus,
   ExternalLink,
   Shield,
   Zap,
@@ -651,16 +652,17 @@ export default function AdminPage() {
     try {
       if (isLiveMode) {
         const idToken = await getIdToken();
-        await adminUpdateRegistrationAction(idToken, reg.user_id, nextState, reg.is_blocked, reg.position_override, reg.feature_founding_card ?? false);
+        await adminUpdateRegistrationAction(
+          idToken, 
+          reg.user_id, 
+          nextState, 
+          reg.is_blocked, 
+          reg.position_override, 
+          reg.feature_founding_card ?? false,
+          reg.exclude_from_waitlist ?? false
+        );
         if (nextState) {
-          // Send welcome email action
-          await sendWelcomeEmailAction({
-            idToken,
-            email: reg.email,
-            name: reg.display_name || reg.username,
-            username: reg.username
-          });
-          showToast(`User Verified. Welcome Email Dispatched to @${reg.username}!`);
+          showToast(`User Verified. Verification Email Dispatched to @${reg.username}!`);
         } else {
           showToast(`Verification revoked for @${reg.username}`);
         }
@@ -688,7 +690,15 @@ export default function AdminPage() {
     try {
       if (isLiveMode) {
         const idToken = await getIdToken();
-        await adminUpdateRegistrationAction(idToken, reg.user_id, reg.is_verified, nextState, reg.position_override, reg.feature_founding_card ?? false);
+        await adminUpdateRegistrationAction(
+          idToken, 
+          reg.user_id, 
+          reg.is_verified, 
+          nextState, 
+          reg.position_override, 
+          reg.feature_founding_card ?? false,
+          reg.exclude_from_waitlist ?? false
+        );
         showToast(`User @${reg.username} block status toggled!`);
       } else {
         localStorage.setItem("artistant_sandbox_registrations", JSON.stringify(updated));
@@ -714,7 +724,15 @@ export default function AdminPage() {
     try {
       if (isLiveMode) {
         const idToken = await getIdToken();
-        await adminUpdateRegistrationAction(idToken, reg.user_id, reg.is_verified, reg.is_blocked, reg.position_override, nextState);
+        await adminUpdateRegistrationAction(
+          idToken, 
+          reg.user_id, 
+          reg.is_verified, 
+          reg.is_blocked, 
+          reg.position_override, 
+          nextState,
+          reg.exclude_from_waitlist ?? false
+        );
         showToast(nextState ? `Featured @${reg.username} as Founding Card!` : `Unfeatured @${reg.username} as Founding Card.`);
       } else {
         localStorage.setItem("artistant_sandbox_registrations", JSON.stringify(updated));
@@ -723,6 +741,40 @@ export default function AdminPage() {
     } catch (err) {
       console.error("[REDACTED_ERROR] PII stripped from client log.");
       showToast("Error saving founding card status.");
+    }
+  };
+
+  const handleToggleExcludeFromWaitlist = async (reg: AdminWaitlistEntry) => {
+    const nextState = !reg.exclude_from_waitlist;
+    const updated = registrations.map(r => {
+      if (r.user_id === reg.user_id) return { ...r, exclude_from_waitlist: nextState };
+      return r;
+    });
+    setRegistrations(updated);
+    if (selectedReg && selectedReg.user_id === reg.user_id) {
+      setSelectedReg(prev => prev ? { ...prev, exclude_from_waitlist: nextState } : null);
+    }
+
+    try {
+      if (isLiveMode) {
+        const idToken = await getIdToken();
+        await adminUpdateRegistrationAction(
+          idToken, 
+          reg.user_id, 
+          reg.is_verified, 
+          reg.is_blocked, 
+          reg.position_override, 
+          reg.feature_founding_card ?? false,
+          nextState
+        );
+        showToast(nextState ? `Excluded @${reg.username} from waitlist rank.` : `Restored waitlist rank for @${reg.username}.`);
+      } else {
+        localStorage.setItem("artistant_sandbox_registrations", JSON.stringify(updated));
+        showToast(`Sandbox: @${reg.username} rank exclusion toggled!`);
+      }
+    } catch (err) {
+      console.error("[REDACTED_ERROR] PII stripped from client log.");
+      showToast("Error saving waitlist exclusion status.");
     }
   };
 
@@ -741,7 +793,15 @@ export default function AdminPage() {
       if (reg) {
         if (isLiveMode) {
           const idToken = await getIdToken();
-          await adminUpdateRegistrationAction(idToken, userId, reg.is_verified, reg.is_blocked, val, reg.feature_founding_card ?? false);
+          await adminUpdateRegistrationAction(
+            idToken, 
+            userId, 
+            reg.is_verified, 
+            reg.is_blocked, 
+            val, 
+            reg.feature_founding_card ?? false,
+            reg.exclude_from_waitlist ?? false
+          );
           showToast(`Priority Override set to position ${val ?? "Auto"}!`);
         } else {
           localStorage.setItem("artistant_sandbox_registrations", JSON.stringify(updated));
@@ -829,13 +889,15 @@ export default function AdminPage() {
       try {
         if (isLiveMode) {
           const idToken = await getIdToken();
-          await adminUpdateRegistrationAction(idToken, reg.user_id, true, reg.is_blocked, reg.position_override);
-          await sendWelcomeEmailAction({
-            idToken,
-            email: reg.email,
-            name: reg.display_name || reg.username,
-            username: reg.username
-          });
+          await adminUpdateRegistrationAction(
+            idToken, 
+            reg.user_id, 
+            true, 
+            reg.is_blocked, 
+            reg.position_override,
+            reg.feature_founding_card ?? false,
+            reg.exclude_from_waitlist ?? false
+          );
         }
         
         const idx = updated.findIndex(u => u.user_id === reg.user_id);
@@ -870,6 +932,36 @@ export default function AdminPage() {
     return filteredRegistrations;
   };
 
+  const loadMigrationCampaignPreset = () => {
+    // Migrated artists are those where user_id starts with 'imported_' and role is artist
+    const migrated = registrations.filter(r => r.user_id?.startsWith('imported_') && r.role === 'artist');
+    if (migrated.length === 0) {
+      showToast("No pending migrated artists found (all profiles claimed or none imported).");
+      return;
+    }
+
+    setSelectedUserIds(migrated.map(r => r.id));
+    setEmailSubject("You're First in Line: Claim Your ArtisTant Username! 🚀");
+    setEmailHeader("Founding Artist Exclusive Onboarding");
+    setEmailBody(
+      "As one of our founding artists on the previous waitlist, we wanted to ensure you get VIP treatment.<br><br>" +
+      "You are officially <strong>first in line</strong> for our new exclusive waitlist! We've automatically migrated your profile. Now it's time to secure your unique <strong>@username</strong> before the platform opens to the public.<br><br>" +
+      "Here are the three main pillars of the ArtisTant ecosystem you'll soon experience:<br><br>" +
+      "1. <strong>The Bookability Score™</strong>: A 0–100 rating built from real outcomes on the platform. A credit score for reliability, not vibes.<br><br>" +
+      "2. <strong>GigSafe Escrow</strong>: Clients pay upfront into secure escrow. Money is released to you automatically T+1 after the show ends.<br><br>" +
+      "3. <strong>Prices, In Public</strong>: No \"DM for price.\" Publish packaged pricing, keep your calendar live, and let bookings happen in minutes.<br><br>" +
+      "Plus, you'll get access to these core features:<br><br>" +
+      "• <strong>Your Free Portfolio Website</strong>: Your professional booking identity, housing showreels, riders, and contact parameters.<br>" +
+      "• <strong>Live Calendar & Availability</strong>: Automated calendar management. Clients see open dates instantly.<br>" +
+      "• <strong>Direct 1-on-1 Booking Engine</strong>: 100% direct client-to-artist workflow. No agents, no broker cuts.<br><br>" +
+      "Click the button below to head to the platform, authenticate, and officially claim your handle!"
+    );
+    setEmailCtaText("Claim My Username");
+    setEmailCtaUrl("https://artistant.in/claim");
+    setEmailAlias("official");
+    showToast(`Preset Loaded! Selected ${migrated.length} migrated artist(s).`);
+  };
+
   const handleSendEmailBroadcast = async () => {
     const targets = getSelectedRecipientsList().filter(r => !r.is_blocked);
     if (targets.length === 0) {
@@ -879,7 +971,9 @@ export default function AdminPage() {
 
     const recipientEmails = targets.map(t => ({
       email: t.email,
-      name: t.display_name || t.username
+      name: t.display_name || t.username,
+      username: t.username || 'artist',
+      id: t.id
     }));
 
     if (!window.confirm(`Initiate mass email broadcast to ${targets.length} waitlisted users?`)) {
@@ -1248,9 +1342,9 @@ export default function AdminPage() {
           <div className="px-8 pt-8 pb-5">
             <a href="/" target="_blank" className="block group">
               <img
-                src="/logo_wordmark.png"
+                src="/logo_wordmark_flat.png"
                 alt="ArtisTant"
-                className="h-[72px] w-auto object-contain dark:invert-0 invert"
+                className="h-[20px] w-auto object-contain dark:invert-0 invert"
               />
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="inline-flex w-1.5 h-1.5 rounded-full bg-brand animate-pulse" />
@@ -1583,12 +1677,21 @@ export default function AdminPage() {
                                   </p>
                                 </div>
                               </div>
-                              <button 
-                                onClick={() => setShowEmailComposer(false)}
-                                className="text-ink-3 hover:text-ink font-mono text-[10px] uppercase font-bold tracking-wider cursor-pointer bg-bg-soft/50 border border-line-soft px-3 py-1.5 rounded-lg hover:bg-bg-soft"
-                              >
-                                Close
-                              </button>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={loadMigrationCampaignPreset}
+                                  className="text-[#7C5CFF] hover:text-white font-mono text-[9px] md:text-[10px] uppercase font-bold tracking-wider cursor-pointer bg-[#7C5CFF]/10 border border-[#7C5CFF]/20 hover:bg-[#7C5CFF] px-3.5 py-1.5 rounded-lg transition-all"
+                                >
+                                  ⚡ Load Onboarding Preset
+                                </button>
+                                <button 
+                                  onClick={() => setShowEmailComposer(false)}
+                                  className="text-ink-3 hover:text-ink font-mono text-[10px] uppercase font-bold tracking-wider cursor-pointer bg-bg-soft/50 border border-line-soft px-3 py-1.5 rounded-lg hover:bg-bg-soft"
+                                >
+                                  Close
+                                </button>
+                              </div>
                             </div>
 
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -1716,9 +1819,9 @@ export default function AdminPage() {
                                     {/* Branded Dark Header */}
                                     <div className="bg-[#0b1120] px-5 py-4 flex items-center justify-between">
                                       <img 
-                                        src="/logo_wordmark.png" 
+                                        src="/logo_wordmark_flat.png" 
                                         alt="Artistant" 
-                                        className="h-5 w-auto object-contain"
+                                        className="h-[16px] w-auto object-contain"
                                         style={{ filter: 'none' }}
                                       />
                                     </div>
@@ -2040,6 +2143,11 @@ export default function AdminPage() {
                                     {reg.is_verified && (
                                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold tracking-[0.08em] bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] text-white">
                                         VERIFIED
+                                      </span>
+                                    )}
+                                    {reg.exclude_from_waitlist && (
+                                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold tracking-[0.08em] bg-bg-soft text-purple-400 border border-purple-400/20">
+                                        TEAM
                                       </span>
                                     )}
                                     {heuristics.eligible && (
@@ -2613,7 +2721,7 @@ export default function AdminPage() {
                 {/* ── Quick Actions ── */}
                 <div className="bg-bg-soft/30 border border-line-soft rounded-2xl p-5 space-y-4">
                   <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3">Clearance Actions</p>
-                  <div className="grid grid-cols-3 gap-2.5">
+                  <div className="grid grid-cols-2 gap-2.5">
                     <button
                       onClick={() => handleVerifyAndLock(selectedReg)}
                       className="py-2.5 rounded-xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-1.5 transition-all cursor-pointer"
@@ -2652,6 +2760,19 @@ export default function AdminPage() {
                     >
                       <Award className="w-3 h-3" />
                       {selectedReg.feature_founding_card ? 'Unfeat.' : 'Feature'}
+                    </button>
+
+                    <button
+                      onClick={() => handleToggleExcludeFromWaitlist(selectedReg)}
+                      className="py-2.5 rounded-xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      style={selectedReg.exclude_from_waitlist ? {
+                        background: 'rgba(242,90,43,0.15)', color: 'var(--brand-1)', border: '1px solid rgba(242,90,43,0.25)',
+                      } : {
+                        background: 'var(--bg-soft)', color: 'var(--ink-3)', border: '1px solid var(--line-soft)',
+                      }}
+                    >
+                      <UserMinus className="w-3 h-3" />
+                      {selectedReg.exclude_from_waitlist ? 'Include Rank' : 'Exclude Rank'}
                     </button>
                   </div>
                 </div>

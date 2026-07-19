@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { verifyIdToken } from './firebase/admin';
+import { sendContactInfoUpdatedEmail } from './mailer';
 import { cookies, headers } from 'next/headers';
 import crypto from 'crypto';
 import { type WaitlistEntry } from './waitlist';
@@ -227,6 +228,24 @@ export async function updateContactSettingsAction(
   const decodedToken = await verifyIdToken(idToken);
   const client = createAdminClient();
 
+  // Fetch current user email/phone for notification
+  let existing: {
+    email: string;
+    phone: string | null;
+    display_name: string | null;
+    username: string;
+  } | null = null;
+  try {
+    const { data } = await client
+      .from('waitlist_users')
+      .select('email, phone, display_name, username')
+      .eq('user_id', decodedToken.uid)
+      .maybeSingle();
+    existing = data;
+  } catch (e) {
+    console.error('Error fetching user info for contact settings alert:', e);
+  }
+
   const { error } = await client
     .from('waitlist_users')
     .update({
@@ -240,6 +259,27 @@ export async function updateContactSettingsAction(
   if (error) {
     console.error("Error updating contact settings:", error);
     throw new Error('Failed to update contact settings');
+  }
+
+  // Trigger security alert email on contact details change
+  if (existing) {
+    const updatedFields: string[] = [];
+    if (settings.email !== undefined && settings.email !== existing.email) {
+      updatedFields.push('Contact Email');
+    }
+    if (settings.phone !== undefined && settings.phone !== existing.phone) {
+      updatedFields.push('Contact Phone Number');
+    }
+
+    if (updatedFields.length > 0) {
+      const name = existing.display_name || existing.username;
+      const targetEmail = settings.email || existing.email;
+      if (targetEmail) {
+        sendContactInfoUpdatedEmail(targetEmail, name, updatedFields).catch(err => {
+          console.error('Failed to send contact settings update alert email:', err);
+        });
+      }
+    }
   }
 
   return true;
@@ -274,6 +314,8 @@ export async function updateProfileDetailsAction(
       ...(details.spotify_url !== undefined ? { spotify_url: details.spotify_url } : {}),
       ...(details.youtube_url !== undefined ? { youtube_url: details.youtube_url } : {}),
       ...(details.youtube_channel_url !== undefined ? { youtube_channel_url: details.youtube_channel_url } : {}),
+      is_verified: true,
+      feature_founding_card: true
     })
     .eq('user_id', decodedToken.uid);
 
@@ -621,5 +663,74 @@ export async function deleteShowreelVideoAction(
     throw new Error('Failed to remove showreel video');
   }
 
+  return true;
+}
+
+export async function changeUsernameAction(
+  idToken: string,
+  newUsername: string
+): Promise<boolean> {
+  const decodedToken = await verifyIdToken(idToken);
+  const uid = decodedToken.uid;
+
+  const normalised = newUsername.trim().toLowerCase();
+
+  // Validate format
+  const usernameRegex = /^[a-zA-Z0-9_.]{3,30}$/;
+  if (!usernameRegex.test(normalised)) {
+    throw new Error('Username must be 3-30 characters long and can only contain letters, numbers, underscores, and dots.');
+  }
+
+  const client = createAdminClient();
+
+  // Check if username is already taken by someone else
+  const { data: takenData, error: checkError } = await client
+    .from('waitlist_users')
+    .select('user_id')
+    .eq('username', normalised)
+    .maybeSingle();
+
+  if (checkError) {
+    console.error('Error checking username unique constraint:', checkError);
+    throw new Error('Database check failed');
+  }
+
+  if (takenData && takenData.user_id !== uid) {
+    throw new Error(`Username "${normalised}" is already taken.`);
+  }
+
+  // Perform update
+  const { error: updateError } = await client
+    .from('waitlist_users')
+    .update({ username: normalised })
+    .eq('user_id', uid);
+
+  if (updateError) {
+    console.error('Error changing username:', updateError);
+    throw new Error('Failed to update username');
+  }
+
+  return true;
+}
+
+export async function linkImportedProfile(
+  idToken: string,
+  waitlistId: string
+): Promise<boolean> {
+  const decodedToken = await verifyIdToken(idToken);
+  const client = createAdminClient();
+
+  const { error } = await client
+    .from('waitlist_users')
+    .update({
+      user_id: decodedToken.uid,
+      email: decodedToken.email || undefined // updates email to match new Google or Auth email if logged in differently
+    })
+    .eq('id', waitlistId);
+
+  if (error) {
+    console.error("Error linking profile:", error);
+    throw new Error('Failed to link profile');
+  }
   return true;
 }

@@ -49,7 +49,7 @@ export async function sendWelcomeEmailAction({
 
 interface SendMassEmailActionParams {
   idToken: string;
-  recipients: { email: string; name: string }[];
+  recipients: { email: string; name: string; username?: string; id?: string }[];
   subject: string;
   messageBody: string;
   ctaText?: string;
@@ -82,13 +82,22 @@ export async function sendMassEmailAction({
 
     for (const recipient of recipients) {
       if (!recipient.email) continue;
+
+      // Make CTA URL dynamic if it's the claim link
+      let finalCtaUrl = ctaUrl;
+      if (ctaUrl && ctaUrl.includes('/claim') && recipient.id) {
+        const separator = ctaUrl.includes('?') ? '&' : '?';
+        finalCtaUrl = `${ctaUrl}${separator}id=${recipient.id}`;
+      }
+
       const res = await sendCustomEmail({
         toEmail: recipient.email,
         name: recipient.name,
+        username: recipient.username,
         subject,
         messageBody,
         ctaText,
-        ctaUrl,
+        ctaUrl: finalCtaUrl,
         senderAlias,
       });
       

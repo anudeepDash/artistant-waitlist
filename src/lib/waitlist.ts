@@ -38,6 +38,7 @@ export interface WaitlistEntry {
   contact_email_enabled?: boolean | null;
   contact_phone_enabled?: boolean | null;
   feature_founding_card?: boolean | null;
+  exclude_from_waitlist?: boolean | null;
 }
 
 /** Artist category options */
@@ -243,6 +244,24 @@ export async function getUserReservation(
   }
 
   return data;
+}
+
+/**
+ * Fetch reservation record by its raw DB UUID (claim token)
+ */
+export async function getReservationById(id: string): Promise<WaitlistEntry | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("waitlist_users")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error fetching reservation by ID:", error);
+    return null;
+  }
+  return data as WaitlistEntry;
 }
 
 /**
