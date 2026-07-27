@@ -809,39 +809,36 @@ export default function AdminPage() {
     }
   };
 
-  const handleSavePositionOverride = async (userId: string, val: number | null) => {
+  const handleSavePositionOverride = async (reg: AdminWaitlistEntry, val: number | null) => {
     const prevRegistrations = [...registrations];
     const prevSelected = selectedReg;
-    const reg = registrations.find(r => r.user_id === userId || r.id === userId);
+    const targetId = reg.user_id || reg.id;
 
     const updated = registrations.map(r => {
-      if (r.user_id === userId || r.id === userId) return { ...r, position_override: val };
+      if (isTargetMatch(r, reg)) return { ...r, position_override: val };
       return r;
     });
     setRegistrations(updated);
-    if (selectedReg && (selectedReg.user_id === userId || selectedReg.id === userId)) {
+    if (selectedReg && isTargetMatch(selectedReg, reg)) {
       setSelectedReg(prev => prev ? { ...prev, position_override: val } : null);
     }
 
     try {
-      if (reg) {
-        const targetId = reg.user_id || reg.id;
-        if (isLiveMode) {
-          const idToken = await getIdToken();
-          await adminUpdateRegistrationAction(
-            idToken, 
-            targetId, 
-            reg.is_verified, 
-            reg.is_blocked, 
-            val, 
-            reg.feature_founding_card ?? false,
-            reg.exclude_from_waitlist ?? false
-          );
-          showToast(`Priority Override set to position ${val ?? "Auto"}!`);
-        } else {
-          localStorage.setItem("artistant_sandbox_registrations", JSON.stringify(updated));
-          showToast(`Sandbox: Override saved.`);
-        }
+      if (isLiveMode) {
+        const idToken = await getIdToken();
+        await adminUpdateRegistrationAction(
+          idToken, 
+          targetId, 
+          reg.is_verified, 
+          reg.is_blocked, 
+          val, 
+          reg.feature_founding_card ?? false,
+          reg.exclude_from_waitlist ?? false
+        );
+        showToast(`Priority Override set to position ${val ?? "Auto"}!`);
+      } else {
+        localStorage.setItem("artistant_sandbox_registrations", JSON.stringify(updated));
+        showToast(`Sandbox: Override saved.`);
       }
     } catch (err: any) {
       console.error("Error saving priority override:", err);
@@ -2071,7 +2068,7 @@ export default function AdminPage() {
                                             value={reg.position_override ?? ""}
                                             onChange={(e) => {
                                               const val = e.target.value === "" ? null : parseInt(e.target.value, 10);
-                                              handleSavePositionOverride(reg.user_id, val);
+                                              handleSavePositionOverride(reg, val);
                                             }}
                                             className="w-14 bg-bg-soft border border-line-soft rounded-lg py-1 px-1.5 text-xs text-ink text-center font-mono focus:outline-none focus:border-brand transition-all"
                                           />
@@ -2946,7 +2943,7 @@ export default function AdminPage() {
                       value={selectedReg.position_override ?? ''}
                       onChange={(e) => {
                         const val = e.target.value === '' ? null : parseInt(e.target.value, 10);
-                        handleSavePositionOverride(selectedReg.user_id, val);
+                        handleSavePositionOverride(selectedReg, val);
                       }}
                       className="w-16 bg-bg-soft border border-line-soft rounded-lg py-1 px-1.5 text-xs text-ink text-center font-mono focus:outline-none focus:border-brand transition-all animate-pulse"
                     />
