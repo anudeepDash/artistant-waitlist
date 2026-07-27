@@ -101,14 +101,25 @@ export async function adminUpdateRegistrationAction(
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const client = createAdminClient();
 
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+
   // Fetch current status of this user registration to see what changes
   let existing: any = null;
   try {
-    const { data } = await client
+    let { data } = await client
       .from('waitlist_users')
       .select('email, display_name, username, is_verified, is_blocked, position_override, feature_founding_card, exclude_from_waitlist')
-      .or(`user_id.eq.${userId},id.eq.${userId}`)
+      .eq('user_id', userId)
       .maybeSingle();
+
+    if (!data && isUUID) {
+      const res = await client
+        .from('waitlist_users')
+        .select('email, display_name, username, is_verified, is_blocked, position_override, feature_founding_card, exclude_from_waitlist')
+        .eq('id', userId)
+        .maybeSingle();
+      data = res.data;
+    }
     existing = data;
   } catch (e) {
     console.error('Error fetching existing registration for email trigger:', e);
@@ -134,7 +145,7 @@ export async function adminUpdateRegistrationAction(
       .eq('user_id', userId)
       .select('id');
 
-    if (!error && (!data || data.length === 0)) {
+    if (!error && (!data || data.length === 0) && isUUID) {
       const fallbackRes = await client
         .from('waitlist_users')
         .update(updatePayload)
@@ -145,8 +156,8 @@ export async function adminUpdateRegistrationAction(
     }
 
     if (error) {
-      console.error('Error updating registration status directly: [REDACTED_ERROR]');
-      const ref = crypto.randomUUID(); console.error('Error Ref:', ref, error); throw new Error('An internal error occurred. Ref: ' + ref);
+      console.error('Error updating registration status directly:', error);
+      throw new Error(`Failed to update registration status: ${error.message}`);
     }
 
     if (!data || data.length === 0) {
@@ -166,8 +177,8 @@ export async function adminUpdateRegistrationAction(
     });
 
     if (error) {
-      console.error('Error calling admin_update_registration RPC: [REDACTED_ERROR]');
-      const ref = crypto.randomUUID(); console.error('Error Ref:', ref, error); throw new Error('An internal error occurred. Ref: ' + ref);
+      console.error('Error calling admin_update_registration RPC:', error);
+      throw new Error(`Error calling admin_update_registration RPC: ${error.message}`);
     }
   }
 
