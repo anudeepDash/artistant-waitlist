@@ -178,7 +178,7 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
                 width: 'auto',
                 display: 'block'
               }}
-              className={`object-contain transition-all duration-300 dark:invert-0 invert ${scrolled ? 'h-[18px] md:h-[24px]' : 'h-[24px] md:h-[32px]'}`}
+              className={`object-contain transition-all duration-300 dark:invert-0 invert ${scrolled ? 'h-[14px] md:h-[16px]' : 'h-[17px] md:h-[20px]'}`}
             />
           </a>
 

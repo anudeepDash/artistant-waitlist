@@ -86,7 +86,7 @@ BEGIN
     position_override = p_position_override,
     feature_founding_card = p_feature_founding_card,
     exclude_from_waitlist = p_exclude_from_waitlist
-  WHERE user_id = p_user_id;
+  WHERE user_id = p_user_id OR id::text = p_user_id;
 END;
 $$;
 

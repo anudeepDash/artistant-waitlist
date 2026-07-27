@@ -107,7 +107,7 @@ export async function adminUpdateRegistrationAction(
     const { data } = await client
       .from('waitlist_users')
       .select('email, display_name, username, is_verified, is_blocked, position_override, feature_founding_card, exclude_from_waitlist')
-      .eq('user_id', userId)
+      .or(`user_id.eq.${userId},id.eq.${userId}`)
       .maybeSingle();
     existing = data;
   } catch (e) {
@@ -128,17 +128,33 @@ export async function adminUpdateRegistrationAction(
       updatePayload.exclude_from_waitlist = excludeFromWaitlist;
     }
 
-    const { error } = await client
+    let { data, error } = await client
       .from('waitlist_users')
       .update(updatePayload)
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .select('id');
+
+    if (!error && (!data || data.length === 0)) {
+      const fallbackRes = await client
+        .from('waitlist_users')
+        .update(updatePayload)
+        .eq('id', userId)
+        .select('id');
+      data = fallbackRes.data;
+      error = fallbackRes.error;
+    }
 
     if (error) {
       console.error('Error updating registration status directly: [REDACTED_ERROR]');
       const ref = crypto.randomUUID(); console.error('Error Ref:', ref, error); throw new Error('An internal error occurred. Ref: ' + ref);
     }
+
+    if (!data || data.length === 0) {
+      console.error(`No registration found matching user_id or id: ${userId}`);
+      throw new Error(`Failed to update registration: No matching user found (${userId}).`);
+    }
   } else {
-    // Fallback: call the RPC function (might not support feature_founding_card in legacy RPC, but we can update it if it allows direct query)
+    // Fallback: call the RPC function
     const { error } = await client.rpc('admin_update_registration', {
       p_passcode: process.env.ADMIN_PASSCODE || '',
       p_user_id: userId,

@@ -638,14 +638,25 @@ export default function AdminPage() {
   // ---------------------------------------------------------------------------
   // Action Handlers: Verify, Block, Position Override
   // ---------------------------------------------------------------------------
+  const isTargetMatch = (r: AdminWaitlistEntry | null, reg: { user_id?: string | null; id?: string | null }) => {
+    if (!r || !reg) return false;
+    if (r.id && reg.id && r.id === reg.id) return true;
+    if (r.user_id && reg.user_id && r.user_id === reg.user_id) return true;
+    return false;
+  };
+
   const handleVerifyAndLock = async (reg: AdminWaitlistEntry) => {
     const nextState = !reg.is_verified;
+    const targetId = reg.user_id || reg.id;
+    const prevRegistrations = [...registrations];
+    const prevSelected = selectedReg;
+
     const updated = registrations.map(r => {
-      if (r.user_id === reg.user_id) return { ...r, is_verified: nextState };
+      if (isTargetMatch(r, reg)) return { ...r, is_verified: nextState };
       return r;
     });
     setRegistrations(updated);
-    if (selectedReg && selectedReg.user_id === reg.user_id) {
+    if (selectedReg && isTargetMatch(selectedReg, reg)) {
       setSelectedReg(prev => prev ? { ...prev, is_verified: nextState } : null);
     }
 
@@ -654,7 +665,7 @@ export default function AdminPage() {
         const idToken = await getIdToken();
         await adminUpdateRegistrationAction(
           idToken, 
-          reg.user_id, 
+          targetId, 
           nextState, 
           reg.is_blocked, 
           reg.position_override, 
@@ -670,20 +681,26 @@ export default function AdminPage() {
         localStorage.setItem("artistant_sandbox_registrations", JSON.stringify(updated));
         showToast(`Sandbox: @${reg.username} verification updated!`);
       }
-    } catch (err) {
-      console.error("[REDACTED_ERROR] PII stripped from client log.");
-      showToast("Error updating database.");
+    } catch (err: any) {
+      console.error("Error updating database for verify action:", err);
+      setRegistrations(prevRegistrations);
+      setSelectedReg(prevSelected);
+      showToast(`Error updating database: ${err.message || 'Action failed'}`);
     }
   };
 
   const handleToggleBlock = async (reg: AdminWaitlistEntry) => {
     const nextState = !reg.is_blocked;
+    const targetId = reg.user_id || reg.id;
+    const prevRegistrations = [...registrations];
+    const prevSelected = selectedReg;
+
     const updated = registrations.map(r => {
-      if (r.user_id === reg.user_id) return { ...r, is_blocked: nextState };
+      if (isTargetMatch(r, reg)) return { ...r, is_blocked: nextState };
       return r;
     });
     setRegistrations(updated);
-    if (selectedReg && selectedReg.user_id === reg.user_id) {
+    if (selectedReg && isTargetMatch(selectedReg, reg)) {
       setSelectedReg(prev => prev ? { ...prev, is_blocked: nextState } : null);
     }
 
@@ -692,7 +709,7 @@ export default function AdminPage() {
         const idToken = await getIdToken();
         await adminUpdateRegistrationAction(
           idToken, 
-          reg.user_id, 
+          targetId, 
           reg.is_verified, 
           nextState, 
           reg.position_override, 
@@ -704,20 +721,26 @@ export default function AdminPage() {
         localStorage.setItem("artistant_sandbox_registrations", JSON.stringify(updated));
         showToast(`Sandbox: @${reg.username} block state updated!`);
       }
-    } catch (err) {
-      console.error("[REDACTED_ERROR] PII stripped from client log.");
-      showToast("Error saving block status.");
+    } catch (err: any) {
+      console.error("Error updating database for block action:", err);
+      setRegistrations(prevRegistrations);
+      setSelectedReg(prevSelected);
+      showToast(`Error saving block status: ${err.message || 'Action failed'}`);
     }
   };
 
   const handleToggleFoundingCard = async (reg: AdminWaitlistEntry) => {
     const nextState = !reg.feature_founding_card;
+    const targetId = reg.user_id || reg.id;
+    const prevRegistrations = [...registrations];
+    const prevSelected = selectedReg;
+
     const updated = registrations.map(r => {
-      if (r.user_id === reg.user_id) return { ...r, feature_founding_card: nextState };
+      if (isTargetMatch(r, reg)) return { ...r, feature_founding_card: nextState };
       return r;
     });
     setRegistrations(updated);
-    if (selectedReg && selectedReg.user_id === reg.user_id) {
+    if (selectedReg && isTargetMatch(selectedReg, reg)) {
       setSelectedReg(prev => prev ? { ...prev, feature_founding_card: nextState } : null);
     }
 
@@ -726,7 +749,7 @@ export default function AdminPage() {
         const idToken = await getIdToken();
         await adminUpdateRegistrationAction(
           idToken, 
-          reg.user_id, 
+          targetId, 
           reg.is_verified, 
           reg.is_blocked, 
           reg.position_override, 
@@ -738,20 +761,26 @@ export default function AdminPage() {
         localStorage.setItem("artistant_sandbox_registrations", JSON.stringify(updated));
         showToast(`Sandbox: @${reg.username} founding card toggled!`);
       }
-    } catch (err) {
-      console.error("[REDACTED_ERROR] PII stripped from client log.");
-      showToast("Error saving founding card status.");
+    } catch (err: any) {
+      console.error("Error updating database for founding card action:", err);
+      setRegistrations(prevRegistrations);
+      setSelectedReg(prevSelected);
+      showToast(`Error saving founding card status: ${err.message || 'Action failed'}`);
     }
   };
 
   const handleToggleExcludeFromWaitlist = async (reg: AdminWaitlistEntry) => {
     const nextState = !reg.exclude_from_waitlist;
+    const targetId = reg.user_id || reg.id;
+    const prevRegistrations = [...registrations];
+    const prevSelected = selectedReg;
+
     const updated = registrations.map(r => {
-      if (r.user_id === reg.user_id) return { ...r, exclude_from_waitlist: nextState };
+      if (isTargetMatch(r, reg)) return { ...r, exclude_from_waitlist: nextState };
       return r;
     });
     setRegistrations(updated);
-    if (selectedReg && selectedReg.user_id === reg.user_id) {
+    if (selectedReg && isTargetMatch(selectedReg, reg)) {
       setSelectedReg(prev => prev ? { ...prev, exclude_from_waitlist: nextState } : null);
     }
 
@@ -760,7 +789,7 @@ export default function AdminPage() {
         const idToken = await getIdToken();
         await adminUpdateRegistrationAction(
           idToken, 
-          reg.user_id, 
+          targetId, 
           reg.is_verified, 
           reg.is_blocked, 
           reg.position_override, 
@@ -772,30 +801,36 @@ export default function AdminPage() {
         localStorage.setItem("artistant_sandbox_registrations", JSON.stringify(updated));
         showToast(`Sandbox: @${reg.username} rank exclusion toggled!`);
       }
-    } catch (err) {
-      console.error("[REDACTED_ERROR] PII stripped from client log.");
-      showToast("Error saving waitlist exclusion status.");
+    } catch (err: any) {
+      console.error("Error updating database for exclude action:", err);
+      setRegistrations(prevRegistrations);
+      setSelectedReg(prevSelected);
+      showToast(`Error saving waitlist exclusion status: ${err.message || 'Action failed'}`);
     }
   };
 
   const handleSavePositionOverride = async (userId: string, val: number | null) => {
+    const prevRegistrations = [...registrations];
+    const prevSelected = selectedReg;
+    const reg = registrations.find(r => r.user_id === userId || r.id === userId);
+
     const updated = registrations.map(r => {
-      if (r.user_id === userId) return { ...r, position_override: val };
+      if (r.user_id === userId || r.id === userId) return { ...r, position_override: val };
       return r;
     });
     setRegistrations(updated);
-    if (selectedReg && selectedReg.user_id === userId) {
+    if (selectedReg && (selectedReg.user_id === userId || selectedReg.id === userId)) {
       setSelectedReg(prev => prev ? { ...prev, position_override: val } : null);
     }
 
     try {
-      const reg = registrations.find(r => r.user_id === userId);
       if (reg) {
+        const targetId = reg.user_id || reg.id;
         if (isLiveMode) {
           const idToken = await getIdToken();
           await adminUpdateRegistrationAction(
             idToken, 
-            userId, 
+            targetId, 
             reg.is_verified, 
             reg.is_blocked, 
             val, 
@@ -808,9 +843,11 @@ export default function AdminPage() {
           showToast(`Sandbox: Override saved.`);
         }
       }
-    } catch (err) {
-      console.error("[REDACTED_ERROR] PII stripped from client log.");
-      showToast("Failed to save priority override.");
+    } catch (err: any) {
+      console.error("Error saving priority override:", err);
+      setRegistrations(prevRegistrations);
+      setSelectedReg(prevSelected);
+      showToast(`Failed to save priority override: ${err.message || 'Action failed'}`);
     }
   };
 
@@ -2058,7 +2095,7 @@ export default function AdminPage() {
                                             boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)',
                                           }}
                                         >
-                                          {reg.is_verified ? "Locked" : "Verify"}
+                                          {reg.is_verified ? "Verified" : "Verify"}
                                         </button>
                                       </td>
                                       <td className="px-8 py-4.5 text-right">
@@ -2235,7 +2272,7 @@ export default function AdminPage() {
                                     }}
                                   >
                                     <CheckCircle2 className="w-3.5 h-3.5" />
-                                    {reg.is_verified ? "Locked" : "Verify"}
+                                    {reg.is_verified ? "Verified" : "Verify"}
                                   </button>
                                   
                                   <button
