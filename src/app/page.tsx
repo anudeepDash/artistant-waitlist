@@ -429,6 +429,7 @@ function GlowingFeatureCard({ children, onClick, idx }: any) {
 export function AnimatedTitle({ text, className = "", style = {} }: { text: string; className?: string; style?: React.CSSProperties }) {
   const words = text.split(" ");
   let globalCharIdx = 0;
+  const isBrand = className.includes('brand-text');
 
   return (
     <motion.span
@@ -449,6 +450,12 @@ export function AnimatedTitle({ text, className = "", style = {} }: { text: stri
             className="inline-block whitespace-nowrap"
             style={{
               marginRight: wordIndex < words.length - 1 ? '0.28em' : '0',
+              ...(isBrand ? {
+                background: 'inherit',
+                WebkitBackgroundClip: 'text',
+                backgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              } : {}),
             }}
           >
             {wordChars.map((char, charIndex) => {
@@ -461,23 +468,27 @@ export function AnimatedTitle({ text, className = "", style = {} }: { text: stri
                   variants={{
                     hidden: {
                       opacity: 0,
-                      y: '0.35em',
-                      filter: 'blur(6px)',
-                      scale: 0.92,
+                      y: '0.25em',
                     },
                     visible: {
                       opacity: 1,
                       y: '0em',
-                      filter: 'blur(0px)',
-                      scale: 1,
                       transition: {
-                        duration: 0.45,
+                        duration: 0.4,
                         delay: charDelay,
                         ease: [0.16, 1, 0.3, 1],
                       },
                     },
                   }}
-                  style={{ willChange: 'transform, opacity, filter' }}
+                  style={{
+                    willChange: 'transform, opacity',
+                    ...(isBrand ? {
+                      background: 'inherit',
+                      WebkitBackgroundClip: 'text',
+                      backgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                    } : {}),
+                  }}
                 >
                   {char}
                 </motion.span>
