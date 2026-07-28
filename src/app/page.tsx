@@ -427,19 +427,16 @@ function GlowingFeatureCard({ children, onClick, idx }: any) {
 }
 
 export function AnimatedTitle({ text, className = "", style = {} }: { text: string; className?: string; style?: React.CSSProperties }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once: true, amount: 0.2 });
-
   const words = text.split(" ");
   let globalCharIdx = 0;
 
   return (
     <motion.span
-      ref={ref}
       className={`inline-block ${className}`}
       style={{ verticalAlign: 'baseline', ...style }}
       initial="hidden"
-      animate={isInView ? "visible" : "hidden"}
+      whileInView="visible"
+      viewport={{ once: true, amount: 0.05 }}
     >
       {words.map((word, wordIndex) => {
         const wordChars = word.split("");
@@ -3081,6 +3078,7 @@ export default function Home() {
           <DashboardPrompt 
             onClose={() => setShowDashboardPrompt(false)} 
             username={userReservation.username} 
+            profilePhotoUrl={userReservation.profile_photo_url || user.photoURL}
           />
         )}
       </AnimatePresence>

@@ -1,15 +1,16 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { X, ArrowRight, Sparkles } from 'lucide-react';
+import { X, ArrowRight } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface DashboardPromptProps {
   onClose: () => void;
   username?: string;
+  profilePhotoUrl?: string | null;
 }
 
-export default function DashboardPrompt({ onClose, username }: DashboardPromptProps) {
+export default function DashboardPrompt({ onClose, username, profilePhotoUrl }: DashboardPromptProps) {
   const router = useRouter();
 
   return (
@@ -37,7 +38,6 @@ export default function DashboardPrompt({ onClose, username }: DashboardPromptPr
               <span className="relative inline-flex rounded-full h-2 w-2 bg-[#F25A2B]"></span>
             </span>
             <span className="text-[10px] font-mono font-bold tracking-widest text-white/60 uppercase flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-[#7C5CFF]" />
               ArtisTant
             </span>
           </div>
@@ -56,8 +56,16 @@ export default function DashboardPrompt({ onClose, username }: DashboardPromptPr
           {/* Avatar Ring */}
           <div className="relative flex-shrink-0">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#F25A2B] via-[#D4567A] to-[#7C5CFF] p-[1.5px] shadow-md">
-              <div className="w-full h-full bg-[#12131A] rounded-[10.5px] flex items-center justify-center font-mono font-bold text-xs text-white uppercase">
-                {username ? username.charAt(0) : 'A'}
+              <div className="w-full h-full bg-[#12131A] rounded-[10.5px] overflow-hidden flex items-center justify-center font-mono font-bold text-xs text-white uppercase">
+                {profilePhotoUrl ? (
+                  <img
+                    src={profilePhotoUrl}
+                    alt={username ? `@${username}` : 'Artist'}
+                    className="w-full h-full object-cover rounded-[9.5px]"
+                  />
+                ) : (
+                  username ? username.charAt(0) : 'A'
+                )}
               </div>
             </div>
           </div>
