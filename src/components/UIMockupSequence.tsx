@@ -46,6 +46,12 @@ export default function UIMockupSequence() {
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
+    // Preload sequence mockup images so slide transitions are instant on all browsers
+    SEQUENCE_DATA.forEach((item) => {
+      const img = new Image();
+      img.src = item.image;
+    });
+
     const interval = setInterval(() => {
       setActiveIndex((current) => (current + 1) % SEQUENCE_DATA.length);
     }, 4500);

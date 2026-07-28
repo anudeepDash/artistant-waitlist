@@ -175,75 +175,46 @@ export async function getUserReservation(
   phone?: string | null
 ): Promise<WaitlistEntry | null> {
   const supabase = createClient();
-  let data: WaitlistEntry | null = null;
+  const conditions: string[] = [`user_id.eq.${uid}`];
 
-  // 1. Try to find the profile by UID
-  const res = await supabase
+  if (email && email.trim()) {
+    conditions.push(`email.eq.${email.trim()}`);
+  }
+  if (phone && phone.trim()) {
+    const formattedPhone = `+91${phone.replace(/\D/g, '').slice(-10)}`;
+    conditions.push(`phone.eq.${formattedPhone}`);
+  }
+
+  const { data: records, error } = await supabase
     .from("waitlist_users")
     .select("*")
-    .eq("user_id", uid)
-    .maybeSingle();
-  
-  if (res.data) {
-    data = res.data as WaitlistEntry;
+    .or(conditions.join(','))
+    .limit(1);
+
+  if (error) {
+    console.error("Error fetching reservation:", error);
+    return null;
   }
 
-  if (res.error) {
-    console.error("Error fetching reservation by UID:", res.error);
+  if (!records || records.length === 0) {
+    return null;
   }
 
-  // 2. If not found by UID, try to find by email (if provided)
-  if (!data && email) {
-    const { data: emailData, error: emailError } = await supabase
+  const entry = records[0] as WaitlistEntry;
+
+  // If profile was matched by email or phone but user_id was not yet linked, update link asynchronously
+  if (entry.user_id !== uid) {
+    supabase
       .from("waitlist_users")
-      .select("*")
-      .eq("email", email)
-      .maybeSingle();
-
-    if (emailError) {
-      console.error("Error fetching reservation by email:", emailError);
-    } else if (emailData) {
-      data = emailData as WaitlistEntry;
-      // Link the profile to the current UID
-      const { error: updateError } = await supabase
-        .from("waitlist_users")
-        .update({ user_id: uid })
-        .eq("id", emailData.id);
-      if (updateError) {
-        console.error("Error updating user_id to match email UID:", updateError);
-      } else {
-        data.user_id = uid;
-      }
-    }
+      .update({ user_id: uid })
+      .eq("id", entry.id)
+      .then(({ error: updateErr }) => {
+        if (updateErr) console.error("Error updating user_id link:", updateErr);
+      });
+    entry.user_id = uid;
   }
 
-  // 3. If not found by UID/email, try to find by phone (if provided)
-  if (!data && phone) {
-    const formattedPhone = `+91${phone.replace(/\D/g, '').slice(-10)}`;
-    const { data: phoneData, error: phoneError } = await supabase
-      .from("waitlist_users")
-      .select("*")
-      .eq("phone", formattedPhone)
-      .maybeSingle();
-
-    if (phoneError) {
-      console.error("Error fetching reservation by phone:", phoneError);
-    } else if (phoneData) {
-      data = phoneData as WaitlistEntry;
-      // Link the profile to the current UID
-      const { error: updateError } = await supabase
-        .from("waitlist_users")
-        .update({ user_id: uid })
-        .eq("id", phoneData.id);
-      if (updateError) {
-        console.error("Error updating user_id to match phone UID:", updateError);
-      } else {
-        data.user_id = uid;
-      }
-    }
-  }
-
-  return data;
+  return entry;
 }
 
 /**
@@ -351,6 +322,8 @@ export async function getWaitlistPosition(reservedAt: string, userId: string, po
     const { count, error } = await supabase
       .from("waitlist_users")
       .select("id", { count: "exact", head: true })
+      .or("exclude_from_waitlist.is.null,exclude_from_waitlist.eq.false")
+      .eq("is_blocked", false)
       .lte("reserved_at", reservedAt);
 
     if (error || count === null || count === 0) {

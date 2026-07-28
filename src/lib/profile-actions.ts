@@ -55,13 +55,10 @@ function parseBase64Upload(
   return { buffer, contentType, extension: allowedTypes[contentType] };
 }
 
+import { getAdminSupabaseClient } from './supabase/admin';
+
 function createAdminClient() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    serviceRoleKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { auth: { persistSession: false, autoRefreshToken: false } }
-  );
+  return getAdminSupabaseClient();
 }
 
 export async function incrementProfileVisitorsAction(username: string) {
@@ -443,19 +440,46 @@ export async function getPublicProfileDataAction(username: string): Promise<Publ
     const verifiedRefs = referralCount || 0;
     const calculatedPoints = 100 + verifiedRefs * 50 + (reservation.story_shared === true ? 80 : 0);
     
+    // Check if user is admin or excluded
+    const adminEmailsSet = new Set<string>();
+    if (process.env.SUPER_ADMIN_EMAIL) {
+      adminEmailsSet.add(process.env.SUPER_ADMIN_EMAIL.trim().toLowerCase());
+    }
+    adminEmailsSet.add('anudeepdash2004@gmail.com');
+    try {
+      const { data: adminRows } = await client.from('admin_users').select('email');
+      if (adminRows) {
+        adminRows.forEach(a => {
+          if (a.email) adminEmailsSet.add(a.email.trim().toLowerCase());
+        });
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    const isExcluded = reservation.exclude_from_waitlist === true ||
+      (reservation.email && adminEmailsSet.has(reservation.email.trim().toLowerCase()));
+
     // 3. Fetch waitlist position
-    let pos = reservation.position_override;
-    if (pos === undefined || pos === null) {
+    let waitlistPos = 0;
+    let cohortVal = '003';
+
+    if (isExcluded) {
+      waitlistPos = 0;
+      cohortVal = 'TEAM';
+    } else if (reservation.position_override !== undefined && reservation.position_override !== null) {
+      waitlistPos = reservation.position_override;
+      cohortVal = waitlistPos <= 100 ? '001' : waitlistPos <= 300 ? '002' : '003';
+    } else {
       const { count } = await client
         .from('waitlist_users')
         .select('id', { count: 'exact', head: true })
         .eq('is_blocked', false)
+        .or('exclude_from_waitlist.is.null,exclude_from_waitlist.eq.false')
         .lte('reserved_at', reservation.reserved_at);
-      pos = count;
+      waitlistPos = count || 120;
+      cohortVal = waitlistPos ? Math.ceil(waitlistPos / 100).toString().padStart(3, '0') : '003';
     }
-    
-    const waitlistPos = pos || 120;
-    const cohortVal = waitlistPos ? Math.ceil(waitlistPos / 100).toString().padStart(3, '0') : '003';
     
     return {
       reservation: {

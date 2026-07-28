@@ -11,7 +11,11 @@ import {
   adminGetActivityLogsAction,
   adminGetAdminsAction,
   adminAddAdminAction,
-  adminRemoveAdminAction
+  adminRemoveAdminAction,
+  adminGetBookingRequestsAction,
+  adminUpdateBookingRequestStatusAction,
+  adminDeleteBookingRequestAction,
+  type BookingRequestEntry
 } from "@/lib/admin-actions";
 import { 
   sendWelcomeEmailAction, 
@@ -385,9 +389,14 @@ export default function AdminPage() {
   const [newAdminEmail, setNewAdminEmail] = useState("");
   const [activityFilter, setActivityFilter] = useState("all");
   const [activitySearch, setActivitySearch] = useState("");
+
+  // Booking Requests State
+  const [bookingRequests, setBookingRequests] = useState<BookingRequestEntry[]>([]);
+  const [requestSearchQuery, setRequestSearchQuery] = useState("");
+  const [requestStatusFilter, setRequestStatusFilter] = useState<string>("all");
   
-  // Tabs: registrations | leaderboards | members | admins
-  const [activeTab, setActiveTab] = useState<"registrations" | "leaderboards" | "members" | "admins">("registrations");
+  // Tabs: registrations | requests | leaderboards | members | admins
+  const [activeTab, setActiveTab] = useState<"registrations" | "requests" | "leaderboards" | "members" | "admins">("registrations");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedReg, setSelectedReg] = useState<AdminWaitlistEntry | null>(null);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
@@ -500,14 +509,19 @@ export default function AdminPage() {
     setDbError(null);
     try {
       const idToken = await getIdToken();
-      const [regs, logs, admins] = await Promise.all([
+      const [regs, logs, admins, bRequests] = await Promise.all([
         adminGetRegistrationsAction(idToken),
         adminGetActivityLogsAction(idToken),
-        adminGetAdminsAction(idToken)
+        adminGetAdminsAction(idToken),
+        adminGetBookingRequestsAction(idToken).catch(err => {
+          console.warn("Error fetching booking requests:", err);
+          return [];
+        })
       ]);
       setRegistrations(regs);
       setActivityLogs(logs);
       setAdminUsers(admins);
+      setBookingRequests(bRequests || []);
       setIsLiveMode(true);
       setIsUnlocked(true);
       if (!isSilent) showToast("Connected to Live Database.");
@@ -526,12 +540,54 @@ export default function AdminPage() {
         
         const sandboxAdmins = localStorage.getItem("artistant_sandbox_admins");
         setAdminUsers(sandboxAdmins ? JSON.parse(sandboxAdmins) : []);
+
+        const sandboxRequests = localStorage.getItem("artistant_sandbox_booking_requests");
+        setBookingRequests(sandboxRequests ? JSON.parse(sandboxRequests) : []);
         
         setIsLiveMode(false);
         setIsUnlocked(true);
       }
     } finally {
       if (!isSilent) setIsLoading(false);
+    }
+  };
+
+  const handleUpdateBookingStatus = async (requestId: string, newStatus: 'pending' | 'contacted' | 'confirmed' | 'archived') => {
+    const prev = [...bookingRequests];
+    const updated = bookingRequests.map(r => r.id === requestId ? { ...r, status: newStatus } : r);
+    setBookingRequests(updated);
+    try {
+      if (isLiveMode) {
+        const idToken = await getIdToken();
+        await adminUpdateBookingRequestStatusAction(idToken, requestId, newStatus);
+        showToast(`Updated request status to ${newStatus.toUpperCase()}`);
+      } else {
+        localStorage.setItem("artistant_sandbox_booking_requests", JSON.stringify(updated));
+        showToast(`Sandbox: Updated status to ${newStatus.toUpperCase()}`);
+      }
+    } catch (err: any) {
+      setBookingRequests(prev);
+      showToast(`Failed to update status: ${err.message || 'Error'}`);
+    }
+  };
+
+  const handleDeleteBookingRequest = async (requestId: string) => {
+    if (!window.confirm("Are you sure you want to delete this booking request?")) return;
+    const prev = [...bookingRequests];
+    const updated = bookingRequests.filter(r => r.id !== requestId);
+    setBookingRequests(updated);
+    try {
+      if (isLiveMode) {
+        const idToken = await getIdToken();
+        await adminDeleteBookingRequestAction(idToken, requestId);
+        showToast("Booking request deleted.");
+      } else {
+        localStorage.setItem("artistant_sandbox_booking_requests", JSON.stringify(updated));
+        showToast("Sandbox: Request deleted.");
+      }
+    } catch (err: any) {
+      setBookingRequests(prev);
+      showToast(`Failed to delete request: ${err.message || 'Error'}`);
     }
   };
 
@@ -1103,6 +1159,18 @@ export default function AdminPage() {
   // Leaderboards Calculation
   // ---------------------------------------------------------------------------
   const leaderboards = useMemo(() => {
+    const adminEmailsSet = new Set<string>();
+    adminUsers.forEach(a => {
+      if (a.email) adminEmailsSet.add(a.email.toLowerCase().trim());
+    });
+    adminEmailsSet.add('anudeepdash2004@gmail.com');
+
+    // Filter out users who are excluded from waitlist rank OR are admins
+    const eligibleRegistrations = registrations.filter(r => {
+      const email = r.email ? r.email.toLowerCase().trim() : '';
+      return !r.exclude_from_waitlist && !adminEmailsSet.has(email);
+    });
+
     const referralCounts: Record<string, number> = {};
     registrations.forEach(r => {
       if (r.referred_by) {
@@ -1111,14 +1179,21 @@ export default function AdminPage() {
       }
     });
 
-    const enriched = registrations.map(reg => {
+    const enriched = eligibleRegistrations.map(reg => {
       const refs = referralCounts[reg.username.toLowerCase().trim()] || 0;
       const points = 100 + (refs * 50); // 100 base + 50 per referral
       return { ...reg, refs, points };
     });
 
-    return enriched.sort((a, b) => b.points - a.points);
-  }, [registrations]);
+    return enriched.sort((a, b) => {
+      const posA = a.position_override !== null && a.position_override !== undefined ? a.position_override : Infinity;
+      const posB = b.position_override !== null && b.position_override !== undefined ? b.position_override : Infinity;
+      if (posA !== posB) {
+        return posA - posB;
+      }
+      return b.points - a.points;
+    });
+  }, [registrations, adminUsers]);
 
   // ---------------------------------------------------------------------------
   // Render Logic
@@ -1417,18 +1492,15 @@ export default function AdminPage() {
         >
           {/* Brand Logo & Console Tag */}
           <div className="px-8 pt-8 pb-5">
-            <a href="/" target="_blank" className="block group">
+            <a href="/" target="_blank" className="inline-block group">
               <img
                 src="/logo_wordmark_flat.png"
                 alt="ArtisTant"
-                className="h-[20px] w-auto object-contain dark:invert-0 invert"
+                className="h-[21px] w-auto object-contain dark:invert-0 invert block"
               />
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="inline-flex w-1.5 h-1.5 rounded-full bg-brand animate-pulse" />
-                <p className="text-[10px] font-mono font-bold tracking-[0.15em] uppercase text-[#F25A2B]">
-                  Command center
-                </p>
-              </div>
+              <p className="text-[9.5px] font-mono font-bold tracking-[0.26em] uppercase text-[#F25A2B] mt-1 whitespace-nowrap">
+                Command center
+              </p>
             </a>
           </div>
 
@@ -2443,6 +2515,232 @@ export default function AdminPage() {
         )}
 
         {/* ===================================================================
+            TAB: CLIENT BOOKING REQUESTS
+            =================================================================== */}
+        {activeTab === "requests" && (
+          <div className="space-y-8 animate-in fade-in duration-200">
+            
+            {/* Metric cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+              {[
+                { label: "Total Booking Requests", value: bookingRequests.length, color: 'text-ink', glow: 'rgba(124,92,255,0.08)' },
+                { label: "Pending Review", value: bookingRequests.filter(r => r.status === 'pending').length, color: 'text-[#F25A2B]', glow: 'rgba(242,90,43,0.08)' },
+                { label: "Contacted", value: bookingRequests.filter(r => r.status === 'contacted').length, color: 'text-[#7C5CFF]', glow: 'rgba(124,92,255,0.08)' },
+                { label: "Confirmed / Locked", value: bookingRequests.filter(r => r.status === 'confirmed').length, color: 'text-emerald-500 dark:text-emerald-400', glow: 'rgba(16,185,129,0.08)' },
+              ].map((card, i) => (
+                <GlowingAdminCard
+                  key={card.label}
+                  idx={i}
+                  className="bg-bg-card border border-line-soft rounded-3xl p-6 relative overflow-hidden backdrop-blur-xl shadow-lg text-left"
+                  style={{ boxShadow: `0 10px 30px -10px ${card.glow}` }}
+                >
+                  <p className="text-[10px] font-mono font-bold text-ink-3 uppercase tracking-wider">{card.label}</p>
+                  <h3 className={`text-3xl font-display font-extrabold mt-2 ${card.color}`}>
+                    {card.value}
+                  </h3>
+                </GlowingAdminCard>
+              ))}
+            </div>
+
+            {/* Filter & List Container */}
+            <div className="bg-bg-card border border-line-soft rounded-3xl p-6 md:p-8 space-y-6 backdrop-blur-md shadow-2xl">
+              <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+                <div className="text-left">
+                  <h3 className="text-lg font-display font-bold text-ink uppercase tracking-tight">Client Booking Requests</h3>
+                  <p className="text-xs text-ink-2 mt-1">Inquiries submitted by event organizers, venues, and private hosts</p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                  {/* Search */}
+                  <div className="relative flex-1 sm:w-64">
+                    <Search className="w-4 h-4 text-ink-3 absolute left-4 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Search client, artist, city..."
+                      value={requestSearchQuery}
+                      onChange={(e) => setRequestSearchQuery(e.target.value)}
+                      className="w-full bg-bg-soft/40 border border-line-soft text-ink rounded-xl pl-10 pr-4 py-2.5 text-xs font-mono focus:border-[#7C5CFF] focus:ring-4 focus:ring-[#7C5CFF]/15 transition-all outline-none"
+                    />
+                  </div>
+
+                  {/* Status Filter */}
+                  <select
+                    value={requestStatusFilter}
+                    onChange={(e) => setRequestStatusFilter(e.target.value)}
+                    className="bg-bg-soft/40 border border-line-soft text-ink rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-[#7C5CFF] transition-all cursor-pointer font-mono font-bold uppercase tracking-wider"
+                  >
+                    <option value="all">All Statuses</option>
+                    <option value="pending">Pending Only</option>
+                    <option value="contacted">Contacted Only</option>
+                    <option value="confirmed">Confirmed Only</option>
+                    <option value="archived">Archived Only</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Booking Requests Grid List */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {bookingRequests
+                  .filter(req => {
+                    const q = requestSearchQuery.toLowerCase();
+                    const matchesSearch = !q || (
+                      req.client_name.toLowerCase().includes(q) ||
+                      req.client_email.toLowerCase().includes(q) ||
+                      req.artist_username.toLowerCase().includes(q) ||
+                      (req.artist_display_name && req.artist_display_name.toLowerCase().includes(q)) ||
+                      req.city.toLowerCase().includes(q)
+                    );
+                    const matchesStatus = requestStatusFilter === "all" || req.status === requestStatusFilter;
+                    return matchesSearch && matchesStatus;
+                  })
+                  .map((req) => (
+                    <div 
+                      key={req.id} 
+                      className={`p-5 rounded-2xl border transition-all text-left space-y-4 shadow-md backdrop-blur-md ${
+                        req.status === 'pending'
+                          ? 'bg-bg-card border-[#F25A2B]/40 hover:border-[#F25A2B]'
+                          : req.status === 'confirmed'
+                          ? 'bg-bg-card border-emerald-500/40 hover:border-emerald-500'
+                          : req.status === 'contacted'
+                          ? 'bg-bg-card border-[#7C5CFF]/40 hover:border-[#7C5CFF]'
+                          : 'bg-bg-card border-line-soft opacity-70'
+                      }`}
+                    >
+                      {/* Header row */}
+                      <div className="flex items-start justify-between gap-3 border-b border-line-soft/50 pb-3">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[10px] font-mono text-[#F25A2B] font-bold uppercase tracking-wider">BOOKING INQUIRY FOR</span>
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider bg-bg-soft border border-line-soft text-ink-2">
+                              {req.event_type}
+                            </span>
+                          </div>
+                          <h4 className="text-base font-bold text-ink">
+                            {req.artist_display_name || req.artist_username}{' '}
+                            <span className="text-xs font-mono text-ink-3">(@{req.artist_username})</span>
+                          </h4>
+                        </div>
+
+                        {/* Status Select Badge */}
+                        <select
+                          value={req.status}
+                          onChange={(e) => handleUpdateBookingStatus(req.id, e.target.value as any)}
+                          className={`text-[10px] font-mono font-extrabold uppercase px-3 py-1 rounded-full border cursor-pointer focus:outline-none ${
+                            req.status === 'pending' ? 'bg-[#F25A2B]/15 text-[#F25A2B] border-[#F25A2B]/30' :
+                            req.status === 'contacted' ? 'bg-[#7C5CFF]/15 text-[#7C5CFF] border-[#7C5CFF]/30' :
+                            req.status === 'confirmed' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' :
+                            'bg-bg-soft text-ink-3 border-line-soft'
+                          }`}
+                        >
+                          <option value="pending" className="bg-[#0f0f15] text-white">● PENDING</option>
+                          <option value="contacted" className="bg-[#0f0f15] text-white">● CONTACTED</option>
+                          <option value="confirmed" className="bg-[#0f0f15] text-white">● CONFIRMED</option>
+                          <option value="archived" className="bg-[#0f0f15] text-white">● ARCHIVED</option>
+                        </select>
+                      </div>
+
+                      {/* Client Details Grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                        <div>
+                          <p className="text-[10px] font-mono text-ink-3 uppercase font-semibold">Client Name</p>
+                          <p className="font-bold text-ink">{req.client_name}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-mono text-ink-3 uppercase font-semibold">Event Date</p>
+                          <p className="font-bold text-[#7C5CFF] flex items-center gap-1">
+                            <CalendarIcon className="w-3.5 h-3.5" /> {req.event_date}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-mono text-ink-3 uppercase font-semibold">City / Location</p>
+                          <p className="font-semibold text-ink flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-[#F25A2B]" /> {req.city}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-mono text-ink-3 uppercase font-semibold">Budget</p>
+                          <p className="font-semibold text-ink">{req.budget || "Not Specified"}</p>
+                        </div>
+                      </div>
+
+                      {/* Contact Channels */}
+                      <div className="p-3 rounded-xl bg-bg-soft/40 border border-line-soft/60 space-y-1.5 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-mono text-ink-3 uppercase font-bold">Client Contact</span>
+                          <span className="text-[9px] font-mono text-ink-3">{new Date(req.created_at).toLocaleString()}</span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <a 
+                            href={`mailto:${req.client_email}?subject=${encodeURIComponent(`Artistant Booking Concierge - Inquiry for ${req.artist_display_name || req.artist_username}`)}`}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-bg-card border border-line-soft text-ink text-xs font-semibold hover:border-[#7C5CFF] transition-all"
+                          >
+                            <Mail className="w-3.5 h-3.5 text-[#7C5CFF]" /> {req.client_email}
+                          </a>
+                          <a 
+                            href={`https://wa.me/${req.client_phone.replace(/[^0-9]/g, '')}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-all"
+                          >
+                            <Smartphone className="w-3.5 h-3.5 text-emerald-500" /> WhatsApp
+                          </a>
+                          <a 
+                            href={`tel:${req.client_phone}`}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-bg-card border border-line-soft text-ink-2 text-xs font-semibold hover:text-ink transition-all"
+                          >
+                            {req.client_phone}
+                          </a>
+                        </div>
+                      </div>
+
+                      {/* Notes if present */}
+                      {req.notes && (
+                        <div className="p-3 rounded-xl bg-bg-card border border-line-soft text-xs text-ink-2 italic text-left">
+                          &quot;{req.notes}&quot;
+                        </div>
+                      )}
+
+                      {/* Action Bar */}
+                      <div className="flex items-center justify-between pt-1">
+                        <div className="flex items-center gap-2">
+                          <a
+                            href={`mailto:${req.client_email}?subject=${encodeURIComponent(`Artistant Booking Inquiry: ${req.artist_display_name || req.artist_username}`)}&body=${encodeURIComponent(`Hi ${req.client_name},\n\nThank you for reaching out to Artistant Concierge regarding booking ${req.artist_display_name || req.artist_username} for your event on ${req.event_date} in ${req.city}.\n\nWe are confirming schedule availability and rider details with the artist...\n\nBest regards,\nArtistant Concierge Team`)}`}
+                            className="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold bg-[#7C5CFF] text-white hover:bg-[#6A49FF] transition-all flex items-center gap-1.5 shadow-sm"
+                          >
+                            <Send className="w-3 h-3" /> Email Client
+                          </a>
+                          <a
+                            href={`https://wa.me/${req.client_phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi ${req.client_name}, this is Artistant Concierge regarding your booking request for ${req.artist_display_name || req.artist_username} on ${req.event_date}.`)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-500 transition-all flex items-center gap-1.5 shadow-sm"
+                          >
+                            <Smartphone className="w-3 h-3" /> WhatsApp
+                          </a>
+                        </div>
+
+                        <button
+                          onClick={() => handleDeleteBookingRequest(req.id)}
+                          className="p-2 rounded-xl text-ink-3 hover:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer"
+                          title="Delete Request"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                {bookingRequests.length === 0 && (
+                  <div className="col-span-2 p-12 text-center text-ink-3 font-mono text-xs border border-dashed border-line-soft rounded-2xl">
+                    No booking requests received yet.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===================================================================
             TAB: VISITOR ACTIVITY (MEMBERS)
             =================================================================== */}
         {activeTab === "members" && (
@@ -2705,114 +3003,129 @@ export default function AdminPage() {
       </div>
 
       {/* ═══════════════════════════════════════════════════
-          USER DETAIL DRAWER
+          USER DETAIL MODAL POPUP
           ═══════════════════════════════════════════════════ */}
       <AnimatePresence>
         {selectedReg && (
-          <>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
             {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              className="fixed inset-0 bg-black/70 backdrop-blur-md z-[60] cursor-pointer"
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/80 backdrop-blur-md cursor-pointer z-[100]"
               onClick={() => setSelectedReg(null)}
             />
 
-            {/* Panel */}
+            {/* Modal Dialog Card */}
             <motion.div
-              initial={{ x: '100%', opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: '100%', opacity: 0 }}
-              transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-              className="fixed right-0 top-0 bottom-0 w-[490px] max-w-full z-[70] bg-bg-card border-l border-line-soft overflow-y-auto shadow-2xl flex flex-col backdrop-blur-2xl"
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ type: 'spring', stiffness: 350, damping: 28 }}
+              className="relative w-full max-w-2xl max-h-[90vh] bg-bg-card/95 border border-line-soft rounded-[2.5rem] shadow-[0_25px_80px_rgba(0,0,0,0.7)] flex flex-col z-[110] overflow-hidden backdrop-blur-2xl text-left my-auto"
+              onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="sticky top-0 z-10 backdrop-blur-xl px-8 py-6 flex items-center justify-between border-b border-line-soft bg-bg-card/80">
-                <div className="text-left">
-                  <span className="text-[9px] font-mono font-bold tracking-[0.2em] text-[#7C5CFF] uppercase">Credentials Profile</span>
-                  <h3 className="text-sm font-mono font-bold uppercase tracking-[0.12em] text-ink mt-0.5">Artist Profile</h3>
-                </div>
-                <button
-                  onClick={() => setSelectedReg(null)}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center bg-bg-soft border border-line-soft text-ink-3 hover:text-ink hover:bg-bg-soft-hover transition-all cursor-pointer"
-                >
-                  <XCircle className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="p-8 space-y-6 flex-1 text-left">
-
-                {/* ── Profile Hero ── */}
-                <div className="flex items-center gap-5">
-                  <div className="w-20 h-20 rounded-2xl flex-shrink-0 overflow-hidden border border-line-soft shadow-lg relative" style={{
-                    background: selectedReg.profile_photo_url ? undefined : 'linear-gradient(135deg, var(--brand-3), var(--brand-1))',
-                  }}>
+              <div className="relative border-b border-line-soft bg-bg-card/90 backdrop-blur-xl px-7 py-5 flex items-center justify-between shrink-0 z-10">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center bg-bg-soft border border-line-soft shrink-0">
                     {selectedReg.profile_photo_url ? (
                       <img src={selectedReg.profile_photo_url} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-white font-display font-bold text-2xl">
-                        {(selectedReg.display_name || 'U')[0].toUpperCase()}
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#7C5CFF] to-[#F25A2B] text-white font-display font-bold text-base">
+                        {(selectedReg.display_name || selectedReg.username || 'U')[0].toUpperCase()}
                       </div>
                     )}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <h2 className="text-xl font-display font-bold text-ink tracking-tight truncate">
-                      {selectedReg.display_name || 'Unknown'}
-                    </h2>
-                    <p className="text-sm font-mono mt-0.5 text-brand">
-                      @{selectedReg.username}
-                    </p>
-                    {selectedReg.bio && (
-                      <p className="text-xs text-ink-2 mt-2.5 leading-relaxed line-clamp-3 bg-bg-soft/40 p-2.5 rounded-xl border border-line-soft">{selectedReg.bio}</p>
-                    )}
+                  <div className="min-w-0">
+                    <h3 className="text-base font-display font-bold text-ink uppercase tracking-tight leading-none truncate flex items-center gap-2">
+                      {selectedReg.display_name || selectedReg.username}
+                      {selectedReg.is_verified && (
+                        <CheckCircle2 className="w-4 h-4 text-[#7C5CFF] shrink-0" />
+                      )}
+                    </h3>
+                    <p className="text-xs font-mono text-brand mt-1 truncate">@{selectedReg.username}</p>
                   </div>
                 </div>
 
-                {/* ── Status Badges ── */}
-                <div className="flex flex-wrap gap-2 pt-1">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-mono font-bold tracking-[0.08em]" style={
-                    selectedReg.is_verified
-                      ? { background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)', color: 'white', boxShadow: '0 4px 12px -4px rgba(242,90,43,0.35)' }
-                      : { background: 'var(--bg-soft)', color: 'var(--ink-3)', border: '1px solid var(--line-soft)' }
-                  }>
-                    <CheckCircle2 className="w-3 h-3" />
-                    {selectedReg.is_verified ? 'VERIFIED' : 'PENDING'}
-                  </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <a
+                    href={`/${selectedReg.username}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 rounded-xl text-[10px] font-mono font-bold uppercase flex items-center gap-1.5 bg-bg-soft border border-line-soft hover:bg-bg-soft-hover text-ink transition-all cursor-pointer"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    View Live
+                  </a>
+                  <button
+                    onClick={() => setSelectedReg(null)}
+                    className="w-8 h-8 rounded-xl flex items-center justify-center bg-bg-soft border border-line-soft text-ink-3 hover:text-ink hover:bg-bg-soft-hover transition-all cursor-pointer"
+                  >
+                    <XCircle className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
 
-                  {selectedReg.is_blocked && (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-mono font-bold tracking-[0.08em] bg-hot/10 text-hot border border-hot/20">
-                      <XCircle className="w-3 h-3" />
-                      SUSPENDED
-                    </span>
-                  )}
+              {/* Scrollable Content */}
+              <div className="p-7 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
 
-                  {selectedReg.feature_founding_card && (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-mono font-bold tracking-[0.08em] bg-brand-3/10 text-brand-3 border border-brand-3/20 shadow-[0_0_12px_rgba(124,92,255,0.15)]">
-                      <Award className="w-3 h-3" />
-                      FOUNDING CARD
+                {/* Status Badges & Bio */}
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-mono font-bold tracking-[0.08em]" style={
+                      selectedReg.is_verified
+                        ? { background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)', color: 'white' }
+                        : { background: 'var(--bg-soft)', color: 'var(--ink-3)', border: '1px solid var(--line-soft)' }
+                    }>
+                      <CheckCircle2 className="w-3 h-3" />
+                      {selectedReg.is_verified ? 'VERIFIED' : 'PENDING'}
                     </span>
-                  )}
 
-                  {selectedReg.role && (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-[0.08em]" style={{
-                      background: 'var(--bg-soft)',
-                      color: selectedReg.role === 'artist' ? 'var(--brand-3)' : selectedReg.role === 'venue' ? 'var(--brand-2)' : selectedReg.role === 'vendor' ? 'var(--brand-1)' : 'var(--ink-3)',
-                      border: '1px solid var(--line-soft)'
-                    }}>
-                      {selectedReg.role}
-                    </span>
+                    {selectedReg.is_blocked && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-mono font-bold tracking-[0.08em] bg-hot/10 text-hot border border-hot/20">
+                        <XCircle className="w-3 h-3" />
+                        SUSPENDED
+                      </span>
+                    )}
+
+                    {selectedReg.feature_founding_card && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-mono font-bold tracking-[0.08em] bg-brand-3/10 text-brand-3 border border-brand-3/20">
+                        <Award className="w-3 h-3" />
+                        FOUNDING CARD
+                      </span>
+                    )}
+
+                    {selectedReg.exclude_from_waitlist && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-mono font-bold tracking-[0.08em] bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                        <UserMinus className="w-3 h-3" />
+                        EXCLUDED FROM RANK
+                      </span>
+                    )}
+
+                    {selectedReg.role && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-mono font-bold uppercase tracking-[0.08em] bg-bg-soft border border-line-soft text-ink-2">
+                        {selectedReg.role}
+                      </span>
+                    )}
+                  </div>
+
+                  {selectedReg.bio && (
+                    <div className="bg-bg-soft/40 border border-line-soft rounded-2xl p-3.5 text-xs text-ink-2 leading-relaxed">
+                      {selectedReg.bio}
+                    </div>
                   )}
                 </div>
 
-                {/* ── Quick Actions ── */}
-                <div className="bg-bg-soft/30 border border-line-soft rounded-2xl p-5 space-y-4">
-                  <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3">Clearance Actions</p>
-                  <div className="grid grid-cols-2 gap-2.5">
+                {/* Quick Action Grid */}
+                <div className="bg-bg-soft/20 border border-line-soft rounded-2xl p-4 space-y-3">
+                  <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3">Quick Management Controls</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     <button
                       onClick={() => handleVerifyAndLock(selectedReg)}
-                      className="py-2.5 rounded-xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      className="py-2.5 px-3 rounded-xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                       style={selectedReg.is_verified ? {
                         background: 'var(--bg-soft)', color: 'var(--brand-3)', border: '1px solid rgba(124,92,255,0.2)',
                       } : {
@@ -2826,7 +3139,7 @@ export default function AdminPage() {
 
                     <button
                       onClick={() => handleToggleBlock(selectedReg)}
-                      className="py-2.5 rounded-xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      className="py-2.5 px-3 rounded-xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                       style={selectedReg.is_blocked ? {
                         background: 'rgba(255,75,75,0.1)', color: 'var(--hot)', border: '1px solid rgba(255,75,75,0.2)',
                       } : {
@@ -2839,7 +3152,7 @@ export default function AdminPage() {
 
                     <button
                       onClick={() => handleToggleFoundingCard(selectedReg)}
-                      className="py-2.5 rounded-xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      className="py-2.5 px-3 rounded-xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                       style={selectedReg.feature_founding_card ? {
                         background: 'rgba(124,92,255,0.1)', color: 'var(--brand-3)', border: '1px solid rgba(124,92,255,0.2)',
                       } : {
@@ -2852,7 +3165,7 @@ export default function AdminPage() {
 
                     <button
                       onClick={() => handleToggleExcludeFromWaitlist(selectedReg)}
-                      className="py-2.5 rounded-xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      className="py-2.5 px-3 rounded-xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                       style={selectedReg.exclude_from_waitlist ? {
                         background: 'rgba(242,90,43,0.15)', color: 'var(--brand-1)', border: '1px solid rgba(242,90,43,0.25)',
                       } : {
@@ -2865,189 +3178,127 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                <div className="h-px bg-line-soft" />
+                {/* Queue Override & Details Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Contact Info */}
+                  <div className="bg-bg-soft/30 border border-line-soft rounded-2xl p-4 space-y-2.5">
+                    <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3">Contact Information</p>
+                    <div className="space-y-2 text-xs font-mono">
+                      <div className="flex items-center gap-2 text-ink">
+                        <Mail className="w-3.5 h-3.5 text-ink-3 shrink-0" />
+                        <span className="truncate">{selectedReg.email}</span>
+                      </div>
+                      {selectedReg.phone && (
+                        <div className="flex items-center gap-2 text-ink">
+                          <Smartphone className="w-3.5 h-3.5 text-ink-3 shrink-0" />
+                          <span>{selectedReg.phone}</span>
+                        </div>
+                      )}
+                      {selectedReg.city && (
+                        <div className="flex items-center gap-2 text-ink">
+                          <MapPin className="w-3.5 h-3.5 text-ink-3 shrink-0" />
+                          <span>{selectedReg.city}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
-                {/* ── Category & Genres ── */}
+                  {/* Queue Management */}
+                  <div className="bg-bg-soft/30 border border-line-soft rounded-2xl p-4 space-y-2.5">
+                    <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3">Queue Management</p>
+                    <div className="flex items-center gap-3 pt-1">
+                      <span className="text-xs text-ink-2 font-mono">Queue Override:</span>
+                      <input
+                        type="number"
+                        placeholder="Auto"
+                        defaultValue={selectedReg.position_override ?? ''}
+                        key={`modal-${selectedReg.id}-${selectedReg.position_override ?? 'auto'}`}
+                        onBlur={(e) => {
+                          const raw = e.target.value.trim();
+                          const val = raw === '' ? null : parseInt(raw, 10);
+                          const parsedVal = isNaN(val as number) ? null : val;
+                          if (parsedVal !== (selectedReg.position_override ?? null)) {
+                            handleSavePositionOverride(selectedReg, parsedVal);
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            (e.target as HTMLInputElement).blur();
+                          }
+                        }}
+                        className="w-16 bg-bg-soft border border-line-soft rounded-lg py-1 px-1.5 text-xs text-ink text-center font-mono focus:outline-none focus:border-brand transition-all"
+                      />
+                      <span className="text-[10px] font-mono text-ink-3">
+                        {selectedReg.position_override ? `#${selectedReg.position_override}` : 'Auto-Queue'}
+                      </span>
+                    </div>
+                    <div className="text-[10px] font-mono text-ink-3 pt-2 border-t border-line-soft flex justify-between">
+                      <span>Registered:</span>
+                      <span className="text-ink-2">{new Date(selectedReg.reserved_at).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Classification & Genres */}
                 {(selectedReg.category || (selectedReg.genres && selectedReg.genres.length > 0)) && (
-                  <div>
-                    <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3 mb-3">Classification & Genres</p>
-                    {selectedReg.category && (
-                      <p className="text-sm text-ink capitalize mb-2.5 font-semibold">{selectedReg.category.replace('_', ' ')}</p>
-                    )}
-                    {selectedReg.genres && selectedReg.genres.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {selectedReg.genres.map(g => (
-                          <span key={g} className="text-[10px] font-mono px-2.5 py-1 rounded-lg text-ink-2 bg-bg-soft/40 border border-line-soft">#{g}</span>
-                        ))}
-                      </div>
-                    )}
+                  <div className="bg-bg-soft/20 border border-line-soft rounded-2xl p-4 space-y-2">
+                    <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3">Classification & Genres</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {selectedReg.category && (
+                        <span className="text-xs text-ink font-semibold capitalize bg-bg-soft border border-line-soft px-2.5 py-1 rounded-lg">
+                          {selectedReg.category.replace('_', ' ')}
+                        </span>
+                      )}
+                      {selectedReg.genres && selectedReg.genres.map(g => (
+                        <span key={g} className="text-[10px] font-mono px-2.5 py-1 rounded-lg text-ink-2 bg-bg-soft/40 border border-line-soft">
+                          #{g}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
 
-                {/* ── Contact Info ── */}
-                <div>
-                  <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3 mb-3">System Contact Details</p>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-3 text-sm bg-bg-soft/20 p-2.5 rounded-xl border border-line-soft">
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-bg-soft border border-line-soft shrink-0">
-                        <Mail className="w-3.5 h-3.5 text-ink-2" />
-                      </div>
-                      <span className="text-ink font-mono text-xs truncate flex-1">{selectedReg.email}</span>
-                    </div>
-                    {selectedReg.phone && (
-                      <div className="flex items-center gap-3 text-sm bg-bg-soft/20 p-2.5 rounded-xl border border-line-soft">
-                        <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-bg-soft border border-line-soft shrink-0">
-                          <Smartphone className="w-3.5 h-3.5 text-ink-2" />
-                        </div>
-                        <span className="text-ink font-mono text-xs flex-1">{selectedReg.phone}</span>
-                      </div>
-                    )}
-                    {selectedReg.city && (
-                      <div className="flex items-center gap-3 text-sm bg-bg-soft/20 p-2.5 rounded-xl border border-line-soft">
-                        <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-bg-soft border border-line-soft shrink-0">
-                          <MapPin className="w-3.5 h-3.5 text-ink-2" />
-                        </div>
-                        <span className="text-ink text-xs flex-1 font-medium">{selectedReg.city}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* ── Social Links ── */}
+                {/* External Portals */}
                 {(selectedReg.instagram_url || selectedReg.spotify_url || selectedReg.youtube_url || selectedReg.youtube_channel_url) && (
-                  <>
-                    <div className="h-px bg-line-soft" />
-                    <div>
-                      <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3 mb-3">External Portals</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        {selectedReg.instagram_url && (
-                          <a href={selectedReg.instagram_url.startsWith('http') ? selectedReg.instagram_url : `https://instagram.com/${selectedReg.instagram_url}`} target="_blank" rel="noopener noreferrer"
-                            className="flex items-center gap-3 p-3 rounded-xl bg-bg-soft/40 border border-line-soft hover:bg-bg-soft hover:border-line-soft/80 transition-all group">
-                            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)', }}>
-                              <span className="text-white text-[9px] font-black">IG</span>
-                            </div>
-                            <span className="text-xs font-mono text-ink-2 truncate flex-1 group-hover:text-ink">Instagram</span>
-                            <ExternalLink className="w-3.5 h-3.5 text-ink-3 group-hover:text-ink transition-colors" />
-                          </a>
-                        )}
-                        {selectedReg.spotify_url && (
-                          <a href={selectedReg.spotify_url.startsWith('http') ? selectedReg.spotify_url : `https://open.spotify.com/artist/${selectedReg.spotify_url}`} target="_blank" rel="noopener noreferrer"
-                            className="flex items-center gap-3 p-3 rounded-xl bg-bg-soft/40 border border-line-soft hover:bg-bg-soft hover:border-line-soft/80 transition-all group">
-                            <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-[#1DB954] shrink-0">
-                              <span className="text-white text-[9px] font-black">SP</span>
-                            </div>
-                            <span className="text-xs font-mono text-ink-2 truncate flex-1 group-hover:text-ink">Spotify</span>
-                            <ExternalLink className="w-3.5 h-3.5 text-ink-3 group-hover:text-ink transition-colors" />
-                          </a>
-                        )}
-                        {(selectedReg.youtube_url || selectedReg.youtube_channel_url) && (
-                          <a href={(selectedReg.youtube_channel_url || selectedReg.youtube_url || '').startsWith('http') ? (selectedReg.youtube_channel_url || selectedReg.youtube_url || '') : `https://youtube.com/@${selectedReg.youtube_channel_url || selectedReg.youtube_url}`} target="_blank" rel="noopener noreferrer"
-                            className="flex items-center gap-3 p-3 rounded-xl bg-bg-soft/40 border border-line-soft hover:bg-bg-soft hover:border-line-soft/80 transition-all group col-span-2">
-                            <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-[#FF0000] shrink-0">
-                              <span className="text-white text-[9px] font-black">YT</span>
-                            </div>
-                            <span className="text-xs font-mono text-ink-2 truncate flex-1 group-hover:text-ink">YouTube</span>
-                            <ExternalLink className="w-3.5 h-3.5 text-ink-3 group-hover:text-ink transition-colors" />
-                          </a>
-                        )}
-                      </div>
+                  <div className="bg-bg-soft/20 border border-line-soft rounded-2xl p-4 space-y-2.5">
+                    <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3">External Portals</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {selectedReg.instagram_url && (
+                        <a href={selectedReg.instagram_url.startsWith('http') ? selectedReg.instagram_url : `https://instagram.com/${selectedReg.instagram_url}`} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-2.5 p-2.5 rounded-xl bg-bg-soft/40 border border-line-soft hover:bg-bg-soft transition-all group">
+                          <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)' }}>
+                            <span className="text-white text-[8px] font-black">IG</span>
+                          </div>
+                          <span className="text-xs font-mono text-ink-2 truncate flex-1 group-hover:text-ink">Instagram</span>
+                          <ExternalLink className="w-3 h-3 text-ink-3" />
+                        </a>
+                      )}
+                      {selectedReg.spotify_url && (
+                        <a href={selectedReg.spotify_url.startsWith('http') ? selectedReg.spotify_url : `https://open.spotify.com/artist/${selectedReg.spotify_url}`} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-2.5 p-2.5 rounded-xl bg-bg-soft/40 border border-line-soft hover:bg-bg-soft transition-all group">
+                          <div className="w-6 h-6 rounded-lg flex items-center justify-center bg-[#1DB954] shrink-0">
+                            <span className="text-white text-[8px] font-black">SP</span>
+                          </div>
+                          <span className="text-xs font-mono text-ink-2 truncate flex-1 group-hover:text-ink">Spotify</span>
+                          <ExternalLink className="w-3 h-3 text-ink-3" />
+                        </a>
+                      )}
+                      {(selectedReg.youtube_url || selectedReg.youtube_channel_url) && (
+                        <a href={(selectedReg.youtube_channel_url || selectedReg.youtube_url || '').startsWith('http') ? (selectedReg.youtube_channel_url || selectedReg.youtube_url || '') : `https://youtube.com/@${selectedReg.youtube_channel_url || selectedReg.youtube_url}`} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-2.5 p-2.5 rounded-xl bg-bg-soft/40 border border-line-soft hover:bg-bg-soft transition-all group col-span-2">
+                          <div className="w-6 h-6 rounded-lg flex items-center justify-center bg-[#FF0000] shrink-0">
+                            <span className="text-white text-[8px] font-black">YT</span>
+                          </div>
+                          <span className="text-xs font-mono text-ink-2 truncate flex-1 group-hover:text-ink">YouTube</span>
+                          <ExternalLink className="w-3 h-3 text-ink-3" />
+                        </a>
+                      )}
                     </div>
-                  </>
-                )}
-
-                {/* ── Gallery Photos ── */}
-                {selectedReg.gallery_photos && selectedReg.gallery_photos.length > 0 && (
-                  <>
-                    <div className="h-px bg-line-soft" />
-                    <div>
-                      <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3 mb-3">Gallery Nodes ({selectedReg.gallery_photos.length})</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        {selectedReg.gallery_photos.map((photo, i) => (
-                          <img key={i} src={photo} alt="" className="w-full aspect-square object-cover rounded-xl border border-line-soft" />
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* ── Custom Status ── */}
-                {selectedReg.custom_status_message && (
-                  <>
-                    <div className="h-px bg-line-soft" />
-                    <div>
-                      <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3 mb-3">Custom Status</p>
-                      <p className="text-xs text-ink bg-bg-soft/40 border border-line-soft rounded-xl p-4 italic">
-                        &ldquo;{selectedReg.custom_status_message}&rdquo;
-                      </p>
-                    </div>
-                  </>
-                )}
-
-                <div className="h-px bg-line-soft" />
-
-                {/* ── Position & Meta ── */}
-                <div className="bg-bg-soft/30 border border-line-soft rounded-2xl p-5 space-y-4">
-                  <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3">Queue Management & Metrics</p>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-ink-2 font-mono">Queue Override:</span>
-                    <input
-                      type="number"
-                      placeholder="Auto"
-                      defaultValue={selectedReg.position_override ?? ''}
-                      key={`modal-${selectedReg.id}-${selectedReg.position_override ?? 'auto'}`}
-                      onBlur={(e) => {
-                        const raw = e.target.value.trim();
-                        const val = raw === '' ? null : parseInt(raw, 10);
-                        const parsedVal = isNaN(val as number) ? null : val;
-                        if (parsedVal !== (selectedReg.position_override ?? null)) {
-                          handleSavePositionOverride(selectedReg, parsedVal);
-                        }
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          (e.target as HTMLInputElement).blur();
-                        }
-                      }}
-                      className="w-16 bg-bg-soft border border-line-soft rounded-lg py-1 px-1.5 text-xs text-ink text-center font-mono focus:outline-none focus:border-brand transition-all animate-pulse"
-                    />
-                    <span className="text-[10px] font-mono text-ink-3">
-                      {selectedReg.position_override ? `#${selectedReg.position_override}` : 'Auto-Queue'}
-                    </span>
                   </div>
-                  
-                  <div className="space-y-2 pt-2 border-t border-line-soft text-[11px] font-mono text-ink-2">
-                    <div className="flex justify-between">
-                      <span className="text-ink-3">Registered At:</span>
-                      <span>{new Date(selectedReg.reserved_at).toLocaleString()}</span>
-                    </div>
-                    {selectedReg.referred_by && (
-                      <div className="flex justify-between">
-                        <span className="text-ink-3">Referred By:</span>
-                        <span className="text-brand">@{selectedReg.referred_by}</span>
-                      </div>
-                    )}
-                    {selectedReg.profile_visitors_count !== undefined && selectedReg.profile_visitors_count > 0 && (
-                      <div className="flex justify-between">
-                        <span className="text-ink-3">Profile Views:</span>
-                        <span className="text-ink">{selectedReg.profile_visitors_count}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Portfolio link */}
-                <a
-                  href={`/${selectedReg.username}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl text-[10px] font-mono font-bold tracking-[0.08em] uppercase transition-all cursor-pointer bg-bg-soft border border-line-soft hover:bg-bg-soft-hover text-ink shadow-md"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  Inspect Live Page
-                </a>
+                )}
               </div>
             </motion.div>
-          </>
+          </div>
         )}
       </AnimatePresence>
     </div>

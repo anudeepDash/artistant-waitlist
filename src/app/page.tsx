@@ -2,16 +2,19 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, useScroll, useTransform, useSpring, useMotionValue, useInView, AnimatePresence } from 'motion/react';
-import ParticleBackground from '@/components/ParticleBackground';
+import dynamic from 'next/dynamic';
 import Footer from '@/components/Footer';
-import AuthModal from '@/components/AuthModal';
-import RoleWaitlistModal from '@/components/RoleWaitlistModal';
 import InteractiveTeaser from '@/components/InteractiveTeaser';
 import UIMockupSequence from '@/components/UIMockupSequence';
 import Navbar from '@/components/Navbar';
-import FeatureDetailsModal from '@/components/FeatureDetailsModal';
-import DashboardPrompt from '@/components/DashboardPrompt';
 import MobileBottomClaimBar from '@/components/MobileBottomClaimBar';
+
+// Dynamic lazy imports for heavy components & modals to reduce initial JavaScript payload & load time
+const ParticleBackground = dynamic(() => import('@/components/ParticleBackground'), { ssr: false });
+const AuthModal = dynamic(() => import('@/components/AuthModal'), { ssr: false });
+const RoleWaitlistModal = dynamic(() => import('@/components/RoleWaitlistModal'), { ssr: false });
+const FeatureDetailsModal = dynamic(() => import('@/components/FeatureDetailsModal'), { ssr: false });
+const DashboardPrompt = dynamic(() => import('@/components/DashboardPrompt'), { ssr: false });
 import { getUserReservation, type WaitlistEntry } from '@/lib/waitlist';
 import { signInWithGoogle, signOut } from '@/lib/auth';
 import { useAuth } from '@/hooks/useAuth';

@@ -1,6 +1,7 @@
 import { cert, getApps, initializeApp, type App } from 'firebase-admin/app';
 import { getAuth, type DecodedIdToken } from 'firebase-admin/auth';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { getAdminSupabaseClient } from '../supabase/admin';
 
 // ---------------------------------------------------------------------------
 // Firebase Admin SDK — Singleton Initialization
@@ -204,7 +205,7 @@ export async function verifyAdminToken(
 
   // Fast-path: super-admin
   const SUPER_ADMIN = process.env.SUPER_ADMIN_EMAIL;
-  if (SUPER_ADMIN && email === SUPER_ADMIN.trim().toLowerCase()) {
+  if (SUPER_ADMIN && email.trim().toLowerCase() === SUPER_ADMIN.trim().toLowerCase()) {
     return decoded;
   }
 
@@ -214,16 +215,7 @@ export async function verifyAdminToken(
   }
 
   // Check the admin_users table via Supabase (service-role client)
-  const supabase = createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    },
-  );
+  const supabase = getAdminSupabaseClient();
 
   const { data, error } = await supabase
     .from('admin_users')

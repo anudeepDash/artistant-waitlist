@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { incrementProfileVisitorsAction, getPublicProfileDataAction, submitBookingRequestAction, type PublicProfileReservation } from '@/lib/profile-actions';
 import { useTheme } from 'next-themes';
 import { 
-  X, MapPin, Share2, Mail, Phone, LockKeyhole, ArrowLeft, Heart, Calendar, Send, CheckCircle2, Copy, Check, Sparkles
+  X, MapPin, Share2, Mail, Phone, LockKeyhole, ArrowLeft, Heart, Calendar, Send, CheckCircle2, Copy, Check, Sparkles, User, Tag, IndianRupee, FileText, ArrowRight, ShieldCheck, Clock, Layers
 } from 'lucide-react';
 
 const categoryLabels: Record<string, string> = {
@@ -1042,51 +1042,109 @@ export default function PublicProfilePage() {
       {/* Booking Options Modal Overlay */}
       <AnimatePresence>
         {isBookingOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsBookingOpen(false)}
-              className="fixed inset-0 bg-black/80 backdrop-blur-md"
+              className="fixed inset-0 bg-black/80 backdrop-blur-xl"
             />
-            
+
             <motion.div
-              initial={{ opacity: 0, scale: 0.94, y: 15 }}
+              initial={{ opacity: 0, scale: 0.94, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.94, y: 15 }}
-              className="relative w-full max-w-md rounded-3xl overflow-hidden p-6 z-10 border shadow-2xl my-8"
+              exit={{ opacity: 0, scale: 0.94, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="relative w-full max-w-lg rounded-[2.2rem] overflow-hidden p-6 sm:p-7 z-10 border shadow-[0_30px_90px_-20px_rgba(0,0,0,0.85)] my-8 backdrop-blur-2xl transition-all"
               style={{
                 background: isLight 
-                  ? 'linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(245,242,255,0.98) 100%)'
-                  : 'linear-gradient(135deg, rgba(10,10,14,0.96) 0%, rgba(18,14,28,0.96) 100%)',
-                borderColor: isLight ? 'rgba(124,92,255,0.2)' : 'rgba(124,92,255,0.25)'
+                  ? 'linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(246,243,255,0.98) 100%)'
+                  : 'linear-gradient(135deg, rgba(12,12,18,0.96) 0%, rgba(20,16,32,0.96) 100%)',
+                borderColor: isLight ? 'rgba(124,92,255,0.22)' : 'rgba(124,92,255,0.3)'
               }}
             >
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex flex-col text-left">
-                  <h3 className={`text-base font-bold ${isLight ? 'text-zinc-900' : 'text-white'}`}>
-                    Book {displayName}
-                  </h3>
-                  <span className={`text-[10px] font-mono uppercase tracking-wider ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>
-                    @{username} · {categoryLabel}
-                  </span>
+              {/* Background Glow Orbs */}
+              <div className="absolute -top-20 -left-20 w-64 h-64 bg-[#7C5CFF]/15 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-[#F25A2B]/15 rounded-full blur-3xl pointer-events-none" />
+
+              {/* Modal Header */}
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#7C5CFF] to-[#F25A2B] p-[1.5px] shadow-md shrink-0">
+                      <div className={`w-full h-full rounded-[0.9rem] flex items-center justify-center font-bold text-sm overflow-hidden ${
+                        reservation.profile_photo_url ? 'bg-black' : (isLight ? 'bg-white text-zinc-900' : 'bg-[#0a0a0f] text-white')
+                      }`}>
+                        {reservation.profile_photo_url ? (
+                          <img src={reservation.profile_photo_url} alt={displayName} className="w-full h-full object-cover" />
+                        ) : (
+                          displayName.charAt(0).toUpperCase()
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className={`text-base font-extrabold tracking-tight ${isLight ? 'text-zinc-900' : 'text-white'}`}>
+                          Book {displayName}
+                        </h3>
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold tracking-wider uppercase bg-[#7C5CFF]/15 text-[#7C5CFF] border border-[#7C5CFF]/30">
+                          VERIFIED
+                        </span>
+                      </div>
+                      <p className={`text-xs font-mono tracking-wide ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>
+                        @{username} · <span className="text-[#F25A2B] font-semibold">{categoryLabel}</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsBookingOpen(false)}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer border shadow-sm ${
+                      isLight 
+                        ? 'bg-black/5 hover:bg-black/10 border-black/5 text-zinc-600' 
+                        : 'bg-white/5 hover:bg-white/15 border-white/10 text-white/50 hover:text-white'
+                    }`}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
-                <button
-                  onClick={() => setIsBookingOpen(false)}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
-                    isLight ? 'bg-black/5 hover:bg-black/10 text-zinc-500 hover:text-zinc-800' : 'bg-white/5 hover:bg-white/10 text-white/40 hover:text-white'
-                  }`}
-                >
-                  <X className="w-4 h-4" />
-                </button>
+
+                {/* Step Progress Bar */}
+                <div className="w-full mb-5">
+                  <div className="flex items-center justify-between text-[10px] font-mono tracking-wider font-bold mb-1.5 uppercase">
+                    <span className={bookingMode === 'form' ? 'text-[#7C5CFF]' : (isLight ? 'text-zinc-500' : 'text-white/50')}>
+                      {bookingMode === 'options' && '01 / Choose Channel'}
+                      {bookingMode === 'form' && '02 / Event Details'}
+                      {bookingMode === 'success' && '03 / Complete'}
+                    </span>
+                    <span className={isLight ? 'text-zinc-400' : 'text-white/30'}>
+                      {bookingMode === 'options' ? 'Step 1 of 2' : (bookingMode === 'form' ? 'Step 2 of 2' : 'Submitted')}
+                    </span>
+                  </div>
+                  <div className={`w-full h-1.5 rounded-full overflow-hidden ${isLight ? 'bg-black/5' : 'bg-white/10'}`}>
+                    <motion.div 
+                      className="h-full bg-gradient-to-r from-[#7C5CFF] via-[#9B7CFF] to-[#F25A2B] rounded-full"
+                      initial={{ width: '50%' }}
+                      animate={{ 
+                        width: bookingMode === 'options' ? '50%' : (bookingMode === 'form' ? '100%' : '100%') 
+                      }}
+                      transition={{ duration: 0.3 }}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* View Mode 1: OPTIONS (Select between Mail Artistant or Raise Booking Request) */}
               {bookingMode === 'options' && (
-                <div className="space-y-4 text-left">
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-3.5 text-left relative z-10"
+                >
                   <p className={`text-xs leading-relaxed ${isLight ? 'text-zinc-600' : 'text-white/60'}`}>
-                    Choose how you would like to proceed with your booking inquiry for <strong>{displayName}</strong>:
+                    Select how you would like to submit your show availability query for <strong>{displayName}</strong>:
                   </p>
 
                   {/* Option A: Raise Booking Request */}
@@ -1095,56 +1153,65 @@ export default function PublicProfilePage() {
                       setBookingError(null);
                       setBookingMode('form');
                     }}
-                    className={`p-4.5 rounded-2xl border transition-all cursor-pointer flex flex-col gap-2 relative overflow-hidden group shadow-sm ${
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col gap-2 relative overflow-hidden group shadow-md ${
                       isLight 
-                        ? 'bg-white border-[#7C5CFF]/30 hover:border-[#7C5CFF] hover:shadow-md' 
-                        : 'bg-white/[0.02] border-white/10 hover:bg-white/[0.04] hover:border-[#7C5CFF]/50'
+                        ? 'bg-white border-[#7C5CFF]/40 hover:border-[#7C5CFF] hover:shadow-lg' 
+                        : 'bg-white/[0.03] border-white/10 hover:bg-white/[0.06] hover:border-[#7C5CFF]/60'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#7C5CFF] to-[#F25A2B] flex items-center justify-center text-white shadow-sm">
-                          <Calendar className="w-4.5 h-4.5" />
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7C5CFF] to-[#F25A2B] flex items-center justify-center text-white shadow-md">
+                          <Calendar className="w-5 h-5" />
                         </div>
                         <div>
-                          <h4 className={`text-xs font-bold ${isLight ? 'text-zinc-900' : 'text-white'}`}>Raise Booking Request</h4>
-                          <span className="text-[9px] font-mono text-[#7C5CFF] uppercase tracking-wider font-bold">Fast Concierge Routing</span>
+                          <div className="flex items-center gap-2">
+                            <h4 className={`text-xs font-bold ${isLight ? 'text-zinc-900' : 'text-white'}`}>Raise Direct Request</h4>
+                            <span className="px-2 py-0.5 rounded-md text-[9px] font-mono font-extrabold uppercase bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                              RECOMMENDED
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-mono text-[#7C5CFF] uppercase tracking-wider font-bold">Fast Concierge Routing</span>
                         </div>
                       </div>
-                      <span className={`text-xs font-bold ${isLight ? 'text-zinc-400 group-hover:text-[#7C5CFF]' : 'text-white/40 group-hover:text-[#7C5CFF]'}`}>&rarr;</span>
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
+                        isLight ? 'bg-black/5 group-hover:bg-[#7C5CFF] group-hover:text-white' : 'bg-white/5 group-hover:bg-[#7C5CFF] group-hover:text-white'
+                      }`}>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </div>
                     </div>
-                    <p className={`text-[11px] leading-relaxed mt-1 ${isLight ? 'text-zinc-500' : 'text-white/45'}`}>
-                      Fill out a quick request with your event date, city, and requirements. Artistant team will coordinate availability & lock in your show.
+                    <p className={`text-[11px] leading-relaxed mt-1 ${isLight ? 'text-zinc-500' : 'text-white/50'}`}>
+                      Submit event date, location & rider preferences. Our concierge team coordinates schedule & locks in pricing with {displayName}.
                     </p>
                   </div>
 
                   {/* Option B: Mail Artistant */}
-                  <div className={`p-4.5 rounded-2xl border transition-all flex flex-col gap-3 shadow-sm ${
+                  <div className={`p-4 rounded-2xl border transition-all flex flex-col gap-3 shadow-sm ${
                     isLight 
                       ? 'bg-white border-black/10' 
-                      : 'bg-white/[0.02] border-white/10'
+                      : 'bg-white/[0.03] border-white/10'
                   }`}>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center border shadow-sm ${
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-sm ${
                           isLight ? 'bg-zinc-100 border-black/10 text-zinc-800' : 'bg-white/5 border-white/10 text-white'
                         }`}>
-                          <Mail className="w-4.5 h-4.5 text-[#F25A2B]" />
+                          <Mail className="w-5 h-5 text-[#F25A2B]" />
                         </div>
                         <div>
-                          <h4 className={`text-xs font-bold ${isLight ? 'text-zinc-900' : 'text-white'}`}>Mail Artistant</h4>
-                          <span className={`text-[9px] font-mono uppercase tracking-wider ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>hello@artistant.in</span>
+                          <h4 className={`text-xs font-bold ${isLight ? 'text-zinc-900' : 'text-white'}`}>Mail Concierge Team</h4>
+                          <span className={`text-[10px] font-mono uppercase tracking-wider ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>hello@artistant.in</span>
                         </div>
                       </div>
                     </div>
-                    <p className={`text-[11px] leading-relaxed ${isLight ? 'text-zinc-500' : 'text-white/45'}`}>
-                      Email our concierge team directly regarding artist availability, custom riders, or special corporate rates.
+                    <p className={`text-[11px] leading-relaxed ${isLight ? 'text-zinc-500' : 'text-white/50'}`}>
+                      Email us directly for custom riders, technical setup requirements, or multi-city tour bookings.
                     </p>
                     
                     <div className="grid grid-cols-2 gap-2 pt-1">
                       <a
                         href={`mailto:hello@artistant.in?subject=${encodeURIComponent(`Booking Inquiry for ${displayName} (@${username})`)}&body=${encodeURIComponent(`Hi Artistant Concierge Team,\n\nI would like to inquire about booking ${displayName} (@${username}).\n\nEvent Details:\nDate: \nCity/Location: \nEvent Type: \n\nMy Contact Info:\nName: \nPhone: \n\nThank you!`)}`}
-                        className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm ${
+                        className={`text-center py-2.5 px-3 rounded-xl font-mono font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm ${
                           isLight ? 'bg-[#7C5CFF] text-white hover:bg-[#6838FF]' : 'bg-white text-black hover:bg-white/90'
                         }`}
                       >
@@ -1157,21 +1224,23 @@ export default function PublicProfilePage() {
                           setCopiedEmail(true);
                           setTimeout(() => setCopiedEmail(false), 2000);
                         }}
-                        className={`py-2.5 px-3 rounded-xl font-bold text-xs border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        className={`py-2.5 px-3 rounded-xl font-mono font-bold text-xs border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                           isLight ? 'bg-zinc-50 border-black/10 text-zinc-800 hover:bg-zinc-100' : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
                         }`}
                       >
                         {copiedEmail ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                        {copiedEmail ? 'Copied Email!' : 'Copy Email'}
+                        {copiedEmail ? 'Copied!' : 'Copy Email'}
                       </button>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               )}
 
               {/* View Mode 2: FORM (Raise Booking Request Form) */}
               {bookingMode === 'form' && (
-                <form 
+                <motion.form 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
                   onSubmit={async (e) => {
                     e.preventDefault();
                     setIsSubmittingBooking(true);
@@ -1200,9 +1269,9 @@ export default function PublicProfilePage() {
                       setIsSubmittingBooking(false);
                     }
                   }}
-                  className="space-y-3.5 text-left"
+                  className="space-y-3.5 text-left relative z-10"
                 >
-                  <div className="flex items-center justify-between border-b pb-2.5 mb-1 border-white/10">
+                  <div className="flex items-center justify-between border-b pb-2 mb-1 border-white/10">
                     <button
                       type="button"
                       onClick={() => setBookingMode('options')}
@@ -1210,11 +1279,11 @@ export default function PublicProfilePage() {
                     >
                       &larr; Back to options
                     </button>
-                    <span className={`text-[9px] font-mono uppercase tracking-widest ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>Step 2 of 2</span>
                   </div>
 
                   {bookingError && (
-                    <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+                    <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-red-400 shrink-0" />
                       {bookingError}
                     </div>
                   )}
@@ -1225,16 +1294,19 @@ export default function PublicProfilePage() {
                       <label className={`block text-[10px] font-mono font-bold uppercase tracking-wider mb-1 ${isLight ? 'text-zinc-600' : 'text-white/50'}`}>
                         Your Name *
                       </label>
-                      <input
-                        type="text"
-                        required
-                        value={clientName}
-                        onChange={(e) => setClientName(e.target.value)}
-                        placeholder="e.g. Rahul Sharma"
-                        className={`w-full rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#7C5CFF] border transition-all ${
-                          isLight ? 'bg-black/5 border-black/10 text-zinc-900 placeholder-zinc-400' : 'bg-black/40 border-white/10 text-white placeholder-white/30'
-                        }`}
-                      />
+                      <div className="relative">
+                        <User className={`w-3.5 h-3.5 absolute left-3 top-3 ${isLight ? 'text-zinc-400' : 'text-white/40'}`} />
+                        <input
+                          type="text"
+                          required
+                          value={clientName}
+                          onChange={(e) => setClientName(e.target.value)}
+                          placeholder="e.g. Rahul Sharma"
+                          className={`w-full rounded-xl pl-9 pr-3 py-2.5 text-xs focus:outline-none focus:border-[#7C5CFF] focus:ring-2 focus:ring-[#7C5CFF]/20 border transition-all ${
+                            isLight ? 'bg-black/5 border-black/10 text-zinc-900 placeholder-zinc-400' : 'bg-black/30 border-white/10 text-white placeholder-white/30'
+                          }`}
+                        />
+                      </div>
                     </div>
 
                     {/* Email */}
@@ -1242,16 +1314,19 @@ export default function PublicProfilePage() {
                       <label className={`block text-[10px] font-mono font-bold uppercase tracking-wider mb-1 ${isLight ? 'text-zinc-600' : 'text-white/50'}`}>
                         Email Address *
                       </label>
-                      <input
-                        type="email"
-                        required
-                        value={clientEmail}
-                        onChange={(e) => setClientEmail(e.target.value)}
-                        placeholder="e.g. rahul@event.com"
-                        className={`w-full rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#7C5CFF] border transition-all ${
-                          isLight ? 'bg-black/5 border-black/10 text-zinc-900 placeholder-zinc-400' : 'bg-black/40 border-white/10 text-white placeholder-white/30'
-                        }`}
-                      />
+                      <div className="relative">
+                        <Mail className={`w-3.5 h-3.5 absolute left-3 top-3 ${isLight ? 'text-zinc-400' : 'text-white/40'}`} />
+                        <input
+                          type="email"
+                          required
+                          value={clientEmail}
+                          onChange={(e) => setClientEmail(e.target.value)}
+                          placeholder="e.g. rahul@event.com"
+                          className={`w-full rounded-xl pl-9 pr-3 py-2.5 text-xs focus:outline-none focus:border-[#7C5CFF] focus:ring-2 focus:ring-[#7C5CFF]/20 border transition-all ${
+                            isLight ? 'bg-black/5 border-black/10 text-zinc-900 placeholder-zinc-400' : 'bg-black/30 border-white/10 text-white placeholder-white/30'
+                          }`}
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -1261,16 +1336,19 @@ export default function PublicProfilePage() {
                       <label className={`block text-[10px] font-mono font-bold uppercase tracking-wider mb-1 ${isLight ? 'text-zinc-600' : 'text-white/50'}`}>
                         Phone / WhatsApp *
                       </label>
-                      <input
-                        type="tel"
-                        required
-                        value={clientPhone}
-                        onChange={(e) => setClientPhone(e.target.value)}
-                        placeholder="+91 98765 43210"
-                        className={`w-full rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#7C5CFF] border transition-all ${
-                          isLight ? 'bg-black/5 border-black/10 text-zinc-900 placeholder-zinc-400' : 'bg-black/40 border-white/10 text-white placeholder-white/30'
-                        }`}
-                      />
+                      <div className="relative">
+                        <Phone className={`w-3.5 h-3.5 absolute left-3 top-3 ${isLight ? 'text-zinc-400' : 'text-white/40'}`} />
+                        <input
+                          type="tel"
+                          required
+                          value={clientPhone}
+                          onChange={(e) => setClientPhone(e.target.value)}
+                          placeholder="+91 98765 43210"
+                          className={`w-full rounded-xl pl-9 pr-3 py-2.5 text-xs focus:outline-none focus:border-[#7C5CFF] focus:ring-2 focus:ring-[#7C5CFF]/20 border transition-all ${
+                            isLight ? 'bg-black/5 border-black/10 text-zinc-900 placeholder-zinc-400' : 'bg-black/30 border-white/10 text-white placeholder-white/30'
+                          }`}
+                        />
+                      </div>
                     </div>
 
                     {/* Event Date */}
@@ -1278,15 +1356,18 @@ export default function PublicProfilePage() {
                       <label className={`block text-[10px] font-mono font-bold uppercase tracking-wider mb-1 ${isLight ? 'text-zinc-600' : 'text-white/50'}`}>
                         Event Date *
                       </label>
-                      <input
-                        type="date"
-                        required
-                        value={eventDate}
-                        onChange={(e) => setEventDate(e.target.value)}
-                        className={`w-full rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#7C5CFF] border transition-all ${
-                          isLight ? 'bg-black/5 border-black/10 text-zinc-900' : 'bg-black/40 border-white/10 text-white'
-                        }`}
-                      />
+                      <div className="relative">
+                        <Calendar className={`w-3.5 h-3.5 absolute left-3 top-3 ${isLight ? 'text-zinc-400' : 'text-white/40'}`} />
+                        <input
+                          type="date"
+                          required
+                          value={eventDate}
+                          onChange={(e) => setEventDate(e.target.value)}
+                          className={`w-full rounded-xl pl-9 pr-3 py-2.5 text-xs focus:outline-none focus:border-[#7C5CFF] focus:ring-2 focus:ring-[#7C5CFF]/20 border transition-all ${
+                            isLight ? 'bg-black/5 border-black/10 text-zinc-900' : 'bg-black/30 border-white/10 text-white'
+                          }`}
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -1296,16 +1377,19 @@ export default function PublicProfilePage() {
                       <label className={`block text-[10px] font-mono font-bold uppercase tracking-wider mb-1 ${isLight ? 'text-zinc-600' : 'text-white/50'}`}>
                         City / Location *
                       </label>
-                      <input
-                        type="text"
-                        required
-                        value={eventCity}
-                        onChange={(e) => setEventCity(e.target.value)}
-                        placeholder="e.g. Mumbai / Bengaluru"
-                        className={`w-full rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#7C5CFF] border transition-all ${
-                          isLight ? 'bg-black/5 border-black/10 text-zinc-900 placeholder-zinc-400' : 'bg-black/40 border-white/10 text-white placeholder-white/30'
-                        }`}
-                      />
+                      <div className="relative">
+                        <MapPin className={`w-3.5 h-3.5 absolute left-3 top-3 ${isLight ? 'text-zinc-400' : 'text-white/40'}`} />
+                        <input
+                          type="text"
+                          required
+                          value={eventCity}
+                          onChange={(e) => setEventCity(e.target.value)}
+                          placeholder="e.g. Mumbai / Bengaluru"
+                          className={`w-full rounded-xl pl-9 pr-3 py-2.5 text-xs focus:outline-none focus:border-[#7C5CFF] focus:ring-2 focus:ring-[#7C5CFF]/20 border transition-all ${
+                            isLight ? 'bg-black/5 border-black/10 text-zinc-900 placeholder-zinc-400' : 'bg-black/30 border-white/10 text-white placeholder-white/30'
+                          }`}
+                        />
+                      </div>
                     </div>
 
                     {/* Event Type */}
@@ -1313,20 +1397,23 @@ export default function PublicProfilePage() {
                       <label className={`block text-[10px] font-mono font-bold uppercase tracking-wider mb-1 ${isLight ? 'text-zinc-600' : 'text-white/50'}`}>
                         Event Category
                       </label>
-                      <select
-                        value={eventType}
-                        onChange={(e) => setEventType(e.target.value)}
-                        className={`w-full rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#7C5CFF] border transition-all ${
-                          isLight ? 'bg-black/5 border-black/10 text-zinc-900' : 'bg-black/40 border-white/10 text-white bg-[#0a0a0f]'
-                        }`}
-                      >
-                        <option value="Corporate Event">Corporate Event</option>
-                        <option value="Wedding / Reception">Wedding / Reception</option>
-                        <option value="Club / Concert">Club / Concert</option>
-                        <option value="Private Party">Private Party</option>
-                        <option value="College Fest">College Fest</option>
-                        <option value="Other">Other</option>
-                      </select>
+                      <div className="relative">
+                        <Tag className={`w-3.5 h-3.5 absolute left-3 top-3 ${isLight ? 'text-zinc-400' : 'text-white/40'}`} />
+                        <select
+                          value={eventType}
+                          onChange={(e) => setEventType(e.target.value)}
+                          className={`w-full rounded-xl pl-9 pr-3 py-2.5 text-xs focus:outline-none focus:border-[#7C5CFF] focus:ring-2 focus:ring-[#7C5CFF]/20 border transition-all ${
+                            isLight ? 'bg-black/5 border-black/10 text-zinc-900' : 'bg-[#0e0c18] border-white/10 text-white'
+                          }`}
+                        >
+                          <option value="Corporate Event">Corporate Event</option>
+                          <option value="Wedding / Reception">Wedding / Reception</option>
+                          <option value="Club / Concert">Club / Concert</option>
+                          <option value="Private Party">Private Party</option>
+                          <option value="College Fest">College Fest</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
 
@@ -1335,80 +1422,90 @@ export default function PublicProfilePage() {
                     <label className={`block text-[10px] font-mono font-bold uppercase tracking-wider mb-1 ${isLight ? 'text-zinc-600' : 'text-white/50'}`}>
                       Estimated Budget (Optional)
                     </label>
-                    <input
-                      type="text"
-                      value={budget}
-                      onChange={(e) => setBudget(e.target.value)}
-                      placeholder="e.g. ₹50,000 - ₹1,00,000 or Flexible"
-                      className={`w-full rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#7C5CFF] border transition-all ${
-                        isLight ? 'bg-black/5 border-black/10 text-zinc-900 placeholder-zinc-400' : 'bg-black/40 border-white/10 text-white placeholder-white/30'
-                      }`}
-                    />
+                    <div className="relative">
+                      <IndianRupee className={`w-3.5 h-3.5 absolute left-3 top-3 ${isLight ? 'text-zinc-400' : 'text-white/40'}`} />
+                      <input
+                        type="text"
+                        value={budget}
+                        onChange={(e) => setBudget(e.target.value)}
+                        placeholder="e.g. ₹50,000 - ₹1,00,000 or Flexible"
+                        className={`w-full rounded-xl pl-9 pr-3 py-2.5 text-xs focus:outline-none focus:border-[#7C5CFF] focus:ring-2 focus:ring-[#7C5CFF]/20 border transition-all ${
+                          isLight ? 'bg-black/5 border-black/10 text-zinc-900 placeholder-zinc-400' : 'bg-black/30 border-white/10 text-white placeholder-white/30'
+                        }`}
+                      />
+                    </div>
                   </div>
 
                   {/* Notes */}
                   <div>
                     <label className={`block text-[10px] font-mono font-bold uppercase tracking-wider mb-1 ${isLight ? 'text-zinc-600' : 'text-white/50'}`}>
-                      Event Details / Additional Notes (Optional)
+                      Event Details / Rider Requirements (Optional)
                     </label>
-                    <textarea
-                      rows={2}
-                      value={eventNotes}
-                      onChange={(e) => setEventNotes(e.target.value)}
-                      placeholder="Share performance duration, stage setup, or specific songs requested..."
-                      className={`w-full rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-[#7C5CFF] border transition-all ${
-                        isLight ? 'bg-black/5 border-black/10 text-zinc-900 placeholder-zinc-400' : 'bg-black/40 border-white/10 text-white placeholder-white/30'
-                      }`}
-                    />
+                    <div className="relative">
+                      <FileText className={`w-3.5 h-3.5 absolute left-3 top-3 ${isLight ? 'text-zinc-400' : 'text-white/40'}`} />
+                      <textarea
+                        rows={2}
+                        value={eventNotes}
+                        onChange={(e) => setEventNotes(e.target.value)}
+                        placeholder="Share performance duration, stage setup, sound requirements or song requests..."
+                        className={`w-full rounded-xl pl-9 pr-3 py-2.5 text-xs focus:outline-none focus:border-[#7C5CFF] focus:ring-2 focus:ring-[#7C5CFF]/20 border transition-all ${
+                          isLight ? 'bg-black/5 border-black/10 text-zinc-900 placeholder-zinc-400' : 'bg-black/30 border-white/10 text-white placeholder-white/30'
+                        }`}
+                      />
+                    </div>
                   </div>
 
                   <button
                     type="submit"
                     disabled={isSubmittingBooking}
-                    className={`w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider font-mono transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md ${
-                      isLight ? 'bg-[#7C5CFF] text-white hover:bg-[#6838FF]' : 'bg-white text-black hover:bg-white/90'
-                    }`}
+                    className="w-full py-3.5 rounded-xl font-mono font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg bg-gradient-to-r from-[#7C5CFF] via-[#8F6FFF] to-[#F25A2B] text-white hover:shadow-[0_10px_30px_rgba(124,92,255,0.4)] hover:scale-[1.01] active:scale-[0.99] group mt-2"
                   >
                     {isSubmittingBooking ? (
                       <>
-                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                        Submitting Request...
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Submitting Booking Request...
                       </>
                     ) : (
                       <>
-                        <Send className="w-3.5 h-3.5" /> Submit Booking Request
+                        <Send className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-0.5 transition-transform" /> SUBMIT BOOKING REQUEST
                       </>
                     )}
                   </button>
-                </form>
+                </motion.form>
               )}
 
               {/* View Mode 3: SUCCESS */}
               {bookingMode === 'success' && (
-                <div className="space-y-4 text-center py-4">
-                  <div className="w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto shadow-sm">
-                    <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="space-y-4 text-center py-6 relative z-10"
+                >
+                  <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto shadow-[0_0_30px_rgba(16,185,129,0.3)]">
+                    <CheckCircle2 className="w-9 h-9 text-emerald-400 animate-bounce" />
                   </div>
-                  <div className="space-y-1">
-                    <h4 className={`text-lg font-bold ${isLight ? 'text-zinc-900' : 'text-white'}`}>Booking Request Submitted!</h4>
-                    <p className={`text-xs leading-relaxed max-w-xs mx-auto ${isLight ? 'text-zinc-600' : 'text-white/60'}`}>
-                      Your request to book <strong>{displayName}</strong> (@{username}) has been received by Artistant Concierge. We will reach out to you at <strong>{clientEmail}</strong> within 24 hours.
+                  <div className="space-y-1.5">
+                    <h4 className={`text-xl font-extrabold ${isLight ? 'text-zinc-900' : 'text-white'}`}>Request Locked In!</h4>
+                    <p className={`text-xs leading-relaxed max-w-sm mx-auto ${isLight ? 'text-zinc-600' : 'text-white/60'}`}>
+                      Your booking query for <strong>{displayName}</strong> (@{username}) has been received. Our concierge desk will contact you at <span className="text-[#7C5CFF] font-semibold">{clientEmail}</span> within 24 hours.
                     </p>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsBookingOpen(false);
-                      setBookingMode('options');
-                    }}
-                    className={`px-6 py-2.5 rounded-xl font-bold text-xs uppercase font-mono transition-all cursor-pointer ${
-                      isLight ? 'bg-zinc-100 text-zinc-800 hover:bg-zinc-200' : 'bg-white/10 text-white hover:bg-white/20'
-                    }`}
-                  >
-                    Done
-                  </button>
-                </div>
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsBookingOpen(false);
+                        setBookingMode('options');
+                      }}
+                      className={`px-8 py-3 rounded-xl font-mono font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-md ${
+                        isLight ? 'bg-zinc-900 text-white hover:bg-zinc-800' : 'bg-white text-black hover:bg-white/90'
+                      }`}
+                    >
+                      Done & Return
+                    </button>
+                  </div>
+                </motion.div>
               )}
 
             </motion.div>

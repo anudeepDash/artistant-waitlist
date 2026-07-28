@@ -1,11 +1,14 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { auth as firebaseAuth } from "../firebase/client";
 
+let cachedToken: string | null = null;
+let cachedUid: string | null = null;
+let cachedTokenExpiry = 0;
+
 /**
  * Custom fetch wrapper that attaches the Firebase ID token as a
  * Bearer Authorization header on every Supabase request.
- * This avoids calling supabase.auth.setSession() (which requires GoTrue)
- * and instead passes the JWT directly at the HTTP level.
+ * Caches the token in memory to avoid asynchronous token resolution overhead on every query.
  */
 async function firebaseTokenFetch(
   input: RequestInfo | URL,
@@ -16,8 +19,18 @@ async function firebaseTokenFetch(
   try {
     const user = firebaseAuth.currentUser;
     if (user) {
-      const token = await user.getIdToken();
-      headers.set("Authorization", `Bearer ${token}`);
+      const now = Date.now();
+      // If user changed or token is missing/expiring (valid for 1h, refresh after 45m), fetch fresh token
+      if (!cachedToken || cachedUid !== user.uid || now > cachedTokenExpiry) {
+        cachedToken = await user.getIdToken(false);
+        cachedUid = user.uid;
+        cachedTokenExpiry = now + 45 * 60 * 1000;
+      }
+      headers.set("Authorization", `Bearer ${cachedToken}`);
+    } else {
+      cachedToken = null;
+      cachedUid = null;
+      cachedTokenExpiry = 0;
     }
   } catch (e) {
     // Non-blocking — fail silently and let Supabase use anon access

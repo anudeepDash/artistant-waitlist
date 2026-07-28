@@ -2,6 +2,7 @@
 
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { verifyIdToken } from './firebase/admin';
+import { getAdminSupabaseClient } from './supabase/admin';
 
 /**
  * Server Action to permanently delete all personal data for a user.
@@ -18,16 +19,7 @@ export async function deleteAccountDataAction(idToken: string): Promise<void> {
     throw new Error('Server configuration error. Cannot process deletion at this time.');
   }
 
-  const client = createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    serviceRoleKey,
-    {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    }
-  );
+  const client = getAdminSupabaseClient();
 
   // 1. Delete the user's primary waitlist profile
   const { error: waitlistError } = await client
