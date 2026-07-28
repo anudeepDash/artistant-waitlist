@@ -663,7 +663,7 @@ export default function AdminPage() {
     try {
       if (isLiveMode) {
         const idToken = await getIdToken();
-        await adminUpdateRegistrationAction(
+        const res = await adminUpdateRegistrationAction(
           idToken, 
           targetId, 
           nextState, 
@@ -672,6 +672,12 @@ export default function AdminPage() {
           reg.feature_founding_card ?? false,
           reg.exclude_from_waitlist ?? false
         );
+        if (res && !res.success) {
+          setRegistrations(prevRegistrations);
+          setSelectedReg(prevSelected);
+          showToast(`Error updating database: ${res.message || 'Action failed'}`);
+          return;
+        }
         if (nextState) {
           showToast(`User Verified. Verification Email Dispatched to @${reg.username}!`);
         } else {
@@ -707,7 +713,7 @@ export default function AdminPage() {
     try {
       if (isLiveMode) {
         const idToken = await getIdToken();
-        await adminUpdateRegistrationAction(
+        const res = await adminUpdateRegistrationAction(
           idToken, 
           targetId, 
           reg.is_verified, 
@@ -716,6 +722,12 @@ export default function AdminPage() {
           reg.feature_founding_card ?? false,
           reg.exclude_from_waitlist ?? false
         );
+        if (res && !res.success) {
+          setRegistrations(prevRegistrations);
+          setSelectedReg(prevSelected);
+          showToast(`Error saving block status: ${res.message || 'Action failed'}`);
+          return;
+        }
         showToast(`User @${reg.username} block status toggled!`);
       } else {
         localStorage.setItem("artistant_sandbox_registrations", JSON.stringify(updated));
@@ -747,7 +759,7 @@ export default function AdminPage() {
     try {
       if (isLiveMode) {
         const idToken = await getIdToken();
-        await adminUpdateRegistrationAction(
+        const res = await adminUpdateRegistrationAction(
           idToken, 
           targetId, 
           reg.is_verified, 
@@ -756,6 +768,12 @@ export default function AdminPage() {
           nextState,
           reg.exclude_from_waitlist ?? false
         );
+        if (res && !res.success) {
+          setRegistrations(prevRegistrations);
+          setSelectedReg(prevSelected);
+          showToast(`Error saving founding card status: ${res.message || 'Action failed'}`);
+          return;
+        }
         showToast(nextState ? `Featured @${reg.username} as Founding Card!` : `Unfeatured @${reg.username} as Founding Card.`);
       } else {
         localStorage.setItem("artistant_sandbox_registrations", JSON.stringify(updated));
@@ -787,7 +805,7 @@ export default function AdminPage() {
     try {
       if (isLiveMode) {
         const idToken = await getIdToken();
-        await adminUpdateRegistrationAction(
+        const res = await adminUpdateRegistrationAction(
           idToken, 
           targetId, 
           reg.is_verified, 
@@ -796,6 +814,12 @@ export default function AdminPage() {
           reg.feature_founding_card ?? false,
           nextState
         );
+        if (res && !res.success) {
+          setRegistrations(prevRegistrations);
+          setSelectedReg(prevSelected);
+          showToast(`Error saving waitlist exclusion status: ${res.message || 'Action failed'}`);
+          return;
+        }
         showToast(nextState ? `Excluded @${reg.username} from waitlist rank.` : `Restored waitlist rank for @${reg.username}.`);
       } else {
         localStorage.setItem("artistant_sandbox_registrations", JSON.stringify(updated));
@@ -826,7 +850,7 @@ export default function AdminPage() {
     try {
       if (isLiveMode) {
         const idToken = await getIdToken();
-        await adminUpdateRegistrationAction(
+        const res = await adminUpdateRegistrationAction(
           idToken, 
           targetId, 
           reg.is_verified, 
@@ -835,6 +859,12 @@ export default function AdminPage() {
           reg.feature_founding_card ?? false,
           reg.exclude_from_waitlist ?? false
         );
+        if (res && !res.success) {
+          setRegistrations(prevRegistrations);
+          setSelectedReg(prevSelected);
+          showToast(`Failed to save priority override: ${res.message || 'Action failed'}`);
+          return;
+        }
         showToast(`Priority Override set to position ${val ?? "Auto"}!`);
       } else {
         localStorage.setItem("artistant_sandbox_registrations", JSON.stringify(updated));

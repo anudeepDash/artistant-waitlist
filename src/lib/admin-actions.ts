@@ -95,130 +95,190 @@ export async function adminUpdateRegistrationAction(
   positionOverride?: number | null,
   featureFoundingCard?: boolean,
   excludeFromWaitlist?: boolean
-): Promise<void> {
-  await verifyAdminToken(idToken);
-
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const client = createAdminClient();
-
-  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
-
-  // Fetch current status of this user registration to see what changes
-  let existing: any = null;
+): Promise<{ success: boolean; message?: string }> {
   try {
-    let { data } = await client
-      .from('waitlist_users')
-      .select('email, display_name, username, is_verified, is_blocked, position_override, feature_founding_card, exclude_from_waitlist')
-      .eq('user_id', userId)
-      .maybeSingle();
+    await verifyAdminToken(idToken);
 
-    if (!data && isUUID) {
-      const res = await client
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const client = createAdminClient();
+
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+
+    // Fetch current status of this user registration to see what changes
+    let existing: any = null;
+    try {
+      let { data, error } = await client
         .from('waitlist_users')
-        .select('email, display_name, username, is_verified, is_blocked, position_override, feature_founding_card, exclude_from_waitlist')
-        .eq('id', userId)
+        .select('email, display_name, username, is_verified, is_blocked, position_override')
+        .eq('user_id', userId)
         .maybeSingle();
-      data = res.data;
-    }
-    existing = data;
-  } catch (e) {
-    console.error('Error fetching existing registration for email trigger:', e);
-  }
 
-  if (serviceRoleKey) {
-    // Service Role Client: update table directly bypassing RLS
-    const updatePayload: any = {
-      is_verified: isVerified,
-      is_blocked: isBlocked,
-      position_override: positionOverride !== undefined ? positionOverride : null,
-    };
-    if (featureFoundingCard !== undefined) {
-      updatePayload.feature_founding_card = featureFoundingCard;
-    }
-    if (excludeFromWaitlist !== undefined) {
-      updatePayload.exclude_from_waitlist = excludeFromWaitlist;
+      if ((!data || error) && isUUID) {
+        const res = await client
+          .from('waitlist_users')
+          .select('email, display_name, username, is_verified, is_blocked, position_override')
+          .eq('id', userId)
+          .maybeSingle();
+        data = res.data;
+      }
+      existing = data;
+    } catch (e) {
+      console.warn('Could not fetch existing registration info for email alerts:', e);
     }
 
-    let { data, error } = await client
-      .from('waitlist_users')
-      .update(updatePayload)
-      .eq('user_id', userId)
-      .select('id');
+    if (serviceRoleKey) {
+      // Service Role Client: update table directly bypassing RLS
+      const fullUpdatePayload: any = {
+        is_verified: isVerified,
+        is_blocked: isBlocked,
+        position_override: positionOverride !== undefined ? positionOverride : null,
+      };
+      if (featureFoundingCard !== undefined) {
+        fullUpdatePayload.feature_founding_card = featureFoundingCard;
+      }
+      if (excludeFromWaitlist !== undefined) {
+        fullUpdatePayload.exclude_from_waitlist = excludeFromWaitlist;
+      }
 
-    if (!error && (!data || data.length === 0) && isUUID) {
-      const fallbackRes = await client
+      let { data, error } = await client
         .from('waitlist_users')
-        .update(updatePayload)
-        .eq('id', userId)
+        .update(fullUpdatePayload)
+        .eq('user_id', userId)
         .select('id');
-      data = fallbackRes.data;
-      error = fallbackRes.error;
-    }
 
-    if (error) {
-      console.error('Error updating registration status directly:', error);
-      throw new Error(`Failed to update registration status: ${error.message}`);
-    }
+      if (!error && (!data || data.length === 0) && isUUID) {
+        const fallbackRes = await client
+          .from('waitlist_users')
+          .update(fullUpdatePayload)
+          .eq('id', userId)
+          .select('id');
+        data = fallbackRes.data;
+        error = fallbackRes.error;
+      }
 
-    if (!data || data.length === 0) {
-      console.error(`No registration found matching user_id or id: ${userId}`);
-      throw new Error(`Failed to update registration: No matching user found (${userId}).`);
-    }
-  } else {
-    // Fallback: call the RPC function
-    const { error } = await client.rpc('admin_update_registration', {
-      p_passcode: process.env.ADMIN_PASSCODE || '',
-      p_user_id: userId,
-      p_is_verified: isVerified,
-      p_is_blocked: isBlocked,
-      p_position_override: positionOverride !== undefined ? positionOverride : null,
-      p_feature_founding_card: featureFoundingCard !== undefined ? featureFoundingCard : false,
-      p_exclude_from_waitlist: excludeFromWaitlist !== undefined ? excludeFromWaitlist : false,
-    });
+      // Handle missing column errors (e.g. if DB migration hasn't added optional columns yet)
+      if (error) {
+        const isColumnError =
+          error.code === 'PGRST204' ||
+          error.code === 'PGRST200' ||
+          error.code === '42703' ||
+          (error.message && (
+            error.message.includes('column') ||
+            error.message.includes('does not exist') ||
+            error.message.includes('feature_founding_card') ||
+            error.message.includes('exclude_from_waitlist')
+          ));
 
-    if (error) {
-      console.error('Error calling admin_update_registration RPC:', error);
-      throw new Error(`Error calling admin_update_registration RPC: ${error.message}`);
-    }
-  }
+        if (isColumnError) {
+          console.warn('Optional column missing in waitlist_users table, falling back to core fields update.');
+          const coreUpdatePayload = {
+            is_verified: isVerified,
+            is_blocked: isBlocked,
+            position_override: positionOverride !== undefined ? positionOverride : null,
+          };
 
-  // Send email alerts based on status transitions
-  if (existing) {
-    const email = existing.email;
-    const name = existing.display_name || existing.username;
-    const username = existing.username;
+          let fallbackUpdate = await client
+            .from('waitlist_users')
+            .update(coreUpdatePayload)
+            .eq('user_id', userId)
+            .select('id');
 
-    // 1. Verification status change
-    if (isVerified && !existing.is_verified) {
-      sendProfileVerifiedEmail(email, name, username).catch(err => {
-        console.error('Failed to send verification approved email:', err);
+          if (!fallbackUpdate.error && (!fallbackUpdate.data || fallbackUpdate.data.length === 0) && isUUID) {
+            fallbackUpdate = await client
+              .from('waitlist_users')
+              .update(coreUpdatePayload)
+              .eq('id', userId)
+              .select('id');
+          }
+
+          if (fallbackUpdate.error) {
+            console.error('Error updating registration status (core fallback):', fallbackUpdate.error);
+            return { success: false, message: fallbackUpdate.error.message || 'Database update failed.' };
+          }
+          data = fallbackUpdate.data;
+          error = null;
+        } else {
+          console.error('Error updating registration status directly:', error);
+          return { success: false, message: error.message || 'Database update failed.' };
+        }
+      }
+
+      if (!data || data.length === 0) {
+        console.error(`No registration found matching user_id or id: ${userId}`);
+        return { success: false, message: `No matching user found in waitlist database (${userId}).` };
+      }
+    } else {
+      // Fallback: call the RPC function with 7 params, then fallback to 5 params
+      let { error } = await client.rpc('admin_update_registration', {
+        p_passcode: process.env.ADMIN_PASSCODE || '',
+        p_user_id: userId,
+        p_is_verified: isVerified,
+        p_is_blocked: isBlocked,
+        p_position_override: positionOverride !== undefined ? positionOverride : null,
+        p_feature_founding_card: featureFoundingCard !== undefined ? featureFoundingCard : false,
+        p_exclude_from_waitlist: excludeFromWaitlist !== undefined ? excludeFromWaitlist : false,
       });
-    } else if (!isVerified && existing.is_verified) {
-      sendProfileVerificationRevokedEmail(email, name).catch(err => {
-        console.error('Failed to send verification revoked email:', err);
-      });
+
+      if (error) {
+        console.warn('RPC with 7 params failed, attempting legacy 5-param RPC fallback:', error.message);
+        const legacyRpc = await client.rpc('admin_update_registration', {
+          p_passcode: process.env.ADMIN_PASSCODE || '',
+          p_user_id: userId,
+          p_is_verified: isVerified,
+          p_is_blocked: isBlocked,
+          p_position_override: positionOverride !== undefined ? positionOverride : null,
+        });
+
+        if (legacyRpc.error) {
+          console.error('Error calling admin_update_registration RPC:', legacyRpc.error);
+          return { success: false, message: legacyRpc.error.message || 'RPC update failed.' };
+        }
+      }
     }
 
-    // 2. Block status change
-    if (isBlocked && !existing.is_blocked) {
-      sendProfileBlockedEmail(email, name).catch(err => {
-        console.error('Failed to send profile blocked email:', err);
-      });
+    // Send email alerts based on status transitions
+    if (existing) {
+      const email = existing.email;
+      const name = existing.display_name || existing.username;
+      const username = existing.username;
+
+      // 1. Verification status change
+      if (isVerified && !existing.is_verified) {
+        sendProfileVerifiedEmail(email, name, username).catch(err => {
+          console.error('Failed to send verification approved email:', err);
+        });
+      } else if (!isVerified && existing.is_verified) {
+        sendProfileVerificationRevokedEmail(email, name).catch(err => {
+          console.error('Failed to send verification revoked email:', err);
+        });
+      }
+
+      // 2. Block status change
+      if (isBlocked && !existing.is_blocked) {
+        sendProfileBlockedEmail(email, name).catch(err => {
+          console.error('Failed to send profile blocked email:', err);
+        });
+      }
+
+      // 3. Founding card status change
+      if (featureFoundingCard !== undefined && featureFoundingCard && !existing.feature_founding_card) {
+        sendFoundingCardFeaturedEmail(email, name, username).catch(err => {
+          console.error('Failed to send founding card featured email:', err);
+        });
+      }
+
+      // 4. Position override change
+      if (positionOverride !== undefined && positionOverride !== null && positionOverride !== existing.position_override) {
+        sendPositionUpdatedEmail(email, name, positionOverride).catch(err => {
+          console.error('Failed to send position updated email:', err);
+        });
+      }
     }
 
-    // 3. Founding card status change
-    if (featureFoundingCard !== undefined && featureFoundingCard && !existing.feature_founding_card) {
-      sendFoundingCardFeaturedEmail(email, name, username).catch(err => {
-        console.error('Failed to send founding card featured email:', err);
-      });
-    }
-
-    // 4. Position override change
-    if (positionOverride !== undefined && positionOverride !== null && positionOverride !== existing.position_override) {
-      sendPositionUpdatedEmail(email, name, positionOverride).catch(err => {
-        console.error('Failed to send position updated email:', err);
-      });
-    }
+    return { success: true };
+  } catch (err: any) {
+    console.error('Unhandled exception in adminUpdateRegistrationAction:', err);
+    return { success: false, message: err?.message || 'An error occurred while updating registration.' };
   }
 }
 

@@ -302,26 +302,64 @@ export async function updateProfileDetailsAction(
   const decodedToken = await verifyIdToken(idToken);
   const client = createAdminClient();
 
-  const { error } = await client
+  const fullPayload = {
+    ...(details.display_name !== undefined ? { display_name: details.display_name } : {}),
+    ...(details.category !== undefined ? { category: details.category } : {}),
+    ...(details.genres !== undefined ? { genres: details.genres } : {}),
+    ...(details.city !== undefined ? { city: details.city } : {}),
+    ...(details.bio !== undefined ? { bio: details.bio } : {}),
+    ...(details.instagram_url !== undefined ? { instagram_url: details.instagram_url } : {}),
+    ...(details.spotify_url !== undefined ? { spotify_url: details.spotify_url } : {}),
+    ...(details.youtube_url !== undefined ? { youtube_url: details.youtube_url } : {}),
+    ...(details.youtube_channel_url !== undefined ? { youtube_channel_url: details.youtube_channel_url } : {}),
+    is_verified: true,
+    feature_founding_card: true
+  };
+
+  let { error } = await client
     .from('waitlist_users')
-    .update({
-      ...(details.display_name !== undefined ? { display_name: details.display_name } : {}),
-      ...(details.category !== undefined ? { category: details.category } : {}),
-      ...(details.genres !== undefined ? { genres: details.genres } : {}),
-      ...(details.city !== undefined ? { city: details.city } : {}),
-      ...(details.bio !== undefined ? { bio: details.bio } : {}),
-      ...(details.instagram_url !== undefined ? { instagram_url: details.instagram_url } : {}),
-      ...(details.spotify_url !== undefined ? { spotify_url: details.spotify_url } : {}),
-      ...(details.youtube_url !== undefined ? { youtube_url: details.youtube_url } : {}),
-      ...(details.youtube_channel_url !== undefined ? { youtube_channel_url: details.youtube_channel_url } : {}),
-      is_verified: true,
-      feature_founding_card: true
-    })
+    .update(fullPayload)
     .eq('user_id', decodedToken.uid);
 
   if (error) {
-    console.error("Error updating profile details:", error);
-    throw new Error('Failed to update profile details');
+    const isColumnError =
+      error.code === 'PGRST204' ||
+      error.code === 'PGRST200' ||
+      error.code === '42703' ||
+      (error.message && (
+        error.message.includes('column') ||
+        error.message.includes('does not exist') ||
+        error.message.includes('feature_founding_card') ||
+        error.message.includes('youtube_channel_url')
+      ));
+
+    if (isColumnError) {
+      console.warn('Optional column missing in waitlist_users table, falling back to core fields.');
+      const fallbackPayload = {
+        ...(details.display_name !== undefined ? { display_name: details.display_name } : {}),
+        ...(details.category !== undefined ? { category: details.category } : {}),
+        ...(details.genres !== undefined ? { genres: details.genres } : {}),
+        ...(details.city !== undefined ? { city: details.city } : {}),
+        ...(details.bio !== undefined ? { bio: details.bio } : {}),
+        ...(details.instagram_url !== undefined ? { instagram_url: details.instagram_url } : {}),
+        ...(details.spotify_url !== undefined ? { spotify_url: details.spotify_url } : {}),
+        ...(details.youtube_url !== undefined ? { youtube_url: details.youtube_url } : {}),
+        is_verified: true
+      };
+
+      const fallbackRes = await client
+        .from('waitlist_users')
+        .update(fallbackPayload)
+        .eq('user_id', decodedToken.uid);
+
+      if (fallbackRes.error) {
+        console.error("Error updating profile details (fallback):", fallbackRes.error);
+        throw new Error(`Failed to update profile details: ${fallbackRes.error.message}`);
+      }
+    } else {
+      console.error("Error updating profile details:", error);
+      throw new Error(`Failed to update profile details: ${error.message}`);
+    }
   }
 
   return true;
