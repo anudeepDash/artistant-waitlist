@@ -168,12 +168,12 @@ export default function EcosystemPreview() {
 
         {/* ════════════════════════════════════════
            Bento Grid — Core Features
-           4-col desktop, 2-col tablet, 1-col mobile
+           4-col desktop, 2-col tablet, horizontal scroll on mobile
            ════════════════════════════════════════ */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        <div className="flex md:grid md:grid-cols-2 lg:grid-cols-4 overflow-x-auto gap-4 md:gap-6 pb-4 pt-1 scrollbar-hide snap-x snap-mandatory -mx-6 px-6 md:mx-0 md:px-0">
           {/* ── Card A: Client-Artist Engine (large, 2×2) ── */}
           <motion.div
-            className="bento-card p-6 md:p-8 md:col-span-2 lg:col-span-2 lg:row-span-2 flex flex-col justify-between"
+            className="bento-card flex-none w-[84vw] max-w-[340px] md:w-auto snap-center p-6 md:p-8 md:col-span-2 lg:col-span-2 lg:row-span-2 flex flex-col justify-between"
             custom={0}
             variants={cardVariants}
             initial="hidden"
@@ -224,7 +224,7 @@ export default function EcosystemPreview() {
 
           {/* ── Card B: Escrow & Protection (wide) ── */}
           <motion.div
-            className="bento-card p-6 md:p-8 md:col-span-2 lg:col-span-2"
+            className="bento-card flex-none w-[84vw] max-w-[340px] md:w-auto snap-center p-6 md:p-8 md:col-span-2 lg:col-span-2"
             custom={1}
             variants={cardVariants}
             initial="hidden"
@@ -254,7 +254,7 @@ export default function EcosystemPreview() {
 
           {/* ── Card C: Concierge · Newbi (wide) ── */}
           <motion.div
-            className="bento-card p-6 md:p-8 md:col-span-2 lg:col-span-2"
+            className="bento-card flex-none w-[84vw] max-w-[340px] md:w-auto snap-center p-6 md:p-8 md:col-span-2 lg:col-span-2"
             custom={2}
             variants={cardVariants}
             initial="hidden"
@@ -279,7 +279,7 @@ export default function EcosystemPreview() {
 
           {/* ── Card D: Bookability Score™ (wide) ── */}
           <motion.div
-            className="bento-card p-6 md:p-8 md:col-span-2 lg:col-span-2"
+            className="bento-card flex-none w-[84vw] max-w-[340px] md:w-auto snap-center p-6 md:p-8 md:col-span-2 lg:col-span-2"
             custom={3}
             variants={cardVariants}
             initial="hidden"
@@ -312,7 +312,7 @@ export default function EcosystemPreview() {
 
           {/* ── Card E: Artist Backstage Hub (wide) ── */}
           <motion.div
-            className="bento-card p-6 md:p-8 md:col-span-2 lg:col-span-2"
+            className="bento-card flex-none w-[84vw] max-w-[340px] md:w-auto snap-center p-6 md:p-8 md:col-span-2 lg:col-span-2"
             custom={4}
             variants={cardVariants}
             initial="hidden"
@@ -351,7 +351,7 @@ export default function EcosystemPreview() {
            Stats Banner
            ════════════════════════════════════════ */}
         <motion.div
-          className="glass-card mt-12 md:mt-16 py-6 px-4 md:px-8 flex flex-col md:flex-row items-center justify-around gap-8 md:gap-4"
+          className="glass-card mt-12 md:mt-16 py-6 px-4 md:px-8 flex flex-row md:flex-row overflow-x-auto md:overflow-visible items-center justify-start md:justify-around gap-6 md:gap-4 scrollbar-hide snap-x snap-mandatory -mx-6 px-6 md:mx-0 md:px-0"
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-60px' }}
@@ -373,7 +373,7 @@ export default function EcosystemPreview() {
           ].map((stat, i) => (
             <motion.div
               key={stat.value}
-              className="text-center"
+              className="text-center flex-none w-[70vw] md:w-auto snap-center"
               custom={i}
               variants={statVariants}
               initial="hidden"

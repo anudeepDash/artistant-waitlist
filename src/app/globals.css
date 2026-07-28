@@ -2322,6 +2322,54 @@
     padding: 18px;
   }
 
+  /* ── Feature, Step, Stat, Market, What-Is & Role cards mobile horizontal scroll ── */
+  .feature-grid,
+  .step-grid,
+  .stat-grid,
+  .market-row,
+  .what-is-grid,
+  .role-cards-grid,
+  .bento-grid-mobile,
+  .mobile-horizontal-grid {
+    display: flex !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 14px !important;
+    padding-top: 12px;
+    margin-left: calc(-1 * var(--gutter));
+    margin-right: calc(-1 * var(--gutter));
+    padding-left: var(--gutter);
+    padding-right: var(--gutter);
+    padding-bottom: 12px;
+  }
+  .feature-grid::-webkit-scrollbar,
+  .step-grid::-webkit-scrollbar,
+  .stat-grid::-webkit-scrollbar,
+  .market-row::-webkit-scrollbar,
+  .what-is-grid::-webkit-scrollbar,
+  .role-cards-grid::-webkit-scrollbar,
+  .bento-grid-mobile::-webkit-scrollbar,
+  .mobile-horizontal-grid::-webkit-scrollbar {
+    display: none;
+  }
+  .feature-grid > *,
+  .step-grid > *,
+  .stat-grid > *,
+  .market-row > *,
+  .what-is-grid > *,
+  .role-cards-grid > *,
+  .bento-grid-mobile > *,
+  .mobile-horizontal-grid > * {
+    flex: 0 0 84vw !important;
+    max-width: 340px;
+    scroll-snap-align: center;
+    min-width: 0;
+  }
+
   /* ── Section spacing tightened ── */
   .section {
     padding: 60px var(--gutter) !important;

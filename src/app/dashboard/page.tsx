@@ -1765,11 +1765,11 @@ export default function ProfilePage() {
         {activeTab === 'dashboard' && (
           <div className="space-y-8 relative z-10 text-left">
             {/* ── BANNERS SECTION ── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+            <div className="flex md:grid md:grid-cols-2 overflow-x-auto gap-4 md:gap-6 items-stretch pb-2 pt-1 scrollbar-hide snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0">
               {/* Edit Portfolio Banner */}
               <div 
                 onClick={() => setActiveTab('portfolio')}
-                className="p-6 rounded-3xl border border-white/[0.04] bg-[#121217]/40 hover:bg-[#121217]/60 hover:border-white/[0.08] text-left relative overflow-hidden group cursor-pointer transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] h-full backdrop-blur-md shadow-lg"
+                className="flex-none w-[84vw] max-w-[340px] md:w-auto snap-center p-6 rounded-3xl border border-white/[0.04] bg-[#121217]/40 hover:bg-[#121217]/60 hover:border-white/[0.08] text-left relative overflow-hidden group cursor-pointer transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] h-full backdrop-blur-md shadow-lg"
                 style={{
                   isolation: 'isolate',
                   WebkitMaskImage: '-webkit-radial-gradient(white, black)'
@@ -1797,7 +1797,7 @@ export default function ProfilePage() {
               {/* View Public Portfolio Page Banner */}
               <div 
                 onClick={() => window.open(`/${reservation.username}`, '_blank')}
-                className="p-6 rounded-3xl border border-white/[0.04] bg-[#121217]/40 hover:bg-[#121217]/60 hover:border-white/[0.08] text-left relative overflow-hidden group cursor-pointer transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] h-full backdrop-blur-md shadow-lg"
+                className="flex-none w-[84vw] max-w-[340px] md:w-auto snap-center p-6 rounded-3xl border border-white/[0.04] bg-[#121217]/40 hover:bg-[#121217]/60 hover:border-white/[0.08] text-left relative overflow-hidden group cursor-pointer transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] h-full backdrop-blur-md shadow-lg"
                 style={{
                   isolation: 'isolate',
                   WebkitMaskImage: '-webkit-radial-gradient(white, black)'

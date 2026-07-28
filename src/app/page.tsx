@@ -428,43 +428,68 @@ function GlowingFeatureCard({ children, onClick, idx }: any) {
 
 export function AnimatedTitle({ text, className = "", style = {} }: { text: string; className?: string; style?: React.CSSProperties }) {
   const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once: true, amount: 0.3 });
-  const [displayText, setDisplayText] = useState('');
+  const isInView = useInView(ref, { once: true, amount: 0.2 });
 
-  useEffect(() => {
-    if (!isInView) return;
-    let frame = 0;
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#%';
-    const finalLength = text.length;
-    
-    const interval = setInterval(() => {
-      setDisplayText(
-        text
-          .split('')
-          .map((char, index) => {
-            if (index < frame / 3) {
-              return text[index];
-            }
-            if (char === ' ') return ' ';
-            return chars[Math.floor(Math.random() * chars.length)];
-          })
-          .join('')
-      );
-      
-      frame++;
-      if (frame / 3 >= finalLength) {
-        setDisplayText(text);
-        clearInterval(interval);
-      }
-    }, 25);
-
-    return () => clearInterval(interval);
-  }, [isInView, text]);
+  const words = text.split(" ");
+  let globalCharIdx = 0;
 
   return (
-    <span ref={ref} className={className} style={style}>
-      {displayText || text}
-    </span>
+    <motion.span
+      ref={ref}
+      className={`inline-block ${className}`}
+      style={{ verticalAlign: 'baseline', ...style }}
+      initial="hidden"
+      animate={isInView ? "visible" : "hidden"}
+    >
+      {words.map((word, wordIndex) => {
+        const wordChars = word.split("");
+        const startIdx = globalCharIdx;
+        globalCharIdx += wordChars.length;
+
+        return (
+          <span
+            key={wordIndex}
+            className="inline-block whitespace-nowrap"
+            style={{
+              marginRight: wordIndex < words.length - 1 ? '0.28em' : '0',
+            }}
+          >
+            {wordChars.map((char, charIndex) => {
+              const charDelay = (startIdx + charIndex) * 0.03;
+
+              return (
+                <motion.span
+                  key={charIndex}
+                  className="inline-block"
+                  variants={{
+                    hidden: {
+                      opacity: 0,
+                      y: '0.35em',
+                      filter: 'blur(6px)',
+                      scale: 0.92,
+                    },
+                    visible: {
+                      opacity: 1,
+                      y: '0em',
+                      filter: 'blur(0px)',
+                      scale: 1,
+                      transition: {
+                        duration: 0.45,
+                        delay: charDelay,
+                        ease: [0.16, 1, 0.3, 1],
+                      },
+                    },
+                  }}
+                  style={{ willChange: 'transform, opacity, filter' }}
+                >
+                  {char}
+                </motion.span>
+              );
+            })}
+          </span>
+        );
+      })}
+    </motion.span>
   );
 }
 
@@ -1420,6 +1445,7 @@ export default function Home() {
             whileInView="visible"
             viewport={{ once: true, amount: 0.15 }}
             variants={staggerContainer}
+            className="what-is-grid"
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
@@ -2821,7 +2847,7 @@ export default function Home() {
             <div style={{ height: '1px', flex: 1, background: 'linear-gradient(to left, transparent, rgba(255,255,255,0.1))' }} />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(auto-fit, minmax(260px, 1fr))' : 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', width: '100%' }}>
+          <div className="role-cards-grid" style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(auto-fit, minmax(260px, 1fr))' : 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', width: '100%' }}>
             
             {/* Host Option Card */}
             <motion.div 

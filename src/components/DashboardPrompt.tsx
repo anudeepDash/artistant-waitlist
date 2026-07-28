@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { X, User } from 'lucide-react';
+import { X, ArrowRight, Sparkles } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface DashboardPromptProps {
@@ -14,90 +14,86 @@ export default function DashboardPrompt({ onClose, username }: DashboardPromptPr
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: 360, y: 0 }}
-      animate={{ opacity: 1, x: 0, y: 0 }}
-      exit={{ opacity: 0, x: 360, transition: { duration: 0.2, ease: 'easeIn' } }}
-      transition={{ type: 'spring', stiffness: 280, damping: 28 }}
-      className="
-        fixed top-20 right-4 md:top-24 md:right-6 z-50 max-w-sm w-[calc(100vw-2rem)] rounded-2xl overflow-hidden
-        bg-glass-bg border border-glass-border backdrop-blur-2xl
-        shadow-[0_16px_36px_rgba(0,0,0,0.25)] flex flex-col p-4 select-none
-      "
-      style={{
-        boxShadow: '0 12px 30px rgba(0, 0, 0, 0.15), inset 0 1px 0px rgba(255, 255, 255, 0.08)',
-      }}
+      initial={{ opacity: 0, y: -20, scale: 0.92 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -15, scale: 0.92, transition: { duration: 0.15 } }}
+      transition={{ type: 'spring', stiffness: 420, damping: 30 }}
+      className="fixed top-16 right-4 md:top-20 md:right-6 z-50 select-none group max-w-[300px] w-full"
     >
-      {/* Top Banner Header: macOS Notification Style */}
-      <div className="flex items-center justify-between pb-2 border-b border-glass-border/30 mb-2.5">
-        <div className="flex items-center gap-1.5">
-          {/* Circular logo badge */}
-          <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-[#F25A2B] to-[#7C5CFF] flex items-center justify-center">
-            <span className="text-[7px] text-white font-mono font-bold">A</span>
+      {/* Ambient Gradient Glow Background */}
+      <div className="absolute -inset-0.5 bg-gradient-to-r from-[#F25A2B]/40 via-[#D4567A]/30 to-[#7C5CFF]/40 rounded-2xl blur-lg opacity-60 group-hover:opacity-100 transition duration-500" />
+
+      {/* Main Glass Box */}
+      <div className="relative rounded-2xl bg-[#0B0C10]/90 dark:bg-[#090A0D]/95 backdrop-blur-2xl border border-white/15 p-3.5 shadow-[0_16px_40px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col gap-3">
+        {/* Decorative Light Rays */}
+        <div className="absolute -top-12 -right-12 w-28 h-28 bg-[#7C5CFF]/15 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -bottom-12 -left-12 w-28 h-28 bg-[#F25A2B]/15 rounded-full blur-2xl pointer-events-none" />
+
+        {/* Top Header Strip */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#F25A2B] opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#F25A2B]"></span>
+            </span>
+            <span className="text-[10px] font-mono font-bold tracking-widest text-white/60 uppercase flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-[#7C5CFF]" />
+              ArtisTant
+            </span>
           </div>
-          <span className="text-[10px] font-mono font-bold tracking-wider text-ink-3 uppercase">
-            ArtisTant
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-[9px] text-ink-3 font-mono">now</span>
+
           <button
             onClick={onClose}
-            className="
-              text-ink-3 hover:text-rose-500 hover:bg-ink/5 dark:hover:bg-white/5 p-0.5 rounded
-              transition-colors duration-150 cursor-pointer
-            "
-            aria-label="Dismiss notification"
+            className="text-white/40 hover:text-white hover:bg-white/10 p-1 rounded-lg transition-all duration-150 cursor-pointer"
+            aria-label="Dismiss prompt"
           >
-            <X className="w-3 h-3" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
-      </div>
 
-      {/* Notification Body */}
-      <div className="flex gap-3 items-start">
-        {/* App Icon or Avatar */}
-        <div className="
-          w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0
-          bg-gradient-to-br from-[#F25A2B]/10 to-[#7C5CFF]/10 border border-[#F25A2B]/20 dark:border-white/10
-        ">
-          <User className="w-5 h-5 text-brand" />
-        </div>
+        {/* Main Content Info */}
+        <div className="flex items-center gap-3">
+          {/* Avatar Ring */}
+          <div className="relative flex-shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#F25A2B] via-[#D4567A] to-[#7C5CFF] p-[1.5px] shadow-md">
+              <div className="w-full h-full bg-[#12131A] rounded-[10.5px] flex items-center justify-center font-mono font-bold text-xs text-white uppercase">
+                {username ? username.charAt(0) : 'A'}
+              </div>
+            </div>
+          </div>
 
-        {/* Text Content */}
-        <div className="flex-1 min-w-0 pr-1">
-          <h4 className="text-xs font-bold text-ink leading-snug">
-            {username ? `@${username}` : 'Creator Account'}
-          </h4>
-          <p className="text-[11px] text-ink-2 mt-0.5 leading-relaxed font-medium">
-            You can view your profile through your dashboard.
-          </p>
-
-          {/* Action Buttons */}
-          <div className="mt-3 flex items-center gap-2">
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => router.push('/dashboard')}
-              className="
-                px-4 py-1.5 rounded-lg text-[10px] font-bold text-white shadow-md cursor-pointer
-                bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] hover:shadow-[#F25A2B]/10
-                transition-all duration-200 font-mono uppercase tracking-wide
-              "
-            >
-              Open Dashboard
-            </motion.button>
-            
-            <button
-              onClick={onClose}
-              className="
-                px-3 py-1.5 rounded-lg text-[10px] font-semibold text-ink-2 hover:text-ink hover:bg-ink/5 dark:hover:bg-white/5
-                transition-all duration-200 cursor-pointer font-mono uppercase tracking-wide border border-glass-border/40
-              "
-            >
-              Dismiss
-            </button>
+          {/* User Details */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <h4 className="text-xs font-bold text-white truncate tracking-tight">
+                {username ? `@${username}` : 'Creator Account'}
+              </h4>
+              <span className="px-1.5 py-0.2 text-[8.5px] font-mono font-semibold bg-[#7C5CFF]/20 text-[#A78BFA] border border-[#7C5CFF]/30 rounded-full">
+                Active
+              </span>
+            </div>
+            <p className="text-[10.5px] text-white/60 truncate font-medium mt-0.5">
+              Manage your profile & dashboard
+            </p>
           </div>
         </div>
+
+        {/* Primary CTA */}
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => router.push('/dashboard')}
+          className="
+            w-full py-2 px-3 rounded-xl cursor-pointer
+            bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF]
+            hover:shadow-[0_4px_20px_rgba(242,90,43,0.35)]
+            text-white font-mono text-[10.5px] font-bold tracking-wider uppercase
+            flex items-center justify-center gap-2 transition-all duration-200 group/btn
+          "
+        >
+          <span>Open Dashboard</span>
+          <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-1 transition-transform" />
+        </motion.button>
       </div>
     </motion.div>
   );

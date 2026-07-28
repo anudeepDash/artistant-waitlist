@@ -1514,15 +1514,16 @@ export default function AdminPage() {
             
             <div className="space-y-1 relative">
               {([
-                { id: "registrations", label: "Waitlist", icon: Users, accent: 'var(--brand-1)' },
-                { id: "leaderboards", label: "Leaderboards", icon: Trophy, accent: 'var(--brand-2)' },
-                { id: "members", label: "Visitor Activity", icon: Eye, accent: 'var(--brand-3)' },
-                { id: "admins", label: "Manage Admins", icon: Settings, accent: 'var(--brand-4)' },
+                { id: "registrations", label: "Waitlist", icon: Users, accent: 'var(--brand-1)', count: null },
+                { id: "requests", label: "Booking Requests", icon: CalendarIcon, accent: '#F25A2B', count: bookingRequests.filter(r => r.status === 'pending').length },
+                { id: "leaderboards", label: "Leaderboards", icon: Trophy, accent: 'var(--brand-2)', count: null },
+                { id: "members", label: "Visitor Activity", icon: Eye, accent: 'var(--brand-3)', count: null },
+                { id: "admins", label: "Manage Admins", icon: Settings, accent: 'var(--brand-4)', count: null },
               ] as const).map(item => (
                 <button
                   key={item.id}
                   onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
-                  className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl transition-all text-xs font-semibold relative group overflow-hidden cursor-pointer"
+                  className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl transition-all text-xs font-semibold relative group overflow-hidden cursor-pointer"
                 >
                   {/* Sliding active pill indicator */}
                   {activeTab === item.id && (
@@ -1536,17 +1537,25 @@ export default function AdminPage() {
                     />
                   )}
                   
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center transition-all border z-10"
-                    style={{
-                      backgroundColor: activeTab === item.id ? item.accent : 'var(--bg-soft)',
-                      borderColor: activeTab === item.id ? 'transparent' : 'var(--line-soft)'
-                    }}
-                  >
-                    <item.icon className="w-3.5 h-3.5 transition-transform group-hover:scale-105 duration-300" style={{ color: activeTab === item.id ? '#ffffff' : 'var(--ink-3)' }} />
+                  <div className="flex items-center gap-3.5 z-10">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center transition-all border"
+                      style={{
+                        backgroundColor: activeTab === item.id ? item.accent : 'var(--bg-soft)',
+                        borderColor: activeTab === item.id ? 'transparent' : 'var(--line-soft)'
+                      }}
+                    >
+                      <item.icon className="w-3.5 h-3.5 transition-transform group-hover:scale-105 duration-300" style={{ color: activeTab === item.id ? '#ffffff' : 'var(--ink-3)' }} />
+                    </div>
+                    <span className={`font-semibold transition-colors duration-200 ${activeTab === item.id ? "text-ink font-bold" : "text-ink-2 group-hover:text-ink"}`}>
+                      {item.label}
+                    </span>
                   </div>
-                  <span className={`font-semibold z-10 transition-colors duration-200 ${activeTab === item.id ? "text-ink font-bold" : "text-ink-2 group-hover:text-ink"}`}>
-                    {item.label}
-                  </span>
+
+                  {item.count !== null && item.count > 0 && (
+                    <span className="z-10 px-2 py-0.5 rounded-full text-[9px] font-mono font-extrabold bg-[#F25A2B] text-white shadow-sm">
+                      {item.count}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -1600,6 +1609,7 @@ export default function AdminPage() {
                 <span className="text-[9px] font-mono font-bold tracking-[0.25em] text-[#7C5CFF] uppercase">Admin Console</span>
                 <h2 className="text-lg font-display font-bold tracking-tight text-ink uppercase mt-0.5" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
                   {activeTab === "registrations" && "Waitlist Directory"}
+                  {activeTab === "requests" && "Client Booking Requests"}
                   {activeTab === "leaderboards" && "Leaderboard Rankings"}
                   {activeTab === "members" && "Visitor Activity Logs"}
                   {activeTab === "admins" && "System Administrators"}

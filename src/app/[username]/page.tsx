@@ -730,7 +730,7 @@ export default function PublicProfilePage() {
           {/* Booking & Socials Section (Mobile view card grid) */}
           <section className={`space-y-4 text-left border-t pt-8 ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`}>
             <h2 className={`text-2xl font-serif-display font-bold ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Booking & Socials</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex sm:grid sm:grid-cols-2 overflow-x-auto gap-3.5 pb-3 pt-1 scrollbar-hide snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0">
               
               {/* Book Artist Card */}
               <div 
@@ -738,7 +738,7 @@ export default function PublicProfilePage() {
                   setBookingMode('options');
                   setIsBookingOpen(true);
                 }}
-                className={`p-5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between min-h-[140px] shadow-sm relative overflow-hidden group ${
+                className={`flex-none w-[80vw] max-w-[280px] sm:w-auto snap-center p-5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between min-h-[140px] shadow-sm relative overflow-hidden group ${
                   isLight 
                     ? 'bg-gradient-to-br from-[#7C5CFF]/10 to-[#F25A2B]/10 border-[#7C5CFF]/30 hover:border-[#7C5CFF]/60 hover:shadow-md' 
                     : 'bg-gradient-to-br from-[#7C5CFF]/15 to-[#F25A2B]/10 border-[#7C5CFF]/30 hover:border-[#7C5CFF]/50'
@@ -767,16 +767,18 @@ export default function PublicProfilePage() {
 
                 {/* Instagram Card */}
                 {reservation.instagram_url && (
-                  <div className={`p-5 rounded-2xl border flex flex-col gap-2 shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/[0.01] border-white/[0.03]'}`}>
-                    <span className={`text-[9px] font-mono font-bold uppercase tracking-widest flex items-center gap-1.5 ${isLight ? 'text-zinc-500' : 'text-white/30'}`}>
-                      <InstagramIcon className="w-3.5 h-3.5 text-[#E1306C]" /> Instagram
-                    </span>
-                    <span className={`text-sm font-bold truncate ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>@{reservation.instagram_url.split('/').pop() || reservation.username}</span>
+                  <div className={`flex-none w-[75vw] max-w-[260px] sm:w-auto snap-center p-5 rounded-2xl border flex flex-col justify-between shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/[0.01] border-white/[0.03]'}`}>
+                    <div className="flex flex-col gap-1 text-left">
+                      <span className={`text-[9px] font-mono font-bold uppercase tracking-widest flex items-center gap-1.5 ${isLight ? 'text-zinc-500' : 'text-white/30'}`}>
+                        <InstagramIcon className="w-3.5 h-3.5 text-[#E1306C]" /> Instagram
+                      </span>
+                      <span className={`text-sm font-bold truncate mt-1 ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>@{reservation.instagram_url.split('/').pop() || reservation.username}</span>
+                    </div>
                     <a
                       href={reservation.instagram_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={`mt-2 text-center py-2.5 rounded-xl font-bold text-xs active:scale-[1.02] transition-all max-w-[120px] ${isLight ? 'bg-zinc-50 border border-black/10 text-zinc-800 hover:bg-zinc-100' : 'bg-white/5 border border-white/10 text-white hover:bg-white/10'}`}
+                      className={`mt-3 text-center py-2.5 rounded-xl font-bold text-xs active:scale-[1.02] transition-all max-w-[120px] ${isLight ? 'bg-zinc-50 border border-black/10 text-zinc-800 hover:bg-zinc-100' : 'bg-white/5 border border-white/10 text-white hover:bg-white/10'}`}
                     >
                       View Instagram
                     </a>
@@ -785,16 +787,18 @@ export default function PublicProfilePage() {
 
                 {/* Spotify Card */}
                 {reservation.spotify_url && (
-                  <div className={`p-5 rounded-2xl border flex flex-col gap-2 shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/[0.01] border-white/[0.03]'}`}>
-                    <span className={`text-[9px] font-mono font-bold uppercase tracking-widest flex items-center gap-1.5 ${isLight ? 'text-zinc-500' : 'text-white/30'}`}>
-                      <SpotifyIcon className="w-3.5 h-3.5 text-[#1DB954]" /> Spotify
-                    </span>
-                    <span className={`text-sm font-bold truncate ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Artist Profile</span>
+                  <div className={`flex-none w-[75vw] max-w-[260px] sm:w-auto snap-center p-5 rounded-2xl border flex flex-col justify-between shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/[0.01] border-white/[0.03]'}`}>
+                    <div className="flex flex-col gap-1 text-left">
+                      <span className={`text-[9px] font-mono font-bold uppercase tracking-widest flex items-center gap-1.5 ${isLight ? 'text-zinc-500' : 'text-white/30'}`}>
+                        <SpotifyIcon className="w-3.5 h-3.5 text-[#1DB954]" /> Spotify
+                      </span>
+                      <span className={`text-sm font-bold truncate mt-1 ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Artist Profile</span>
+                    </div>
                     <a
                       href={reservation.spotify_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={`mt-2 text-center py-2.5 rounded-xl font-bold text-xs active:scale-[1.02] transition-all max-w-[120px] ${isLight ? 'bg-zinc-50 border border-black/10 text-zinc-800 hover:bg-zinc-100' : 'bg-white/5 border border-white/10 text-white hover:bg-white/10'}`}
+                      className={`mt-3 text-center py-2.5 rounded-xl font-bold text-xs active:scale-[1.02] transition-all max-w-[120px] ${isLight ? 'bg-zinc-50 border border-black/10 text-zinc-800 hover:bg-zinc-100' : 'bg-white/5 border border-white/10 text-white hover:bg-white/10'}`}
                     >
                       Open Spotify
                     </a>
@@ -803,16 +807,18 @@ export default function PublicProfilePage() {
 
                 {/* YouTube Card */}
                 {reservation.youtube_channel_url && (
-                  <div className={`p-5 rounded-2xl border flex flex-col gap-2 shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/[0.01] border-white/[0.03]'}`}>
-                    <span className={`text-[9px] font-mono font-bold uppercase tracking-widest flex items-center gap-1.5 ${isLight ? 'text-zinc-500' : 'text-white/35'}`}>
-                      <YouTubeIcon className="w-3.5 h-3.5 text-[#FF0000]" /> YouTube
-                    </span>
-                    <span className={`text-sm font-bold truncate ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Channel Page</span>
+                  <div className={`flex-none w-[75vw] max-w-[260px] sm:w-auto snap-center p-5 rounded-2xl border flex flex-col justify-between shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/[0.01] border-white/[0.03]'}`}>
+                    <div className="flex flex-col gap-1 text-left">
+                      <span className={`text-[9px] font-mono font-bold uppercase tracking-widest flex items-center gap-1.5 ${isLight ? 'text-zinc-500' : 'text-white/35'}`}>
+                        <YouTubeIcon className="w-3.5 h-3.5 text-[#FF0000]" /> YouTube
+                      </span>
+                      <span className={`text-sm font-bold truncate mt-1 ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Channel Page</span>
+                    </div>
                     <a
                       href={reservation.youtube_channel_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={`mt-2 text-center py-2.5 rounded-xl font-bold text-xs active:scale-[1.02] transition-all max-w-[120px] ${isLight ? 'bg-zinc-50 border border-black/10 text-zinc-800 hover:bg-zinc-100' : 'bg-white/5 border border-white/10 text-white hover:bg-white/10'}`}
+                      className={`mt-3 text-center py-2.5 rounded-xl font-bold text-xs active:scale-[1.02] transition-all max-w-[120px] ${isLight ? 'bg-zinc-50 border border-black/10 text-zinc-800 hover:bg-zinc-100' : 'bg-white/5 border border-white/10 text-white hover:bg-white/10'}`}
                     >
                       Open YouTube
                     </a>
@@ -853,13 +859,13 @@ export default function PublicProfilePage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
+                <div className="flex sm:grid sm:grid-cols-3 overflow-x-auto gap-3.5 pb-3 pt-1 scrollbar-hide snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0">
                   {displayGallery.map((img, i) => (
                     <motion.div
                       key={i}
                       whileHover={{ scale: 1.02, y: -4 }}
                       onClick={() => setLightboxImg(img.url)}
-                      className={`aspect-square rounded-2xl overflow-hidden relative group border cursor-pointer shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/[0.01] border border-white/[0.05]'}`}
+                      className={`flex-none w-[72vw] max-w-[280px] sm:w-auto aspect-square snap-center rounded-2xl overflow-hidden relative group border cursor-pointer shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/[0.01] border border-white/[0.05]'}`}
                     >
                       <img src={img.url} alt={img.caption} className={`w-full h-full object-cover transition-all duration-500 ${isLight ? 'opacity-95 group-hover:opacity-100' : 'opacity-70 group-hover:opacity-100'}`} />
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
