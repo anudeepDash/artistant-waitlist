@@ -480,3 +480,46 @@ export async function sendContactInfoUpdatedEmail(email: string, name: string, u
   });
 }
 
+export interface BookingRequestNotificationParams {
+  artistUsername: string;
+  artistDisplayName: string;
+  clientName: string;
+  clientEmail: string;
+  clientPhone: string;
+  eventDate: string;
+  city: string;
+  eventType: string;
+  budget?: string;
+  notes?: string;
+}
+
+export async function sendBookingRequestNotificationEmail(params: BookingRequestNotificationParams): Promise<{ success: boolean; message: string }> {
+  const adminEmail = EMAIL_USER || 'hello@artistant.in';
+  const subject = `New Booking Request for ${params.artistDisplayName} (@${params.artistUsername})`;
+  const messageBody = `
+    <strong>New Booking Request Received!</strong><br><br>
+    A new event booking inquiry has been submitted for <strong>${escapeHtml(params.artistDisplayName)}</strong> (@${escapeHtml(params.artistUsername)}).<br><br>
+    <strong>Client Details:</strong><br>
+    • <strong>Name:</strong> ${escapeHtml(params.clientName)}<br>
+    • <strong>Email:</strong> ${escapeHtml(params.clientEmail)}<br>
+    • <strong>Phone:</strong> ${escapeHtml(params.clientPhone)}<br><br>
+    <strong>Event Details:</strong><br>
+    • <strong>Date:</strong> ${escapeHtml(params.eventDate)}<br>
+    • <strong>City / Location:</strong> ${escapeHtml(params.city)}<br>
+    • <strong>Event Type:</strong> ${escapeHtml(params.eventType)}<br>
+    • <strong>Budget:</strong> ${params.budget ? escapeHtml(params.budget) : 'Not specified'}<br>
+    ${params.notes ? `• <strong>Notes:</strong> ${escapeHtml(params.notes)}<br>` : ''}
+  `;
+
+  return sendNormalEmail({
+    toEmail: adminEmail,
+    name: 'ArtisTant Concierge',
+    subject,
+    messageBody,
+    ctaText: 'Review Admin Dashboard',
+    ctaUrl: 'https://artistant.in/admin',
+    senderAlias: 'official'
+  });
+}
+
+

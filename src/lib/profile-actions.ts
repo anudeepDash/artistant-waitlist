@@ -772,3 +772,60 @@ export async function linkImportedProfile(
   }
   return true;
 }
+
+export interface SubmitBookingRequestParams {
+  artistUsername: string;
+  artistDisplayName: string;
+  clientName: string;
+  clientEmail: string;
+  clientPhone: string;
+  eventDate: string;
+  city: string;
+  eventType: string;
+  budget?: string;
+  notes?: string;
+}
+
+export async function submitBookingRequestAction(params: SubmitBookingRequestParams): Promise<{ success: boolean; message: string }> {
+  try {
+    if (!params.artistUsername || !params.clientName || !params.clientEmail || !params.clientPhone || !params.eventDate || !params.city) {
+      return { success: false, message: 'Please fill out all required fields.' };
+    }
+
+    const client = createAdminClient();
+    
+    // Attempt DB insertion
+    const { error: dbError } = await client.from('booking_requests').insert({
+      artist_username: params.artistUsername.toLowerCase().trim(),
+      artist_display_name: params.artistDisplayName,
+      client_name: params.clientName.trim(),
+      client_email: params.clientEmail.trim(),
+      client_phone: params.clientPhone.trim(),
+      event_date: params.eventDate,
+      city: params.city.trim(),
+      event_type: params.eventType,
+      budget: params.budget ? params.budget.trim() : null,
+      notes: params.notes ? params.notes.trim() : null,
+      status: 'pending',
+    });
+
+    if (dbError) {
+      console.warn('Booking request DB insert notice:', dbError.message);
+    }
+
+    // Trigger email notification to Artistant Concierge
+    const { sendBookingRequestNotificationEmail } = await import('./mailer');
+    await sendBookingRequestNotificationEmail(params).catch(err => {
+      console.error('Email dispatch error on booking request:', err);
+    });
+
+    return {
+      success: true,
+      message: 'Booking request submitted successfully! Artistant concierge will reach out to you within 24 hours.'
+    };
+  } catch (err: any) {
+    console.error('Error submitting booking request:', err);
+    return { success: false, message: err?.message || 'Failed to submit booking request.' };
+  }
+}
+

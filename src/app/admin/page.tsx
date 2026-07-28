@@ -833,6 +833,17 @@ export default function AdminPage() {
     }
   };
 
+  const sortRegistrations = (entries: AdminWaitlistEntry[]): AdminWaitlistEntry[] => {
+    return [...entries].sort((a, b) => {
+      const posA = a.position_override !== null && a.position_override !== undefined ? a.position_override : Infinity;
+      const posB = b.position_override !== null && b.position_override !== undefined ? b.position_override : Infinity;
+      if (posA !== posB) {
+        return posA - posB;
+      }
+      return new Date(b.reserved_at).getTime() - new Date(a.reserved_at).getTime();
+    });
+  };
+
   const handleSavePositionOverride = async (reg: AdminWaitlistEntry, val: number | null) => {
     const prevRegistrations = [...registrations];
     const prevSelected = selectedReg;
@@ -842,7 +853,9 @@ export default function AdminPage() {
       if (isTargetMatch(r, reg)) return { ...r, position_override: val };
       return r;
     });
-    setRegistrations(updated);
+
+    const sortedUpdated = sortRegistrations(updated);
+    setRegistrations(sortedUpdated);
     if (selectedReg && isTargetMatch(selectedReg, reg)) {
       setSelectedReg(prev => prev ? { ...prev, position_override: val } : null);
     }
@@ -867,7 +880,7 @@ export default function AdminPage() {
         }
         showToast(`Priority Override set to position ${val ?? "Auto"}!`);
       } else {
-        localStorage.setItem("artistant_sandbox_registrations", JSON.stringify(updated));
+        localStorage.setItem("artistant_sandbox_registrations", JSON.stringify(sortedUpdated));
         showToast(`Sandbox: Override saved.`);
       }
     } catch (err: any) {
@@ -2095,10 +2108,20 @@ export default function AdminPage() {
                                           <input
                                             type="number"
                                             placeholder="Auto"
-                                            value={reg.position_override ?? ""}
-                                            onChange={(e) => {
-                                              const val = e.target.value === "" ? null : parseInt(e.target.value, 10);
-                                              handleSavePositionOverride(reg, val);
+                                            defaultValue={reg.position_override ?? ""}
+                                            key={`table-${reg.id}-${reg.position_override ?? "auto"}`}
+                                            onBlur={(e) => {
+                                              const raw = e.target.value.trim();
+                                              const val = raw === "" ? null : parseInt(raw, 10);
+                                              const parsedVal = isNaN(val as number) ? null : val;
+                                              if (parsedVal !== (reg.position_override ?? null)) {
+                                                handleSavePositionOverride(reg, parsedVal);
+                                              }
+                                            }}
+                                            onKeyDown={(e) => {
+                                              if (e.key === "Enter") {
+                                                (e.target as HTMLInputElement).blur();
+                                              }
                                             }}
                                             className="w-14 bg-bg-soft border border-line-soft rounded-lg py-1 px-1.5 text-xs text-ink text-center font-mono focus:outline-none focus:border-brand transition-all"
                                           />
@@ -2970,10 +2993,20 @@ export default function AdminPage() {
                     <input
                       type="number"
                       placeholder="Auto"
-                      value={selectedReg.position_override ?? ''}
-                      onChange={(e) => {
-                        const val = e.target.value === '' ? null : parseInt(e.target.value, 10);
-                        handleSavePositionOverride(selectedReg, val);
+                      defaultValue={selectedReg.position_override ?? ''}
+                      key={`modal-${selectedReg.id}-${selectedReg.position_override ?? 'auto'}`}
+                      onBlur={(e) => {
+                        const raw = e.target.value.trim();
+                        const val = raw === '' ? null : parseInt(raw, 10);
+                        const parsedVal = isNaN(val as number) ? null : val;
+                        if (parsedVal !== (selectedReg.position_override ?? null)) {
+                          handleSavePositionOverride(selectedReg, parsedVal);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          (e.target as HTMLInputElement).blur();
+                        }
                       }}
                       className="w-16 bg-bg-soft border border-line-soft rounded-lg py-1 px-1.5 text-xs text-ink text-center font-mono focus:outline-none focus:border-brand transition-all animate-pulse"
                     />

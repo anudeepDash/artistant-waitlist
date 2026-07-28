@@ -3,10 +3,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence } from 'motion/react';
 import { useParams, useRouter } from 'next/navigation';
-import { incrementProfileVisitorsAction, getPublicProfileDataAction, type PublicProfileReservation } from '@/lib/profile-actions';
+import { incrementProfileVisitorsAction, getPublicProfileDataAction, submitBookingRequestAction, type PublicProfileReservation } from '@/lib/profile-actions';
 import { useTheme } from 'next-themes';
 import { 
-  X, MapPin, Share2, Mail, Phone, LockKeyhole, ArrowLeft, Heart
+  X, MapPin, Share2, Mail, Phone, LockKeyhole, ArrowLeft, Heart, Calendar, Send, CheckCircle2, Copy, Check, Sparkles
 } from 'lucide-react';
 
 const categoryLabels: Record<string, string> = {
@@ -51,7 +51,19 @@ export default function PublicProfilePage() {
   const [copied, setCopied] = useState(false);
   const [liked, setLiked] = useState(false);
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
-  const [isContactOpen, setIsContactOpen] = useState(false);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [bookingMode, setBookingMode] = useState<'options' | 'form' | 'success'>('options');
+  const [copiedEmail, setCopiedEmail] = useState(false);
+  const [clientName, setClientName] = useState('');
+  const [clientEmail, setClientEmail] = useState('');
+  const [clientPhone, setClientPhone] = useState('');
+  const [eventDate, setEventDate] = useState('');
+  const [eventCity, setEventCity] = useState('');
+  const [eventType, setEventType] = useState('Corporate Event');
+  const [budget, setBudget] = useState('');
+  const [eventNotes, setEventNotes] = useState('');
+  const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
+  const [bookingError, setBookingError] = useState<string | null>(null);
 
   // Dynamic user stats for Founding Card / Badge
   const [points, setPoints] = useState<number>(100);
@@ -457,18 +469,27 @@ export default function PublicProfilePage() {
               <h1 className={`text-4xl font-black leading-tight font-serif-display ${isLight ? 'text-zinc-950' : 'text-white'}`}>
                 {displayName}
               </h1>
-              <div className="flex items-center gap-3 shrink-0">
+              <div className="flex items-center gap-2.5 shrink-0">
+                <button
+                  onClick={() => {
+                    setBookingMode('options');
+                    setIsBookingOpen(true);
+                  }}
+                  className="px-3.5 py-2 rounded-full text-xs font-bold font-mono uppercase bg-[#7C5CFF] text-white hover:bg-[#6838FF] shadow-lg active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Calendar className="w-3.5 h-3.5" /> Book Artist
+                </button>
                 <button 
                   onClick={() => setLiked(!liked)}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-lg ${isLight ? 'bg-white/75 hover:bg-white/90 border border-black/10 text-zinc-900' : 'bg-black/40 hover:bg-black/60 border border-white/10 text-white'}`}
+                  className={`w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-lg ${isLight ? 'bg-white/75 hover:bg-white/90 border border-black/10 text-zinc-900' : 'bg-black/40 hover:bg-black/60 border border-white/10 text-white'}`}
                 >
-                  <Heart className={`w-4.5 h-4.5 transition-colors ${liked ? 'fill-red-500 text-red-500' : isLight ? 'text-zinc-800' : 'text-white'}`} />
+                  <Heart className={`w-4 h-4 transition-colors ${liked ? 'fill-red-500 text-red-500' : isLight ? 'text-zinc-800' : 'text-white'}`} />
                 </button>
                 <button 
                   onClick={handleShare}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-lg ${isLight ? 'bg-white/75 hover:bg-white/90 border border-black/10 text-zinc-900' : 'bg-black/40 hover:bg-black/60 border border-white/10 text-white'}`}
+                  className={`w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-lg ${isLight ? 'bg-white/75 hover:bg-white/90 border border-black/10 text-zinc-900' : 'bg-black/40 hover:bg-black/60 border border-white/10 text-white'}`}
                 >
-                  <Share2 className="w-4.5 h-4.5" />
+                  <Share2 className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -497,6 +518,15 @@ export default function PublicProfilePage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => {
+              setBookingMode('options');
+              setIsBookingOpen(true);
+            }}
+            className="px-4.5 py-2.5 rounded-full font-bold text-xs font-mono uppercase bg-gradient-to-r from-[#7C5CFF] to-[#F25A2B] text-white hover:opacity-95 shadow-md transition-all active:scale-95 flex items-center gap-2 cursor-pointer"
+          >
+            <Calendar className="w-4 h-4" /> Book Artist
+          </button>
           <button 
             onClick={() => setLiked(!liked)}
             className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer ${isLight ? 'bg-white border border-black/10 text-zinc-900 shadow-sm hover:bg-zinc-50' : 'bg-white/[0.02] hover:bg-white/5 border border-white/10 text-white'}`}
@@ -584,71 +614,80 @@ export default function PublicProfilePage() {
               </div>
             )}
 
-            {/* Connect Section (Desktop inline version) */}
-            {(hasContact || hasSocials) && (
-              <div className={`space-y-4 pt-4 border-t ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`}>
-                <h2 className={`text-[10px] font-mono font-bold uppercase tracking-widest ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>Connect</h2>
-                <div className="grid grid-cols-2 gap-3">
-                  {hasContact && (
-                    <div 
-                      onClick={() => setIsContactOpen(true)}
-                      className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between min-h-[120px] shadow-sm ${isLight ? 'bg-white border-black/10 hover:border-[#7C5CFF]/30 hover:shadow-md' : 'bg-white/[0.01] border-white/[0.03] hover:bg-white/[0.02] hover:border-white/10'}`}
-                    >
-                      <div className="flex flex-col gap-1 text-left">
-                        <span className={`text-[8px] font-mono font-bold uppercase tracking-wider ${isLight ? 'text-zinc-500' : 'text-white/35'}`}>Contact</span>
-                        <span className={`text-xs font-bold ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Get in Touch</span>
-                      </div>
-                      <span className="text-[10px] font-bold text-[#7C5CFF] mt-2 block">Open Options &rsaquo;</span>
-                    </div>
-                  )}
-
-                  {reservation.instagram_url && (
-                    <a 
-                      href={reservation.instagram_url} target="_blank" rel="noopener noreferrer"
-                      className={`p-4 rounded-2xl border transition-all flex flex-col justify-between min-h-[120px] shadow-sm ${isLight ? 'bg-white border-black/10 hover:border-[#7C5CFF]/30 hover:shadow-md' : 'bg-white/[0.01] border-white/[0.03] hover:bg-white/[0.02] hover:border-white/10'}`}
-                    >
-                      <div className="flex flex-col gap-1 text-left">
-                        <span className={`text-[8px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 ${isLight ? 'text-zinc-500' : 'text-white/35'}`}>
-                          <InstagramIcon className="w-3 h-3 text-[#E1306C]" /> Instagram
-                        </span>
-                        <span className={`text-xs font-bold truncate ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>@{reservation.instagram_url.split('/').pop() || reservation.username}</span>
-                      </div>
-                      <span className={`text-[10px] font-bold mt-2 block ${isLight ? 'text-zinc-400' : 'text-white/40'}`}>View Page &rsaquo;</span>
-                    </a>
-                  )}
-
-                  {reservation.spotify_url && (
-                    <a 
-                      href={reservation.spotify_url} target="_blank" rel="noopener noreferrer"
-                      className={`p-4 rounded-2xl border transition-all flex flex-col justify-between min-h-[120px] shadow-sm ${isLight ? 'bg-white border-black/10 hover:border-[#7C5CFF]/30 hover:shadow-md' : 'bg-white/[0.01] border-white/[0.03] hover:bg-white/[0.02] hover:border-white/10'}`}
-                    >
-                      <div className="flex flex-col gap-1 text-left">
-                        <span className={`text-[8px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 ${isLight ? 'text-zinc-500' : 'text-white/35'}`}>
-                          <SpotifyIcon className="w-3 h-3 text-[#1DB954]" /> Spotify
-                        </span>
-                        <span className={`text-xs font-bold ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Artist Profile</span>
-                      </div>
-                      <span className={`text-[10px] font-bold mt-2 block ${isLight ? 'text-zinc-400' : 'text-white/40'}`}>Open Spotify &rsaquo;</span>
-                    </a>
-                  )}
-
-                  {reservation.youtube_channel_url && (
-                    <a 
-                      href={reservation.youtube_channel_url} target="_blank" rel="noopener noreferrer"
-                      className={`p-4 rounded-2xl border transition-all flex flex-col justify-between min-h-[120px] shadow-sm ${isLight ? 'bg-white border-black/10 hover:border-[#7C5CFF]/30 hover:shadow-md' : 'bg-white/[0.01] border-white/[0.03] hover:bg-white/[0.02] hover:border-white/10'}`}
-                    >
-                      <div className="flex flex-col gap-1 text-left">
-                        <span className={`text-[8px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 ${isLight ? 'text-zinc-500' : 'text-white/35'}`}>
-                          <YouTubeIcon className="w-3 h-3 text-[#FF0000]" /> YouTube
-                        </span>
-                        <span className={`text-xs font-bold ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Channel Page</span>
-                      </div>
-                      <span className={`text-[10px] font-bold mt-2 block ${isLight ? 'text-zinc-400' : 'text-white/40'}`}>Open YouTube &rsaquo;</span>
-                    </a>
-                  )}
+            {/* Booking & Socials Section (Desktop inline version) */}
+            <div className={`space-y-4 pt-4 border-t ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`}>
+              <h2 className={`text-[10px] font-mono font-bold uppercase tracking-widest ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>Booking & Socials</h2>
+              <div className="grid grid-cols-2 gap-3">
+                {/* Book Artist Card */}
+                <div 
+                  onClick={() => {
+                    setBookingMode('options');
+                    setIsBookingOpen(true);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between min-h-[120px] shadow-sm relative overflow-hidden group ${
+                    isLight 
+                      ? 'bg-gradient-to-br from-[#7C5CFF]/10 to-[#F25A2B]/10 border-[#7C5CFF]/30 hover:border-[#7C5CFF]/60 hover:shadow-md' 
+                      : 'bg-gradient-to-br from-[#7C5CFF]/15 to-[#F25A2B]/10 border-[#7C5CFF]/30 hover:border-[#7C5CFF]/50 hover:bg-white/[0.03]'
+                  }`}
+                >
+                  <div className="flex flex-col gap-1 text-left z-10">
+                    <span className={`text-[8px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 ${isLight ? 'text-[#7C5CFF]' : 'text-[#B49FFF]'}`}>
+                      <Calendar className="w-3.5 h-3.5" /> Gig Booking
+                    </span>
+                    <span className={`text-xs font-bold ${isLight ? 'text-zinc-900' : 'text-white/95'}`}>Book {displayName}</span>
+                    <p className={`text-[10px] mt-0.5 leading-relaxed ${isLight ? 'text-zinc-600' : 'text-white/50'}`}>Mail Artistant or raise a booking request</p>
+                  </div>
+                  <span className="text-[10px] font-bold text-[#7C5CFF] mt-2 block z-10 font-mono uppercase tracking-wider group-hover:translate-x-1 transition-transform">
+                    Select Options &rsaquo;
+                  </span>
                 </div>
+
+                {reservation.instagram_url && (
+                  <a 
+                    href={reservation.instagram_url} target="_blank" rel="noopener noreferrer"
+                    className={`p-4 rounded-2xl border transition-all flex flex-col justify-between min-h-[120px] shadow-sm ${isLight ? 'bg-white border-black/10 hover:border-[#7C5CFF]/30 hover:shadow-md' : 'bg-white/[0.01] border-white/[0.03] hover:bg-white/[0.02] hover:border-white/10'}`}
+                  >
+                    <div className="flex flex-col gap-1 text-left">
+                      <span className={`text-[8px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 ${isLight ? 'text-zinc-500' : 'text-white/35'}`}>
+                        <InstagramIcon className="w-3 h-3 text-[#E1306C]" /> Instagram
+                      </span>
+                      <span className={`text-xs font-bold truncate ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>@{reservation.instagram_url.split('/').pop() || reservation.username}</span>
+                    </div>
+                    <span className={`text-[10px] font-bold mt-2 block ${isLight ? 'text-zinc-400' : 'text-white/40'}`}>View Page &rsaquo;</span>
+                  </a>
+                )}
+
+                {reservation.spotify_url && (
+                  <a 
+                    href={reservation.spotify_url} target="_blank" rel="noopener noreferrer"
+                    className={`p-4 rounded-2xl border transition-all flex flex-col justify-between min-h-[120px] shadow-sm ${isLight ? 'bg-white border-black/10 hover:border-[#7C5CFF]/30 hover:shadow-md' : 'bg-white/[0.01] border-white/[0.03] hover:bg-white/[0.02] hover:border-white/10'}`}
+                  >
+                    <div className="flex flex-col gap-1 text-left">
+                      <span className={`text-[8px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 ${isLight ? 'text-zinc-500' : 'text-white/35'}`}>
+                        <SpotifyIcon className="w-3 h-3 text-[#1DB954]" /> Spotify
+                      </span>
+                      <span className={`text-xs font-bold ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Artist Profile</span>
+                    </div>
+                    <span className={`text-[10px] font-bold mt-2 block ${isLight ? 'text-zinc-400' : 'text-white/40'}`}>Open Spotify &rsaquo;</span>
+                  </a>
+                )}
+
+                {reservation.youtube_channel_url && (
+                  <a 
+                    href={reservation.youtube_channel_url} target="_blank" rel="noopener noreferrer"
+                    className={`p-4 rounded-2xl border transition-all flex flex-col justify-between min-h-[120px] shadow-sm ${isLight ? 'bg-white border-black/10 hover:border-[#7C5CFF]/30 hover:shadow-md' : 'bg-white/[0.01] border-white/[0.03] hover:bg-white/[0.02] hover:border-white/10'}`}
+                  >
+                    <div className="flex flex-col gap-1 text-left">
+                      <span className={`text-[8px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 ${isLight ? 'text-zinc-500' : 'text-white/35'}`}>
+                        <YouTubeIcon className="w-3 h-3 text-[#FF0000]" /> YouTube
+                      </span>
+                      <span className={`text-xs font-bold ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Channel Page</span>
+                    </div>
+                    <span className={`text-[10px] font-bold mt-2 block ${isLight ? 'text-zinc-400' : 'text-white/40'}`}>Open YouTube &rsaquo;</span>
+                  </a>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
 
@@ -688,36 +727,43 @@ export default function PublicProfilePage() {
             </section>
           )}
 
-          {/* Connect Section (Mobile view card grid) */}
-          {(hasContact || hasSocials) && (
-            <section className={`space-y-4 text-left border-t pt-8 ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`}>
-              <h2 className={`text-2xl font-serif-display font-bold ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Connect</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                
-                {/* Contact Card */}
-                {hasContact && (
-                  <div 
-                    onClick={() => setIsContactOpen(true)}
-                    className={`p-5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between min-h-[140px] shadow-sm ${isLight ? 'bg-white border-black/10 hover:border-[#7C5CFF]/30 hover:shadow-md' : 'bg-white/[0.01] border-white/[0.03] hover:bg-white/[0.02] hover:border-white/10'}`}
-                  >
-                    <div className="flex flex-col gap-1.5 text-left">
-                      <span className={`text-[9px] font-mono font-bold uppercase tracking-widest flex items-center gap-1.5 ${isLight ? 'text-zinc-500' : 'text-white/35'}`}>
-                        <Mail className="w-3.5 h-3.5 text-[#7C5CFF]" /> Contact Artist
-                      </span>
-                      <span className={`text-sm font-bold mt-1 ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Get in Touch</span>
-                      <p className={`text-[10px] mt-0.5 leading-relaxed ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>Reach out via secure email, mobile phone, or WhatsApp.</p>
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsContactOpen(true);
-                      }}
-                      className={`mt-3 text-center py-2 px-4 rounded-xl font-bold text-xs active:scale-[0.98] transition-all max-w-[120px] cursor-pointer shadow-sm ${isLight ? 'bg-[#7C5CFF] text-white hover:bg-[#6838FF]' : 'bg-white text-black hover:bg-white/90'}`}
-                    >
-                      Open Details
-                    </button>
-                  </div>
-                )}
+          {/* Booking & Socials Section (Mobile view card grid) */}
+          <section className={`space-y-4 text-left border-t pt-8 ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`}>
+            <h2 className={`text-2xl font-serif-display font-bold ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Booking & Socials</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              
+              {/* Book Artist Card */}
+              <div 
+                onClick={() => {
+                  setBookingMode('options');
+                  setIsBookingOpen(true);
+                }}
+                className={`p-5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between min-h-[140px] shadow-sm relative overflow-hidden group ${
+                  isLight 
+                    ? 'bg-gradient-to-br from-[#7C5CFF]/10 to-[#F25A2B]/10 border-[#7C5CFF]/30 hover:border-[#7C5CFF]/60 hover:shadow-md' 
+                    : 'bg-gradient-to-br from-[#7C5CFF]/15 to-[#F25A2B]/10 border-[#7C5CFF]/30 hover:border-[#7C5CFF]/50'
+                }`}
+              >
+                <div className="flex flex-col gap-1.5 text-left">
+                  <span className={`text-[9px] font-mono font-bold uppercase tracking-widest flex items-center gap-1.5 ${isLight ? 'text-[#7C5CFF]' : 'text-[#B49FFF]'}`}>
+                    <Calendar className="w-3.5 h-3.5" /> Booking Inquiries
+                  </span>
+                  <span className={`text-sm font-bold mt-1 ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Book {displayName}</span>
+                  <p className={`text-[10px] mt-0.5 leading-relaxed ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>Mail Artistant or submit a booking request for this artist.</p>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setBookingMode('options');
+                    setIsBookingOpen(true);
+                  }}
+                  className={`mt-3 text-center py-2 px-4 rounded-xl font-bold text-xs active:scale-[0.98] transition-all max-w-[130px] cursor-pointer shadow-sm ${
+                    isLight ? 'bg-[#7C5CFF] text-white hover:bg-[#6838FF]' : 'bg-white text-black hover:bg-white/90'
+                  }`}
+                >
+                  Book Now
+                </button>
+              </div>
 
                 {/* Instagram Card */}
                 {reservation.instagram_url && (
@@ -775,7 +821,6 @@ export default function PublicProfilePage() {
 
               </div>
             </section>
-          )}
         </div>
 
         {/* ── COMMON SECTIONS (Gig Gallery, Video, Founding card) ── */}
@@ -994,81 +1039,378 @@ export default function PublicProfilePage() {
         )}
       </AnimatePresence>
 
-      {/* Contact Options Modal Overlay */}
+      {/* Booking Options Modal Overlay */}
       <AnimatePresence>
-        {isContactOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        {isBookingOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setIsContactOpen(false)}
-              className="absolute inset-0 bg-black/75 backdrop-blur-md"
+              onClick={() => setIsBookingOpen(false)}
+              className="fixed inset-0 bg-black/80 backdrop-blur-md"
             />
             
             <motion.div
               initial={{ opacity: 0, scale: 0.94, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.94, y: 15 }}
-              className={`relative w-full max-w-sm rounded-3xl overflow-hidden p-6 z-10 border shadow-xl`}
+              className="relative w-full max-w-md rounded-3xl overflow-hidden p-6 z-10 border shadow-2xl my-8"
               style={{
                 background: isLight 
                   ? 'linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(245,242,255,0.98) 100%)'
                   : 'linear-gradient(135deg, rgba(10,10,14,0.96) 0%, rgba(18,14,28,0.96) 100%)',
-                borderColor: isLight ? 'rgba(124,92,255,0.15)' : 'rgba(255,255,255,0.1)'
+                borderColor: isLight ? 'rgba(124,92,255,0.2)' : 'rgba(124,92,255,0.25)'
               }}
             >
               <div className="flex items-center justify-between mb-5">
-                <h3 className={`text-sm font-mono tracking-widest uppercase ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>Contact Options</h3>
+                <div className="flex flex-col text-left">
+                  <h3 className={`text-base font-bold ${isLight ? 'text-zinc-900' : 'text-white'}`}>
+                    Book {displayName}
+                  </h3>
+                  <span className={`text-[10px] font-mono uppercase tracking-wider ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>
+                    @{username} · {categoryLabel}
+                  </span>
+                </div>
                 <button
-                  onClick={() => setIsContactOpen(false)}
-                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors cursor-pointer ${isLight ? 'bg-black/5 hover:bg-black/10 text-zinc-500 hover:text-zinc-800' : 'bg-white/5 hover:bg-white/10 text-white/40 hover:text-white'}`}
+                  onClick={() => setIsBookingOpen(false)}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
+                    isLight ? 'bg-black/5 hover:bg-black/10 text-zinc-500 hover:text-zinc-800' : 'bg-white/5 hover:bg-white/10 text-white/40 hover:text-white'
+                  }`}
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="space-y-3">
-                {isEmailEnabled && (
-                  <div className={`p-4 rounded-2xl border flex flex-col gap-2 text-left shadow-sm ${isLight ? 'bg-zinc-50/50 border-black/5' : 'bg-white/[0.02] border-white/[0.04]'}`}>
-                    <span className={`text-[9px] font-mono font-bold uppercase tracking-widest flex items-center gap-1.5 ${isLight ? 'text-zinc-500' : 'text-white/30'}`}>
-                      <Mail className="w-3.5 h-3.5 text-[#7C5CFF]" /> Email Address
-                    </span>
-                    <span className={`text-sm font-bold truncate ${isLight ? 'text-zinc-950' : 'text-white/90'}`}>{emailVal}</span>
-                    <a
-                      href={`mailto:${emailVal}`}
-                      className={`mt-1 text-center py-2.5 rounded-xl font-bold text-xs hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer shadow-sm ${isLight ? 'bg-[#7C5CFF] text-white hover:bg-[#6838FF]' : 'bg-white text-black hover:bg-white/90'}`}
-                    >
-                      Send Mail
-                    </a>
-                  </div>
-                )}
+              {/* View Mode 1: OPTIONS (Select between Mail Artistant or Raise Booking Request) */}
+              {bookingMode === 'options' && (
+                <div className="space-y-4 text-left">
+                  <p className={`text-xs leading-relaxed ${isLight ? 'text-zinc-600' : 'text-white/60'}`}>
+                    Choose how you would like to proceed with your booking inquiry for <strong>{displayName}</strong>:
+                  </p>
 
-                {isPhoneEnabled && (
-                  <div className={`p-4 rounded-2xl border flex flex-col gap-2 text-left shadow-sm ${isLight ? 'bg-zinc-50/50 border-black/5' : 'bg-white/[0.02] border-white/[0.04]'}`}>
-                    <span className={`text-[9px] font-mono font-bold uppercase tracking-widest flex items-center gap-1.5 ${isLight ? 'text-zinc-500' : 'text-white/30'}`}>
-                      <Phone className="w-3.5 h-3.5 text-[#F25A2B]" /> Mobile Number
-                    </span>
-                    <span className={`text-sm font-bold truncate ${isLight ? 'text-zinc-950' : 'text-white/90'}`}>{phoneVal}</span>
-                    <div className="grid grid-cols-2 gap-2 mt-1">
+                  {/* Option A: Raise Booking Request */}
+                  <div 
+                    onClick={() => {
+                      setBookingError(null);
+                      setBookingMode('form');
+                    }}
+                    className={`p-4.5 rounded-2xl border transition-all cursor-pointer flex flex-col gap-2 relative overflow-hidden group shadow-sm ${
+                      isLight 
+                        ? 'bg-white border-[#7C5CFF]/30 hover:border-[#7C5CFF] hover:shadow-md' 
+                        : 'bg-white/[0.02] border-white/10 hover:bg-white/[0.04] hover:border-[#7C5CFF]/50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#7C5CFF] to-[#F25A2B] flex items-center justify-center text-white shadow-sm">
+                          <Calendar className="w-4.5 h-4.5" />
+                        </div>
+                        <div>
+                          <h4 className={`text-xs font-bold ${isLight ? 'text-zinc-900' : 'text-white'}`}>Raise Booking Request</h4>
+                          <span className="text-[9px] font-mono text-[#7C5CFF] uppercase tracking-wider font-bold">Fast Concierge Routing</span>
+                        </div>
+                      </div>
+                      <span className={`text-xs font-bold ${isLight ? 'text-zinc-400 group-hover:text-[#7C5CFF]' : 'text-white/40 group-hover:text-[#7C5CFF]'}`}>&rarr;</span>
+                    </div>
+                    <p className={`text-[11px] leading-relaxed mt-1 ${isLight ? 'text-zinc-500' : 'text-white/45'}`}>
+                      Fill out a quick request with your event date, city, and requirements. Artistant team will coordinate availability & lock in your show.
+                    </p>
+                  </div>
+
+                  {/* Option B: Mail Artistant */}
+                  <div className={`p-4.5 rounded-2xl border transition-all flex flex-col gap-3 shadow-sm ${
+                    isLight 
+                      ? 'bg-white border-black/10' 
+                      : 'bg-white/[0.02] border-white/10'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center border shadow-sm ${
+                          isLight ? 'bg-zinc-100 border-black/10 text-zinc-800' : 'bg-white/5 border-white/10 text-white'
+                        }`}>
+                          <Mail className="w-4.5 h-4.5 text-[#F25A2B]" />
+                        </div>
+                        <div>
+                          <h4 className={`text-xs font-bold ${isLight ? 'text-zinc-900' : 'text-white'}`}>Mail Artistant</h4>
+                          <span className={`text-[9px] font-mono uppercase tracking-wider ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>hello@artistant.in</span>
+                        </div>
+                      </div>
+                    </div>
+                    <p className={`text-[11px] leading-relaxed ${isLight ? 'text-zinc-500' : 'text-white/45'}`}>
+                      Email our concierge team directly regarding artist availability, custom riders, or special corporate rates.
+                    </p>
+                    
+                    <div className="grid grid-cols-2 gap-2 pt-1">
                       <a
-                        href={`tel:${phoneVal}`}
-                        className={`text-center py-2.5 rounded-xl font-bold text-xs active:scale-95 transition-all cursor-pointer border ${isLight ? 'bg-white border-black/10 text-zinc-800 hover:bg-zinc-50' : 'bg-white/5 border border-white/10 text-white hover:bg-white/10'}`}
+                        href={`mailto:hello@artistant.in?subject=${encodeURIComponent(`Booking Inquiry for ${displayName} (@${username})`)}&body=${encodeURIComponent(`Hi Artistant Concierge Team,\n\nI would like to inquire about booking ${displayName} (@${username}).\n\nEvent Details:\nDate: \nCity/Location: \nEvent Type: \n\nMy Contact Info:\nName: \nPhone: \n\nThank you!`)}`}
+                        className={`text-center py-2.5 px-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm ${
+                          isLight ? 'bg-[#7C5CFF] text-white hover:bg-[#6838FF]' : 'bg-white text-black hover:bg-white/90'
+                        }`}
                       >
-                        Call Mobile
+                        <Mail className="w-3.5 h-3.5" /> Open Mail Client
                       </a>
-                      <a
-                        href={`https://wa.me/${phoneVal.replace(/\+/g, '')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-center py-2.5 rounded-xl bg-[#25D366] font-bold text-xs text-white hover:scale-[1.02] active:scale-95 transition-all cursor-pointer shadow-sm"
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await navigator.clipboard.writeText('hello@artistant.in');
+                          setCopiedEmail(true);
+                          setTimeout(() => setCopiedEmail(false), 2000);
+                        }}
+                        className={`py-2.5 px-3 rounded-xl font-bold text-xs border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                          isLight ? 'bg-zinc-50 border-black/10 text-zinc-800 hover:bg-zinc-100' : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
+                        }`}
                       >
-                        WhatsApp
-                      </a>
+                        {copiedEmail ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copiedEmail ? 'Copied Email!' : 'Copy Email'}
+                      </button>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
+
+              {/* View Mode 2: FORM (Raise Booking Request Form) */}
+              {bookingMode === 'form' && (
+                <form 
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    setIsSubmittingBooking(true);
+                    setBookingError(null);
+                    try {
+                      const res = await submitBookingRequestAction({
+                        artistUsername: username,
+                        artistDisplayName: displayName,
+                        clientName,
+                        clientEmail,
+                        clientPhone,
+                        eventDate,
+                        city: eventCity,
+                        eventType,
+                        budget,
+                        notes: eventNotes,
+                      });
+                      if (res.success) {
+                        setBookingMode('success');
+                      } else {
+                        setBookingError(res.message || 'Failed to submit booking request.');
+                      }
+                    } catch (err: any) {
+                      setBookingError(err?.message || 'Failed to submit booking request.');
+                    } finally {
+                      setIsSubmittingBooking(false);
+                    }
+                  }}
+                  className="space-y-3.5 text-left"
+                >
+                  <div className="flex items-center justify-between border-b pb-2.5 mb-1 border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setBookingMode('options')}
+                      className={`text-[11px] font-mono font-bold uppercase tracking-wider text-[#7C5CFF] hover:underline flex items-center gap-1 cursor-pointer`}
+                    >
+                      &larr; Back to options
+                    </button>
+                    <span className={`text-[9px] font-mono uppercase tracking-widest ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>Step 2 of 2</span>
+                  </div>
+
+                  {bookingError && (
+                    <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+                      {bookingError}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Name */}
+                    <div>
+                      <label className={`block text-[10px] font-mono font-bold uppercase tracking-wider mb-1 ${isLight ? 'text-zinc-600' : 'text-white/50'}`}>
+                        Your Name *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={clientName}
+                        onChange={(e) => setClientName(e.target.value)}
+                        placeholder="e.g. Rahul Sharma"
+                        className={`w-full rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#7C5CFF] border transition-all ${
+                          isLight ? 'bg-black/5 border-black/10 text-zinc-900 placeholder-zinc-400' : 'bg-black/40 border-white/10 text-white placeholder-white/30'
+                        }`}
+                      />
+                    </div>
+
+                    {/* Email */}
+                    <div>
+                      <label className={`block text-[10px] font-mono font-bold uppercase tracking-wider mb-1 ${isLight ? 'text-zinc-600' : 'text-white/50'}`}>
+                        Email Address *
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={clientEmail}
+                        onChange={(e) => setClientEmail(e.target.value)}
+                        placeholder="e.g. rahul@event.com"
+                        className={`w-full rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#7C5CFF] border transition-all ${
+                          isLight ? 'bg-black/5 border-black/10 text-zinc-900 placeholder-zinc-400' : 'bg-black/40 border-white/10 text-white placeholder-white/30'
+                        }`}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Phone */}
+                    <div>
+                      <label className={`block text-[10px] font-mono font-bold uppercase tracking-wider mb-1 ${isLight ? 'text-zinc-600' : 'text-white/50'}`}>
+                        Phone / WhatsApp *
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        value={clientPhone}
+                        onChange={(e) => setClientPhone(e.target.value)}
+                        placeholder="+91 98765 43210"
+                        className={`w-full rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#7C5CFF] border transition-all ${
+                          isLight ? 'bg-black/5 border-black/10 text-zinc-900 placeholder-zinc-400' : 'bg-black/40 border-white/10 text-white placeholder-white/30'
+                        }`}
+                      />
+                    </div>
+
+                    {/* Event Date */}
+                    <div>
+                      <label className={`block text-[10px] font-mono font-bold uppercase tracking-wider mb-1 ${isLight ? 'text-zinc-600' : 'text-white/50'}`}>
+                        Event Date *
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={eventDate}
+                        onChange={(e) => setEventDate(e.target.value)}
+                        className={`w-full rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#7C5CFF] border transition-all ${
+                          isLight ? 'bg-black/5 border-black/10 text-zinc-900' : 'bg-black/40 border-white/10 text-white'
+                        }`}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* City */}
+                    <div>
+                      <label className={`block text-[10px] font-mono font-bold uppercase tracking-wider mb-1 ${isLight ? 'text-zinc-600' : 'text-white/50'}`}>
+                        City / Location *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={eventCity}
+                        onChange={(e) => setEventCity(e.target.value)}
+                        placeholder="e.g. Mumbai / Bengaluru"
+                        className={`w-full rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#7C5CFF] border transition-all ${
+                          isLight ? 'bg-black/5 border-black/10 text-zinc-900 placeholder-zinc-400' : 'bg-black/40 border-white/10 text-white placeholder-white/30'
+                        }`}
+                      />
+                    </div>
+
+                    {/* Event Type */}
+                    <div>
+                      <label className={`block text-[10px] font-mono font-bold uppercase tracking-wider mb-1 ${isLight ? 'text-zinc-600' : 'text-white/50'}`}>
+                        Event Category
+                      </label>
+                      <select
+                        value={eventType}
+                        onChange={(e) => setEventType(e.target.value)}
+                        className={`w-full rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#7C5CFF] border transition-all ${
+                          isLight ? 'bg-black/5 border-black/10 text-zinc-900' : 'bg-black/40 border-white/10 text-white bg-[#0a0a0f]'
+                        }`}
+                      >
+                        <option value="Corporate Event">Corporate Event</option>
+                        <option value="Wedding / Reception">Wedding / Reception</option>
+                        <option value="Club / Concert">Club / Concert</option>
+                        <option value="Private Party">Private Party</option>
+                        <option value="College Fest">College Fest</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Budget */}
+                  <div>
+                    <label className={`block text-[10px] font-mono font-bold uppercase tracking-wider mb-1 ${isLight ? 'text-zinc-600' : 'text-white/50'}`}>
+                      Estimated Budget (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={budget}
+                      onChange={(e) => setBudget(e.target.value)}
+                      placeholder="e.g. ₹50,000 - ₹1,00,000 or Flexible"
+                      className={`w-full rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-[#7C5CFF] border transition-all ${
+                        isLight ? 'bg-black/5 border-black/10 text-zinc-900 placeholder-zinc-400' : 'bg-black/40 border-white/10 text-white placeholder-white/30'
+                      }`}
+                    />
+                  </div>
+
+                  {/* Notes */}
+                  <div>
+                    <label className={`block text-[10px] font-mono font-bold uppercase tracking-wider mb-1 ${isLight ? 'text-zinc-600' : 'text-white/50'}`}>
+                      Event Details / Additional Notes (Optional)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={eventNotes}
+                      onChange={(e) => setEventNotes(e.target.value)}
+                      placeholder="Share performance duration, stage setup, or specific songs requested..."
+                      className={`w-full rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-[#7C5CFF] border transition-all ${
+                        isLight ? 'bg-black/5 border-black/10 text-zinc-900 placeholder-zinc-400' : 'bg-black/40 border-white/10 text-white placeholder-white/30'
+                      }`}
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmittingBooking}
+                    className={`w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider font-mono transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md ${
+                      isLight ? 'bg-[#7C5CFF] text-white hover:bg-[#6838FF]' : 'bg-white text-black hover:bg-white/90'
+                    }`}
+                  >
+                    {isSubmittingBooking ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                        Submitting Request...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-3.5 h-3.5" /> Submit Booking Request
+                      </>
+                    )}
+                  </button>
+                </form>
+              )}
+
+              {/* View Mode 3: SUCCESS */}
+              {bookingMode === 'success' && (
+                <div className="space-y-4 text-center py-4">
+                  <div className="w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto shadow-sm">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className={`text-lg font-bold ${isLight ? 'text-zinc-900' : 'text-white'}`}>Booking Request Submitted!</h4>
+                    <p className={`text-xs leading-relaxed max-w-xs mx-auto ${isLight ? 'text-zinc-600' : 'text-white/60'}`}>
+                      Your request to book <strong>{displayName}</strong> (@{username}) has been received by Artistant Concierge. We will reach out to you at <strong>{clientEmail}</strong> within 24 hours.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsBookingOpen(false);
+                      setBookingMode('options');
+                    }}
+                    className={`px-6 py-2.5 rounded-xl font-bold text-xs uppercase font-mono transition-all cursor-pointer ${
+                      isLight ? 'bg-zinc-100 text-zinc-800 hover:bg-zinc-200' : 'bg-white/10 text-white hover:bg-white/20'
+                    }`}
+                  >
+                    Done
+                  </button>
+                </div>
+              )}
+
             </motion.div>
           </div>
         )}

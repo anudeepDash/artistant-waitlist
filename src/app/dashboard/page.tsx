@@ -1412,33 +1412,30 @@ export default function ProfilePage() {
               </div>
             )}
 
-            {/* Connect Section */}
-            {(hasContact || hasSocials) && (
-              <div className={`space-y-2 text-left border-t pt-4 ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`}>
-                <h2 className={`text-[10px] font-serif font-bold ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Connect</h2>
-                
-                <div className="grid grid-cols-2 gap-1.5">
-                  {/* Contact options card (opens drawer) */}
-                  {hasContact && (
-                    <div 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPreviewContactOpen(true);
-                      }}
-                      className={`p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between min-h-[90px] group shadow-sm ${isLight ? 'bg-white border-black/10 hover:border-[#7C5CFF]/30' : 'bg-white/[0.01] border-white/[0.03] hover:bg-white/[0.02] hover:border-white/10'}`}
-                    >
-                      <div className="flex flex-col gap-0.5 text-left">
-                        <span className={`text-[6px] font-mono font-bold uppercase tracking-widest flex items-center gap-0.5 ${isLight ? 'text-zinc-500' : 'text-white/35'}`}>
-                          <Mail className="w-2.5 h-2.5 text-[#7C5CFF]" /> Contact Artist
-                        </span>
-                        <span className={`text-[8px] font-bold mt-0.5 ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Get in Touch</span>
-                        <p className={`text-[6px] mt-0.5 leading-relaxed ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>Reach out via email, mobile, or WhatsApp.</p>
-                      </div>
-                      <div className={`mt-1.5 text-center py-1 px-2.5 rounded font-bold text-[6px] max-w-[70px] shadow-sm ${isLight ? 'bg-[#7C5CFF] text-white' : 'bg-white text-black'}`}>
-                        Open Details
-                      </div>
-                    </div>
-                  )}
+            {/* Booking & Socials Section */}
+            <div className={`space-y-2 text-left border-t pt-4 ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`}>
+              <h2 className={`text-[10px] font-serif font-bold ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Booking & Socials</h2>
+              
+              <div className="grid grid-cols-2 gap-1.5">
+                {/* Book Artist preview card */}
+                <div 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPreviewContactOpen(true);
+                  }}
+                  className={`p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between min-h-[90px] group shadow-sm ${isLight ? 'bg-gradient-to-br from-[#7C5CFF]/10 to-[#F25A2B]/10 border-[#7C5CFF]/30' : 'bg-gradient-to-br from-[#7C5CFF]/15 to-[#F25A2B]/10 border-[#7C5CFF]/30'}`}
+                >
+                  <div className="flex flex-col gap-0.5 text-left">
+                    <span className={`text-[6px] font-mono font-bold uppercase tracking-widest flex items-center gap-0.5 ${isLight ? 'text-[#7C5CFF]' : 'text-[#B49FFF]'}`}>
+                      <Calendar className="w-2.5 h-2.5" /> Gig Booking
+                    </span>
+                    <span className={`text-[8px] font-bold mt-0.5 ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>Book {displayName || 'Artist'}</span>
+                    <p className={`text-[6px] mt-0.5 leading-relaxed ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>Mail Artistant or raise a booking request.</p>
+                  </div>
+                  <div className={`mt-1.5 text-center py-1 px-2.5 rounded font-bold text-[6px] max-w-[70px] shadow-sm ${isLight ? 'bg-[#7C5CFF] text-white' : 'bg-white text-black'}`}>
+                    Book Now
+                  </div>
+                </div>
 
                   {instagramUrl && (
                     <div className={`p-2.5 rounded-xl border flex flex-col justify-between min-h-[90px] shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/[0.01] border-white/[0.03]'}`}>
@@ -1477,7 +1474,6 @@ export default function ProfilePage() {
                   )}
                 </div>
               </div>
-            )}
 
             {/* Ordered Sections */}
             <div className="space-y-4">
@@ -1625,7 +1621,7 @@ export default function ProfilePage() {
                 className={`w-full rounded-t-2xl border-t p-3.5 space-y-3 pb-6 text-left ${isLight ? 'bg-white border-[#7C5CFF]/20 shadow-xl' : 'bg-[#0c0c12] border-[#7C5CFF]/15'}`}
               >
                 <div className="flex items-center justify-between">
-                  <h3 className={`text-[8px] font-mono tracking-widest uppercase ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>Contact Options</h3>
+                  <h3 className={`text-[8px] font-mono tracking-widest uppercase ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>Book {displayName || 'Artist'}</h3>
                   <button 
                     onClick={() => setPreviewContactOpen(false)}
                     className={`w-4 h-4 rounded-full flex items-center justify-center ${isLight ? 'bg-black/5 text-zinc-500 hover:text-zinc-800' : 'bg-white/5 text-white/40 hover:text-white'}`}
@@ -1634,34 +1630,29 @@ export default function ProfilePage() {
                   </button>
                 </div>
                 
-                {contactEmailEnabled && contactEmail && (
-                  <div className={`p-2 rounded-xl border flex flex-col gap-1 text-left shadow-sm ${isLight ? 'bg-zinc-50/50 border-black/5' : 'bg-white/[0.02] border-white/[0.04]'}`}>
-                    <span className={`text-[5px] font-mono font-bold uppercase tracking-widest flex items-center gap-0.5 ${isLight ? 'text-zinc-500' : 'text-white/30'}`}>
-                      <Mail className="w-2 h-2 text-[#7C5CFF]" /> Email Address
-                    </span>
-                    <span className={`text-[7px] font-bold truncate ${isLight ? 'text-zinc-950' : 'text-white/90'}`}>{contactEmail}</span>
-                    <div className={`mt-1 text-center py-1 rounded font-bold text-[6px] max-w-[50px] shadow-sm ${isLight ? 'bg-[#7C5CFF] text-white' : 'bg-white text-black'}`}>
-                      Send Mail
+                <div className="space-y-2">
+                  {/* Option A: Raise Booking Request */}
+                  <div className={`p-2 rounded-xl border flex flex-col gap-1 text-left shadow-sm ${isLight ? 'bg-white border-[#7C5CFF]/30' : 'bg-white/[0.02] border-white/10'}`}>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-4 h-4 rounded bg-[#7C5CFF] flex items-center justify-center text-white text-[6px]">
+                        <Calendar className="w-2 h-2" />
+                      </div>
+                      <span className={`text-[7px] font-bold ${isLight ? 'text-zinc-950' : 'text-white/90'}`}>Raise Booking Request</span>
                     </div>
+                    <p className={`text-[6px] leading-normal ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>Fill event date & details for Artistant concierge routing.</p>
                   </div>
-                )}
 
-                {contactPhoneEnabled && contactPhone && (
-                  <div className={`p-2 rounded-xl border flex flex-col gap-1 text-left shadow-sm ${isLight ? 'bg-zinc-50/50 border-black/5' : 'bg-white/[0.02] border-white/[0.04]'}`}>
-                    <span className={`text-[5px] font-mono font-bold uppercase tracking-widest flex items-center gap-0.5 ${isLight ? 'text-zinc-500' : 'text-white/30'}`}>
-                      <Phone className="w-2 h-2 text-[#F25A2B]" /> Mobile Number
-                    </span>
-                    <span className={`text-[7px] font-bold truncate ${isLight ? 'text-zinc-950' : 'text-white/90'}`}>{contactPhone}</span>
-                    <div className="flex gap-1 mt-1">
-                      <div className={`text-center py-0.5 px-1.5 rounded font-bold text-[5px] border ${isLight ? 'bg-white border-black/10 text-zinc-800' : 'bg-white/5 border border-white/10 text-white'}`}>
-                        Call
+                  {/* Option B: Mail Artistant */}
+                  <div className={`p-2 rounded-xl border flex flex-col gap-1 text-left shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/[0.02] border-white/10'}`}>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-4 h-4 rounded bg-[#F25A2B] flex items-center justify-center text-white text-[6px]">
+                        <Mail className="w-2 h-2" />
                       </div>
-                      <div className="text-center py-0.5 px-1.5 rounded bg-[#25D366] font-bold text-[5px] text-white shadow-sm">
-                        WhatsApp
-                      </div>
+                      <span className={`text-[7px] font-bold ${isLight ? 'text-zinc-950' : 'text-white/90'}`}>Mail Artistant</span>
                     </div>
+                    <span className={`text-[6px] font-mono ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>hello@artistant.in</span>
                   </div>
-                )}
+                </div>
               </div>
             </div>
           )}
