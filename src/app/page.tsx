@@ -427,13 +427,16 @@ function GlowingFeatureCard({ children, onClick, idx }: any) {
 }
 
 export function AnimatedTitle({ text, className = "", style = {} }: { text: string; className?: string; style?: React.CSSProperties }) {
+  const isBrand = className.includes('brand-text');
+  const cleanClassName = className.replace(/\bbrand-text\b/g, '').trim();
+
+  const totalChars = text.replace(/\s+/g, '').length;
   const words = text.split(" ");
   let globalCharIdx = 0;
-  const isBrand = className.includes('brand-text');
 
   return (
     <motion.span
-      className={`inline-block ${className}`}
+      className={`inline-block ${cleanClassName}`}
       style={{ verticalAlign: 'baseline', ...style }}
       initial="hidden"
       whileInView="visible"
@@ -441,8 +444,6 @@ export function AnimatedTitle({ text, className = "", style = {} }: { text: stri
     >
       {words.map((word, wordIndex) => {
         const wordChars = word.split("");
-        const startIdx = globalCharIdx;
-        globalCharIdx += wordChars.length;
 
         return (
           <span
@@ -450,16 +451,12 @@ export function AnimatedTitle({ text, className = "", style = {} }: { text: stri
             className="inline-block whitespace-nowrap"
             style={{
               marginRight: wordIndex < words.length - 1 ? '0.28em' : '0',
-              ...(isBrand ? {
-                background: 'inherit',
-                WebkitBackgroundClip: 'text',
-                backgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              } : {}),
             }}
           >
             {wordChars.map((char, charIndex) => {
-              const charDelay = (startIdx + charIndex) * 0.03;
+              const charIdx = globalCharIdx++;
+              const charDelay = charIdx * 0.03;
+              const pct = totalChars > 1 ? (charIdx / (totalChars - 1)) * 100 : 0;
 
               return (
                 <motion.span
@@ -483,7 +480,9 @@ export function AnimatedTitle({ text, className = "", style = {} }: { text: stri
                   style={{
                     willChange: 'transform, opacity',
                     ...(isBrand ? {
-                      background: 'inherit',
+                      background: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 50%, #7C5CFF 100%)',
+                      backgroundSize: `${totalChars * 100}% 100%`,
+                      backgroundPosition: `${pct}% 0%`,
                       WebkitBackgroundClip: 'text',
                       backgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',

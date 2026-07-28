@@ -167,13 +167,6 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
-.brand-text *,
-.brand-text span {
-  background: inherit;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
 
 /* ═══ LOGO SPLIT TYPOGRAPHY ═══ */
 .logo-typo {
