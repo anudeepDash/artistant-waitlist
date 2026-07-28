@@ -2063,10 +2063,10 @@ export default function AdminPage() {
                     {viewMode === "table" ? (
                       <div className="bg-bg-card border border-line-soft rounded-3xl overflow-hidden backdrop-blur-md shadow-2xl">
                         <div className="overflow-x-auto">
-                          <table className="w-full border-collapse text-left text-sm">
+                          <table className="w-full table-fixed border-collapse text-left text-sm min-w-[700px]">
                             <thead>
                               <tr className="border-b border-line-soft text-ink-3 text-[9px] font-mono font-bold uppercase tracking-[0.18em]">
-                                <th className="px-6 py-5 w-12 text-center">
+                                <th className="px-3 py-4 w-10 text-center">
                                   <input
                                     type="checkbox"
                                     checked={filteredRegistrations.length > 0 && filteredRegistrations.every(r => selectedUserIds.includes(r.id))}
@@ -2080,18 +2080,17 @@ export default function AdminPage() {
                                     className="w-4 h-4 rounded border-line-soft bg-bg-soft/40 text-[#7C5CFF] focus:ring-0 cursor-pointer"
                                   />
                                 </th>
-                                <th className="px-8 py-5">Artist Node</th>
-                                <th className="px-6 py-5">Cleared Role</th>
-                                <th className="px-6 py-5">Communication</th>
-                                <th className="px-6 py-5">Position</th>
-                                <th className="px-6 py-5">Clearance</th>
-                                <th className="px-8 py-5 text-right">Actions</th>
+                                <th className="px-4 py-4 w-[28%]">Artist Node</th>
+                                <th className="px-3 py-4 w-[14%]">Cleared Role</th>
+                                <th className="px-4 py-4 w-[30%]">Communication</th>
+                                <th className="px-3 py-4 w-[13%]">Position</th>
+                                <th className="px-3 py-4 w-[15%] text-right">Clearance</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-line-soft/30">
                               {filteredRegistrations.length === 0 ? (
                                 <tr>
-                                  <td colSpan={7} className="px-8 py-14 text-center text-ink-3 font-mono text-xs">
+                                  <td colSpan={6} className="px-4 py-14 text-center text-ink-3 font-mono text-xs">
                                     No matching waitlist nodes found.
                                   </td>
                                 </tr>
@@ -2107,7 +2106,7 @@ export default function AdminPage() {
                                         reg.is_blocked ? "opacity-30" : ""
                                       }`}
                                     >
-                                      <td className="px-6 py-5 w-12 text-center" onClick={(e) => e.stopPropagation()}>
+                                      <td className="px-3 py-3.5 w-10 text-center" onClick={(e) => e.stopPropagation()}>
                                         <input
                                           type="checkbox"
                                           checked={selectedUserIds.includes(reg.id)}
@@ -2121,9 +2120,9 @@ export default function AdminPage() {
                                           className="w-4 h-4 rounded border-line-soft bg-bg-soft/40 text-[#7C5CFF] focus:ring-0 cursor-pointer"
                                         />
                                       </td>
-                                      <td className="px-8 py-4.5">
-                                        <div className="flex items-center gap-3">
-                                          <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center font-display font-bold text-sm text-white shrink-0 bg-bg-soft">
+                                      <td className="px-4 py-3.5">
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                          <div className="w-8 h-8 rounded-xl overflow-hidden flex items-center justify-center font-display font-bold text-xs text-white shrink-0 bg-bg-soft">
                                             {reg.profile_photo_url ? (
                                               <img src={reg.profile_photo_url} alt="" className="w-full h-full object-cover" />
                                             ) : (
@@ -2132,32 +2131,32 @@ export default function AdminPage() {
                                               </div>
                                             )}
                                           </div>
-                                          <div>
-                                            <div className="font-bold text-ink flex items-center gap-2 text-sm">
-                                              {reg.display_name || "Unspecified Node"}
+                                          <div className="min-w-0 flex-1">
+                                            <div className="font-bold text-ink flex items-center gap-1.5 text-xs truncate">
+                                              <span className="truncate">{reg.display_name || "Unspecified Node"}</span>
                                               {reg.is_verified && (
-                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[8px] font-mono font-bold tracking-[0.08em] bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] text-white">
+                                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[7px] font-mono font-bold tracking-[0.08em] bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] text-white shrink-0">
                                                   VERIFIED
                                                 </span>
                                               )}
                                               {heuristics.eligible && (
                                                  <span 
-                                                   className="inline-flex items-center px-2 py-0.5 rounded-full text-[8px] font-mono font-bold tracking-[0.08em] bg-bg-soft text-[#22C55E] border border-[#22C55E]/20"
+                                                   className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[7px] font-mono font-bold tracking-[0.08em] bg-bg-soft text-[#22C55E] border border-[#22C55E]/20 shrink-0"
                                                    title={`Auto-verify candidate: ${heuristics.reasons.join(", ")}`}
                                                  >
                                                    SUGGESTED
                                                  </span>
                                                )}
                                             </div>
-                                            <div className="text-[11px] font-mono mt-0.5 text-brand">
+                                            <div className="text-[10px] font-mono mt-0.5 text-brand truncate">
                                               @{reg.username}
                                             </div>
                                           </div>
                                         </div>
                                       </td>
-                                      <td className="px-6 py-4.5">
-                                        <div>
-                                          <span className="inline-block px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-[0.08em]" style={{
+                                      <td className="px-3 py-3.5">
+                                        <div className="truncate">
+                                          <span className="inline-block px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-[0.08em]" style={{
                                             background: 'var(--bg-soft)',
                                             color: reg.role === 'artist' ? 'var(--brand-3)' : reg.role === 'venue' ? 'var(--brand-2)' : reg.role === 'vendor' ? 'var(--brand-1)' : 'var(--ink-3)',
                                             border: `1px solid color-mix(in srgb, ${reg.role === 'artist' ? 'var(--brand-3)' : reg.role === 'venue' ? 'var(--brand-2)' : reg.role === 'vendor' ? 'var(--brand-1)' : 'var(--ink-3)'} 15%, transparent)`,
@@ -2165,18 +2164,18 @@ export default function AdminPage() {
                                             {reg.role || "fan"}
                                           </span>
                                           {reg.category && (
-                                            <span className="block text-[10px] text-ink-3 mt-1 capitalize font-mono">
+                                            <span className="block text-[10px] text-ink-3 mt-0.5 capitalize font-mono truncate">
                                               {reg.category.replace("_", " ")}
                                             </span>
                                           )}
                                         </div>
                                       </td>
-                                      <td className="px-6 py-4.5 font-mono text-[11px] text-ink-2 space-y-0.5 text-left">
-                                        <div className="text-ink flex items-center">{reg.email}</div>
-                                        {reg.phone && <div className="text-ink-3">{reg.phone}</div>}
+                                      <td className="px-4 py-3.5 font-mono text-[11px] text-ink-2 space-y-0.5 text-left min-w-0">
+                                        <div className="text-ink truncate" title={reg.email}>{reg.email}</div>
+                                        {reg.phone && <div className="text-ink-3 truncate">{reg.phone}</div>}
                                       </td>
-                                      <td className="px-6 py-4.5">
-                                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                      <td className="px-3 py-3.5">
+                                        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                                           <input
                                             type="number"
                                             placeholder="Auto"
@@ -2195,47 +2194,47 @@ export default function AdminPage() {
                                                 (e.target as HTMLInputElement).blur();
                                               }
                                             }}
-                                            className="w-14 bg-bg-soft border border-line-soft rounded-lg py-1 px-1.5 text-xs text-ink text-center font-mono focus:outline-none focus:border-brand transition-all"
+                                            className="w-12 bg-bg-soft border border-line-soft rounded-lg py-1 px-1 text-xs text-ink text-center font-mono focus:outline-none focus:border-brand transition-all"
                                           />
-                                          <span className="text-[10px] font-mono text-ink-3">
+                                          <span className="text-[9px] font-mono text-ink-3 shrink-0">
                                             {reg.position_override ? `#${reg.position_override}` : "Queue"}
                                           </span>
                                         </div>
                                       </td>
-                                      <td className="px-6 py-4.5">
-                                        <button
-                                          onClick={(e) => { e.stopPropagation(); handleVerifyAndLock(reg); }}
-                                          className="py-1 px-3.5 rounded-full text-[9px] font-mono font-bold tracking-[0.06em] uppercase transition-all cursor-pointer"
-                                          style={reg.is_verified ? {
-                                            background: 'var(--bg-soft)',
-                                            color: 'var(--brand-3)',
-                                            border: '1px solid rgba(124,92,255,0.2)',
-                                          } : {
-                                            background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
-                                            color: 'white',
-                                            border: 'none',
-                                            boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)',
-                                          }}
-                                        >
-                                          {reg.is_verified ? "Verified" : "Verify"}
-                                        </button>
-                                      </td>
-                                      <td className="px-8 py-4.5 text-right">
-                                        <button
-                                          onClick={(e) => { e.stopPropagation(); handleToggleBlock(reg); }}
-                                          className="py-1 px-3.5 rounded-full text-[9px] font-mono font-bold tracking-[0.06em] uppercase transition-all cursor-pointer"
-                                          style={reg.is_blocked ? {
-                                            background: 'rgba(255,75,75,0.1)',
-                                            color: 'var(--hot)',
-                                            border: '1px solid rgba(255,75,75,0.2)',
-                                          } : {
-                                            background: 'var(--bg-soft)',
-                                            color: 'var(--ink-3)',
-                                            border: '1px solid var(--line-soft)',
-                                          }}
-                                        >
-                                          {reg.is_blocked ? "Restore" : "Suspend"}
-                                        </button>
+                                      <td className="px-3 py-3.5 text-right">
+                                        <div className="inline-flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                          <button
+                                            onClick={() => handleVerifyAndLock(reg)}
+                                            className="py-1 px-2.5 rounded-full text-[8px] font-mono font-bold tracking-[0.06em] uppercase transition-all cursor-pointer"
+                                            style={reg.is_verified ? {
+                                              background: 'var(--bg-soft)',
+                                              color: 'var(--brand-3)',
+                                              border: '1px solid rgba(124,92,255,0.2)',
+                                            } : {
+                                              background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)',
+                                              color: 'white',
+                                              border: 'none',
+                                              boxShadow: '0 4px 12px -4px rgba(242,90,43,0.3)',
+                                            }}
+                                          >
+                                            {reg.is_verified ? "Verified" : "Verify"}
+                                          </button>
+                                          <button
+                                            onClick={() => handleToggleBlock(reg)}
+                                            className="py-1 px-2 rounded-full text-[8px] font-mono font-bold tracking-[0.06em] uppercase transition-all cursor-pointer"
+                                            style={reg.is_blocked ? {
+                                              background: 'rgba(255,75,75,0.1)',
+                                              color: 'var(--hot)',
+                                              border: '1px solid rgba(255,75,75,0.2)',
+                                            } : {
+                                              background: 'var(--bg-soft)',
+                                              color: 'var(--ink-3)',
+                                              border: '1px solid var(--line-soft)',
+                                            }}
+                                          >
+                                            {reg.is_blocked ? "Restore" : "Suspend"}
+                                          </button>
+                                        </div>
                                       </td>
                                     </tr>
                                   );
@@ -2827,14 +2826,14 @@ export default function AdminPage() {
 
               {/* Logs Table */}
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
+                <table className="w-full table-fixed border-collapse min-w-[650px]">
                   <thead>
                     <tr className="border-b border-line-soft text-[9px] font-mono text-ink-3 uppercase tracking-widest text-left">
-                      <th className="pb-3.5 font-bold">Time</th>
-                      <th className="pb-3.5 font-bold">Event Node</th>
-                      <th className="pb-3.5 font-bold">User Identity</th>
-                      <th className="pb-3.5 font-bold">Browser / OS</th>
-                      <th className="pb-3.5 font-bold">Referrer</th>
+                      <th className="pb-3.5 font-bold w-[22%]">Time</th>
+                      <th className="pb-3.5 font-bold w-[16%]">Event Node</th>
+                      <th className="pb-3.5 font-bold w-[24%]">User Identity</th>
+                      <th className="pb-3.5 font-bold w-[22%]">Browser / OS</th>
+                      <th className="pb-3.5 font-bold w-[16%]">Referrer</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line-soft/30">
