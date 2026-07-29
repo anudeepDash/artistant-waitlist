@@ -39,9 +39,8 @@ if (typeof window === 'undefined' && process.env.NODE_ENV !== 'test') {
 const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
-      // A 15MB video becomes roughly 20MB when base64 encoded for the current
-      // Server Action upload flow. Leave room for the action payload and token.
-      bodySizeLimit: '25mb',
+      // Allow up to 100MB videos (which become ~135MB when base64 encoded)
+      bodySizeLimit: '150mb',
     },
   },
   // 4. Security Headers & 6. CORS Configuration
@@ -64,7 +63,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://www.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' wss: https:; frame-src 'self' https://*.firebaseapp.com https://apis.google.com https://www.google.com https://recaptcha.google.com; child-src 'self' https://*.firebaseapp.com https://apis.google.com https://www.google.com https://recaptcha.google.com;",
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://www.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' data: blob: https:; connect-src 'self' wss: https:; frame-src 'self' https://*.firebaseapp.com https://apis.google.com https://www.google.com https://recaptcha.google.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://www.instagram.com https://instagram.com https://open.spotify.com https://*.spotify.com https://*.spotifycdn.com; child-src 'self' https://*.firebaseapp.com https://apis.google.com https://www.google.com https://recaptcha.google.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://www.instagram.com https://instagram.com https://open.spotify.com https://*.spotify.com https://*.spotifycdn.com;",
           },
           // Restrict CORS to our own domain + localhost during dev
           {

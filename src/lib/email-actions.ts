@@ -47,6 +47,8 @@ export async function sendWelcomeEmailAction({
   }
 }
 
+import { EmailAttachmentItem } from './mailer';
+
 interface SendMassEmailActionParams {
   idToken: string;
   recipients: { email: string; name: string; username?: string; id?: string }[];
@@ -55,6 +57,10 @@ interface SendMassEmailActionParams {
   ctaText?: string;
   ctaUrl?: string;
   senderAlias?: string;
+  templateType?: 'standard' | 'welcome' | 'vip' | 'newsletter' | 'raw' | 'migrated_artist';
+  emailHeader?: string;
+  pillTag?: string;
+  attachments?: EmailAttachmentItem[];
 }
 
 /**
@@ -69,6 +75,10 @@ export async function sendMassEmailAction({
   ctaText,
   ctaUrl,
   senderAlias,
+  templateType = 'standard',
+  emailHeader,
+  pillTag,
+  attachments = [],
 }: SendMassEmailActionParams) {
   try {
     await verifyAdminToken(idToken);
@@ -83,22 +93,32 @@ export async function sendMassEmailAction({
     for (const recipient of recipients) {
       if (!recipient.email) continue;
 
-      // Make CTA URL dynamic if it's the claim link
-      let finalCtaUrl = ctaUrl;
-      if (ctaUrl && ctaUrl.includes('/claim') && recipient.id) {
-        const separator = ctaUrl.includes('?') ? '&' : '?';
-        finalCtaUrl = `${ctaUrl}${separator}id=${recipient.id}`;
+      // Make CTA URL & claim_url dynamic and unique per artist recipient
+      const uniqueClaimUrl = `https://artistant.in/claim?username=${encodeURIComponent(recipient.username || '')}&email=${encodeURIComponent(recipient.email)}`;
+      let finalCtaUrl = ctaUrl || uniqueClaimUrl;
+
+      if (ctaUrl && ctaUrl.includes('{{username}}')) {
+        finalCtaUrl = ctaUrl.replaceAll('{{username}}', recipient.username || '');
+      } else if (ctaUrl && (ctaUrl.includes('/claim') || templateType === 'migrated_artist')) {
+        finalCtaUrl = uniqueClaimUrl;
       }
+
+      // Replace {{claim_url}} in body text dynamically for each recipient
+      const personalizedBody = (messageBody || '').replaceAll('{{claim_url}}', uniqueClaimUrl);
 
       const res = await sendCustomEmail({
         toEmail: recipient.email,
         name: recipient.name,
         username: recipient.username,
         subject,
-        messageBody,
+        messageBody: personalizedBody,
         ctaText,
         ctaUrl: finalCtaUrl,
         senderAlias,
+        templateType,
+        headerTitle: emailHeader,
+        pillTag,
+        attachments,
       });
       
       if (res.success) {

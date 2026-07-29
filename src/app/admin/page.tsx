@@ -25,6 +25,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "next-themes";
 import { signInWithGoogle, signInWithEmail, signOut as firebaseSignOut } from "@/lib/auth";
 import { motion, AnimatePresence } from "motion/react";
+import { ToastNotification } from "@/components/ToastNotification";
 import { 
   Users, 
   CheckCircle2, 
@@ -39,7 +40,6 @@ import {
   Image as ImageIcon, 
   Eye, 
   Settings, 
-  Cpu,
   Award, 
   AlertCircle,
   Copy,
@@ -68,13 +68,45 @@ import {
   Activity,
   MapPin,
   User,
+  UserCheck,
   UserMinus,
   ExternalLink,
   Shield,
   Zap,
   Sun,
-  Moon
+  Moon,
+  Paperclip,
+  Sparkles,
+  Tag,
+  Layers3,
+  FileUp,
+  LayoutDashboard,
+  Filter,
+  Check,
+  Bold,
+  Italic,
+  Underline,
+  List,
+  ListOrdered,
+  Link2,
+  Heading1,
+  Heading2,
+  AlignLeft,
+  AlignCenter,
+  Type,
+  Code,
+  Minus,
+  Quote,
+  Undo2,
+  Redo2,
+  Crown,
+  Ticket,
+  Laptop,
+  Radio,
+  Palette,
+  AtSign,
 } from "lucide-react";
+import type { EmailAttachmentItem } from "@/lib/mailer";
 
 // ---------------------------------------------------------------------------
 // Sandbox Mock Data fallback
@@ -157,81 +189,7 @@ const []: AdminWaitlistEntry[] = [
   }
 ];
 
-// ---------------------------------------------------------------------------
-// Social Post Calendar Schedule
-// ---------------------------------------------------------------------------
-interface SocialPost {
-  id: string;
-  date: string;
-  day: string;
-  time: string;
-  platform: "Instagram" | "Twitter/X" | "LinkedIn";
-  type: "milestone" | "feature" | "countdown";
-  title: string;
-  caption: string;
-  graphicPreset: {
-    type: "milestone" | "feature" | "countdown";
-    title: string;
-    subText: string;
-    stat?: string;
-    theme: "cyber" | "sunset" | "indigo";
-    featureKey?: string;
-  };
-}
 
-const SOCIAL_CALENDAR: SocialPost[] = [
-  {
-    id: "post-1",
-    date: "2026-07-06",
-    day: "Mon",
-    time: "11:00 AM",
-    platform: "Instagram",
-    type: "feature",
-    title: "Spotlight: The Bookability Score™",
-    caption: "📊 Reliability metrics that change the game. Book verified talent with data-backed confidence. #ArtistantBackstage #BookabilityScore",
-    graphicPreset: {
-      type: "feature",
-      title: "THE BOOKABILITY SCORE™",
-      subText: "DATA-BACKED RELIABILITY RATING FOR PERFORMERS",
-      theme: "cyber",
-      featureKey: "bookability"
-    }
-  },
-  {
-    id: "post-2",
-    date: "2026-07-08",
-    day: "Wed",
-    time: "03:30 PM",
-    platform: "Twitter/X",
-    type: "milestone",
-    title: "Milestone: 500 waitlist registrations!",
-    caption: "🚀 500+ creators and venues onboard the live network. The stage is set. Claim your username at artistant.in! #ArtistantWaitlist",
-    graphicPreset: {
-      type: "milestone",
-      title: "WAITLIST RISING",
-      subText: "CREATORS CLAIMING THEIR SLOTS ON THE LIVE NETWORK",
-      stat: "500+",
-      theme: "sunset"
-    }
-  },
-  {
-    id: "post-3",
-    date: "2026-07-10",
-    day: "Fri",
-    time: "06:00 PM",
-    platform: "LinkedIn",
-    type: "feature",
-    title: "Spotlight: GigSafe Escrow",
-    caption: "🔒 Zero payment delays. Zero cancellations. GigSafe Escrow secures event budgets upfront. #GigSafe #FintechEvents",
-    graphicPreset: {
-      type: "feature",
-      title: "GIGSAFE ESCROW",
-      subText: "SECURED PAYMENT PROTOCOLS FOR THE ENTERTAINMENT ECONOMY",
-      theme: "indigo",
-      featureKey: "escrow"
-    }
-  }
-];
 
 const []: any[] = [
   {
@@ -394,9 +352,15 @@ export default function AdminPage() {
   const [bookingRequests, setBookingRequests] = useState<BookingRequestEntry[]>([]);
   const [requestSearchQuery, setRequestSearchQuery] = useState("");
   const [requestStatusFilter, setRequestStatusFilter] = useState<string>("all");
+  const [kanbanView, setKanbanView] = useState<"kanban" | "table">("kanban");
+  const [selectedBookingDetail, setSelectedBookingDetail] = useState<BookingRequestEntry | null>(null);
   
-  // Tabs: registrations | requests | leaderboards | members | admins
-  const [activeTab, setActiveTab] = useState<"registrations" | "requests" | "leaderboards" | "members" | "admins">("registrations");
+  // Command Palette & Global Search State
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [commandSearch, setCommandSearch] = useState("");
+  
+  // Tabs: overview | registrations | emails | requests | leaderboards | members | admins
+  const [activeTab, setActiveTab] = useState<"overview" | "registrations" | "emails" | "requests" | "leaderboards" | "members" | "admins">("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedReg, setSelectedReg] = useState<AdminWaitlistEntry | null>(null);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
@@ -411,35 +375,46 @@ export default function AdminPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"table" | "card">("card");
   const [showSqlMigration, setShowSqlMigration] = useState(false);
-  
-  // ---------------------------------------------------------------------------
-  // Unified Graphics Engine State
-  // ---------------------------------------------------------------------------
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [graphicType, setGraphicType] = useState<"milestone" | "feature" | "countdown">("milestone");
-  const [canvasLayout, setCanvasLayout] = useState<"square" | "portrait">("square"); // square (1:1) vs portrait (9:16)
-  const [unifiedTheme, setUnifiedTheme] = useState<"cyber" | "sunset" | "indigo">("cyber");
-  
-  // Canvas Parameters
-  const [gHeadline, setGHeadline] = useState("THE BOOKABILITY SCORE™");
-  const [gSubtext, setGSubtext] = useState("DATA-BACKED RELIABILITY RATING FOR PERFORMERS");
-  const [gMilestoneStat, setGMilestoneStat] = useState("500+");
-  const [gMilestoneTitle, setGMilestoneTitle] = useState("WAITLIST UNLOCKED");
-  const [gCountdownTarget, setGCountdownTarget] = useState("2026-10-31");
 
   // ---------------------------------------------------------------------------
-  // Email Broadcast Engine State
+  // Email Broadcast Engine State & Multi-Template Studio
   // ---------------------------------------------------------------------------
+  const [emailTemplateType, setEmailTemplateType] = useState<"standard" | "welcome" | "vip" | "newsletter" | "raw" | "migrated_artist">("standard");
   const [emailSubject, setEmailSubject] = useState("Exclusive early access keys for ArtisTant 🚀");
+  const [emailPillTag, setEmailPillTag] = useState("⚡ WAITLIST ACTIVE");
   const [emailHeader, setEmailHeader] = useState("Your ArtisTant waitlist handle is secured.");
   const [emailBody, setEmailBody] = useState(
     "We are opening the first stage of beta onboarding. Build your verified profile, set up your Bookability Score rating, and secure your event bookings early.\n\nClick the link below to verify your device credentials."
   );
   const [emailCtaText, setEmailCtaText] = useState("Claim Access Keys");
   const [emailCtaUrl, setEmailCtaUrl] = useState("https://artistant.in");
-  const [emailAlias, setEmailAlias] = useState("official"); // official | support | founder
-  const [emailPreviewMode, setEmailPreviewMode] = useState<"desktop" | "mobile">("mobile");
-  
+  const [emailCtaTheme, setEmailCtaTheme] = useState<"purple" | "flame" | "emerald" | "dark" | "ghost">("purple");
+  const [emailClientTheme, setEmailClientTheme] = useState<"dark" | "light">("dark");
+  const [emailAlias, setEmailAlias] = useState("official");
+  const [emailAudienceMode, setEmailAudienceMode] = useState<"all" | "filtered" | "selected" | "migrated_artists">("all");
+  const [showAudienceDropdown, setShowAudienceDropdown] = useState(false);
+  const [showAliasDropdown, setShowAliasDropdown] = useState(false);
+  const [showRecipientDrawer, setShowRecipientDrawer] = useState(false);
+  const [testEmailSending, setTestEmailSending] = useState(false);
+
+  // Attachments State
+  const [emailAttachments, setEmailAttachments] = useState<EmailAttachmentItem[]>([
+    {
+      id: "att-1",
+      title: "ArtisTant_Founding_Artist_Guide.pdf",
+      fileType: "PDF",
+      size: "1.8 MB",
+      url: "https://artistant.in/docs/Founding_Artist_Guide.pdf",
+      description: "Official guide on points, perks, and verified badge setup."
+    }
+  ]);
+  const [newAttTitle, setNewAttTitle] = useState("");
+  const [newAttType, setNewAttType] = useState("PDF");
+  const [newAttSize, setNewAttSize] = useState("");
+  const [newAttUrl, setNewAttUrl] = useState("");
+  const [newAttDesc, setNewAttDesc] = useState("");
+  const [showAddAttachmentModal, setShowAddAttachmentModal] = useState(false);
+
   const [emailSending, setEmailSending] = useState(false);
   const [emailLogs, setEmailLogs] = useState<string[]>([]);
   const [showLogTerminal, setShowLogTerminal] = useState(false);
@@ -499,6 +474,150 @@ export default function AdminPage() {
 
     return () => clearInterval(interval);
   }, [isUnlocked, isAdmin, isLiveMode]);
+
+  // Command Palette Keyboard Listener (Cmd + K or Ctrl + K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setShowCommandPalette(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Batch Operations Handlers
+  const handleBatchVerify = async () => {
+    if (selectedUserIds.length === 0) return;
+    setIsLoading(true);
+    try {
+      const idToken = await getIdToken();
+      for (const userId of selectedUserIds) {
+        const reg = registrations.find(r => r.id === userId || r.user_id === userId);
+        if (reg) {
+          await adminUpdateRegistrationAction(
+            idToken,
+            reg.user_id || reg.id,
+            true,
+            reg.is_blocked,
+            reg.position_override,
+            reg.feature_founding_card ?? false,
+            reg.exclude_from_waitlist ?? false
+          );
+        }
+      }
+      showToast(`Successfully verified ${selectedUserIds.length} user(s)!`);
+      await verifyAndLoad(true);
+      setSelectedUserIds([]);
+    } catch (err: any) {
+      showToast(`Batch verify failed: ${err.message || 'Error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleBatchFeature = async () => {
+    if (selectedUserIds.length === 0) return;
+    setIsLoading(true);
+    try {
+      const idToken = await getIdToken();
+      for (const userId of selectedUserIds) {
+        const reg = registrations.find(r => r.id === userId || r.user_id === userId);
+        if (reg) {
+          await adminUpdateRegistrationAction(
+            idToken,
+            reg.user_id || reg.id,
+            reg.is_verified,
+            reg.is_blocked,
+            reg.position_override,
+            true,
+            reg.exclude_from_waitlist ?? false
+          );
+        }
+      }
+      showToast(`Featured ${selectedUserIds.length} founding card(s)!`);
+      await verifyAndLoad(true);
+      setSelectedUserIds([]);
+    } catch (err: any) {
+      showToast(`Batch feature failed: ${err.message || 'Error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleBatchExclude = async () => {
+    if (selectedUserIds.length === 0) return;
+    setIsLoading(true);
+    try {
+      const idToken = await getIdToken();
+      for (const userId of selectedUserIds) {
+        const reg = registrations.find(r => r.id === userId || r.user_id === userId);
+        if (reg) {
+          await adminUpdateRegistrationAction(
+            idToken,
+            reg.user_id || reg.id,
+            reg.is_verified,
+            reg.is_blocked,
+            reg.position_override,
+            reg.feature_founding_card ?? false,
+            true
+          );
+        }
+      }
+      showToast(`Excluded ${selectedUserIds.length} user(s) from waitlist ranking!`);
+      await verifyAndLoad(true);
+      setSelectedUserIds([]);
+    } catch (err: any) {
+      showToast(`Batch exclude failed: ${err.message || 'Error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleBatchEmailHandoff = () => {
+    if (selectedUserIds.length === 0) return;
+    setEmailAudienceMode("selected");
+    setActiveTab("emails");
+    showToast(`Broadcast Studio loaded with ${selectedUserIds.length} target user(s)!`);
+  };
+
+  const handleBatchExportCSV = () => {
+    const targets = selectedUserIds.length > 0 
+      ? registrations.filter(r => selectedUserIds.includes(r.id) || selectedUserIds.includes(r.user_id))
+      : registrations;
+
+    if (targets.length === 0) {
+      showToast("No registrations available to export.");
+      return;
+    }
+
+    const headers = ["Username", "Display Name", "Email", "Phone", "Role", "Category", "City", "Verified", "Blocked", "Reserved At"];
+    const rows = targets.map(r => [
+      `"${r.username || ''}"`,
+      `"${r.display_name || ''}"`,
+      `"${r.email || ''}"`,
+      `"${r.phone || ''}"`,
+      `"${r.role || ''}"`,
+      `"${r.category || ''}"`,
+      `"${r.city || ''}"`,
+      r.is_verified ? "Yes" : "No",
+      r.is_blocked ? "Yes" : "No",
+      `"${r.reserved_at || ''}"`
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `artistant_waitlist_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast(`Exported ${targets.length} registrations to CSV!`);
+  };
+
+
 
   // ---------------------------------------------------------------------------
   // API Fetch & Authentication
@@ -1053,11 +1172,15 @@ export default function AdminPage() {
 
 
   // ---------------------------------------------------------------------------
-  // Email Dispatch Campaign Builder
-  // ---------------------------------------------------------------------------
   const getSelectedRecipientsList = () => {
-    if (selectedUserIds.length > 0) {
+    if (emailAudienceMode === "migrated_artists") {
+      return registrations.filter(r => (r.user_id?.startsWith('imported_') || (r as any).is_migrated) && !r.is_blocked);
+    }
+    if (emailAudienceMode === "selected" && selectedUserIds.length > 0) {
       return registrations.filter(r => selectedUserIds.includes(r.id));
+    }
+    if (emailAudienceMode === "filtered") {
+      return filteredRegistrations;
     }
     if (roleFilter === "all" && statusFilter === "all" && !searchQuery) {
       return registrations;
@@ -1065,8 +1188,114 @@ export default function AdminPage() {
     return filteredRegistrations;
   };
 
+  const loadTemplatePreset = (type: "standard" | "welcome" | "vip" | "newsletter" | "raw" | "migrated_artist") => {
+    setEmailTemplateType(type);
+    switch (type) {
+      case "migrated_artist":
+        setEmailAudienceMode("migrated_artists");
+        setEmailPillTag("🚀 ARTIST ONBOARDING");
+        setEmailSubject("Welcome to ArtisTant, {{name}}! Your Artist Profile is Ready ✨");
+        setEmailHeader("Your Artist Account Has Been Migrated to ArtisTant");
+        setEmailBody(
+          "Welcome to ArtisTant Official! Your artist portfolio and profile credentials have been successfully created.\n\nClaim your profile, set up your Bookability Score, link your Spotify & Instagram, and start receiving direct gig requests.\n\nClick below to verify your login and activate your Founding Artist badge."
+        );
+        setEmailCtaText("Activate Artist Profile");
+        setEmailCtaUrl("https://artistant.in/claim");
+        setEmailAlias("welcome");
+        showToast("Loaded Migrated Artist Onboarding Template (69 Artists Target)!");
+        break;
+      case "welcome":
+        setEmailPillTag("⚡ WAITLIST ACTIVE");
+        setEmailSubject("Your ArtisTant username @{{username}} is secured! 🚀");
+        setEmailHeader("Welcome to the stage. @username is officially stashed.");
+        setEmailBody(
+          "It's official. You've successfully claimed your premium username on ArtisTant!\n\nYour professional portfolio page is live. Promoters and clients can visit your portfolio to view your bio, listen to previews, inspect details, and request direct bookings.\n\nYou can customize, update, or complete all these details at any time by logging into your ArtisTant Dashboard."
+        );
+        setEmailCtaText("Open Your Dashboard");
+        setEmailCtaUrl("https://artistant.in/dashboard");
+        setEmailAlias("welcome");
+        showToast("Loaded Welcome / Onboarding Pass Template!");
+        break;
+      case "vip":
+        setEmailPillTag("👑 VIP EXCLUSIVE PASS");
+        setEmailSubject("VIP Founder Access Pass Granted 🌟");
+        setEmailHeader("You have been selected for Early VIP Rollout");
+        setEmailBody(
+          "As a top-tier Founding Artist on ArtisTant, you have been unlocked for VIP Priority Concierge. Enjoy zero platform commissions on your first 5 bookings and direct concierge assistance.\n\nClaim your VIP Pass key below before public access opens."
+        );
+        setEmailCtaText("Claim VIP Access Pass");
+        setEmailCtaUrl("https://artistant.in/claim");
+        setEmailAlias("founder");
+        showToast("Loaded VIP Exclusive Pass Template!");
+        break;
+      case "newsletter":
+        setEmailPillTag("⚡ RELEASE NOTES");
+        setEmailSubject("ArtisTant Digest & Monthly Feature Drop ⚡");
+        setEmailHeader("Fresh Tools & Performance Upgrades");
+        setEmailBody(
+          "Here is your monthly summary of platform updates, new media showreel features, Spotify & Instagram stats integration, and upcoming venue partnerships.\n\nRead the full release note or access your creator suite below."
+        );
+        setEmailCtaText("View Release Notes");
+        setEmailCtaUrl("https://artistant.in");
+        setEmailAlias("info");
+        showToast("Loaded Newsletter & Release Notes Template!");
+        break;
+      case "raw":
+        setEmailPillTag("DIRECT MAIL");
+        setEmailSubject("Quick Note from ArtisTant Team");
+        setEmailHeader("Direct Notification");
+        setEmailBody(
+          "Hello {{name}},\n\nThis is a direct message regarding your account status and upcoming events on ArtisTant.\n\nPlease reply directly to this email or reach out via support if you need any assistance."
+        );
+        setEmailCtaText("Visit Account");
+        setEmailCtaUrl("https://artistant.in");
+        setEmailAlias("official");
+        showToast("Loaded No-Template (Direct Canvas) Mode!");
+        break;
+      case "standard":
+      default:
+        setEmailPillTag("📢 ANNOUNCEMENT");
+        setEmailSubject("Exclusive early access keys for ArtisTant 🚀");
+        setEmailHeader("Your ArtisTant waitlist handle is secured.");
+        setEmailBody(
+          "We are opening the first stage of beta onboarding. Build your verified profile, set up your Bookability Score rating, and secure your event bookings early.\n\nClick the link below to verify your device credentials."
+        );
+        setEmailCtaText("Claim Access Keys");
+        setEmailCtaUrl("https://artistant.in");
+        setEmailAlias("official");
+        showToast("Loaded Standard Broadcast Template!");
+        break;
+    }
+  };
+
+  const handleAddAttachment = () => {
+    if (!newAttTitle.trim() || !newAttUrl.trim()) {
+      showToast("Please provide an attachment title and download URL.");
+      return;
+    }
+    const item: EmailAttachmentItem = {
+      id: `att-${Date.now()}`,
+      title: newAttTitle.trim(),
+      fileType: newAttType || "FILE",
+      size: newAttSize.trim() || "1.2 MB",
+      url: newAttUrl.trim(),
+      description: newAttDesc.trim() || undefined,
+    };
+    setEmailAttachments(prev => [...prev, item]);
+    setNewAttTitle("");
+    setNewAttSize("");
+    setNewAttUrl("");
+    setNewAttDesc("");
+    setShowAddAttachmentModal(false);
+    showToast("Attachment added successfully!");
+  };
+
+  const handleRemoveAttachment = (id?: string) => {
+    setEmailAttachments(prev => prev.filter(att => att.id !== id));
+    showToast("Attachment removed.");
+  };
+
   const loadMigrationCampaignPreset = () => {
-    // Migrated artists are those where user_id starts with 'imported_' and role is artist
     const migrated = registrations.filter(r => r.user_id?.startsWith('imported_') && r.role === 'artist');
     if (migrated.length === 0) {
       showToast("No pending migrated artists found (all profiles claimed or none imported).");
@@ -1074,25 +1303,21 @@ export default function AdminPage() {
     }
 
     setSelectedUserIds(migrated.map(r => r.id));
+    setEmailAudienceMode("selected");
+    setEmailTemplateType("welcome");
+    setEmailPillTag("⚡ ONBOARDING PASS");
     setEmailSubject("You're First in Line: Claim Your ArtisTant Username! 🚀");
     setEmailHeader("Founding Artist Exclusive Onboarding");
     setEmailBody(
-      "As one of our founding artists on the previous waitlist, we wanted to ensure you get VIP treatment.<br><br>" +
-      "You are officially <strong>first in line</strong> for our new exclusive waitlist! We've automatically migrated your profile. Now it's time to secure your unique <strong>@username</strong> before the platform opens to the public.<br><br>" +
-      "Here are the three main pillars of the ArtisTant ecosystem you'll soon experience:<br><br>" +
-      "1. <strong>The Bookability Score™</strong>: A 0–100 rating built from real outcomes on the platform. A credit score for reliability, not vibes.<br><br>" +
-      "2. <strong>GigSafe Escrow</strong>: Clients pay upfront into secure escrow. Money is released to you automatically T+1 after the show ends.<br><br>" +
-      "3. <strong>Prices, In Public</strong>: No \"DM for price.\" Publish packaged pricing, keep your calendar live, and let bookings happen in minutes.<br><br>" +
-      "Plus, you'll get access to these core features:<br><br>" +
-      "• <strong>Your Free Portfolio Website</strong>: Your professional booking identity, housing showreels, riders, and contact parameters.<br>" +
-      "• <strong>Live Calendar & Availability</strong>: Automated calendar management. Clients see open dates instantly.<br>" +
-      "• <strong>Direct 1-on-1 Booking Engine</strong>: 100% direct client-to-artist workflow. No agents, no broker cuts.<br><br>" +
+      "As one of our founding artists on the previous waitlist, we wanted to ensure you get VIP treatment.\n\n" +
+      "You are officially first in line for our new exclusive waitlist! We've automatically migrated your profile. Now it's time to secure your unique @username before the platform opens to the public.\n\n" +
       "Click the button below to head to the platform, authenticate, and officially claim your handle!"
     );
     setEmailCtaText("Claim My Username");
     setEmailCtaUrl("https://artistant.in/claim");
     setEmailAlias("official");
-    showToast(`Preset Loaded! Selected ${migrated.length} migrated artist(s).`);
+    setActiveTab("emails");
+    showToast(`Preset Loaded! Selected ${migrated.length} migrated artist(s) & opened Email Studio.`);
   };
 
   const handleSendEmailBroadcast = async () => {
@@ -1109,7 +1334,7 @@ export default function AdminPage() {
       id: t.id
     }));
 
-    if (!window.confirm(`Initiate mass email broadcast to ${targets.length} waitlisted users?`)) {
+    if (!window.confirm(`Initiate mass email broadcast using template [${emailTemplateType.toUpperCase()}] to ${targets.length} waitlisted users?`)) {
       return;
     }
 
@@ -1123,7 +1348,8 @@ export default function AdminPage() {
 
     log(`Initializing Artistant Campaign Node...`);
     log(`Selected Alias: "${emailAlias}@artistant.in"`);
-    log(`Loaded template layout "artistant-mail-template.html"...`);
+    log(`Selected Template: "${emailTemplateType.toUpperCase()}" (Pill Tag: "${emailPillTag}")`);
+    log(`Attached Resources: ${emailAttachments.length} file(s)`);
     log(`Compiled ${targets.length} target records for broadcast.`);
 
     try {
@@ -1136,12 +1362,16 @@ export default function AdminPage() {
         ctaText: emailCtaText,
         ctaUrl: emailCtaUrl,
         senderAlias: emailAlias,
+        templateType: emailTemplateType,
+        emailHeader: emailHeader,
+        pillTag: emailPillTag,
+        attachments: emailAttachments,
       });
 
       if (res.success) {
         log(`Broadcast Complete. Verification results:`);
         res.details?.forEach((d: any) => {
-          log(` -> ${d.email}: ${d.success ? "DELIVERED SUCCESS" : "FAILED: " + d.error}`);
+          log(` -> ${d.email}: ${d.success ? "DELIVERED SUCCESS" : "FAILED: " + (d.message || d.error)}`);
         });
         log(`Status: ${res.message}`);
         showToast("Mass email broadcast complete!");
@@ -1152,6 +1382,52 @@ export default function AdminPage() {
       log(`Execution crash: ${err.message || err}`);
     } finally {
       setEmailSending(false);
+    }
+  };
+
+  const handleSendTestEmail = async () => {
+    if (!user?.email) {
+      showToast("No logged-in admin email found for test dispatch.");
+      return;
+    }
+
+    setTestEmailSending(true);
+    setShowLogTerminal(true);
+    setEmailLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Dispatching test email preview to admin (${user.email})...`]);
+
+    try {
+      const idToken = await getIdToken();
+      const res = await sendMassEmailAction({
+        idToken,
+        recipients: [{
+          email: user.email,
+          name: user.displayName || "Admin",
+          username: "admin",
+          id: user.uid
+        }],
+        subject: `[TEST PREVIEW] ${emailSubject}`,
+        messageBody: emailBody,
+        ctaText: emailCtaText,
+        ctaUrl: emailCtaUrl,
+        senderAlias: emailAlias,
+        templateType: emailTemplateType,
+        emailHeader: emailHeader,
+        pillTag: emailPillTag,
+        attachments: emailAttachments,
+      });
+
+      if (res.success) {
+        setEmailLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ✅ Test email successfully delivered to ${user.email}!`]);
+        showToast(`Test email dispatched to ${user.email}`);
+      } else {
+        setEmailLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ❌ Test email failed: ${res.message}`]);
+        showToast(`Test email error: ${res.message}`);
+      }
+    } catch (err: any) {
+      setEmailLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ❌ Test email exception: ${err?.message || err}`]);
+      showToast("Failed to send test email.");
+    } finally {
+      setTestEmailSending(false);
     }
   };
 
@@ -1455,20 +1731,12 @@ export default function AdminPage() {
         }} />
       </div>
 
-      {/* Success Toast */}
-      {successToast && (
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} 
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 20 }}
-          className="fixed bottom-8 right-8 z-50 bg-bg-card border border-line-soft text-ink text-sm px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3"
-        >
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-bg-soft border border-line-soft">
-            <CheckCircle2 className="w-4 h-4 text-brand" />
-          </div>
-          <span>{successToast}</span>
-        </motion.div>
-      )}
+      {/* Redesigned Notification Toast */}
+      <ToastNotification 
+        message={successToast}
+        onClose={() => setSuccessToast(null)}
+        position="top-right"
+      />
 
       {/* ===================================================================
           APP SHELL — SIDEBAR + CONTENT
@@ -1484,12 +1752,16 @@ export default function AdminPage() {
         )}
 
         {/* ─── Sidebar ─── */}
+        {/* ─── Apple Liquid Glass Sidebar Navigation Panel ─── */}
         <motion.aside 
           initial={{ x: -300, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className={`fixed md:relative top-0 bottom-0 left-0 w-[290px] flex flex-col flex-shrink-0 z-40 transition-transform duration-300 md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} md:my-5 md:ml-5 md:rounded-[2rem] border-r md:border border-line-soft bg-bg-card shadow-xl md:shadow-2xl dark:shadow-none`}
+          className={`fixed md:relative top-0 bottom-0 left-0 w-[290px] flex flex-col flex-shrink-0 z-40 transition-transform duration-300 md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} md:my-5 md:ml-5 md:rounded-[2.4rem] border-r md:border border-white/20 dark:border-white/10 bg-white/[0.04] dark:bg-[#0A0B12]/75 backdrop-blur-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_25px_60px_rgba(0,0,0,0.5)] overflow-hidden`}
         >
+          {/* Top Liquid Specular Light Highlight */}
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent pointer-events-none" />
+
           {/* Brand Logo & Console Tag */}
           <div className="px-8 pt-8 pb-5">
             <a href="/" target="_blank" className="inline-block group">
@@ -1504,68 +1776,74 @@ export default function AdminPage() {
             </a>
           </div>
 
-          <div className="h-px mx-6 bg-gradient-to-r from-transparent via-line-soft to-transparent" />
+          <div className="h-px mx-6 bg-gradient-to-r from-transparent via-white/20 dark:via-white/10 to-transparent" />
 
-          {/* Navigation Links */}
+          {/* Navigation Links Menu */}
           <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-1.5 relative text-left">
-            <p className="text-[9px] font-mono font-bold tracking-[0.18em] uppercase px-4 pb-2 text-ink-3">
+            <p className="text-[9px] font-mono font-bold tracking-[0.18em] uppercase px-4 pb-2 text-ink-3 dark:text-slate-400">
               Management Suite
             </p>
             
-            <div className="space-y-1 relative">
+            <div className="space-y-1.5 relative">
               {([
-                { id: "registrations", label: "Waitlist", icon: Users, accent: 'var(--brand-1)', count: null },
+                { id: "overview", label: "Executive Overview", icon: BarChart3, accent: '#00F2FE', count: null },
+                { id: "registrations", label: "Waitlist Directory", icon: Users, accent: 'var(--brand-1)', count: null },
+                { id: "emails", label: "Broadcast Studio", icon: Mail, accent: '#7C5CFF', count: null },
                 { id: "requests", label: "Booking Requests", icon: CalendarIcon, accent: '#F25A2B', count: bookingRequests.filter(r => r.status === 'pending').length },
                 { id: "leaderboards", label: "Leaderboards", icon: Trophy, accent: 'var(--brand-2)', count: null },
                 { id: "members", label: "Visitor Activity", icon: Eye, accent: 'var(--brand-3)', count: null },
                 { id: "admins", label: "Manage Admins", icon: Settings, accent: 'var(--brand-4)', count: null },
-              ] as const).map(item => (
-                <button
-                  key={item.id}
-                  onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
-                  className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl transition-all text-xs font-semibold relative group overflow-hidden cursor-pointer"
-                >
-                  {/* Sliding active pill indicator */}
-                  {activeTab === item.id && (
-                    <motion.div
-                      layoutId="activeSidebarTab"
-                      className="absolute inset-0 rounded-xl bg-bg-soft dark:bg-white/[0.03] border border-line-soft"
-                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                      style={{
-                        boxShadow: `0 4px 15px -4px color-mix(in srgb, ${item.accent} 20%, transparent)`
-                      }}
-                    />
-                  )}
-                  
-                  <div className="flex items-center gap-3.5 z-10">
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center transition-all border"
-                      style={{
-                        backgroundColor: activeTab === item.id ? item.accent : 'var(--bg-soft)',
-                        borderColor: activeTab === item.id ? 'transparent' : 'var(--line-soft)'
-                      }}
-                    >
-                      <item.icon className="w-3.5 h-3.5 transition-transform group-hover:scale-105 duration-300" style={{ color: activeTab === item.id ? '#ffffff' : 'var(--ink-3)' }} />
+              ] as const).map(item => {
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl transition-all duration-300 text-xs font-semibold relative group overflow-hidden cursor-pointer backdrop-blur-xl ${
+                      isActive
+                        ? "bg-white/15 dark:bg-white/[0.08] text-ink dark:text-white border border-white/20 dark:border-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_8px_20px_rgba(0,0,0,0.25)] font-bold scale-[1.01]"
+                        : "text-ink-2 dark:text-slate-400 border border-transparent hover:border-white/10 hover:bg-white/10 dark:hover:bg-white/[0.04] hover:text-ink dark:hover:text-white"
+                    }`}
+                  >
+                    {isActive && (
+                      <motion.div
+                        layoutId="activeSidebarTab"
+                        className="absolute inset-0 rounded-2xl bg-gradient-to-r from-white/10 to-transparent pointer-events-none"
+                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                      />
+                    )}
+                    
+                    <div className="flex items-center gap-3.5 z-10">
+                      <div className="w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-300 border backdrop-blur-md shadow-sm"
+                        style={{
+                          backgroundColor: isActive ? `${item.accent}25` : 'rgba(255,255,255,0.05)',
+                          borderColor: isActive ? `${item.accent}50` : 'rgba(255,255,255,0.1)',
+                          color: isActive ? item.accent : 'var(--ink-3)'
+                        }}
+                      >
+                        <item.icon className="w-4 h-4 transition-transform group-hover:scale-110 duration-300" style={{ color: isActive ? item.accent : undefined }} />
+                      </div>
+                      <span className={`font-semibold transition-colors duration-200 ${isActive ? "text-ink dark:text-white font-bold" : "text-ink-2 dark:text-slate-400 group-hover:text-ink dark:group-hover:text-white"}`}>
+                        {item.label}
+                      </span>
                     </div>
-                    <span className={`font-semibold transition-colors duration-200 ${activeTab === item.id ? "text-ink font-bold" : "text-ink-2 group-hover:text-ink"}`}>
-                      {item.label}
-                    </span>
-                  </div>
 
-                  {item.count !== null && item.count > 0 && (
-                    <span className="z-10 px-2 py-0.5 rounded-full text-[9px] font-mono font-extrabold bg-[#F25A2B] text-white shadow-sm">
-                      {item.count}
-                    </span>
-                  )}
-                </button>
-              ))}
+                    {item.count !== null && item.count > 0 && (
+                      <span className="z-10 px-2.5 py-0.5 rounded-full text-[9px] font-mono font-extrabold bg-[#F25A2B] text-white shadow-[0_0_10px_rgba(242,90,43,0.4)]">
+                        {item.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </nav>
 
-          {/* Console Profile & System Health readout */}
-          <div className="p-4 border-t border-line-soft">
-            <div className="bg-bg-soft/50 border border-line-soft rounded-2xl p-4 backdrop-blur-md">
+          {/* Console Profile & System Health readout (Apple Liquid Glass Card) */}
+          <div className="p-4 border-t border-white/15 dark:border-white/10">
+            <div className="bg-white/10 dark:bg-white/[0.04] border border-white/20 dark:border-white/10 rounded-3xl p-4 backdrop-blur-2xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-mono font-bold text-sm shrink-0 bg-gradient-to-br from-[#7C5CFF] to-[#D4567A] shadow-[0_4px_12px_rgba(124,92,255,0.25)] border border-white/10 relative overflow-hidden">
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-mono font-bold text-sm shrink-0 bg-gradient-to-br from-[#7C5CFF] to-[#D4567A] shadow-[0_4px_12px_rgba(124,92,255,0.3)] border border-white/20 relative overflow-hidden">
                   {user?.photoURL ? (
                     <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
                   ) : (
@@ -1573,20 +1851,20 @@ export default function AdminPage() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0 text-left">
-                  <p className="text-xs font-bold text-ink truncate" title={userDisplayName}>{userDisplayName}</p>
-                  <p className="text-[9px] font-mono tracking-[0.1em] uppercase mt-0.5 text-ink-3 font-bold">{userRole || "Administrator"}</p>
+                  <p className="text-xs font-bold text-ink dark:text-white truncate" title={userDisplayName}>{userDisplayName}</p>
+                  <p className="text-[9px] font-mono tracking-[0.1em] uppercase mt-0.5 text-ink-3 dark:text-slate-400 font-bold">{userRole || "Administrator"}</p>
                 </div>
-                <button onClick={handleLogout} className="text-ink-3 hover:text-red-400 transition-colors p-1.5 cursor-pointer rounded-lg hover:bg-bg-soft/80" title="Sign Out">
+                <button onClick={handleLogout} className="text-ink-3 dark:text-slate-400 hover:text-red-400 transition-colors p-2 cursor-pointer rounded-xl hover:bg-white/15 dark:hover:bg-white/10" title="Sign Out">
                   <LogOut className="w-3.5 h-3.5" />
                 </button>
               </div>
 
-              <div className="mt-3 pt-3 border-t border-line-soft flex items-center justify-between text-[10px] font-mono">
+              <div className="mt-3 pt-3 border-t border-white/15 dark:border-white/10 flex items-center justify-between text-[10px] font-mono">
                 <div className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
-                  <span className="text-ink-2 font-bold uppercase tracking-wider">Database Connection</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.6)] animate-pulse" />
+                  <span className="text-ink-2 dark:text-slate-300 font-bold uppercase tracking-wider">Database Connection</span>
                 </div>
-                <span className="text-emerald-600 dark:text-emerald-400 font-bold uppercase">Active</span>
+                <span className="text-emerald-500 dark:text-emerald-400 font-bold uppercase">Active</span>
               </div>
             </div>
           </div>
@@ -1594,52 +1872,68 @@ export default function AdminPage() {
 
         {/* ─── Main Content Canvas ─── */}
         <main className="flex-1 overflow-y-auto relative scroll-smooth flex flex-col h-screen">
-          {/* Premium Header */}
-          <header className="sticky top-0 z-30 backdrop-blur-xl border-b border-line-soft px-6 md:px-10 py-5 flex items-center justify-between" style={{ background: 'transparent' }}>
-            <div className="flex items-center gap-4">
-              <button 
-                onClick={() => setSidebarOpen(true)}
-                className="md:hidden p-2.5 rounded-xl border border-line-soft bg-bg-card/50 text-ink-2 hover:text-ink cursor-pointer hover:bg-bg-soft transition-all"
-                aria-label="Open sidebar"
-              >
-                <Menu className="w-4 h-4" />
-              </button>
-              
-              <div className="flex flex-col text-left">
-                <span className="text-[9px] font-mono font-bold tracking-[0.25em] text-[#7C5CFF] uppercase">Admin Console</span>
-                <h2 className="text-lg font-display font-bold tracking-tight text-ink uppercase mt-0.5" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
-                  {activeTab === "registrations" && "Waitlist Directory"}
-                  {activeTab === "requests" && "Client Booking Requests"}
-                  {activeTab === "leaderboards" && "Leaderboard Rankings"}
-                  {activeTab === "members" && "Visitor Activity Logs"}
-                  {activeTab === "admins" && "System Administrators"}
-                </h2>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              {mounted && (
-                <button
-                  onClick={() => setTheme(resolvedTheme === "light" ? "dark" : "light")}
-                  className="p-2.5 rounded-xl border border-line-soft bg-bg-card/30 hover:bg-bg-soft text-ink-2 hover:text-ink cursor-pointer transition-all"
-                  aria-label="Toggle Theme"
-                  title={resolvedTheme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
+          {/* Apple Liquid Glass Floating Navbar Capsule */}
+          <header className="sticky top-0 z-[45] px-4 md:px-8 pt-4 pb-2">
+            <div className="mx-auto w-full max-w-[1400px] navbar-liquid-glass rounded-3xl md:rounded-full px-5 py-3 md:px-7 md:py-3.5 flex items-center justify-between shadow-2xl transition-all duration-300">
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => setSidebarOpen(true)}
+                  className="md:hidden p-2.5 rounded-2xl border border-white/20 dark:border-white/10 bg-white/10 dark:bg-white/5 text-ink-2 dark:text-slate-300 hover:text-ink dark:hover:text-white cursor-pointer hover:bg-white/20 dark:hover:bg-white/10 transition-all backdrop-blur-xl"
+                  aria-label="Open sidebar"
                 >
-                  {resolvedTheme === "light" ? (
-                    <Moon className="w-4 h-4" />
-                  ) : (
-                    <Sun className="w-4 h-4" />
-                  )}
+                  <Menu className="w-4 h-4" />
                 </button>
-              )}
-              
-              <a 
-                href="/" 
-                target="_blank" 
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-[#7C5CFF]/30 bg-[#7C5CFF]/10 hover:bg-[#7C5CFF]/20 text-[#7C5CFF] hover:text-[#7C5CFF] dark:hover:text-white text-xs font-mono font-bold uppercase tracking-wider transition-all duration-300 shadow-sm"
-              >
-                Launch Portal <ArrowUpRight className="w-3.5 h-3.5" />
-              </a>
+                
+                <div className="flex flex-col text-left">
+                  <span className="text-[9px] font-mono font-bold tracking-[0.25em] text-[#7C5CFF] uppercase">Admin Console</span>
+                  <h2 className="text-base md:text-lg font-display font-bold tracking-tight text-ink dark:text-white uppercase mt-0.5" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
+                    {activeTab === "overview" && "Executive Overview & Analytics"}
+                    {activeTab === "registrations" && "Waitlist Directory"}
+                    {activeTab === "emails" && "Email Broadcast Studio"}
+                    {activeTab === "requests" && "Client Booking Requests Ops"}
+                    {activeTab === "leaderboards" && "Leaderboard Rankings"}
+                    {activeTab === "members" && "Visitor Activity Logs"}
+                    {activeTab === "admins" && "System Administrators"}
+                  </h2>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowCommandPalette(true)}
+                  className="flex items-center gap-2.5 px-4 py-2 rounded-full border border-white/20 dark:border-white/10 bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 text-ink-2 dark:text-slate-300 hover:text-ink dark:hover:text-white text-xs font-mono transition-all duration-300 cursor-pointer shadow-sm backdrop-blur-xl"
+                  title="Quick Search & Command Palette (Cmd+K)"
+                >
+                  <Search className="w-3.5 h-3.5 text-[#7C5CFF]" />
+                  <span className="hidden sm:inline">Search...</span>
+                  <kbd className="hidden sm:inline-flex items-center gap-0.5 px-2 py-0.5 rounded-lg bg-white/15 dark:bg-white/10 border border-white/20 dark:border-white/15 text-[10px] text-ink-3 dark:text-slate-300 font-mono font-bold shadow-inner">
+                    ⌘K
+                  </kbd>
+                </button>
+
+                {mounted && (
+                  <button
+                    onClick={() => setTheme(resolvedTheme === "light" ? "dark" : "light")}
+                    className="p-2.5 rounded-full border border-white/20 dark:border-white/10 bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 text-ink-2 dark:text-slate-300 hover:text-ink dark:hover:text-white cursor-pointer transition-all duration-300 backdrop-blur-xl"
+                    aria-label="Toggle Theme"
+                    title={resolvedTheme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
+                  >
+                    {resolvedTheme === "light" ? (
+                      <Moon className="w-4 h-4" />
+                    ) : (
+                      <Sun className="w-4 h-4" />
+                    )}
+                  </button>
+                )}
+                
+                <a 
+                  href="/" 
+                  target="_blank" 
+                  className="flex items-center gap-2 px-5 py-2 rounded-full border border-white/20 dark:border-white/15 bg-gradient-to-r from-[#7C5CFF] to-[#6342E8] hover:opacity-95 text-white text-xs font-mono font-bold uppercase tracking-wider transition-all duration-300 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_8px_20px_rgba(124,92,255,0.3)] backdrop-blur-xl"
+                >
+                  Launch Portal <ArrowUpRight className="w-3.5 h-3.5" />
+                </a>
+              </div>
             </div>
           </header>
 
@@ -1653,6 +1947,196 @@ export default function AdminPage() {
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
               >
+                {/* ===================================================================
+                    TAB 0: EXECUTIVE OVERVIEW & ANALYTICS
+                    =================================================================== */}
+                {activeTab === "overview" && (
+                  <div className="space-y-8 animate-in fade-in duration-200 text-left">
+                    {/* Real-time KPI Ribbon */}
+                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6">
+                      <GlowingAdminCard idx={0} className="bg-bg-card border border-line-soft rounded-3xl p-6 md:p-7 backdrop-blur-xl relative overflow-hidden">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-mono font-bold tracking-[0.15em] uppercase text-ink-3">Total Waitlist</span>
+                          <span className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"><Users className="w-4 h-4" /></span>
+                        </div>
+                        <div className="mt-3">
+                          <span className="text-3xl font-display font-black tracking-tight text-ink">{totalCount}</span>
+                          <p className="text-[10px] font-mono text-emerald-400 mt-1 flex items-center gap-1 font-bold">
+                            <Zap className="w-3 h-3" /> Live Network Total
+                          </p>
+                        </div>
+                      </GlowingAdminCard>
+
+                      <GlowingAdminCard idx={1} className="bg-bg-card border border-line-soft rounded-3xl p-6 md:p-7 backdrop-blur-xl relative overflow-hidden">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-mono font-bold tracking-[0.15em] uppercase text-ink-3">Verified Creators</span>
+                          <span className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20"><Award className="w-4 h-4" /></span>
+                        </div>
+                        <div className="mt-3">
+                          <span className="text-3xl font-display font-black tracking-tight text-ink">{verifiedCount}</span>
+                          <p className="text-[10px] font-mono text-purple-400 mt-1 font-bold">
+                            {totalCount > 0 ? `${Math.round((verifiedCount / totalCount) * 100)}% verified ratio` : '0%'}
+                          </p>
+                        </div>
+                      </GlowingAdminCard>
+
+                      <GlowingAdminCard idx={2} className="bg-bg-card border border-line-soft rounded-3xl p-6 md:p-7 backdrop-blur-xl relative overflow-hidden">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-mono font-bold tracking-[0.15em] uppercase text-ink-3">Booking Inquiries</span>
+                          <span className="p-2 rounded-xl bg-[#F25A2B]/10 text-[#F25A2B] border border-[#F25A2B]/20"><CalendarIcon className="w-4 h-4" /></span>
+                        </div>
+                        <div className="mt-3">
+                          <span className="text-3xl font-display font-black tracking-tight text-ink">{bookingRequests.length}</span>
+                          <p className="text-[10px] font-mono text-[#F25A2B] mt-1 font-bold">
+                            {bookingRequests.filter(r => r.status === 'pending').length} pending action
+                          </p>
+                        </div>
+                      </GlowingAdminCard>
+
+                      <GlowingAdminCard idx={3} className="bg-bg-card border border-line-soft rounded-3xl p-6 md:p-7 backdrop-blur-xl relative overflow-hidden">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-mono font-bold tracking-[0.15em] uppercase text-ink-3">Broadcast Reach</span>
+                          <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><Mail className="w-4 h-4" /></span>
+                        </div>
+                        <div className="mt-3">
+                          <span className="text-3xl font-display font-black tracking-tight text-ink">{totalCount}</span>
+                          <p className="text-[10px] font-mono text-emerald-400 mt-1 font-bold">
+                            100% deliverable target
+                          </p>
+                        </div>
+                      </GlowingAdminCard>
+
+                      <GlowingAdminCard idx={4} className="bg-bg-card border border-line-soft rounded-3xl p-6 md:p-7 backdrop-blur-xl relative overflow-hidden col-span-2 lg:col-span-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-mono font-bold tracking-[0.15em] uppercase text-ink-3">Traffic Activity</span>
+                          <span className="p-2 rounded-xl bg-pink-500/10 text-pink-400 border border-pink-500/20"><Activity className="w-4 h-4" /></span>
+                        </div>
+                        <div className="mt-3">
+                          <span className="text-3xl font-display font-black tracking-tight text-ink">{activityLogs.length}</span>
+                          <p className="text-[10px] font-mono text-pink-400 mt-1 font-bold">
+                            Real-time event logs
+                          </p>
+                        </div>
+                      </GlowingAdminCard>
+                    </div>
+
+                    {/* Operations Launchpad (3 Equal Full-Width Cards) */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+                      <button
+                        onClick={() => setActiveTab("emails")}
+                        className="p-5 rounded-2xl bg-gradient-to-br from-[#7C5CFF]/10 to-[#7C5CFF]/5 border border-[#7C5CFF]/20 hover:border-[#7C5CFF]/40 text-left transition-all group cursor-pointer shadow-sm"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="w-9 h-9 rounded-xl bg-[#7C5CFF] text-white flex items-center justify-center shadow-md">
+                            <Mail className="w-4 h-4" />
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-[#7C5CFF] group-hover:translate-x-1 transition-transform" />
+                        </div>
+                        <h4 className="font-bold text-sm text-ink">Broadcast Studio</h4>
+                        <p className="text-[11px] text-ink-3 mt-1">Dispatch rich HTML emails to waitlist members.</p>
+                      </button>
+
+                      <button
+                        onClick={() => setActiveTab("requests")}
+                        className="p-5 rounded-2xl bg-gradient-to-br from-[#F25A2B]/10 to-[#F25A2B]/5 border border-[#F25A2B]/20 hover:border-[#F25A2B]/40 text-left transition-all group cursor-pointer shadow-sm"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="w-9 h-9 rounded-xl bg-[#F25A2B] text-white flex items-center justify-center shadow-md">
+                            <CalendarIcon className="w-4 h-4" />
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-[#F25A2B] group-hover:translate-x-1 transition-transform" />
+                        </div>
+                        <h4 className="font-bold text-sm text-ink">Booking Requests Ops</h4>
+                        <p className="text-[11px] text-ink-3 mt-1">Manage client gig inquiries in Kanban view.</p>
+                      </button>
+
+                      <button
+                        onClick={() => setActiveTab("registrations")}
+                        className="p-5 rounded-2xl bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 border border-cyan-500/20 hover:border-cyan-500/40 text-left transition-all group cursor-pointer shadow-sm"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="w-9 h-9 rounded-xl bg-cyan-500 text-white flex items-center justify-center shadow-md">
+                            <Users className="w-4 h-4" />
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-cyan-500 group-hover:translate-x-1 transition-transform" />
+                        </div>
+                        <h4 className="font-bold text-sm text-ink">Directory & Bulk Ops</h4>
+                        <p className="text-[11px] text-ink-3 mt-1">Batch verify, override position, or export data.</p>
+                      </button>
+                    </div>
+
+                    {/* Ecosystem & Role Analytics */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      <div className="lg:col-span-2 bg-bg-card border border-line-soft rounded-3xl p-6 md:p-8 backdrop-blur-xl space-y-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="text-base font-bold text-ink">Ecosystem Role Breakdown</h3>
+                            <p className="text-xs text-ink-3 mt-0.5">Distribution of waitlist members by self-identified role</p>
+                          </div>
+                          <span className="px-3 py-1 rounded-full text-[10px] font-mono font-bold bg-bg-soft text-ink-2 border border-line-soft">
+                            {totalCount} Total Members
+                          </span>
+                        </div>
+
+                        <div className="space-y-4">
+                          {[
+                            { label: "Performing Artists", count: registrations.filter(r => r.role === 'artist').length, color: "#7C5CFF", pct: totalCount > 0 ? Math.round((registrations.filter(r => r.role === 'artist').length / totalCount) * 100) : 0 },
+                            { label: "Venues & Clubs", count: registrations.filter(r => r.role === 'venue').length, color: "#F25A2B", pct: totalCount > 0 ? Math.round((registrations.filter(r => r.role === 'venue').length / totalCount) * 100) : 0 },
+                            { label: "Vendors & Tech Providers", count: registrations.filter(r => r.role === 'vendor').length, color: "#00F2FE", pct: totalCount > 0 ? Math.round((registrations.filter(r => r.role === 'vendor').length / totalCount) * 100) : 0 },
+                            { label: "Fans & Event Enthusiasts", count: registrations.filter(r => r.role === 'fan').length, color: "#E1306C", pct: totalCount > 0 ? Math.round((registrations.filter(r => r.role === 'fan').length / totalCount) * 100) : 0 },
+                          ].map(item => (
+                            <div key={item.label} className="space-y-1.5">
+                              <div className="flex items-center justify-between text-xs font-mono">
+                                <span className="text-ink font-bold flex items-center gap-2">
+                                  <span className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
+                                  {item.label}
+                                </span>
+                                <span className="text-ink-2 font-bold">{item.count} ({item.pct}%)</span>
+                              </div>
+                              <div className="w-full h-2.5 rounded-full bg-bg-soft overflow-hidden p-0.5 border border-line-soft">
+                                <div 
+                                  className="h-full rounded-full transition-all duration-700" 
+                                  style={{ width: `${Math.max(item.pct, 4)}%`, background: item.color }} 
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="bg-bg-card border border-line-soft rounded-3xl p-6 md:p-8 backdrop-blur-xl space-y-5">
+                        <div>
+                          <h3 className="text-base font-bold text-ink">System Diagnostics</h3>
+                          <p className="text-xs text-ink-3 mt-0.5">Live platform state</p>
+                        </div>
+
+                        <div className="space-y-3 font-mono text-xs">
+                          <div className="p-3.5 rounded-2xl bg-bg-soft/50 border border-line-soft flex items-center justify-between">
+                            <span className="text-ink-3">Database Mode</span>
+                            <span className={`font-bold ${isLiveMode ? 'text-emerald-400' : 'text-amber-400'}`}>
+                              {isLiveMode ? 'Supabase Live' : 'Sandbox Fallback'}
+                            </span>
+                          </div>
+
+                          <div className="p-3.5 rounded-2xl bg-bg-soft/50 border border-line-soft flex items-center justify-between">
+                            <span className="text-ink-3">Auto-Sync Polling</span>
+                            <span className="text-emerald-400 font-bold flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Every 10s
+                            </span>
+                          </div>
+
+                          <div className="p-3.5 rounded-2xl bg-bg-soft/50 border border-line-soft flex items-center justify-between">
+                            <span className="text-ink-3">Admin Session</span>
+                            <span className="text-purple-400 font-bold truncate max-w-[120px]">
+                              {user?.email || "Authorized"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* ===================================================================
                     TAB 1: WAITLIST COMMAND CENTER
                     =================================================================== */}
@@ -1697,9 +2181,6 @@ export default function AdminPage() {
                        >
                          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                            <div className="flex items-center gap-3">
-                             <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-emerald-500/10 dark:bg-[#22C55E]/10 border border-emerald-500/20 dark:border-[#22C55E]/20">
-                               <Cpu className="w-4 h-4 text-[#22C55E]" />
-                             </div>
                              <div>
                                <h4 className="font-mono text-xs font-bold text-[#22C55E] uppercase tracking-wider flex items-center gap-1.5">
                                  Suggested Approvals
@@ -1784,23 +2265,25 @@ export default function AdminPage() {
                           <option value="pending">Pending</option>
                           <option value="blocked">Blocked</option>
                         </select>
-
-                        {/* Broadcast composer toggle button */}
+                                    {/* Broadcast launcher button -> Switches to Email Studio tab */}
                         <button
-                          onClick={() => setShowEmailComposer(!showEmailComposer)}
+                          onClick={() => {
+                            if (selectedUserIds.length > 0) {
+                              setEmailAudienceMode("selected");
+                            } else {
+                              setEmailAudienceMode("filtered");
+                            }
+                            setActiveTab("emails");
+                          }}
                           className="w-full sm:w-auto py-2.5 px-4.5 rounded-xl border text-[11px] font-mono font-bold uppercase tracking-[0.06em] flex items-center justify-center gap-2 cursor-pointer transition-all duration-300"
-                          style={showEmailComposer ? {
+                          style={{
                             background: 'rgba(124, 92, 255, 0.1)',
                             color: '#7C5CFF',
                             borderColor: 'rgba(124, 92, 255, 0.3)',
-                          } : {
-                            background: 'var(--bg-soft)',
-                            color: 'var(--ink-2)',
-                            borderColor: 'var(--line-soft)',
                           }}
                         >
                           <Mail className="w-3.5 h-3.5" />
-                          Broadcast
+                          Email Studio
                           {selectedUserIds.length > 0 && (
                             <span className="bg-[#7C5CFF] text-white px-1.5 py-0.5 rounded-full text-[8px] font-mono leading-none">
                               {selectedUserIds.length}
@@ -1809,265 +2292,6 @@ export default function AdminPage() {
                         </button>
                       </div>
                     </div>
-
-                    {/* Collapsible Email Composer */}
-                    <AnimatePresence>
-                      {showEmailComposer && (
-                        <motion.div 
-                          initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-                          animate={{ opacity: 1, height: "auto", marginBottom: 24 }}
-                          exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                          transition={{ duration: 0.3 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="bg-bg-card border border-line-soft p-6 md:p-8 rounded-[2rem] backdrop-blur-md shadow-2xl relative overflow-hidden text-left mt-6">
-                            <div className="flex justify-between items-center border-b border-line-soft pb-4 mb-6">
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[#7C5CFF]/10 border border-[#7C5CFF]/20">
-                                  <Mail className="w-4 h-4 text-[#7C5CFF]" />
-                                </div>
-                                <div>
-                                  <h3 className="font-mono text-xs font-bold text-ink uppercase tracking-wider">Campaign Email Composer</h3>
-                                  <p className="text-[10px] text-ink-3 uppercase font-mono tracking-wider mt-0.5">
-                                    {selectedUserIds.length > 0 
-                                      ? `Target: ${selectedUserIds.length} Selected Artist(s)` 
-                                      : `Target: All Registered Users (${filteredRegistrations.filter(r => !r.is_blocked).length})`
-                                    }
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={loadMigrationCampaignPreset}
-                                  className="text-[#7C5CFF] hover:text-white font-mono text-[9px] md:text-[10px] uppercase font-bold tracking-wider cursor-pointer bg-[#7C5CFF]/10 border border-[#7C5CFF]/20 hover:bg-[#7C5CFF] px-3.5 py-1.5 rounded-lg transition-all"
-                                >
-                                  ⚡ Load Onboarding Preset
-                                </button>
-                                <button 
-                                  onClick={() => setShowEmailComposer(false)}
-                                  className="text-ink-3 hover:text-ink font-mono text-[10px] uppercase font-bold tracking-wider cursor-pointer bg-bg-soft/50 border border-line-soft px-3 py-1.5 rounded-lg hover:bg-bg-soft"
-                                >
-                                  Close
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                              {/* Composer Fields */}
-                              <div className="lg:col-span-7 space-y-5">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                  <div>
-                                    <label className="block text-[9px] font-mono font-bold uppercase text-ink-3 tracking-wider mb-2">Sender Alias</label>
-                                    <select
-                                      value={emailAlias}
-                                      onChange={(e) => setEmailAlias(e.target.value)}
-                                      className="w-full bg-bg-soft/30 border border-line-soft rounded-xl px-3.5 py-2.5 text-xs text-ink focus:outline-none focus:border-[#7C5CFF] cursor-pointer"
-                                    >
-                                      <option value="official">ArtisTant Official (info@artistant.in)</option>
-                                      <option value="support">ArtisTant Support (support@artistant.in)</option>
-                                      <option value="founder">ArtisTant Founder (founder@artistant.in)</option>
-                                    </select>
-                                  </div>
-                                  <div>
-                                    <label className="block text-[9px] font-mono font-bold uppercase text-ink-3 tracking-wider mb-2">Email Subject</label>
-                                    <input
-                                      type="text"
-                                      value={emailSubject}
-                                      onChange={(e) => setEmailSubject(e.target.value)}
-                                      className="w-full bg-bg-soft/30 border border-line-soft rounded-xl px-3.5 py-2.5 text-xs text-ink focus:outline-none focus:border-[#7C5CFF] transition-all"
-                                    />
-                                  </div>
-                                </div>
-
-                                <div>
-                                  <label className="block text-[9px] font-mono font-bold uppercase text-ink-3 tracking-wider mb-2">Email Heading (Pill Tag Header)</label>
-                                  <input
-                                    type="text"
-                                    value={emailHeader}
-                                    onChange={(e) => setEmailHeader(e.target.value)}
-                                    className="w-full bg-bg-soft/30 border border-line-soft rounded-xl px-3.5 py-2.5 text-xs text-ink focus:outline-none focus:border-[#7C5CFF] transition-all"
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="block text-[9px] font-mono font-bold uppercase text-ink-3 tracking-wider mb-2">Message Body (HTML supported)</label>
-                                  <textarea
-                                    value={emailBody}
-                                    onChange={(e) => setEmailBody(e.target.value)}
-                                    rows={8}
-                                    className="w-full bg-bg-soft/30 border border-line-soft rounded-xl px-3.5 py-2.5 text-xs text-ink focus:outline-none focus:border-[#7C5CFF] transition-all resize-none"
-                                  />
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                  <div>
-                                    <label className="block text-[9px] font-mono font-bold uppercase text-ink-3 tracking-wider mb-2">CTA Link Text</label>
-                                    <input
-                                      type="text"
-                                      value={emailCtaText}
-                                      onChange={(e) => setEmailCtaText(e.target.value)}
-                                      className="w-full bg-bg-soft/30 border border-line-soft rounded-xl px-3.5 py-2.5 text-xs text-ink focus:outline-none focus:border-[#7C5CFF] transition-all"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="block text-[9px] font-mono font-bold uppercase text-ink-3 tracking-wider mb-2">CTA Destination URL</label>
-                                    <input
-                                      type="text"
-                                      value={emailCtaUrl}
-                                      onChange={(e) => setEmailCtaUrl(e.target.value)}
-                                      className="w-full bg-bg-soft/30 border border-line-soft rounded-xl px-3.5 py-2.5 text-xs text-ink focus:outline-none focus:border-[#7C5CFF] transition-all font-mono"
-                                    />
-                                  </div>
-                                </div>
-
-                                <div className="p-4 bg-bg-soft/20 border border-line-soft rounded-xl flex items-center justify-between">
-                                  <span className="text-[10px] font-mono text-ink-2">
-                                    Targets: <strong className="text-ink">{getSelectedRecipientsList().filter(r => !r.is_blocked).length}</strong> recipient(s) selected
-                                  </span>
-                                  <button
-                                    onClick={handleSendEmailBroadcast}
-                                    disabled={emailSending}
-                                    className="py-2.5 px-5 rounded-xl text-[10px] font-mono font-bold tracking-wider uppercase flex items-center gap-2 text-white bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] hover:opacity-90 disabled:opacity-50 transition-all cursor-pointer shadow-md"
-                                  >
-                                    {emailSending ? (
-                                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                                    ) : (
-                                      <Send className="w-3.5 h-3.5" />
-                                    )}
-                                    Send Broadcast
-                                  </button>
-                                </div>
-                              </div>
-
-                              {/* Live Email Preview */}
-                              <div className="lg:col-span-5 space-y-4">
-                                <div className="flex justify-between items-center">
-                                  <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-ink-3">Live Brand Preview</span>
-                                  <div className="flex rounded-lg p-1 bg-bg-soft/40 border border-line-soft">
-                                    <button
-                                      onClick={() => setEmailPreviewMode("mobile")}
-                                      className={`p-1.5 rounded transition-all cursor-pointer ${
-                                        emailPreviewMode === "mobile" ? "bg-bg-soft text-[#7C5CFF] border border-line-soft" : "text-ink-3 hover:text-ink"
-                                      }`}
-                                      title="Mobile View"
-                                    >
-                                      <Smartphone className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                      onClick={() => setEmailPreviewMode("desktop")}
-                                      className={`p-1.5 rounded transition-all cursor-pointer ${
-                                        emailPreviewMode === "desktop" ? "bg-bg-soft text-[#7C5CFF] border border-line-soft" : "text-ink-3 hover:text-ink"
-                                      }`}
-                                      title="Desktop View"
-                                    >
-                                      <Monitor className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                </div>
-
-                                <div className="flex justify-center bg-bg-soft/40 border border-line-soft p-4 rounded-2xl overflow-y-auto max-h-[440px] shadow-inner">
-                                  <div 
-                                    className={`bg-white text-slate-800 text-left rounded-2xl overflow-hidden border border-slate-200 transition-all duration-300 relative shadow-lg ${
-                                      emailPreviewMode === "mobile" ? "w-[280px]" : "w-full"
-                                    }`}
-                                    style={{
-                                      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-                                    }}
-                                  >
-                                    {/* Branded Dark Header */}
-                                    <div className="bg-[#0b1120] px-5 py-4 flex items-center justify-between">
-                                      <img 
-                                        src="/logo_wordmark_flat.png" 
-                                        alt="Artistant" 
-                                        className="h-[16px] w-auto object-contain"
-                                        style={{ filter: 'none' }}
-                                      />
-                                    </div>
-                                    
-                                    {/* Top gradient line */}
-                                    <div className="h-1 bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF]" />
-                                    
-                                    {/* Content Area */}
-                                    <div className="p-6 bg-white space-y-4">
-                                      {/* Pill Badge */}
-                                      <div className="inline-block bg-[#FFF0EB] border border-[#FFD4C7] text-[#F25A2B] text-[8px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider">
-                                        ⚡ WAITLIST ACTIVE
-                                      </div>
-                                      
-                                      {/* Heading */}
-                                      <h1 className="font-bold text-slate-900 text-base leading-tight pr-4">
-                                        Welcome to the stage. <br />
-                                        <span className="text-[#F25A2B]">@username</span> is officially stashed.
-                                      </h1>
-                                      
-                                      <p className="text-slate-900 font-bold text-[11px]">Hey stageName,</p>
-                                      
-                                      {emailHeader && (
-                                        <p className="font-bold text-[10px] uppercase tracking-wider text-[#F25A2B]">{emailHeader}</p>
-                                      )}
-                                      
-                                      <div 
-                                        className="text-slate-600 text-[10px] leading-relaxed whitespace-pre-wrap"
-                                        dangerouslySetInnerHTML={{ __html: emailBody }}
-                                      />
- 
-                                      {emailCtaText && (
-                                        <div className="pt-2 text-center">
-                                          <a 
-                                            href={emailCtaUrl} 
-                                            onClick={(e) => e.preventDefault()}
-                                            className="inline-block px-5 py-2.5 text-white font-mono font-bold text-[9px] rounded-lg transition-all bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] uppercase tracking-wide shadow-sm"
-                                            style={{ textDecoration: 'none' }}
-                                          >
-                                            {emailCtaText}
-                                          </a>
-                                        </div>
-                                      )}
-                                    </div>
- 
-                                    {/* Footer */}
-                                    <div className="bg-slate-50 border-t border-slate-100 px-6 py-5 text-center space-y-2">
-                                      <p className="text-[8px] text-slate-400 leading-normal">You are receiving this official launch communication as part of the Artistant waitlist.</p>
-                                      <p className="text-[8px] text-[#F25A2B] font-mono tracking-wider font-bold">Bengaluru, IN | artistant.in</p>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Logs Terminal */}
-                            {showLogTerminal && (
-                              <div className="mt-6 bg-bg-soft/40 border border-line-soft rounded-2xl overflow-hidden shadow-inner">
-                                <div className="bg-bg-soft/50 px-5 py-3 border-b border-line-soft flex justify-between items-center">
-                                  <span className="text-[9px] font-mono font-bold text-ink-3 flex items-center gap-1.5 uppercase tracking-wider">
-                                    <span className={`w-1.5 h-1.5 rounded-full ${emailSending ? "bg-amber-500 animate-ping" : "bg-[#22C55E]"}`} />
-                                    Execution Broadcast Terminal
-                                  </span>
-                                  <button 
-                                    onClick={() => setShowLogTerminal(false)}
-                                    className="text-ink-3 hover:text-ink text-[9px] font-mono uppercase tracking-wider font-bold cursor-pointer"
-                                  >
-                                    Close
-                                  </button>
-                                </div>
-                                <pre className="p-4 max-h-36 overflow-y-auto text-[9px] font-mono bg-bg-soft/30 border border-line-soft text-ink-2 text-left">
-                                  {emailLogs.length === 0 ? (
-                                    <span className="text-zinc-600 italic">No execution logs active.</span>
-                                  ) : (
-                                    emailLogs.map((logStr, i) => (
-                                      <div key={i} className={logStr.includes("FAILED") ? "text-red-400" : logStr.includes("SUCCESS") ? "text-[#22C55E]" : ""}>
-                                        {logStr}
-                                      </div>
-                                    ))
-                                  )}
-                                </pre>
-                              </div>
-                            )}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
 
                     {/* Data View */}
                     {viewMode === "table" ? (
@@ -2090,11 +2314,11 @@ export default function AdminPage() {
                                     className="w-4 h-4 rounded border-line-soft bg-bg-soft/40 text-[#7C5CFF] focus:ring-0 cursor-pointer"
                                   />
                                 </th>
-                                <th className="px-4 py-4 w-[28%]">Artist Node</th>
-                                <th className="px-3 py-4 w-[14%]">Cleared Role</th>
-                                <th className="px-4 py-4 w-[30%]">Communication</th>
-                                <th className="px-3 py-4 w-[13%]">Position</th>
-                                <th className="px-3 py-4 w-[15%] text-right">Clearance</th>
+                                <th className="px-4 py-4 w-[28%]">Member Name & Handle</th>
+                                <th className="px-3 py-4 w-[14%]">Role</th>
+                                <th className="px-4 py-4 w-[30%]">Contact Details</th>
+                                <th className="px-3 py-4 w-[13%]">Queue Rank</th>
+                                <th className="px-3 py-4 w-[15%] text-right">Status & Actions</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-line-soft/30">
@@ -2432,6 +2656,889 @@ export default function AdminPage() {
                   </div>
                 )}
 
+          {/* ===================================================================
+              TAB: EMAIL BROADCAST STUDIO (APPLE LIQUID GLASS REDESIGN)
+             =================================================================== */}
+        {activeTab === "emails" && (
+          <div className="space-y-6 animate-in fade-in duration-300 text-left">
+
+            {/* ── 2. Liquid Glass Dispatch Command Bar ("To", "From", "Send") ── */}
+            <div className="bg-bg-card border border-line-soft p-5 sm:p-6 rounded-[2.5rem] backdrop-blur-2xl shadow-2xl space-y-4 text-left z-30 relative">
+              <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+                
+                {/* Left: Addressing Controls ("TO" and "FROM") */}
+                <div className="flex flex-wrap items-center gap-3 flex-1">
+                  
+                  {/* TO: Target Audience */}
+                  <div className="relative flex-1 sm:flex-initial">
+                    <div className="text-[9px] font-mono font-bold uppercase tracking-wider text-ink-3 mb-1 pl-1">
+                      Recipient Target (To):
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setShowAudienceDropdown(!showAudienceDropdown); setShowAliasDropdown(false); }}
+                      className="w-full sm:w-auto flex items-center justify-between gap-2.5 bg-bg-soft/50 hover:bg-bg-soft border border-line-soft rounded-full px-4 py-2 text-xs text-ink transition-all cursor-pointer shadow-sm group"
+                    >
+                      <Users className="w-3.5 h-3.5 text-[#7C5CFF] shrink-0" />
+                      <span className="text-xs font-bold text-ink truncate max-w-[170px]">
+                        {emailAudienceMode === "migrated_artists"
+                          ? `Migrated Artists`
+                          : emailAudienceMode === "all"
+                          ? `All Members`
+                          : emailAudienceMode === "filtered"
+                          ? `Filtered Directory`
+                          : `Selected Users`}
+                      </span>
+                      <span className="text-[10px] font-mono font-bold bg-[#7C5CFF]/15 text-[#7C5CFF] px-2 py-0.5 rounded-full border border-[#7C5CFF]/20">
+                        {getSelectedRecipientsList().filter(r => !r.is_blocked).length}
+                      </span>
+                      <ChevronDown className={`w-3.5 h-3.5 text-ink-3 group-hover:text-ink transition-transform duration-200 shrink-0 ${showAudienceDropdown ? "rotate-180 text-ink" : ""}`} />
+                    </button>
+
+                    {showAudienceDropdown && (
+                      <div className="absolute top-full left-0 mt-2 z-[100] min-w-[240px] bg-bg-card border border-line-soft rounded-2xl p-2 shadow-2xl space-y-1 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150 text-left">
+                        <button
+                          type="button"
+                          onClick={() => { setEmailAudienceMode("migrated_artists"); setShowAudienceDropdown(false); }}
+                          className={`w-full text-left px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                            emailAudienceMode === "migrated_artists" ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20" : "text-ink hover:bg-bg-soft"
+                          }`}
+                        >
+                          <span className="flex items-center gap-2">🚀 Migrated Artists</span>
+                          <span className="font-mono text-[10px] opacity-75">({registrations.filter(r => (r.user_id?.startsWith('imported_') || (r as any).is_migrated) && !r.is_blocked).length})</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setEmailAudienceMode("all"); setShowAudienceDropdown(false); }}
+                          className={`w-full text-left px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                            emailAudienceMode === "all" ? "bg-[#7C5CFF]/15 text-[#7C5CFF] border border-[#7C5CFF]/20" : "text-ink hover:bg-bg-soft"
+                          }`}
+                        >
+                          <span>All Members</span>
+                          <span className="font-mono text-[10px] opacity-75">({registrations.filter(r => !r.is_blocked).length})</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setEmailAudienceMode("filtered"); setShowAudienceDropdown(false); }}
+                          className={`w-full text-left px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                            emailAudienceMode === "filtered" ? "bg-[#7C5CFF]/15 text-[#7C5CFF] border border-[#7C5CFF]/20" : "text-ink hover:bg-bg-soft"
+                          }`}
+                        >
+                          <span>Filtered Directory</span>
+                          <span className="font-mono text-[10px] opacity-75">({filteredRegistrations.filter(r => !r.is_blocked).length})</span>
+                        </button>
+                        {selectedUserIds.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => { setEmailAudienceMode("selected"); setShowAudienceDropdown(false); }}
+                            className={`w-full text-left px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                              emailAudienceMode === "selected" ? "bg-[#7C5CFF]/15 text-[#7C5CFF] border border-[#7C5CFF]/20" : "text-ink hover:bg-bg-soft"
+                            }`}
+                          >
+                            <span>Selected Users</span>
+                            <span className="font-mono text-[10px] opacity-75">({selectedUserIds.length})</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* FROM: Sender Alias */}
+                  <div className="relative flex-1 sm:flex-initial">
+                    <div className="text-[9px] font-mono font-bold uppercase tracking-wider text-ink-3 mb-1 pl-1">
+                      Sender Address (From):
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setShowAliasDropdown(!showAliasDropdown); setShowAudienceDropdown(false); }}
+                      className="w-full sm:w-auto flex items-center justify-between gap-2.5 bg-bg-soft/50 hover:bg-bg-soft border border-line-soft rounded-full px-4 py-2 text-xs text-ink transition-all cursor-pointer shadow-sm group"
+                    >
+                      <Mail className="w-3.5 h-3.5 text-[#F25A2B] shrink-0" />
+                      <span className="text-xs font-bold text-ink truncate">
+                        {emailAlias === "official" ? "info@artistant.in" :
+                         emailAlias === "support" ? "support@artistant.in" :
+                         emailAlias === "founder" ? "founder@artistant.in" :
+                         emailAlias === "welcome" ? "welcome@artistant.in" : "security@artistant.in"}
+                      </span>
+                      <ChevronDown className={`w-3.5 h-3.5 text-ink-3 group-hover:text-ink transition-transform duration-200 shrink-0 ${showAliasDropdown ? "rotate-180 text-ink" : ""}`} />
+                    </button>
+
+                    {showAliasDropdown && (
+                      <div className="absolute top-full left-0 mt-2 z-[100] min-w-[240px] bg-bg-card border border-line-soft rounded-2xl p-2 shadow-2xl space-y-1 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150 text-left">
+                        {[
+                          { key: "official", label: "info@artistant.in", tag: "Official" },
+                          { key: "support", label: "support@artistant.in", tag: "Support" },
+                          { key: "founder", label: "founder@artistant.in", tag: "Founder" },
+                          { key: "welcome", label: "welcome@artistant.in", tag: "Onboarding" },
+                          { key: "security", label: "security@artistant.in", tag: "Security" },
+                        ].map((item) => (
+                          <button
+                            key={item.key}
+                            type="button"
+                            onClick={() => { setEmailAlias(item.key); setShowAliasDropdown(false); }}
+                            className={`w-full text-left px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                              emailAlias === item.key ? "bg-[#F25A2B]/15 text-[#F25A2B] border border-[#F25A2B]/20" : "text-ink hover:bg-bg-soft"
+                            }`}
+                          >
+                            <span>{item.label}</span>
+                            <span className="font-mono text-[9px] opacity-75">({item.tag})</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* INSPECT RECIPIENTS BUTTON */}
+                  <div>
+                    <div className="text-[9px] font-mono font-bold uppercase tracking-wider text-ink-3 mb-1 pl-1">
+                      Recipient List:
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowRecipientDrawer(!showRecipientDrawer)}
+                      className={`px-4 py-2 rounded-full border text-xs font-mono font-bold flex items-center gap-2 cursor-pointer transition-all ${
+                        showRecipientDrawer ? "bg-[#7C5CFF]/15 border-[#7C5CFF]/40 text-[#7C5CFF]" : "bg-bg-soft/50 hover:bg-bg-soft border-line-soft text-ink-2"
+                      }`}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>Inspect List</span>
+                      <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${showRecipientDrawer ? "rotate-180 text-ink" : ""}`} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Right: Dispatch Actions ("Send Broadcast" & "Test Email") */}
+                <div className="flex items-center gap-3 pt-2 lg:pt-0 border-t lg:border-t-0 border-line-soft">
+                  <button
+                    onClick={handleSendTestEmail}
+                    disabled={testEmailSending || emailSending}
+                    className="py-2.5 px-5 rounded-full text-xs font-mono font-bold flex items-center justify-center gap-2 text-ink bg-bg-soft/70 hover:bg-bg-card border border-line-soft disabled:opacity-50 transition-all cursor-pointer shadow-sm active:scale-95"
+                    title={`Send test preview email to ${user?.email || 'admin'}`}
+                  >
+                    {testEmailSending ? <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#7C5CFF]" /> : <Send className="w-3.5 h-3.5 text-ink-3" />}
+                    {testEmailSending ? "Sending..." : "Test Email"}
+                  </button>
+
+                  <button
+                    onClick={handleSendEmailBroadcast}
+                    disabled={emailSending}
+                    className="py-2.5 px-7 rounded-full text-xs font-bold flex items-center justify-center gap-2 text-white bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF] hover:opacity-95 disabled:opacity-50 transition-all cursor-pointer shadow-lg shadow-[#7C5CFF]/25 active:scale-95 border border-white/10 uppercase tracking-wider font-mono"
+                  >
+                    {emailSending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    {emailSending ? "Dispatching..." : `Send Broadcast (${getSelectedRecipientsList().filter(r => !r.is_blocked).length})`}
+                  </button>
+                </div>
+              </div>
+
+              {/* Collapsible Recipient Drawer */}
+              {showRecipientDrawer && (
+                <div className="bg-bg-card/90 border border-line-soft rounded-2xl p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200 relative z-30 shadow-xl backdrop-blur-xl text-left">
+                  <div className="flex items-center justify-between border-b border-line-soft pb-2.5">
+                    <div className="flex items-center gap-2 text-xs font-mono font-bold text-ink">
+                      <Users className="w-4 h-4 text-[#7C5CFF]" />
+                      <span>Target Audience ({getSelectedRecipientsList().filter(r => !r.is_blocked).length} Active Recipients)</span>
+                    </div>
+                    <button
+                      onClick={() => setShowRecipientDrawer(false)}
+                      className="text-[10px] font-mono font-bold text-ink-3 hover:text-ink cursor-pointer px-3 py-1 rounded-full bg-bg-soft border border-line-soft"
+                    >
+                      Close [✕]
+                    </button>
+                  </div>
+
+                  <div className="max-h-44 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pr-1">
+                    {getSelectedRecipientsList().filter(r => !r.is_blocked).map((reg) => (
+                      <div key={reg.id || reg.user_id} className="flex items-center gap-2.5 bg-bg-soft/50 border border-line-soft rounded-xl p-2 text-xs hover:border-[#7C5CFF]/30 transition-colors">
+                        <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-[#7C5CFF] to-[#D4567A] text-white font-mono font-bold flex items-center justify-center text-[10px] shrink-0 shadow-sm">
+                          {reg.display_name?.charAt(0) || reg.username?.charAt(0) || "A"}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-bold text-ink truncate text-xs">{reg.display_name || reg.username}</div>
+                          <div className="text-[9.5px] text-ink-3 font-mono truncate">{reg.email}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── 3. Campaign Template Presets Selector Grid ── */}
+            <div className="bg-bg-card border border-line-soft p-4 sm:p-5 rounded-[2rem] backdrop-blur-2xl shadow-xl space-y-3 text-left">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold text-ink-3 uppercase tracking-wider flex items-center gap-2">
+                  <Layers3 className="w-4 h-4 text-[#7C5CFF]" />
+                  Campaign Template Presets
+                </span>
+                <span className="text-[10px] font-mono text-ink-3 uppercase">
+                  Active: <strong className="text-[#7C5CFF]">{emailTemplateType.replace('_', ' ').toUpperCase()}</strong>
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                {[
+                  { id: "migrated_artist", title: "Artist Onboarding", tag: "🚀", icon: UserCheck, accent: "#10B981" },
+                  { id: "standard", title: "Announcement", tag: "📢", icon: Megaphone, accent: "#F25A2B" },
+                  { id: "welcome", title: "Stage Pass", tag: "⚡", icon: Ticket, accent: "#7C5CFF" },
+                  { id: "vip", title: "VIP Pass", tag: "👑", icon: Crown, accent: "#FFB800" },
+                  { id: "newsletter", title: "Product Digest", tag: "📰", icon: Layers3, accent: "#00E5FF" },
+                  { id: "raw", title: "Plain Markdown", tag: "📝", icon: FileText, accent: "#94A3B8" }
+                ].map((preset) => {
+                  const isActive = emailTemplateType === preset.id;
+                  const IconComp = preset.icon;
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => loadTemplatePreset(preset.id as any)}
+                      className={`px-3.5 py-2.5 rounded-xl border text-xs font-mono font-bold transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                        isActive
+                          ? "bg-gradient-to-r from-[#7C5CFF]/15 to-[#F25A2B]/10 border-[#7C5CFF] text-ink shadow-sm ring-1 ring-[#7C5CFF]/30"
+                          : "bg-bg-soft/40 border-line-soft text-ink-3 hover:text-ink hover:bg-bg-soft"
+                      }`}
+                    >
+                      <span className="font-sans font-bold text-xs truncate text-ink">{preset.title}</span>
+                      <IconComp className="w-4 h-4 shrink-0" style={{ color: isActive ? '#7C5CFF' : preset.accent }} />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── 4. Split 2-Column Studio Workspace ── */}
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+
+              {/* ══ LEFT (7 Cols): Liquid Glass Document Composer ══ */}
+              <GlowingAdminCard idx={0} className="xl:col-span-7 bg-bg-card border border-line-soft rounded-[2rem] p-6 sm:p-7 shadow-2xl space-y-5 text-left backdrop-blur-2xl">
+                
+                {/* Section Header */}
+                <div className="flex items-center justify-between border-b border-line-soft/80 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-[#7C5CFF] animate-pulse" />
+                    <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-ink">
+                      Document Composer
+                    </h3>
+                  </div>
+                  <span className="text-[10px] font-mono text-ink-3 uppercase tracking-wider bg-bg-soft/60 px-2.5 py-1 rounded-lg border border-line-soft">
+                    {emailTemplateType === "raw" ? "Plain Markdown" : `${emailTemplateType} template`}
+                  </span>
+                </div>
+
+                {/* Subject Line & Pill Tag Header Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-start">
+                  <div className={emailTemplateType !== "raw" ? "sm:col-span-8" : "sm:col-span-12"}>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-[10px] font-mono font-bold text-ink-3 uppercase tracking-wider block">
+                        Email Subject Line
+                      </label>
+                      <span className="text-[9.5px] font-mono font-semibold text-ink-3/80 bg-bg-soft/60 px-2 py-0.5 rounded-md border border-line-soft">
+                        {emailSubject.length} / 100
+                      </span>
+                    </div>
+                    <input
+                      type="text"
+                      value={emailSubject}
+                      onChange={(e) => setEmailSubject(e.target.value)}
+                      className="w-full h-10 bg-bg-soft/40 border border-line-soft focus:border-[#7C5CFF] focus:ring-4 focus:ring-[#7C5CFF]/15 text-xs font-bold text-ink placeholder:text-ink-3/40 rounded-xl px-4 transition-all outline-none shadow-sm"
+                      placeholder="Subject line for your email..."
+                    />
+                  </div>
+
+                  {emailTemplateType !== "raw" && (
+                    <div className="sm:col-span-4">
+                      <div className="flex items-center justify-between mb-2 h-[19px]">
+                        <label className="text-[10px] font-mono font-bold text-ink-3 uppercase tracking-wider block">
+                          Pill Tag
+                        </label>
+                      </div>
+                      <input
+                        type="text"
+                        value={emailPillTag}
+                        onChange={(e) => setEmailPillTag(e.target.value)}
+                        className="w-full h-10 bg-bg-soft/40 border border-line-soft focus:border-[#7C5CFF] focus:ring-4 focus:ring-[#7C5CFF]/15 text-xs text-ink font-mono font-bold rounded-xl px-4 transition-all outline-none shadow-sm uppercase"
+                        placeholder="⚡ TAG"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Inner Subtitle / Heading (Full Width) */}
+                {emailTemplateType !== "raw" && (
+                  <div className="pt-1">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-[10px] font-mono font-bold text-ink-3 uppercase tracking-wider block">
+                        Inner Heading / Subtitle
+                      </label>
+                    </div>
+                    <input
+                      type="text"
+                      value={emailHeader}
+                      onChange={(e) => setEmailHeader(e.target.value)}
+                      className="w-full h-10 bg-bg-soft/40 border border-line-soft focus:border-[#7C5CFF] focus:ring-4 focus:ring-[#7C5CFF]/15 text-xs text-ink font-semibold rounded-xl px-4 transition-all outline-none shadow-sm"
+                      placeholder="Email inner heading or subtitle..."
+                    />
+                  </div>
+                )}
+
+                {/* Formatting & Variable Toolbar attached to Textarea */}
+                <div className="pt-2">
+                  <div className="border border-line-soft rounded-2xl overflow-hidden bg-bg-soft/30 focus-within:border-[#7C5CFF] transition-all shadow-inner">
+                  {/* Row 1: Rich Text Formatting Toolbar */}
+                  <div className="flex items-center justify-between border-b border-line-soft px-3.5 py-2 bg-bg-soft/60 gap-2 flex-wrap">
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {[
+                        { icon: Bold, title: "Bold", insert: "**text**" },
+                        { icon: Italic, title: "Italic", insert: "*text*" },
+                        { icon: Underline, title: "Underline", insert: "__text__" },
+                      ].map((btn) => (
+                        <button
+                          key={btn.title}
+                          type="button"
+                          title={btn.title}
+                          onClick={() => setEmailBody(prev => prev + ` ${btn.insert}`)}
+                          className="p-1.5 rounded-lg text-ink-3 hover:text-ink hover:bg-bg-soft transition-colors cursor-pointer"
+                        >
+                          <btn.icon className="w-3.5 h-3.5" />
+                        </button>
+                      ))}
+
+                      <div className="w-px h-4 bg-line-soft mx-1" />
+
+                      {[
+                        { icon: Heading1, title: "Heading 1", insert: "\n# Heading 1\n" },
+                        { icon: Heading2, title: "Heading 2", insert: "\n## Heading 2\n" },
+                        { icon: List, title: "Bullet List", insert: "\n• Item 1\n• Item 2\n" },
+                      ].map((btn) => (
+                        <button
+                          key={btn.title}
+                          type="button"
+                          title={btn.title}
+                          onClick={() => setEmailBody(prev => prev + btn.insert)}
+                          className="p-1.5 rounded-lg text-ink-3 hover:text-ink hover:bg-bg-soft transition-colors cursor-pointer"
+                        >
+                          <btn.icon className="w-3.5 h-3.5" />
+                        </button>
+                      ))}
+
+                      <div className="w-px h-4 bg-line-soft mx-1" />
+
+                      <button
+                        type="button"
+                        title="Link"
+                        onClick={() => setEmailBody(prev => prev + " [link](https://artistant.in)")}
+                        className="p-1.5 rounded-lg text-ink-3 hover:text-ink hover:bg-bg-soft transition-colors cursor-pointer"
+                      >
+                        <Link2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        title="Quote"
+                        onClick={() => setEmailBody(prev => prev + "\n> Quote\n")}
+                        className="p-1.5 rounded-lg text-ink-3 hover:text-ink hover:bg-bg-soft transition-colors cursor-pointer"
+                      >
+                        <Quote className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    <span className="text-[9px] font-mono text-ink-3/70 uppercase">Markdown Editor</span>
+                  </div>
+
+                  {/* Row 2: Dynamic Variable Pills */}
+                  <div className="flex items-center gap-2 border-b border-line-soft/60 px-3.5 py-1.5 bg-bg-soft/40 overflow-x-auto scrollbar-none">
+                    <span className="text-[9px] font-mono font-bold uppercase text-ink-3 shrink-0">Insert Var:</span>
+                    <div className="flex items-center gap-1.5">
+                      {[
+                        { label: "{{name}}", value: "{{name}}" },
+                        { label: "{{username}}", value: "{{username}}" },
+                        { label: "{{claim_url}}", value: "{{claim_url}}" },
+                      ].map((v) => (
+                        <button
+                          key={v.label}
+                          type="button"
+                          onClick={() => setEmailBody(prev => prev + ` ${v.value}`)}
+                          className="text-[9.5px] font-mono text-[#7C5CFF] bg-[#7C5CFF]/10 hover:bg-[#7C5CFF]/20 border border-[#7C5CFF]/25 px-2 py-0.5 rounded-md cursor-pointer transition-all font-bold hover:scale-105 active:scale-95 shrink-0"
+                        >
+                          {v.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Textarea Canvas */}
+                  <textarea
+                    value={emailBody}
+                    onChange={(e) => setEmailBody(e.target.value)}
+                    rows={11}
+                    className="w-full bg-transparent p-4 text-xs text-ink focus:outline-none resize-none leading-relaxed font-normal"
+                    placeholder="Type your broadcast email content here..."
+                  />
+                </div>
+              </div>
+
+                {/* CTA Builder & Attachments */}
+                <div className="pt-4 border-t border-line-soft space-y-4">
+                  
+                  {/* CTA Builder Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block text-[10px] font-mono font-bold text-ink-3 uppercase tracking-wider mb-2">
+                        CTA Button Label
+                      </label>
+                      <input
+                        type="text"
+                        value={emailCtaText}
+                        onChange={(e) => setEmailCtaText(e.target.value)}
+                        className="w-full bg-bg-soft/40 border border-line-soft rounded-2xl px-4 py-2.5 text-xs text-ink font-bold focus:outline-none focus:border-[#7C5CFF] focus:ring-2 focus:ring-[#7C5CFF]/15 transition-all shadow-sm"
+                        placeholder="CLAIM ACCESS KEYS"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-mono font-bold text-ink-3 uppercase tracking-wider mb-2">
+                        CTA Destination URL
+                      </label>
+                      <input
+                        type="text"
+                        value={emailCtaUrl}
+                        onChange={(e) => setEmailCtaUrl(e.target.value)}
+                        className="w-full bg-bg-soft/40 border border-line-soft rounded-2xl px-4 py-2.5 text-xs text-ink font-mono focus:outline-none focus:border-[#7C5CFF] focus:ring-2 focus:ring-[#7C5CFF]/15 transition-all shadow-sm"
+                        placeholder="https://artistant.in"
+                      />
+                    </div>
+                  </div>
+
+                  {/* CTA Theme Selector Pills - Equal 5-Column Grid */}
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-mono font-bold text-ink-3 uppercase tracking-wider">
+                      CTA Accent Color Theme:
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                      {[
+                        { id: "purple", label: "Electric Purple", bg: "bg-[#7C5CFF]" },
+                        { id: "flame", label: "Neon Flame", bg: "bg-[#F25A2B]" },
+                        { id: "emerald", label: "Emerald Slate", bg: "bg-[#10B981]" },
+                        { id: "dark", label: "Midnight Dark", bg: "bg-[#0F172A]" },
+                        { id: "ghost", label: "Ghost Glass", bg: "bg-slate-400" },
+                      ].map((themeItem) => (
+                        <button
+                          key={themeItem.id}
+                          type="button"
+                          onClick={() => setEmailCtaTheme(themeItem.id as any)}
+                          className={`flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl border text-[10px] font-mono font-bold transition-all cursor-pointer w-full text-center ${
+                            emailCtaTheme === themeItem.id
+                              ? "bg-[#7C5CFF]/15 text-ink border-[#7C5CFF] shadow-sm ring-1 ring-[#7C5CFF]/30"
+                              : "bg-bg-soft/30 text-ink-3 border-line-soft hover:text-ink hover:bg-bg-soft"
+                          }`}
+                        >
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${themeItem.bg}`} />
+                          <span className="truncate">{themeItem.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Attachment Hub Header */}
+                  <div className="flex items-center justify-between pt-3 border-t border-line-soft">
+                    <span className="text-[10px] font-mono font-bold text-ink-3 uppercase tracking-wider flex items-center gap-1.5">
+                      <Paperclip className="w-3.5 h-3.5 text-[#7C5CFF]" />
+                      Attached Resources ({emailAttachments.length})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddAttachmentModal(true)}
+                      className="text-[10px] font-mono font-bold text-[#7C5CFF] hover:underline cursor-pointer flex items-center gap-1 bg-[#7C5CFF]/10 px-3 py-1 rounded-xl border border-[#7C5CFF]/20"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add Resource
+                    </button>
+                  </div>
+
+                  {/* Active Attachments List */}
+                  {emailAttachments.length > 0 && (
+                    <div className="space-y-2">
+                      {emailAttachments.map((att) => (
+                        <div key={att.id || att.title} className="flex items-center justify-between gap-2 p-2.5 bg-bg-soft/50 border border-line-soft rounded-2xl text-xs text-left">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="px-2 py-0.5 bg-[#7C5CFF]/15 text-[#7C5CFF] border border-[#7C5CFF]/20 rounded-lg font-mono text-[9px] font-bold">
+                              {att.fileType || "FILE"}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="font-bold text-ink truncate text-xs">{att.title}</p>
+                              <p className="text-[9.5px] text-ink-3 truncate font-mono">{att.url}</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAttachment(att.id)}
+                            className="p-1.5 rounded-lg text-ink-3 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer shrink-0"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </GlowingAdminCard>
+
+              {/* ════ RIGHT (5 Cols): Apple Mail Mockup Live Email Preview ════ */}
+              <GlowingAdminCard idx={1} className="xl:col-span-5 xl:sticky xl:top-6 space-y-0 text-left bg-bg-card border border-line-soft rounded-[2rem] p-0 shadow-2xl backdrop-blur-2xl overflow-hidden">
+                
+                {/* macOS Window Titlebar Header */}
+                <div className="bg-bg-soft/70 border-b border-line-soft px-5 py-3 flex items-center justify-between backdrop-blur-xl">
+                  {/* Traffic Light Dots */}
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-[#FF5F56] border border-black/10 inline-block" />
+                    <span className="w-3 h-3 rounded-full bg-[#FFBD2E] border border-black/10 inline-block" />
+                    <span className="w-3 h-3 rounded-full bg-[#27C93F] border border-black/10 inline-block" />
+                    <span className="text-[11px] font-mono font-bold text-ink-3 uppercase tracking-wider ml-2 flex items-center gap-1.5">
+                      <Eye className="w-3.5 h-3.5 text-[#7C5CFF]" />
+                      Live Email Canvas
+                    </span>
+                  </div>
+
+                  {/* Dark/Light Client Switcher Pills */}
+                  <div className="flex rounded-xl p-0.5 bg-bg-card border border-line-soft shadow-inner">
+                    <button
+                      type="button"
+                      onClick={() => setEmailClientTheme("dark")}
+                      className={`px-2.5 py-1 rounded-lg text-[9.5px] font-mono font-bold transition-all cursor-pointer flex items-center gap-1 uppercase ${
+                        emailClientTheme === "dark" ? "bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] text-white shadow-sm" : "text-ink-3 hover:text-ink"
+                      }`}
+                    >
+                      <Moon className="w-3 h-3" /> Dark
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEmailClientTheme("light")}
+                      className={`px-2.5 py-1 rounded-lg text-[9.5px] font-mono font-bold transition-all cursor-pointer flex items-center gap-1 uppercase ${
+                        emailClientTheme === "light" ? "bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] text-white shadow-sm" : "text-ink-3 hover:text-ink"
+                      }`}
+                    >
+                      <Sun className="w-3 h-3" /> Light
+                    </button>
+                  </div>
+                </div>
+
+                {/* Email Client Scrollable Container */}
+                <div className="p-4 sm:p-5 max-h-[720px] overflow-y-auto space-y-4">
+                  {/* Apple Mail Card Outer Container */}
+                  <div
+                    className={`rounded-2xl border transition-all duration-300 shadow-2xl overflow-hidden ${
+                      emailClientTheme === "dark" 
+                        ? "bg-[#0D0E15] border-white/10 text-slate-200" 
+                        : "bg-[#F8FAFC] border-slate-200 text-slate-900 shadow-md"
+                    }`}
+                  >
+                    {/* Email Body Card */}
+                    <div className="text-left">
+                      {/* Edge-to-Edge Brand Header Banner */}
+                      {emailTemplateType === "raw" ? (
+                        <div className={`px-6 py-4 border-b ${emailClientTheme === "dark" ? "border-white/10" : "border-slate-200"}`}>
+                          <img 
+                            src="/logo_wordmark_flat.png" 
+                            alt="Artistant" 
+                            className="h-5 w-auto object-contain" 
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-full">
+                          <div className={`px-6 py-4 flex items-center justify-between ${emailClientTheme === "dark" ? "bg-[#0A0B10]" : "bg-white"}`}>
+                            <img 
+                              src="/logo_wordmark_flat.png" 
+                              alt="Artistant" 
+                              className="h-5.5 w-auto object-contain" 
+                            />
+                            <span className="text-[8.5px] font-mono font-bold text-slate-400 uppercase tracking-[0.2em]">
+                              OFFICIAL DISPATCH
+                            </span>
+                          </div>
+                          <div className="h-0.5 w-full bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF]" />
+                        </div>
+                      )}
+
+                      {/* Content Area */}
+                      <div className={`p-6 space-y-5 ${emailClientTheme === "dark" ? "bg-[#0D0E15]" : "bg-white"}`}>
+                        {/* Translucent Pill Tag */}
+                        {emailTemplateType !== "raw" && emailPillTag && (
+                          <span className={`inline-block text-[9.5px] font-mono font-bold px-3.5 py-1.5 rounded-full uppercase tracking-wider border shadow-sm ${
+                            emailClientTheme === "dark"
+                              ? "bg-[#F25A2B]/15 text-[#F25A2B] border-[#F25A2B]/30"
+                              : "bg-[#FFF0EB] text-[#F25A2B] border-[#FFD4C7]"
+                          }`}>
+                            {emailPillTag}
+                          </span>
+                        )}
+
+                        {/* Inner Header Title */}
+                        {emailTemplateType !== "raw" && emailHeader && (
+                          <h1 className={`font-display font-bold text-xl leading-tight tracking-tight ${
+                            emailClientTheme === "dark" ? "text-white" : "text-slate-900"
+                          }`}>
+                            {emailHeader}
+                          </h1>
+                        )}
+
+                        <p className={`font-semibold text-xs ${
+                          emailClientTheme === "dark" ? "text-slate-300" : "text-slate-800"
+                        }`}>
+                          Hey Alex River,
+                        </p>
+
+                        {/* Formatted Paragraphs */}
+                        <div
+                          className={`text-xs leading-relaxed space-y-3 font-normal ${
+                            emailClientTheme === "dark" ? "text-slate-300" : "text-slate-600"
+                          }`}
+                          dangerouslySetInnerHTML={{
+                            __html: emailBody
+                              .replaceAll('{{name}}', 'Alex River')
+                              .replaceAll('{{username}}', 'alexriver')
+                              .replaceAll('{{claim_url}}', emailCtaUrl || 'https://artistant.in')
+                              .replace(/\n\n/g, "</p><p>")
+                              .replace(/\n/g, "<br/>")
+                          }}
+                        />
+
+                        {/* Graphic VIP / Stage Pass */}
+                        {(emailTemplateType === "welcome" || emailTemplateType === "vip") && (
+                          <div className="bg-[#0F172A] rounded-2xl overflow-hidden border border-slate-700/80 shadow-xl my-4 text-left">
+                            <div className="h-1 bg-gradient-to-r from-[#F25A2B] via-[#FFB800] to-[#7C5CFF]" />
+                            <div className="p-4 flex items-center justify-between">
+                              <div>
+                                <div className="text-[8px] font-mono font-extrabold text-[#7C5CFF] uppercase tracking-widest">ARTISTANT VIP PASS</div>
+                                <div className="text-xs font-extrabold text-white mt-0.5">Founding Artist Handle Reserved</div>
+                              </div>
+                              <span className="text-[8.5px] font-mono font-bold text-emerald-400 bg-emerald-500/15 px-3 py-1 rounded-full border border-emerald-500/30">
+                                ✓ VERIFIED 100 PTS
+                              </span>
+                            </div>
+                            <div className="px-4 py-2.5 bg-[#0B1120] flex items-center justify-between border-t border-dashed border-slate-700/80">
+                              <div className="text-[8.5px] text-slate-400 font-mono">HANDLE: @alexriver</div>
+                              <div className="text-[8.5px] text-[#F25A2B] font-mono font-extrabold">ART-2026-VIP</div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Attached Resources */}
+                        {emailAttachments.length > 0 && (
+                          <div className="space-y-2.5 pt-2">
+                            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#7C5CFF] flex items-center gap-1.5">
+                              <Paperclip className="w-3.5 h-3.5" /> Attached Resources ({emailAttachments.length})
+                            </span>
+                            {emailAttachments.map((att) => (
+                              <div key={att.id || att.title} className={`flex items-center justify-between gap-3 p-3.5 rounded-2xl border transition-all ${
+                                emailClientTheme === "dark" 
+                                  ? "bg-[#7C5CFF]/10 border-[#7C5CFF]/20 text-slate-200" 
+                                  : "bg-slate-50 border-slate-200 text-slate-900"
+                              }`}>
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="w-8 h-8 rounded-xl bg-[#7C5CFF]/15 text-[#7C5CFF] font-mono font-bold text-xs flex items-center justify-center shrink-0 uppercase border border-[#7C5CFF]/25">
+                                    {(att.fileType || "FILE").substring(0, 3)}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="text-xs font-bold truncate">{att.title}</div>
+                                    <div className="text-[9.5px] text-slate-400 font-mono">{att.size || "1.2 MB"}</div>
+                                  </div>
+                                </div>
+                                <span className="text-[9.5px] font-bold text-[#7C5CFF] bg-[#7C5CFF]/10 px-3 py-1 rounded-xl border border-[#7C5CFF]/25 shrink-0 hover:bg-[#7C5CFF]/20 transition-colors">
+                                  Open &rarr;
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* CTA Button Render */}
+                        {emailCtaText && (
+                          <div className="pt-4 text-center">
+                            <a
+                              href={emailCtaUrl}
+                              onClick={(e) => e.preventDefault()}
+                              className={`inline-block px-8 py-3.5 font-bold text-xs rounded-full uppercase tracking-wider shadow-lg transition-all cursor-pointer ${
+                                emailCtaTheme === "flame"
+                                  ? "bg-gradient-to-r from-[#F25A2B] to-[#D4567A] text-white shadow-[#F25A2B]/25"
+                                  : emailCtaTheme === "emerald"
+                                  ? "bg-gradient-to-r from-[#10B981] to-[#059669] text-white shadow-[#10B981]/25"
+                                  : emailCtaTheme === "dark"
+                                  ? "bg-[#0F172A] text-white border border-slate-700 shadow-md"
+                                  : emailCtaTheme === "ghost"
+                                  ? "bg-slate-200 text-slate-900 border border-slate-300 shadow-sm"
+                                  : "bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF] text-white shadow-[#7C5CFF]/25"
+                              }`}
+                              style={{ textDecoration: "none" }}
+                            >
+                              {emailCtaText}
+                            </a>
+                            {(emailTemplateType === "migrated_artist" || emailCtaUrl.includes("/claim")) && (
+                              <p className="text-[9.5px] font-mono text-emerald-500 font-semibold pt-2">
+                                ⚡ Unique Redirect: <span className="underline">https://artistant.in/claim?username=artist_handle</span>
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Email Footer */}
+                      <div className={`px-6 py-4 border-t text-center space-y-1 ${
+                        emailClientTheme === "dark" ? "bg-[#08090E] border-white/10" : "bg-slate-50 border-slate-200"
+                      }`}>
+                        <p className="text-[9.5px] text-slate-400 leading-normal font-sans">
+                          Sent via Artistant Broadcast Engine • Official Waitlist Communication
+                        </p>
+                        <p className="text-[9px] text-slate-500 font-mono">
+                          Artistant Inc., Bengaluru, KA • <span className="underline cursor-pointer">Unsubscribe</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </GlowingAdminCard>
+            </div>
+
+            {/* Execution Terminal Log */}
+            {showLogTerminal && (
+              <div className="bg-bg-card border border-line-soft rounded-[2rem] overflow-hidden shadow-2xl backdrop-blur-2xl mt-6 text-left">
+                <div className="bg-bg-soft/70 px-5 py-3 border-b border-line-soft flex justify-between items-center">
+                  <span className="text-xs font-mono font-bold text-ink flex items-center gap-2 uppercase tracking-wider">
+                    <span className={`w-2.5 h-2.5 rounded-full ${emailSending || testEmailSending ? "bg-amber-400 animate-ping" : "bg-emerald-400"}`} />
+                    Execution Broadcast Terminal Log
+                  </span>
+                  <button
+                    onClick={() => setShowLogTerminal(false)}
+                    className="text-ink-3 hover:text-ink text-xs font-mono cursor-pointer px-2.5 py-1 rounded-xl bg-bg-card border border-line-soft"
+                  >
+                    Close Log
+                  </button>
+                </div>
+                <div className="p-5 bg-bg-soft/30 font-mono text-xs text-emerald-400 space-y-1.5 max-h-56 overflow-y-auto leading-relaxed">
+                  {emailLogs.length === 0 ? (
+                    <p className="text-ink-3">Preparing broadcast dispatch sequence...</p>
+                  ) : (
+                    emailLogs.map((l, i) => <div key={i}>{l}</div>)
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Modal for Adding New Attachment */}
+            <AnimatePresence>
+              {showAddAttachmentModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="bg-bg-card border border-line-soft p-6 rounded-3xl max-w-md w-full shadow-2xl space-y-4 text-left"
+                  >
+                    <div className="flex justify-between items-center border-b border-line-soft pb-3">
+                      <h3 className="font-mono text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-2">
+                        <Paperclip className="w-4 h-4 text-[#7C5CFF]" />
+                        Add Resource Attachment
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddAttachmentModal(false)}
+                        className="text-ink-3 hover:text-ink text-xs font-mono"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    <div>
+                      <label className="block text-[9.5px] font-mono font-bold uppercase text-ink-3 tracking-wider mb-1.5">
+                        Attachment Title *
+                      </label>
+                      <input
+                        type="text"
+                        value={newAttTitle}
+                        onChange={(e) => setNewAttTitle(e.target.value)}
+                        placeholder="e.g. ArtisTant_PressKit_2026.pdf"
+                        className="w-full bg-bg-soft/40 border border-line-soft rounded-xl px-3.5 py-2.5 text-xs text-ink focus:outline-none focus:border-[#7C5CFF]"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[9.5px] font-mono font-bold uppercase text-ink-3 tracking-wider mb-1.5">
+                          File Type
+                        </label>
+                        <select
+                          value={newAttType}
+                          onChange={(e) => setNewAttType(e.target.value)}
+                          className="w-full bg-bg-soft/40 border border-line-soft rounded-xl px-3 py-2.5 text-xs text-ink focus:outline-none focus:border-[#7C5CFF]"
+                        >
+                          <option value="PDF">PDF Document</option>
+                          <option value="ZIP">ZIP Archive</option>
+                          <option value="MP3">Audio (MP3/WAV)</option>
+                          <option value="PNG">Image (PNG/JPG)</option>
+                          <option value="DOCX">Word Document</option>
+                          <option value="FILE">Other Resource</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[9.5px] font-mono font-bold uppercase text-ink-3 tracking-wider mb-1.5">
+                          File Size (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={newAttSize}
+                          onChange={(e) => setNewAttSize(e.target.value)}
+                          placeholder="e.g. 2.4 MB"
+                          className="w-full bg-bg-soft/40 border border-line-soft rounded-xl px-3.5 py-2.5 text-xs text-ink focus:outline-none focus:border-[#7C5CFF]"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[9.5px] font-mono font-bold uppercase text-ink-3 tracking-wider mb-1.5">
+                        Resource Download / Access URL *
+                      </label>
+                      <input
+                        type="text"
+                        value={newAttUrl}
+                        onChange={(e) => setNewAttUrl(e.target.value)}
+                        placeholder="https://artistant.in/downloads/presskit.pdf"
+                        className="w-full bg-bg-soft/40 border border-line-soft rounded-xl px-3.5 py-2.5 text-xs text-ink focus:outline-none focus:border-[#7C5CFF] font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[9.5px] font-mono font-bold uppercase text-ink-3 tracking-wider mb-1.5">
+                        Description / Note (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={newAttDesc}
+                        onChange={(e) => setNewAttDesc(e.target.value)}
+                        placeholder="e.g. High-resolution press kit & brand guidelines"
+                        className="w-full bg-bg-soft/40 border border-line-soft rounded-xl px-3.5 py-2.5 text-xs text-ink focus:outline-none focus:border-[#7C5CFF]"
+                      />
+                    </div>
+
+                    <div className="pt-2 flex justify-end gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setShowAddAttachmentModal(false)}
+                        className="px-4 py-2 text-xs font-mono text-ink-3 hover:text-ink cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAddAttachment}
+                        className="px-5 py-2.5 text-xs font-mono font-bold text-white bg-[#7C5CFF] hover:bg-[#6C4CEF] rounded-xl cursor-pointer shadow-md"
+                      >
+                        Add Resource
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
+
+          </div>
+        )}
+
         {/* ===================================================================
             TAB X: LEADERBOARDS
             =================================================================== */}
@@ -2522,6 +3629,8 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+
+
 
         {/* ===================================================================
             TAB: CLIENT BOOKING REQUESTS
@@ -2909,7 +4018,7 @@ export default function AdminPage() {
             <div className="lg:col-span-1 space-y-6">
               <div className="bg-bg-card border border-line-soft p-8 rounded-3xl space-y-6 backdrop-blur-md shadow-lg text-left">
                 <div className="border-b border-line-soft pb-5">
-                  <h3 className="text-lg font-display font-bold text-ink uppercase tracking-tight">Grant Clearance</h3>
+                  <h3 className="text-lg font-display font-bold text-ink uppercase tracking-tight">Add Admin Access</h3>
                   <p className="text-xs text-ink-2 mt-1">Authorize a team member to access this console.</p>
                 </div>
 
@@ -3033,178 +4142,205 @@ export default function AdminPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ type: 'spring', stiffness: 350, damping: 28 }}
-              className="relative w-full max-w-2xl max-h-[90vh] bg-bg-card/95 border border-line-soft rounded-[2.5rem] shadow-[0_25px_80px_rgba(0,0,0,0.7)] flex flex-col z-[110] overflow-hidden backdrop-blur-2xl text-left my-auto"
+              className="relative w-full max-w-2xl max-h-[90vh] bg-bg-card border border-line-soft rounded-[2.5rem] shadow-2xl flex flex-col z-[110] overflow-hidden backdrop-blur-2xl text-left my-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Header */}
-              <div className="relative border-b border-line-soft bg-bg-card/90 backdrop-blur-xl px-7 py-5 flex items-center justify-between shrink-0 z-10">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center bg-bg-soft border border-line-soft shrink-0">
-                    {selectedReg.profile_photo_url ? (
-                      <img src={selectedReg.profile_photo_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#7C5CFF] to-[#F25A2B] text-white font-display font-bold text-base">
-                        {(selectedReg.display_name || selectedReg.username || 'U')[0].toUpperCase()}
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="text-base font-display font-bold text-ink uppercase tracking-tight leading-none truncate flex items-center gap-2">
-                      {selectedReg.display_name || selectedReg.username}
-                      {selectedReg.is_verified && (
-                        <CheckCircle2 className="w-4 h-4 text-[#7C5CFF] shrink-0" />
-                      )}
-                    </h3>
-                    <p className="text-xs font-mono text-brand mt-1 truncate">@{selectedReg.username}</p>
-                  </div>
+              {/* Modal Top Bar */}
+              <div className="px-7 pt-6 pb-2 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-brand animate-pulse" />
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-[0.14em] text-ink-3">
+                    Waitlist Node Detail
+                  </span>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <a
-                    href={`/${selectedReg.username}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-1.5 rounded-xl text-[10px] font-mono font-bold uppercase flex items-center gap-1.5 bg-bg-soft border border-line-soft hover:bg-bg-soft-hover text-ink transition-all cursor-pointer"
-                  >
-                    <ExternalLink className="w-3 h-3" />
-                    View Live
-                  </a>
-                  <button
-                    onClick={() => setSelectedReg(null)}
-                    className="w-8 h-8 rounded-xl flex items-center justify-center bg-bg-soft border border-line-soft text-ink-3 hover:text-ink hover:bg-bg-soft-hover transition-all cursor-pointer"
-                  >
-                    <XCircle className="w-4 h-4" />
-                  </button>
-                </div>
+                <button
+                  onClick={() => setSelectedReg(null)}
+                  className="w-9 h-9 rounded-2xl flex items-center justify-center bg-bg-soft border border-line-soft text-ink-3 hover:text-ink hover:bg-bg-soft-hover transition-all cursor-pointer active:scale-95"
+                  title="Close"
+                >
+                  <XCircle className="w-4.5 h-4.5" />
+                </button>
               </div>
 
               {/* Scrollable Content */}
-              <div className="p-7 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
+              <div className="p-7 pt-2 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
 
-                {/* Status Badges & Bio */}
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-mono font-bold tracking-[0.08em]" style={
-                      selectedReg.is_verified
-                        ? { background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)', color: 'white' }
-                        : { background: 'var(--bg-soft)', color: 'var(--ink-3)', border: '1px solid var(--line-soft)' }
-                    }>
-                      <CheckCircle2 className="w-3 h-3" />
-                      {selectedReg.is_verified ? 'VERIFIED' : 'PENDING'}
-                    </span>
+                {/* HERO PROFILE SECTION */}
+                <div className="bg-bg-soft/30 border border-line-soft rounded-[2rem] p-6 space-y-5">
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left">
+                    {/* Big DP Avatar */}
+                    <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-3xl overflow-hidden bg-bg-soft border-2 border-line-soft shadow-xl shrink-0 group">
+                      {selectedReg.profile_photo_url ? (
+                        <img src={selectedReg.profile_photo_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#F25A2B] to-[#7C5CFF] text-white font-display font-black text-3xl shadow-inner">
+                          {(selectedReg.display_name || selectedReg.username || 'U')[0].toUpperCase()}
+                        </div>
+                      )}
+                    </div>
 
-                    {selectedReg.is_blocked && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-mono font-bold tracking-[0.08em] bg-hot/10 text-hot border border-hot/20">
-                        <XCircle className="w-3 h-3" />
-                        SUSPENDED
-                      </span>
-                    )}
+                    {/* Profile Info */}
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
+                        <h2 className="text-2xl sm:text-3xl font-display font-black text-ink uppercase tracking-tight leading-none flex items-center gap-2">
+                          <span>{selectedReg.display_name || selectedReg.username}</span>
+                          {selectedReg.is_verified && (
+                            <CheckCircle2 className="w-6 h-6 text-[#7C5CFF] shrink-0" />
+                          )}
+                        </h2>
+                      </div>
 
-                    {selectedReg.feature_founding_card && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-mono font-bold tracking-[0.08em] bg-brand-3/10 text-brand-3 border border-brand-3/20">
-                        <Award className="w-3 h-3" />
-                        FOUNDING CARD
-                      </span>
-                    )}
+                      <p className="text-sm font-mono text-brand font-semibold">
+                        @{selectedReg.username}
+                      </p>
 
-                    {selectedReg.exclude_from_waitlist && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-mono font-bold tracking-[0.08em] bg-purple-500/10 text-purple-400 border border-purple-500/20">
-                        <UserMinus className="w-3 h-3" />
-                        EXCLUDED FROM RANK
-                      </span>
-                    )}
+                      {/* Status Badges */}
+                      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-mono font-bold tracking-[0.08em]" style={
+                          selectedReg.is_verified
+                            ? { background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)', color: 'white' }
+                            : { background: 'var(--bg-soft)', color: 'var(--ink-3)', border: '1px solid var(--line-soft)' }
+                        }>
+                          <CheckCircle2 className="w-3 h-3" />
+                          {selectedReg.is_verified ? 'VERIFIED' : 'PENDING'}
+                        </span>
 
-                    {selectedReg.role && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-mono font-bold uppercase tracking-[0.08em] bg-bg-soft border border-line-soft text-ink-2">
-                        {selectedReg.role}
-                      </span>
-                    )}
+                        {selectedReg.feature_founding_card && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-mono font-bold tracking-[0.08em] bg-[#7C5CFF]/10 text-[#7C5CFF] border border-[#7C5CFF]/20">
+                            <Award className="w-3 h-3" />
+                            FOUNDING CARD
+                          </span>
+                        )}
+
+                        {selectedReg.exclude_from_waitlist && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-mono font-bold tracking-[0.08em] bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                            <UserMinus className="w-3 h-3" />
+                            EXCLUDED FROM RANK
+                          </span>
+                        )}
+
+                        {selectedReg.is_blocked && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-mono font-bold tracking-[0.08em] bg-hot/10 text-hot border border-hot/20">
+                            <XCircle className="w-3 h-3" />
+                            SUSPENDED
+                          </span>
+                        )}
+
+                        {selectedReg.role && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-mono font-bold uppercase tracking-[0.08em] bg-bg-soft border border-line-soft text-ink-2">
+                            {selectedReg.role}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* View Live Link */}
+                      <div className="pt-2 flex justify-center sm:justify-start">
+                        <a
+                          href={`/${selectedReg.username}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-4 py-2 rounded-2xl text-xs font-mono font-bold uppercase flex items-center gap-2 bg-bg-soft border border-line-soft hover:bg-bg-soft-hover text-ink transition-all cursor-pointer shadow-sm active:scale-95"
+                        >
+                          <ExternalLink className="w-4 h-4 text-brand" />
+                          <span>View Live Profile</span>
+                        </a>
+                      </div>
+                    </div>
                   </div>
 
+                  {/* Bio Card */}
                   {selectedReg.bio && (
-                    <div className="bg-bg-soft/40 border border-line-soft rounded-2xl p-3.5 text-xs text-ink-2 leading-relaxed">
+                    <div className="bg-bg-card/70 border border-line-soft rounded-2xl p-4 text-xs text-ink-2 leading-relaxed">
+                      <span className="text-[9px] font-mono font-bold text-ink-3 uppercase tracking-widest block mb-1">Biography</span>
                       {selectedReg.bio}
                     </div>
                   )}
                 </div>
 
-                {/* Quick Action Grid */}
-                <div className="bg-bg-soft/20 border border-line-soft rounded-2xl p-4 space-y-3">
-                  <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3">Quick Management Controls</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {/* Quick Management Controls */}
+                <div className="bg-bg-soft/20 border border-line-soft rounded-[1.75rem] p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3">Quick Management Controls</p>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {/* Verify Button */}
                     <button
                       onClick={() => handleVerifyAndLock(selectedReg)}
-                      className="py-2.5 px-3 rounded-xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      className="py-3 px-3 rounded-2xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer active:scale-95"
                       style={selectedReg.is_verified ? {
-                        background: 'var(--bg-soft)', color: 'var(--brand-3)', border: '1px solid rgba(124,92,255,0.2)',
+                        background: 'var(--bg-soft)', color: 'var(--brand-3)', border: '1px solid rgba(124,92,255,0.3)',
                       } : {
                         background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)', color: 'white', border: 'none',
-                        boxShadow: '0 4px 16px -4px rgba(242,90,43,0.4)',
+                        boxShadow: '0 4px 14px -3px rgba(242,90,43,0.4)',
                       }}
                     >
-                      <CheckCircle2 className="w-3 h-3" />
-                      {selectedReg.is_verified ? 'Unverify' : 'Verify'}
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      <span>{selectedReg.is_verified ? 'Unverify' : 'Verify'}</span>
                     </button>
 
+                    {/* Suspend Button */}
                     <button
                       onClick={() => handleToggleBlock(selectedReg)}
-                      className="py-2.5 px-3 rounded-xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      className="py-3 px-3 rounded-2xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer active:scale-95"
                       style={selectedReg.is_blocked ? {
-                        background: 'rgba(255,75,75,0.1)', color: 'var(--hot)', border: '1px solid rgba(255,75,75,0.2)',
+                        background: 'rgba(255,75,75,0.12)', color: 'var(--hot)', border: '1px solid rgba(255,75,75,0.3)',
                       } : {
                         background: 'var(--bg-soft)', color: 'var(--ink-3)', border: '1px solid var(--line-soft)',
                       }}
                     >
-                      <XCircle className="w-3 h-3" />
-                      {selectedReg.is_blocked ? 'Restore' : 'Suspend'}
+                      <XCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{selectedReg.is_blocked ? 'Restore' : 'Suspend'}</span>
                     </button>
 
+                    {/* Feature Founding Card Button */}
                     <button
                       onClick={() => handleToggleFoundingCard(selectedReg)}
-                      className="py-2.5 px-3 rounded-xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      className="py-3 px-3 rounded-2xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer active:scale-95"
                       style={selectedReg.feature_founding_card ? {
-                        background: 'rgba(124,92,255,0.1)', color: 'var(--brand-3)', border: '1px solid rgba(124,92,255,0.2)',
+                        background: 'rgba(124,92,255,0.12)', color: 'var(--brand-3)', border: '1px solid rgba(124,92,255,0.3)',
                       } : {
                         background: 'var(--bg-soft)', color: 'var(--ink-3)', border: '1px solid var(--line-soft)',
                       }}
                     >
-                      <Award className="w-3 h-3" />
-                      {selectedReg.feature_founding_card ? 'Unfeat.' : 'Feature'}
+                      <Award className="w-3.5 h-3.5 shrink-0" />
+                      <span>{selectedReg.feature_founding_card ? 'Unfeature' : 'Feature Card'}</span>
                     </button>
 
+                    {/* Exclude Rank Button */}
                     <button
                       onClick={() => handleToggleExcludeFromWaitlist(selectedReg)}
-                      className="py-2.5 px-3 rounded-xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      className="py-3 px-3 rounded-2xl text-[10px] font-mono font-bold tracking-[0.06em] uppercase flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer active:scale-95"
                       style={selectedReg.exclude_from_waitlist ? {
-                        background: 'rgba(242,90,43,0.15)', color: 'var(--brand-1)', border: '1px solid rgba(242,90,43,0.25)',
+                        background: 'rgba(242,90,43,0.12)', color: 'var(--brand-1)', border: '1px solid rgba(242,90,43,0.3)',
                       } : {
                         background: 'var(--bg-soft)', color: 'var(--ink-3)', border: '1px solid var(--line-soft)',
                       }}
                     >
-                      <UserMinus className="w-3 h-3" />
-                      {selectedReg.exclude_from_waitlist ? 'Include Rank' : 'Exclude Rank'}
+                      <UserMinus className="w-3.5 h-3.5 shrink-0" />
+                      <span>{selectedReg.exclude_from_waitlist ? 'Include Rank' : 'Exclude Rank'}</span>
                     </button>
                   </div>
                 </div>
 
-                {/* Queue Override & Details Grid */}
+                {/* Details Bento Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Contact Info */}
-                  <div className="bg-bg-soft/30 border border-line-soft rounded-2xl p-4 space-y-2.5">
+                  {/* Contact Info Bento Box */}
+                  <div className="bg-bg-soft/30 border border-line-soft rounded-[1.75rem] p-5 space-y-3">
                     <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3">Contact Information</p>
-                    <div className="space-y-2 text-xs font-mono">
-                      <div className="flex items-center gap-2 text-ink">
+                    <div className="space-y-2.5 text-xs font-mono">
+                      <div className="flex items-center gap-2.5 text-ink">
                         <Mail className="w-3.5 h-3.5 text-ink-3 shrink-0" />
-                        <span className="truncate">{selectedReg.email}</span>
+                        <span className="truncate select-all">{selectedReg.email}</span>
                       </div>
                       {selectedReg.phone && (
-                        <div className="flex items-center gap-2 text-ink">
+                        <div className="flex items-center gap-2.5 text-ink">
                           <Smartphone className="w-3.5 h-3.5 text-ink-3 shrink-0" />
-                          <span>{selectedReg.phone}</span>
+                          <span className="select-all">{selectedReg.phone}</span>
                         </div>
                       )}
                       {selectedReg.city && (
-                        <div className="flex items-center gap-2 text-ink">
+                        <div className="flex items-center gap-2.5 text-ink">
                           <MapPin className="w-3.5 h-3.5 text-ink-3 shrink-0" />
                           <span>{selectedReg.city}</span>
                         </div>
@@ -3212,10 +4348,10 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  {/* Queue Management */}
-                  <div className="bg-bg-soft/30 border border-line-soft rounded-2xl p-4 space-y-2.5">
+                  {/* Queue Management Bento Box */}
+                  <div className="bg-bg-soft/30 border border-line-soft rounded-[1.75rem] p-5 space-y-3">
                     <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3">Queue Management</p>
-                    <div className="flex items-center gap-3 pt-1">
+                    <div className="flex items-center gap-3 pt-0.5">
                       <span className="text-xs text-ink-2 font-mono">Queue Override:</span>
                       <input
                         type="number"
@@ -3235,31 +4371,31 @@ export default function AdminPage() {
                             (e.target as HTMLInputElement).blur();
                           }
                         }}
-                        className="w-16 bg-bg-soft border border-line-soft rounded-lg py-1 px-1.5 text-xs text-ink text-center font-mono focus:outline-none focus:border-brand transition-all"
+                        className="w-16 bg-bg-soft border border-line-soft rounded-xl py-1 px-2 text-xs text-ink text-center font-mono font-bold focus:outline-none focus:border-brand transition-all"
                       />
                       <span className="text-[10px] font-mono text-ink-3">
                         {selectedReg.position_override ? `#${selectedReg.position_override}` : 'Auto-Queue'}
                       </span>
                     </div>
-                    <div className="text-[10px] font-mono text-ink-3 pt-2 border-t border-line-soft flex justify-between">
+                    <div className="text-[10px] font-mono text-ink-3 pt-2.5 border-t border-line-soft flex justify-between items-center">
                       <span>Registered:</span>
-                      <span className="text-ink-2">{new Date(selectedReg.reserved_at).toLocaleDateString()}</span>
+                      <span className="text-ink-2 font-bold">{new Date(selectedReg.reserved_at).toLocaleDateString()}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Classification & Genres */}
                 {(selectedReg.category || (selectedReg.genres && selectedReg.genres.length > 0)) && (
-                  <div className="bg-bg-soft/20 border border-line-soft rounded-2xl p-4 space-y-2">
+                  <div className="bg-bg-soft/20 border border-line-soft rounded-[1.75rem] p-5 space-y-2.5">
                     <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3">Classification & Genres</p>
                     <div className="flex flex-wrap items-center gap-2">
                       {selectedReg.category && (
-                        <span className="text-xs text-ink font-semibold capitalize bg-bg-soft border border-line-soft px-2.5 py-1 rounded-lg">
+                        <span className="text-xs text-ink font-semibold capitalize bg-bg-soft border border-line-soft px-3.5 py-1.5 rounded-xl">
                           {selectedReg.category.replace('_', ' ')}
                         </span>
                       )}
                       {selectedReg.genres && selectedReg.genres.map(g => (
-                        <span key={g} className="text-[10px] font-mono px-2.5 py-1 rounded-lg text-ink-2 bg-bg-soft/40 border border-line-soft">
+                        <span key={g} className="text-xs font-mono px-3 py-1.5 rounded-xl text-ink-2 bg-bg-soft/40 border border-line-soft">
                           #{g}
                         </span>
                       ))}
@@ -3269,39 +4405,132 @@ export default function AdminPage() {
 
                 {/* External Portals */}
                 {(selectedReg.instagram_url || selectedReg.spotify_url || selectedReg.youtube_url || selectedReg.youtube_channel_url) && (
-                  <div className="bg-bg-soft/20 border border-line-soft rounded-2xl p-4 space-y-2.5">
+                  <div className="bg-bg-soft/20 border border-line-soft rounded-[1.75rem] p-5 space-y-3">
                     <p className="text-[10px] font-mono font-bold uppercase tracking-[0.12em] text-ink-3">External Portals</p>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {selectedReg.instagram_url && (
                         <a href={selectedReg.instagram_url.startsWith('http') ? selectedReg.instagram_url : `https://instagram.com/${selectedReg.instagram_url}`} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-2.5 p-2.5 rounded-xl bg-bg-soft/40 border border-line-soft hover:bg-bg-soft transition-all group">
-                          <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)' }}>
-                            <span className="text-white text-[8px] font-black">IG</span>
+                          className="flex items-center gap-3 p-3 rounded-2xl bg-bg-soft/40 border border-line-soft hover:bg-bg-soft transition-all group">
+                          <div className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0 shadow-sm" style={{ background: 'linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)' }}>
+                            <span className="text-white text-[9px] font-black">IG</span>
                           </div>
                           <span className="text-xs font-mono text-ink-2 truncate flex-1 group-hover:text-ink">Instagram</span>
-                          <ExternalLink className="w-3 h-3 text-ink-3" />
+                          <ExternalLink className="w-3.5 h-3.5 text-ink-3" />
                         </a>
                       )}
                       {selectedReg.spotify_url && (
                         <a href={selectedReg.spotify_url.startsWith('http') ? selectedReg.spotify_url : `https://open.spotify.com/artist/${selectedReg.spotify_url}`} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-2.5 p-2.5 rounded-xl bg-bg-soft/40 border border-line-soft hover:bg-bg-soft transition-all group">
-                          <div className="w-6 h-6 rounded-lg flex items-center justify-center bg-[#1DB954] shrink-0">
-                            <span className="text-white text-[8px] font-black">SP</span>
+                          className="flex items-center gap-3 p-3 rounded-2xl bg-bg-soft/40 border border-line-soft hover:bg-bg-soft transition-all group">
+                          <div className="w-7 h-7 rounded-xl flex items-center justify-center bg-[#1DB954] shadow-sm">
+                            <span className="text-white text-[9px] font-black">SP</span>
                           </div>
                           <span className="text-xs font-mono text-ink-2 truncate flex-1 group-hover:text-ink">Spotify</span>
-                          <ExternalLink className="w-3 h-3 text-ink-3" />
+                          <ExternalLink className="w-3.5 h-3.5 text-ink-3" />
                         </a>
                       )}
                       {(selectedReg.youtube_url || selectedReg.youtube_channel_url) && (
                         <a href={(selectedReg.youtube_channel_url || selectedReg.youtube_url || '').startsWith('http') ? (selectedReg.youtube_channel_url || selectedReg.youtube_url || '') : `https://youtube.com/@${selectedReg.youtube_channel_url || selectedReg.youtube_url}`} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-2.5 p-2.5 rounded-xl bg-bg-soft/40 border border-line-soft hover:bg-bg-soft transition-all group col-span-2">
-                          <div className="w-6 h-6 rounded-lg flex items-center justify-center bg-[#FF0000] shrink-0">
-                            <span className="text-white text-[8px] font-black">YT</span>
+                          className="flex items-center gap-3 p-3 rounded-2xl bg-bg-soft/40 border border-line-soft hover:bg-bg-soft transition-all group sm:col-span-2">
+                          <div className="w-7 h-7 rounded-xl flex items-center justify-center bg-[#FF0000] shrink-0 shadow-sm">
+                            <span className="text-white text-[9px] font-black">YT</span>
                           </div>
                           <span className="text-xs font-mono text-ink-2 truncate flex-1 group-hover:text-ink">YouTube</span>
-                          <ExternalLink className="w-3 h-3 text-ink-3" />
+                          <ExternalLink className="w-3.5 h-3.5 text-ink-3" />
                         </a>
                       )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Command Palette Search Modal */}
+      <AnimatePresence>
+        {showCommandPalette && (
+          <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: -20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -20 }}
+              className="w-full max-w-xl bg-bg-card border border-line-soft rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] text-left"
+            >
+              <div className="p-4 border-b border-line-soft flex items-center gap-3 bg-bg-soft/30">
+                <Search className="w-4 h-4 text-[#7C5CFF] shrink-0" />
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Search creators, booking requests, or jump to tab..."
+                  value={commandSearch}
+                  onChange={(e) => setCommandSearch(e.target.value)}
+                  className="w-full bg-transparent text-sm font-sans text-ink focus:outline-none placeholder:text-ink-3"
+                />
+                <button 
+                  onClick={() => setShowCommandPalette(false)}
+                  className="text-[10px] font-mono font-bold text-ink-3 hover:text-ink px-2 py-1 rounded-lg bg-bg-soft border border-line-soft cursor-pointer"
+                >
+                  ESC
+                </button>
+              </div>
+
+              <div className="overflow-y-auto p-4 space-y-4 max-h-[60vh]">
+                {/* Quick Navigation Shortcuts */}
+                <div>
+                  <span className="text-[9px] font-mono font-bold text-ink-3 uppercase tracking-wider block mb-2">Management Tabs</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { id: "overview", label: "Executive Overview", icon: BarChart3 },
+                      { id: "registrations", label: "Waitlist Directory", icon: Users },
+                      { id: "emails", label: "Broadcast Studio", icon: Mail },
+                      { id: "requests", label: "Booking Requests", icon: CalendarIcon },
+                      { id: "members", label: "Visitor Activity", icon: Eye },
+                    ].map(tab => (
+                      <button
+                        key={tab.id}
+                        onClick={() => {
+                          setActiveTab(tab.id as any);
+                          setShowCommandPalette(false);
+                          setCommandSearch("");
+                        }}
+                        className="flex items-center gap-2.5 p-2.5 rounded-xl bg-bg-soft/40 hover:bg-bg-soft border border-line-soft text-xs text-ink font-semibold transition-all cursor-pointer"
+                      >
+                        <tab.icon className="w-3.5 h-3.5 text-[#7C5CFF]" />
+                        <span>{tab.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* User Results */}
+                {commandSearch.trim() !== "" && (
+                  <div>
+                    <span className="text-[9px] font-mono font-bold text-ink-3 uppercase tracking-wider block mb-2">
+                      Matching Creators ({registrations.filter(r => (r.display_name || '').toLowerCase().includes(commandSearch.toLowerCase()) || r.username.toLowerCase().includes(commandSearch.toLowerCase()) || r.email.toLowerCase().includes(commandSearch.toLowerCase())).length})
+                    </span>
+                    <div className="space-y-1.5">
+                      {registrations
+                        .filter(r => (r.display_name || '').toLowerCase().includes(commandSearch.toLowerCase()) || r.username.toLowerCase().includes(commandSearch.toLowerCase()) || r.email.toLowerCase().includes(commandSearch.toLowerCase()))
+                        .slice(0, 5)
+                        .map(reg => (
+                          <div
+                            key={reg.id}
+                            onClick={() => {
+                              setSelectedReg(reg);
+                              setActiveTab("registrations");
+                              setShowCommandPalette(false);
+                              setCommandSearch("");
+                            }}
+                            className="p-3 rounded-xl bg-bg-soft/40 hover:bg-bg-soft border border-line-soft flex items-center justify-between cursor-pointer transition-all"
+                          >
+                            <div>
+                              <p className="font-bold text-xs text-ink">{reg.display_name || reg.username}</p>
+                              <p className="text-[10px] font-mono text-ink-3">@{reg.username} • {reg.email}</p>
+                            </div>
+                            <span className="text-[10px] font-mono text-[#7C5CFF] font-bold">View Profile &rarr;</span>
+                          </div>
+                        ))}
                     </div>
                   </div>
                 )}

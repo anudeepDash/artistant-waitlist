@@ -23,12 +23,24 @@ import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import Navbar from '@/components/Navbar';
 import ImageCropperModal from '@/components/ImageCropperModal';
+import { ToastNotification } from '@/components/ToastNotification';
 import {
   Lock, LockKeyhole, Check, LogOut, CheckCircle, Copy, Sparkles, Award, Shield, Zap,
   Star, Calendar, Users, MessageSquare, TrendingUp, Gift, ChevronRight, ChevronDown,
   ExternalLink, DownloadCloud, Smartphone, HelpCircle, Trophy, X, Camera, Mail,
-  Phone, MapPin, Play, Music, Heart, Share2, LayoutGrid, Globe
+  Phone, MapPin, Play, Music, Heart, Share2, LayoutGrid, Globe, Radio, Eye, RefreshCw
 } from 'lucide-react';
+
+const isDirectVideoUrl = (url: string) => {
+  if (!url) return false;
+  return (
+    url.includes('/profiles/video_') ||
+    /\.(mp4|webm|mov|m4v|ogv)($|\?)/i.test(url) ||
+    url.includes('/storage/v1/object/public/') ||
+    url.startsWith('blob:') ||
+    url.startsWith('data:video/')
+  );
+};
 
 /* ═══════════════════════════════════════════════════
    FEATURES LIST (Ecosystem Suite)
@@ -93,6 +105,15 @@ const getSpotifyHandle = (url: string) => {
   if (clean.includes('spotify.com/artist/')) {
     return clean.split('spotify.com/artist/').pop() || '';
   }
+  if (clean.includes('spotify.com/track/')) {
+    return clean.split('spotify.com/track/').pop() || '';
+  }
+  if (clean.includes('spotify.com/album/')) {
+    return clean.split('spotify.com/album/').pop() || '';
+  }
+  if (clean.includes('spotify.com/')) {
+    return clean.split('spotify.com/').pop() || '';
+  }
   return clean;
 };
 
@@ -103,26 +124,39 @@ const getYoutubeHandle = (url: string) => {
     return clean.split('youtube.com/@').pop() || '';
   }
   if (clean.includes('youtube.com/')) {
-    const match = clean.match(/youtube\.com\/(?:c\/|user\/|channel\/)?@?([^/]+)/);
-    if (match && match[1]) return match[1];
     return clean.split('youtube.com/').pop() || '';
   }
-  return clean.startsWith('@') ? clean.slice(1) : clean;
-};
-
-const makeInstagramUrl = (input: string) => {
-  const handle = getInstagramHandle(input);
-  return handle ? `https://instagram.com/${handle}` : '';
+  return clean.replace(/^@/, '');
 };
 
 const makeSpotifyUrl = (input: string) => {
-  const handle = getSpotifyHandle(input);
-  return handle ? `https://open.spotify.com/artist/${handle}` : '';
+  if (!input) return '';
+  const clean = input.trim();
+  // Already a valid Spotify URL or URI — store as-is
+  if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('spotify:')) {
+    return clean;
+  }
+  // Missing protocol but has spotify.com
+  if (clean.includes('spotify.com/')) {
+    return `https://${clean.replace(/^https?:\/\//, '')}`;
+  }
+  // Raw 22-char base62 Spotify ID (valid artist/track/album ID)
+  if (/^[a-zA-Z0-9]{22}$/.test(clean)) {
+    return `https://open.spotify.com/artist/${clean}`;
+  }
+  // Anything else (plain name, handle) — store as-is so the API can resolve it
+  // Do NOT wrap names in fake spotify.com URLs
+  return clean;
 };
 
 const makeYoutubeUrl = (input: string) => {
   const handle = getYoutubeHandle(input);
   return handle ? `https://youtube.com/@${handle}` : '';
+};
+
+const makeInstagramUrl = (input: string) => {
+  const handle = getInstagramHandle(input);
+  return handle ? `https://instagram.com/${handle}` : '';
 };
 
 
@@ -302,6 +336,17 @@ export default function ProfilePage() {
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
   const [previewContactOpen, setPreviewContactOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'portfolio' | 'leaderboard'>('dashboard');
+
+  // Live Stage Broadcast Studio states
+  const [broadcastInputVal, setBroadcastInputVal] = useState('');
+  const [isUpdatingBroadcast, setIsUpdatingBroadcast] = useState(false);
+  const [showBroadcastFanPreview, setShowBroadcastFanPreview] = useState(true);
+
+  useEffect(() => {
+    if (reservation?.custom_status_message) {
+      setBroadcastInputVal(reservation.custom_status_message);
+    }
+  }, [reservation?.custom_status_message]);
 
   useEffect(() => {
     setMounted(true);
@@ -1222,9 +1267,20 @@ export default function ProfilePage() {
 
     const getYouTubeEmbedId = (url: string) => {
       if (!url) return null;
-      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|shorts\/|watch\?v=|\&v=)([^#\&\?]*).*/;
       const match = url.match(regExp);
       return (match && match[2].length === 11) ? match[2] : null;
+    };
+
+    const isDirectVideoUrl = (url: string) => {
+      if (!url) return false;
+      return (
+        url.includes('/profiles/video_') ||
+        /\.(mp4|webm|mov|m4v|ogv)($|\?)/i.test(url) ||
+        url.includes('/storage/v1/object/public/') ||
+        url.startsWith('blob:') ||
+        url.startsWith('data:video/')
+      );
     };
 
     const getInstagramEmbedId = (url: string) => {
@@ -1269,7 +1325,7 @@ export default function ProfilePage() {
             <div className={`absolute inset-0 transition-colors duration-300 ${isLight ? 'bg-gradient-to-b from-black/15 via-transparent via-55% to-[#FAF9FD]' : 'bg-gradient-to-b from-black/35 via-transparent via-55% to-[#050508]'}`} />
 
             {/* Top Controls Bar (Mobile version mockup) */}
-            <div className="absolute top-4 left-0 right-0 px-3 z-30 flex items-center justify-between w-full">
+            <div className="absolute top-7 left-0 right-0 px-3 z-30 flex items-center justify-between w-full">
               <div className={`w-6 h-6 rounded-full flex items-center justify-center backdrop-blur-md text-[10px] ${isLight ? 'bg-white/75 border border-black/10 text-zinc-900 shadow-sm' : 'bg-black/40 border border-white/10 text-white'}`}>
                 &larr;
               </div>
@@ -1331,47 +1387,74 @@ export default function ProfilePage() {
 
                 <div className="flex justify-center w-full py-1">
                   <div 
-                    className={`w-full max-w-[220px] aspect-[1.58/1] relative rounded-xl p-[1px] overflow-hidden border shadow-sm ${isLight ? 'border-[#7C5CFF]/15' : 'border-white/5 shadow-lg'}`}
+                    className={`w-full max-w-[220px] aspect-[1.58/1] relative rounded-2xl p-[1px] overflow-hidden border shadow-sm ${isLight ? 'border-[#7C5CFF]/15' : 'border-white/5 shadow-lg'}`}
                     style={{
                       background: isLight 
                         ? 'linear-gradient(135deg, rgba(124,92,255,0.1), rgba(124,92,255,0.02) 40%, rgba(124,92,255,0.25))'
                         : 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.01) 40%, rgba(124,92,255,0.2))',
                     }}
                   >
-                    <div className={`relative w-full h-full rounded-xl p-2 flex flex-col justify-between overflow-hidden ${isLight ? 'bg-white/90 border-0' : 'bg-[#050508]/95'}`}>
+                    <div className={`relative w-full h-full rounded-[15px] p-2.5 flex flex-col justify-between overflow-hidden ${isLight ? 'bg-white/90 border-0' : 'bg-[#050508]/95'}`}>
                       {/* Decorative elements */}
-                      <div className={`absolute -right-8 -bottom-8 w-24 h-24 rounded-full border pointer-events-none ${isLight ? 'border-[#7C5CFF]/5' : 'border-white/[0.01]'}`} />
+                      <div className={`absolute -right-8 -bottom-8 w-24 h-24 rounded-full border pointer-events-none ${isLight ? 'border-[#7C5CFF]/5' : 'border-white/[0.02]'}`}>
+                        <div className={`w-16 h-16 rounded-full border ${isLight ? 'border-[#7C5CFF]/3' : 'border-white/[0.01]'}`} />
+                      </div>
 
                       {/* Card Top Row */}
                       <div className="flex justify-between items-start z-10 w-full">
                         <div className="flex items-center gap-1">
-                          <img src="/logo_a.png" alt="" className="w-2 h-2 object-contain opacity-80" />
-                          <span className={`font-mono text-[3.5px] font-bold tracking-[0.2em] ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>FOUNDING CARD</span>
+                          <img src="/logo_a.png" alt="" className="w-2.5 h-2.5 object-contain opacity-80" />
+                          <span className={`font-mono text-[4px] font-bold tracking-[0.2em] ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>FOUNDING CARD</span>
                         </div>
-                        <span className={`px-1 py-0.5 rounded-full font-mono text-[3.5px] font-bold uppercase tracking-wider ${isLight ? 'bg-black/[0.02] border border-black/5 text-zinc-500' : 'bg-white/[0.02] border border-white/5 text-white/40'}`}>
-                          Founding Artist
+                        <span 
+                          className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full font-mono text-[4px] font-bold uppercase tracking-wider ${
+                            points >= 500
+                              ? isLight 
+                                ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
+                                : 'bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 text-emerald-400'
+                              : isLight
+                                ? 'bg-black/[0.04] border border-black/5 text-zinc-500'
+                                : 'bg-white/[0.02] border border-white/5 text-white/40'
+                          }`}
+                        >
+                          {points >= 500 ? (
+                            <>
+                              <span className="w-1 h-1 rounded-full bg-emerald-400" />
+                              <span>Founding Artist</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="w-1 h-1 rounded-full bg-white/20" />
+                              <span>Founding Artist</span>
+                              <LockKeyhole className="w-1.5 h-1.5 text-zinc-500 ml-0.5 shrink-0" />
+                            </>
+                          )}
                         </span>
                       </div>
 
                       {/* Rank Position */}
                       <div className="flex flex-col items-center justify-center z-10 flex-1 my-0.5">
-                        <h1 className={`font-display font-black leading-none text-base ${isLight ? 'text-zinc-900' : 'text-white'}`}>
+                        <h1 className={`font-display font-black leading-none text-base tracking-tighter ${isLight ? 'text-zinc-900' : 'text-white'}`}>
                           {cohortVal === 'TEAM' || waitlistPos === 0 ? 'TEAM' : `#${waitlistPos || '---'}`}
                         </h1>
-                        <span className={`text-[3.5px] font-mono tracking-[0.2em] uppercase mt-0.5 ${isLight ? 'text-zinc-400' : 'text-white/25'}`}>
-                          {cohortVal === 'TEAM' || waitlistPos === 0 ? 'Waitlist Rank Excluded' : 'Waitlist Rank'}
-                        </span>
+                        <div className="flex flex-col items-center mt-0.5">
+                          <span className={`text-[3.5px] font-mono font-bold tracking-[0.2em] uppercase whitespace-nowrap ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>
+                            {cohortVal === 'TEAM' || waitlistPos === 0 ? 'WAITLIST RANK • TEAM EXCLUDED' : `WAITLIST RANK • COHORT ${cohort}`}
+                          </span>
+                          <span className="text-[3.5px] font-mono font-bold tracking-[0.12em] uppercase text-[#F25A2B] whitespace-nowrap">
+                            {cohortVal === 'TEAM' || waitlistPos === 0 ? 'TEAM ACCESS GRANTED' : (isCohort1 ? 'BETA ACCESS GRANTED' : 'POSITION SECURED')}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Card Bottom Row */}
-                      <div className={`flex justify-between items-end z-10 w-full border-t pt-1 ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`}>
+                      <div className="flex justify-between items-center z-10 w-full">
                         <div className="flex flex-col text-left">
-                          <span className={`text-[3px] font-mono tracking-widest uppercase ${isLight ? 'text-zinc-400' : 'text-white/35'}`}>Artist Name</span>
-                          <span className={`text-[5px] font-bold truncate max-w-[60px] ${isLight ? 'text-zinc-800' : 'text-white/80'}`}>{displayName || reservation.username}</span>
+                          <span className={`font-display text-[9px] font-black tracking-tight ${isLight ? 'text-zinc-800' : 'text-white'}`}>@{reservation.username}</span>
+                          <span className={`text-[3.5px] uppercase font-mono tracking-widest ${isLight ? 'text-zinc-400' : 'text-white/40'}`}>Verified Artist</span>
                         </div>
-                        <div className="flex flex-col text-right">
-                          <span className={`text-[3px] font-mono tracking-widest uppercase ${isLight ? 'text-zinc-400' : 'text-white/35'}`}>Cohort / Status</span>
-                          <span className="text-[4px] font-mono tracking-wider text-[#7C5CFF] font-bold">COHORT 003 · FOUNDING</span>
+                        <div className="flex flex-col items-end">
+                          <img src="/logo_wordmark_flat.png" alt="ArtisTant" className="w-12 h-auto object-contain opacity-85" />
                         </div>
                       </div>
                     </div>
@@ -1541,10 +1624,12 @@ export default function ProfilePage() {
                             frameBorder="0"
                             className="w-full h-full pointer-events-none"
                           />
-                        ) : youtubeUrl.includes('/profiles/video_') ? (
+                        ) : isDirectVideoUrl(youtubeUrl) ? (
                           <video
                             src={youtubeUrl}
                             controls
+                            playsInline
+                            preload="metadata"
                             className="w-full h-full object-cover pointer-events-none"
                           />
                         ) : (
@@ -1691,21 +1776,12 @@ export default function ProfilePage() {
       <div className={`absolute top-[40%] right-[-10%] w-[45%] h-[45%] ${isLight ? 'bg-[#7C5CFF]/7' : 'bg-[#7C5CFF]/3'} rounded-full blur-[150px] pointer-events-none z-0`} />
       <div className={`absolute bottom-[10%] left-[-15%] w-[60%] h-[60%] ${isLight ? 'bg-[#D4567A]/5' : 'bg-[#D4567A]/2'} rounded-full blur-[180px] pointer-events-none z-0`} />
 
-      {/* ── Toast ── */}
-      <AnimatePresence>
-        {toastMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: -20, x: '-50%' }}
-            animate={{ opacity: 1, y: 0, x: '-50%' }}
-            exit={{ opacity: 0, y: -20, x: '-50%' }}
-            className="fixed top-20 left-1/2 z-[100] px-5 py-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2 border border-[var(--line-soft)] backdrop-blur-xl"
-            style={{ background: 'var(--glass-bg)', color: 'var(--ink)', boxShadow: '0 10px 30px var(--shadow-base)' }}
-          >
-            <CheckCircle className="w-4 h-4 text-emerald-400" />
-            {toastMessage}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* ── Redesigned Ultra-Premium Toast Notification ── */}
+      <ToastNotification
+        message={toastMessage}
+        onClose={() => setToastMessage(null)}
+        position="top-right"
+      />
 
       {/* ═══ TOP BAR ═══ */}
       <Navbar
@@ -1731,33 +1807,41 @@ export default function ProfilePage() {
           </motion.div>
         </section>
 
-        {/* ── DASHBOARD SUB-NAVIGATION TAB BAR ── */}
+        {/* ── APPLE LIQUID GLASS DASHBOARD SUB-NAVIGATION TAB BAR ── */}
         <div className="flex justify-center mb-10 relative z-30">
-          <div className="flex flex-wrap items-center justify-center p-1 rounded-2xl bg-[#111116]/40 border border-white/[0.04] backdrop-blur-md gap-1">
+          <div className="flex flex-wrap items-center justify-center p-1.5 rounded-full sm:rounded-2xl bg-white/[0.04] dark:bg-[#0D0E17]/60 border border-white/20 dark:border-white/10 backdrop-blur-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_15px_40px_rgba(0,0,0,0.4)] gap-1.5 relative overflow-hidden">
+            {/* Top Specular Light Highlight */}
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none" />
+
             {[
               { id: 'dashboard', label: 'Dashboard', Icon: LayoutGrid },
               { id: 'portfolio', label: 'Portfolio', Icon: Smartphone },
               { id: 'leaderboard', label: 'Leaderboard', Icon: Trophy },
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[11px] font-bold font-mono uppercase tracking-wider transition-all duration-300 relative cursor-pointer ${
-                  activeTab === tab.id ? 'text-white' : 'text-zinc-500 hover:text-white'
-                }`}
-              >
-                {activeTab === tab.id && (
-                  <motion.div
-                    layoutId="activeDashboardTab"
-                    className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF]"
-                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                    style={{ zIndex: -1 }}
-                  />
-                )}
-                <tab.Icon className="w-3.5 h-3.5" />
-                <span>{tab.label}</span>
-              </button>
-            ))}
+            ].map(tab => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex items-center gap-2.5 px-6 py-2.5 rounded-full sm:rounded-xl text-[11px] font-bold font-mono uppercase tracking-wider transition-all duration-300 relative cursor-pointer backdrop-blur-2xl ${
+                    isActive 
+                      ? 'text-white border border-white/30 dark:border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.5),0_6px_20px_rgba(0,0,0,0.3)] scale-[1.02]' 
+                      : 'text-zinc-400 hover:text-white border border-transparent hover:bg-white/10 dark:hover:bg-white/5'
+                  }`}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeDashboardTab"
+                      className="absolute inset-0 rounded-full sm:rounded-xl bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF]"
+                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                      style={{ zIndex: -1 }}
+                    />
+                  )}
+                  <tab.Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-zinc-400'}`} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -1765,7 +1849,7 @@ export default function ProfilePage() {
         {activeTab === 'dashboard' && (
           <div className="space-y-8 relative z-10 text-left">
             {/* ── BANNERS SECTION ── */}
-            <div className="flex md:grid md:grid-cols-2 overflow-x-auto gap-4 md:gap-6 items-stretch pb-2 pt-1 scrollbar-hide snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0">
+            <div className="flex md:grid md:grid-cols-2 overflow-x-auto gap-3 md:gap-4 items-stretch pb-2 pt-1 scrollbar-hide snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0">
               {/* Edit Portfolio Banner */}
               <div 
                 onClick={() => setActiveTab('portfolio')}
@@ -2556,39 +2640,230 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Broadcast Card */}
-              <div className={`p-6 rounded-3xl border ${isLight ? 'bg-white border-[#F25A2B]/10 shadow-[0_8px_30px_rgba(242,90,43,0.08)]' : 'bg-[#0A0A0F] border-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.4)]'} flex flex-col justify-between relative overflow-hidden`}>
-                <div className="flex flex-col gap-3 z-10">
-                  <h3 className="text-sm font-bold text-[var(--ink)] flex items-center gap-2">
-                    Broadcast Message
-                  </h3>
-                  <p className="text-[11px] text-[var(--ink-2)] leading-snug">Set a custom status that fans will see as a notification when they visit your profile.</p>
-                  <div className="flex gap-2">
-                    <input 
-                      type="text" 
-                      placeholder="e.g. New single out Friday!"
-                      className="flex-1 min-w-0 bg-[var(--line-soft)] border border-[var(--line)] rounded-xl px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF] transition-colors placeholder-[var(--ink-3)]"
-                      defaultValue={reservation.custom_status_message || ''}
-                      id="broadcastInput"
-                      maxLength={60}
-                    />
-                    <button 
-                      onClick={async () => {
-                        const input = document.getElementById('broadcastInput') as HTMLInputElement;
-                        if (!input) return;
-                        try {
-                          const idToken = await user!.getIdToken();
-                          await updateCustomStatusMessageAction(idToken, input.value);
-                          setToastMessage('Broadcast message updated!');
-                          setTimeout(() => setToastMessage(null), 3000);
-                        } catch (err) {
-                          console.error(err);
-                        }
-                      }}
-                      className="bg-[var(--ink)] text-[var(--bg)] px-4 py-2 rounded-xl text-xs font-bold hover:scale-105 transition-all shrink-0"
-                    >
-                      Set
-                    </button>
+              {/* Live Stage Broadcast Studio Console (Website Design System Card) */}
+              <div 
+                className={`p-6 sm:p-7 rounded-3xl border transition-all duration-300 relative overflow-hidden text-left space-y-4 ${
+                  isLight 
+                    ? 'bg-white border-line-soft shadow-xl' 
+                    : 'bg-bg-card border-line-soft shadow-2xl'
+                }`}
+              >
+                {/* Background Glow */}
+                <div className="absolute -top-20 -right-20 w-48 h-48 bg-[radial-gradient(circle_at_center,rgba(242,90,43,0.12)_0%,transparent_70%)] pointer-events-none" />
+                <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-[radial-gradient(circle_at_center,rgba(124,92,255,0.12)_0%,transparent_70%)] pointer-events-none" />
+
+                <div className="flex flex-col gap-4 z-10 relative">
+                  {/* Top Bar: Title, Equalizer & Status Pill */}
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-[#F25A2B]/10 border border-[#F25A2B]/20 flex items-center justify-center shrink-0 shadow-sm">
+                        <Radio className="w-5 h-5 text-[#F25A2B] animate-pulse" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-mono font-extrabold text-[var(--ink)] flex items-center gap-2 uppercase tracking-wider font-display">
+                          Live Stage Broadcast Studio
+                        </h3>
+                        <span className="text-[10px] text-[var(--ink-3)] font-mono font-medium">
+                          Real-time profile notification banner
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Status Indicator Capsule */}
+                    <div className="flex items-center gap-2.5">
+                      {/* Animated Soundwave Equalizer */}
+                      <div className="flex items-end gap-1 h-3.5 px-1.5 py-0.5 bg-bg-soft rounded-full border border-line-soft">
+                        <span className="w-0.5 h-full bg-[#F25A2B] rounded-full animate-pulse" style={{ animationDuration: '0.6s' }} />
+                        <span className="w-0.5 h-2/3 bg-[#7C5CFF] rounded-full animate-pulse" style={{ animationDuration: '0.9s' }} />
+                        <span className="w-0.5 h-full bg-[#F25A2B] rounded-full animate-pulse" style={{ animationDuration: '0.4s' }} />
+                      </div>
+                      <span className={`text-[9.5px] font-mono font-bold px-3 py-1 rounded-full border shadow-sm ${
+                        reservation?.custom_status_message 
+                          ? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20'
+                          : 'text-[#F25A2B] bg-[#F25A2B]/10 border-[#F25A2B]/20'
+                      }`}>
+                        {reservation?.custom_status_message ? '● BROADCASTING LIVE' : '○ OFF AIR'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-[var(--ink-2)] leading-relaxed font-medium">
+                    Publish instant track drops, show tickets, or availability updates. Anyone visiting your profile page will see this floating live card in real time.
+                  </p>
+
+                  {/* Preset Status Chips */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {[
+                      '🔥 New Single Dropping Friday!',
+                      '🎟️ Show Tickets Live!',
+                      '⚡ Open For Bookings',
+                      '🚀 On Tour Now',
+                      '🎧 New Studio Mix Out'
+                    ].map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => {
+                          setBroadcastInputVal(preset);
+                          const input = document.getElementById('broadcastInput') as HTMLInputElement;
+                          if (input) input.value = preset;
+                        }}
+                        className="text-[10px] font-mono bg-bg-soft hover:bg-[#7C5CFF]/15 hover:border-[#7C5CFF]/30 text-[var(--ink-2)] hover:text-[#7C5CFF] px-3 py-1.5 rounded-xl border border-line-soft transition-all duration-200 cursor-pointer font-bold shadow-sm"
+                      >
+                        {preset}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Input Row & Character Counter Ring */}
+                  <div className="space-y-2 pt-1">
+                    <div className="flex gap-2.5">
+                      <div className="relative flex-1">
+                        <input 
+                          type="text" 
+                          placeholder="e.g. New single out Friday! Check audio samples..."
+                          className="w-full bg-bg-soft/70 border border-line-soft rounded-xl px-4 py-2.5 text-xs text-[var(--ink)] focus:outline-none focus:border-[#7C5CFF] focus:ring-2 focus:ring-[#7C5CFF]/15 transition-all placeholder-[var(--ink-3)] font-sans"
+                          defaultValue={reservation?.custom_status_message || ''}
+                          id="broadcastInput"
+                          maxLength={70}
+                          onChange={(e) => setBroadcastInputVal(e.target.value)}
+                        />
+                        <span className={`absolute right-3.5 top-1/2 -translate-y-1/2 text-[9.5px] font-mono font-bold ${
+                          broadcastInputVal.length >= 60 ? 'text-[#F25A2B]' : 'text-[var(--ink-3)]'
+                        }`}>
+                          {broadcastInputVal.length}/70
+                        </span>
+                      </div>
+
+                      <button 
+                        disabled={isUpdatingBroadcast}
+                        onClick={async () => {
+                          const input = document.getElementById('broadcastInput') as HTMLInputElement;
+                          if (!input) return;
+                          setIsUpdatingBroadcast(true);
+                          try {
+                            const idToken = await user!.getIdToken();
+                            await updateCustomStatusMessageAction(idToken, input.value.trim());
+                            setReservation(prev => prev ? { ...prev, custom_status_message: input.value.trim() } : prev);
+                            setToastMessage('Live broadcast updated successfully!');
+                            setTimeout(() => setToastMessage(null), 3000);
+                          } catch (err) {
+                            console.error(err);
+                          } finally {
+                            setIsUpdatingBroadcast(false);
+                          }
+                        }}
+                        className="bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF] hover:opacity-95 text-white px-6 py-2.5 rounded-xl text-xs font-mono font-bold hover:scale-[1.01] active:scale-95 transition-all duration-200 shrink-0 shadow-md shadow-[#7C5CFF]/20 cursor-pointer uppercase tracking-wider flex items-center gap-2 border border-white/10"
+                      >
+                        {isUpdatingBroadcast ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Radio className="w-3.5 h-3.5" />}
+                        {isUpdatingBroadcast ? 'Saving...' : 'Broadcast'}
+                      </button>
+                    </div>
+
+                    {/* Active Status Clear Option */}
+                    {reservation?.custom_status_message && (
+                      <div className="flex justify-end pt-0.5">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const idToken = await user!.getIdToken();
+                              await updateCustomStatusMessageAction(idToken, '');
+                              setReservation(prev => prev ? { ...prev, custom_status_message: '' } : prev);
+                              setBroadcastInputVal('');
+                              const input = document.getElementById('broadcastInput') as HTMLInputElement;
+                              if (input) input.value = '';
+                              setToastMessage('Live broadcast cleared.');
+                              setTimeout(() => setToastMessage(null), 3000);
+                            } catch (err) {
+                              console.error(err);
+                            }
+                          }}
+                          className="text-[9.5px] font-mono text-slate-400 hover:text-red-400 cursor-pointer flex items-center gap-1 transition-colors"
+                        >
+                          ✕ Clear Live Broadcast Status
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Real-time In-Situ Fan Notification Preview Drawer */}
+                  <div className="pt-3 border-t border-white/15 dark:border-white/10 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9.5px] font-mono font-bold uppercase tracking-wider text-[var(--ink-3)] flex items-center gap-1.5">
+                        <Eye className="w-3.5 h-3.5 text-[#7C5CFF]" /> Fan Notification Preview (Live profile view)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowBroadcastFanPreview(!showBroadcastFanPreview)}
+                        className="text-[9.5px] font-mono text-[#7C5CFF] hover:underline cursor-pointer font-bold"
+                      >
+                        {showBroadcastFanPreview ? 'Hide Preview' : 'Show Preview'}
+                      </button>
+                    </div>
+
+                    {showBroadcastFanPreview && (
+                      <div className="flex justify-center pt-2 pb-1">
+                        <div 
+                          className="w-[370px] max-w-full rounded-[20px] overflow-hidden select-none relative text-left"
+                          style={{
+                            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.03) 45%, rgba(255, 255, 255, 0.01) 100%), linear-gradient(180deg, rgba(26, 26, 36, 0.76) 0%, rgba(13, 13, 20, 0.84) 100%)',
+                            backdropFilter: 'blur(36px) saturate(210%) contrast(108%)',
+                            WebkitBackdropFilter: 'blur(36px) saturate(210%) contrast(108%)',
+                            border: '1px solid rgba(255, 255, 255, 0.18)',
+                            boxShadow: 'inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.45), inset 0 -1px 1px 0 rgba(0, 0, 0, 0.35), 0 20px 45px -10px rgba(0, 0, 0, 0.75), 0 0 35px -5px rgba(124, 92, 255, 0.35)'
+                          }}
+                        >
+                          {/* Specular Liquid Edge Highlight */}
+                          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/50 to-transparent pointer-events-none" />
+
+                          {/* macOS Notification Header Bar */}
+                          <div className="px-3.5 pt-3 pb-1.5 flex items-center justify-between relative z-10 border-b border-white/[0.06]">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="w-4.5 h-4.5 rounded-[5px] bg-gradient-to-br from-[#7C5CFF] via-[#F25A2B] to-[#D4567A] flex items-center justify-center text-[10px] font-black text-white shadow-sm border border-white/30 shrink-0">
+                                A
+                              </div>
+                              <span className="text-[11px] font-semibold tracking-tight font-sans text-white/80">
+                                ARTISTANT
+                              </span>
+                              <span className="text-[10px] text-white/30">•</span>
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="relative flex h-1.5 w-1.5">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#F25A2B] opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#F25A2B]"></span>
+                                </span>
+                                <span className="text-[10.5px] font-medium tracking-tight truncate text-white/50">
+                                  Broadcast Stage
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-[10.5px] font-normal text-white/40">
+                                now
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Content Body */}
+                          <div className="p-3.5 flex gap-3 items-center relative z-10">
+                            <div className="w-8 h-8 rounded-[12px] shrink-0 overflow-hidden ring-1 ring-white/20 bg-gradient-to-br from-[#7C5CFF]/20 to-[#D4567A]/20 flex items-center justify-center shadow-md">
+                              {reservation?.profile_photo_url ? (
+                                <img src={reservation.profile_photo_url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-xs font-extrabold text-white">{(displayName || 'A')[0].toUpperCase()}</span>
+                              )}
+                            </div>
+                            <div className="flex flex-col min-w-0 flex-1 text-left">
+                              <span className="text-[11px] font-bold truncate text-white/70">{displayName || reservation?.username || 'Artist'}</span>
+                              <p className="text-[12.5px] font-medium leading-snug break-words tracking-tight font-sans text-white/95">
+                                {broadcastInputVal || reservation?.custom_status_message || '🔥 New track dropping this Friday! Open for bookings...'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -3392,19 +3667,29 @@ export default function ProfilePage() {
 
                     {/* Social Spotify */}
                     <div className="flex flex-col gap-1.5 col-span-1 md:col-span-2">
-                      <label className={`text-[10px] font-bold uppercase tracking-wider font-mono ${isLight ? 'text-black/45' : 'text-white/40'}`}>Spotify</label>
+                      <div className="flex items-center justify-between">
+                        <label className={`text-[10px] font-bold uppercase tracking-wider font-mono ${isLight ? 'text-black/45' : 'text-white/40'}`}>Spotify Artist Link</label>
+                        {spotifyUrl && (
+                          <span className={`text-[9px] font-mono font-bold ${
+                            spotifyUrl.includes('spotify.com/') || /^[a-zA-Z0-9]{22}$/.test(spotifyUrl)
+                              ? 'text-[#1DB954]' 
+                              : 'text-amber-400'
+                          }`}>
+                            {spotifyUrl.includes('spotify.com/') || /^[a-zA-Z0-9]{22}$/.test(spotifyUrl) ? '✓ Valid Spotify Link' : '⚠ Paste your Spotify artist page URL for best results'}
+                          </span>
+                        )}
+                      </div>
                       <div className={`flex items-center rounded-2xl px-4 py-3 focus-within:border-[#1DB954] focus-within:ring-2 focus-within:ring-[#1DB954]/10 transition-all duration-300 border backdrop-blur-sm ${
                         isLight 
                           ? 'bg-zinc-50 border-black/[0.08] shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]' 
                           : 'bg-white/[0.02] border-white/[0.08] shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)]'
                       }`}>
                         <SpotifyIcon className="w-4 h-4 text-[#1DB954] shrink-0 mr-2" />
-                        <span className={`text-xs select-none font-mono mr-0.5 shrink-0 ${isLight ? 'text-black/40' : 'text-white/40'}`}>open.spotify.com/artist/</span>
                         <input
                           type="text"
-                          value={getSpotifyHandle(spotifyUrl)}
+                          value={spotifyUrl}
                           onChange={(e) => setSpotifyUrl(makeSpotifyUrl(e.target.value))}
-                          placeholder="artist_id"
+                          placeholder="Paste your Spotify artist page link here..."
                           className={`flex-1 bg-transparent border-none p-0 text-xs focus:ring-0 focus:outline-none ${
                             isLight ? 'text-black placeholder-black/20' : 'text-white placeholder-white/20'
                           }`}
@@ -3804,14 +4089,20 @@ export default function ProfilePage() {
                     <div className="space-y-3">
                       <span className={`text-[10px] font-bold uppercase tracking-wider font-mono ${isLight ? 'text-black/45' : 'text-white/40'}`}>Active Showreel</span>
                       <div className={`w-full aspect-video rounded-2xl overflow-hidden relative border bg-black ${isLight ? 'border-black/10' : 'border-white/10'}`}>
-                        {youtubeUrl.includes('/profiles/video_') ? (
-                          <video src={youtubeUrl} controls className="w-full h-full object-cover" />
+                        {isDirectVideoUrl(youtubeUrl) ? (
+                          <video
+                            src={youtubeUrl}
+                            controls
+                            playsInline
+                            preload="metadata"
+                            className="w-full h-full object-cover"
+                          />
                         ) : (
                           <iframe
                             width="100%"
                             height="100%"
-                            src={youtubeUrl.includes('youtube.com') 
-                              ? `https://www.youtube.com/embed/${youtubeUrl.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/)?.[2] || ''}?autoplay=0&rel=0`
+                            src={youtubeUrl.includes('youtube.com') || youtubeUrl.includes('youtu.be') 
+                              ? `https://www.youtube.com/embed/${youtubeUrl.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|shorts\/|watch\?v=|\&v=)([^#\&\?]*).*/)?.[2] || ''}?autoplay=0&rel=0`
                               : `https://www.instagram.com/p/${youtubeUrl.match(/instagram\.com\/(?:p|reel|tv)\/([^/?#&]+)/i)?.[1] || ''}/embed`
                             }
                             title="Video player"
@@ -3875,7 +4166,7 @@ export default function ProfilePage() {
 
                       {/* Option 2: Upload Direct File */}
                       <div className="flex flex-col gap-2">
-                        <label className={`text-[10px] font-bold uppercase tracking-wider font-mono ${isLight ? 'text-black/45' : 'text-white/40'}`}>Upload Video File (Max 15MB)</label>
+                        <label className={`text-[10px] font-bold uppercase tracking-wider font-mono ${isLight ? 'text-black/45' : 'text-white/40'}`}>Upload Video File (Max 100MB)</label>
                         <label className={`rounded-2xl border border-dashed p-6 transition-all flex flex-col items-center justify-center cursor-pointer ${
                           isLight 
                             ? 'border-black/20 hover:border-[#7C5CFF]/50 bg-black/[0.01] hover:bg-black/[0.03]' 
@@ -3892,8 +4183,8 @@ export default function ProfilePage() {
                               const file = e.target.files?.[0];
                               if (!file || !user) return;
                               
-                              if (file.size > 15 * 1024 * 1024) {
-                                showToast('File is too large! Max size is 15MB.');
+                              if (file.size > 100 * 1024 * 1024) {
+                                showToast('File is too large! Max size is 100MB.');
                                 return;
                               }
 

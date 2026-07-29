@@ -164,6 +164,88 @@ export async function sendWelcomeEmail({ email, name, username }: WelcomeEmailPa
   }
 }
 
+export interface EmailAttachmentItem {
+  id?: string;
+  title: string;
+  fileType: string;
+  size?: string;
+  url: string;
+  description?: string;
+}
+
+/**
+ * Renders an inline visual attachment card for email HTML body.
+ */
+export function renderAttachmentHtml(attachments?: EmailAttachmentItem[]): string {
+  if (!attachments || attachments.length === 0) return '';
+
+  const attachmentItemsHtml = attachments.map((att) => {
+    const extUpper = (att.fileType || 'FILE').toUpperCase();
+    const sizeText = att.size ? ` • ${escapeHtml(att.size)}` : '';
+    const descText = att.description
+      ? `<p style="margin: 4px 0 0 0; font-size: 11px; color: #64748B; font-family: -apple-system, sans-serif;">${escapeHtml(att.description)}</p>`
+      : '';
+
+    let badgeBg = '#EFF6FF';
+    let badgeColor = '#2563EB';
+    if (extUpper.includes('PDF')) {
+      badgeBg = '#FEF2F2';
+      badgeColor = '#EF4444';
+    } else if (extUpper.includes('ZIP') || extUpper.includes('RAR')) {
+      badgeBg = '#FFE4E6';
+      badgeColor = '#E11D48';
+    } else if (extUpper.includes('MP3') || extUpper.includes('WAV') || extUpper.includes('AUDIO')) {
+      badgeBg = '#F0FDFA';
+      badgeColor = '#0D9488';
+    } else if (extUpper.includes('PNG') || extUpper.includes('JPG') || extUpper.includes('IMG')) {
+      badgeBg = '#F0FDF4';
+      badgeColor = '#16A34A';
+    }
+
+    return `
+      <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; margin-bottom: 10px; table-layout: fixed;">
+        <tr>
+          <td style="padding: 14px 16px;">
+            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+              <tr>
+                <td width="42" valign="middle" style="padding-right: 12px;">
+                  <div style="background-color: ${badgeBg}; color: ${badgeColor}; width: 40px; height: 40px; border-radius: 10px; text-align: center; line-height: 40px; font-weight: 800; font-size: 10px; font-family: monospace; letter-spacing: 0.5px;">
+                    ${escapeHtml(extUpper)}
+                  </div>
+                </td>
+                <td valign="middle">
+                  <div style="font-size: 13px; font-weight: 700; color: #0F172A; font-family: -apple-system, sans-serif; line-height: 1.3;">
+                    ${escapeHtml(att.title)}
+                  </div>
+                  <div style="font-size: 10px; font-weight: 600; color: #64748B; font-family: -apple-system, sans-serif; margin-top: 2px;">
+                    <span style="display: inline-block; background-color: #E2E8F0; color: #334155; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 700; font-family: monospace;">${escapeHtml(extUpper)}</span>
+                    ${sizeText}
+                  </div>
+                  ${descText}
+                </td>
+                <td width="95" valign="middle" align="right" style="padding-left: 8px;">
+                  <a href="${escapeHtml(att.url)}" target="_blank" style="display: inline-block; background-color: #0F172A; color: #ffffff; font-size: 10px; font-weight: 700; font-family: -apple-system, sans-serif; text-decoration: none; padding: 8px 12px; border-radius: 8px; text-align: center;">
+                    Open &rarr;
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    `;
+  }).join('');
+
+  return `
+    <div style="margin: 25px 0; padding: 18px; background-color: #FFFFFF; border: 1px dashed #CBD5E1; border-radius: 16px;">
+      <div style="font-size: 10px; font-weight: 800; color: #7C5CFF; text-transform: uppercase; letter-spacing: 1.5px; font-family: -apple-system, sans-serif; margin-bottom: 12px;">
+        📎 Attached Resources (${attachments.length})
+      </div>
+      ${attachmentItemsHtml}
+    </div>
+  `;
+}
+
 interface CustomEmailParams {
   toEmail: string;
   name: string;
@@ -173,10 +255,15 @@ interface CustomEmailParams {
   ctaText?: string;
   ctaUrl?: string;
   senderAlias?: string;
+  templateType?: 'standard' | 'welcome' | 'vip' | 'newsletter' | 'raw' | 'migrated_artist';
+  headerTitle?: string;
+  pillTag?: string;
+  attachments?: EmailAttachmentItem[];
 }
 
 /**
- * Sends a custom broadcast email using the Artistant master HTML template.
+ * Sends a custom broadcast email supporting multiple templates, custom pill tags,
+ * direct raw mode, visual attachments, and custom CTA destinations.
  */
 export async function sendCustomEmail({
   toEmail,
@@ -187,42 +274,132 @@ export async function sendCustomEmail({
   ctaText = 'Visit ArtisTant',
   ctaUrl = 'https://artistant.in',
   senderAlias,
+  templateType = 'standard',
+  headerTitle,
+  pillTag,
+  attachments = [],
 }: CustomEmailParams): Promise<{ success: boolean; message: string }> {
   try {
     const transporter = getTransporter();
-    
-    // Read the master HTML email template
-    const templatePath = path.join(process.cwd(), 'src/templates/artistant-mail-template.html');
-    let htmlContent = '';
-    
-    try {
-      htmlContent = fs.readFileSync(templatePath, 'utf8');
-    } catch (readError: any) {
-      console.error('Error reading email template file:', readError);
-      return { success: false, message: `Failed to load email template: ${readError.message}` };
+    const recipientName = escapeHtml(name || 'ArtisTant Member');
+    const recipientHandle = escapeHtml(username || 'artist');
+    const formattedMessage = messageBody.replace(/\n/g, '<br />');
+    const attachmentHtml = renderAttachmentHtml(attachments);
+
+    let compiledHtml = '';
+
+    if (templateType === 'raw') {
+      // Direct Minimal Email (No Template)
+      const ctaHtml = ctaText && ctaUrl ? `
+        <div style="margin-top: 25px; text-align: left;">
+          <a href="${escapeHtml(ctaUrl)}" target="_blank" style="display: inline-block; background-color: #7C5CFF; color: #ffffff; font-size: 13px; font-weight: 700; font-family: -apple-system, sans-serif; text-decoration: none; padding: 12px 24px; border-radius: 10px;">
+            ${escapeHtml(ctaText)}
+          </a>
+        </div>
+      ` : '';
+
+      compiledHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(subject)}</title>
+</head>
+<body style="margin: 0; padding: 20px; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0F172A;">
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #E2E8F0; border-radius: 16px; padding: 32px;">
+    <tr>
+      <td>
+        <div style="margin-bottom: 24px; border-bottom: 1px solid #F1F5F9; padding-bottom: 16px;">
+          <a href="https://artistant.in" target="_blank" style="text-decoration: none;">
+            <img src="https://artistant.in/logo_wordmark_flat.png" alt="ArtisTant" width="120" style="display: block; width: 120px; height: auto;">
+          </a>
+        </div>
+        ${headerTitle ? `<h2 style="margin: 0 0 16px 0; font-size: 22px; font-weight: 800; color: #0F172A;">${escapeHtml(headerTitle)}</h2>` : ''}
+        <div style="font-size: 14px; line-height: 1.6; color: #334155;">
+          ${formattedMessage}
+        </div>
+        ${attachmentHtml}
+        ${ctaHtml}
+        <div style="margin-top: 35px; border-top: 1px solid #F1F5F9; padding-top: 16px; font-size: 11px; color: #94A3B8;">
+          Sent directly from ArtisTant Official. &copy; ${new Date().getFullYear()} ArtisTant Inc.
+        </div>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+      `.trim();
+    } else {
+      // Read the master HTML email template
+      const templatePath = path.join(process.cwd(), 'src/templates/artistant-mail-template.html');
+      let htmlContent = '';
+      
+      try {
+        htmlContent = fs.readFileSync(templatePath, 'utf8');
+      } catch (readError: any) {
+        console.error('Error reading email template file:', readError);
+        return { success: false, message: `Failed to load email template: ${readError.message}` };
+      }
+
+      compiledHtml = htmlContent;
+      compiledHtml = compiledHtml.replaceAll('{{name}}', recipientName);
+      compiledHtml = compiledHtml.replaceAll('{{username}}', recipientHandle);
+      compiledHtml = compiledHtml.replaceAll('{{cta_text}}', escapeHtml(ctaText));
+      compiledHtml = compiledHtml.replaceAll('{{cta_url}}', escapeHtml(ctaUrl));
+
+      if (pillTag) {
+        compiledHtml = compiledHtml.replace(
+          '⚡ WAITLIST ACTIVE',
+          escapeHtml(pillTag)
+        );
+      }
+
+      if (headerTitle) {
+        const customHeadingHtml = `Welcome to the stage. <br><span style="color: #F25A2B;">${escapeHtml(headerTitle)}</span>`;
+        compiledHtml = compiledHtml.replace(
+          'Welcome to the stage. <br><span style="color: #F25A2B;">@{{username}}</span> is officially stashed.',
+          customHeadingHtml
+        );
+      }
+
+      // Omit ticket stub if standard or newsletter template
+      if (templateType !== 'welcome' && templateType !== 'vip' && templateType !== 'migrated_artist') {
+        compiledHtml = compiledHtml.replace(
+          /<table border="0" cellpadding="0" cellspacing="0" width="100%" class="ticket-table"[\s\S]*?<\/table>/gi,
+          ''
+        );
+      }
+
+      // Inject attachments right after message content
+      const messageBodyWithAttachment = formattedMessage + attachmentHtml;
+      compiledHtml = compiledHtml.replaceAll('{{message}}', messageBodyWithAttachment);
     }
 
-    // Process and substitute placeholders in the HTML
-    const formattedMessage = messageBody.replace(/\n/g, '<br />');
-    let compiledHtml = htmlContent;
-    compiledHtml = compiledHtml.replaceAll('{{name}}', escapeHtml(name || 'ArtisTant Member'));
-    compiledHtml = compiledHtml.replaceAll('{{username}}', escapeHtml(username || 'artist'));
-    compiledHtml = compiledHtml.replaceAll('{{message}}', formattedMessage);
-    compiledHtml = compiledHtml.replaceAll('{{cta_text}}', ctaText);
-    compiledHtml = compiledHtml.replaceAll('{{cta_url}}', ctaUrl);
+    // Prepare Nodemailer attachment array if URLs exist
+    const mailerAttachments = attachments
+      .filter((att) => att.url)
+      .map((att) => ({
+        filename: att.title || 'Attachment',
+        path: att.url,
+      }));
 
     // Configure mail options
-    const mailOptions = {
+    const mailOptions: any = {
       from: getSenderHeader(senderAlias),
       to: toEmail,
       subject: subject,
-      text: stripHtml(messageBody), // plain text alternative
+      text: stripHtml(messageBody),
       html: compiledHtml,
     };
 
+    if (mailerAttachments.length > 0) {
+      mailOptions.attachments = mailerAttachments;
+    }
+
     // Send the email
     const info = await transporter.sendMail(mailOptions);
-    console.log(`Custom email successfully sent to [REDACTED_EMAIL]. Message ID: ${info.messageId}`);
+    console.log(`Custom email successfully sent to ${toEmail}. Message ID: ${info.messageId}`);
     return { success: true, message: `Email sent. Message ID: ${info.messageId}` };
 
   } catch (error: any) {

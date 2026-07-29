@@ -6,8 +6,10 @@ import { useParams, useRouter } from 'next/navigation';
 import { incrementProfileVisitorsAction, getPublicProfileDataAction, submitBookingRequestAction, type PublicProfileReservation } from '@/lib/profile-actions';
 import { useTheme } from 'next-themes';
 import { 
-  X, MapPin, Share2, Mail, Phone, LockKeyhole, ArrowLeft, Heart, Calendar, Send, CheckCircle2, Copy, Check, Sparkles, User, Tag, IndianRupee, FileText, ArrowRight, ShieldCheck, Clock, Layers
+  X, MapPin, Share2, Mail, Phone, LockKeyhole, ArrowLeft, Heart, Calendar, Send, CheckCircle2, Copy, Check, Sparkles, User, Tag, IndianRupee, FileText, ArrowRight, ShieldCheck, Clock, Layers, Music, Volume2, Play
 } from 'lucide-react';
+
+import { SpotifyArtistPlayer } from '@/components/SpotifyArtistPlayer';
 
 const categoryLabels: Record<string, string> = {
   singer: 'Singer',
@@ -149,7 +151,7 @@ export default function PublicProfilePage() {
   // Check YouTube Video Id
   const getYouTubeEmbedId = (url: string) => {
     if (!url) return null;
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|shorts\/|watch\?v=|\&v=)([^#\&\?]*).*/;
     const match = url.match(regExp);
     return (match && match[2].length === 11) ? match[2] : null;
   };
@@ -313,11 +315,15 @@ export default function PublicProfilePage() {
                 {/* Rank Position (Center) */}
                 <div className="flex flex-col items-center justify-center z-10 flex-1 my-1 md:my-2">
                   <h1 className={`font-display font-black leading-none tracking-tighter text-4xl sm:text-6xl ${isLight ? 'text-zinc-900' : 'text-white'}`} style={{ textShadow: isLight ? '0 10px 30px rgba(124,92,255,0.06)' : '0 10px 30px rgba(0,0,0,0.5)' }}>
-                    #{waitlistPos || '---'}
+                    {cohortVal === 'TEAM' || waitlistPos === 0 ? 'TEAM' : `#${waitlistPos || '---'}`}
                   </h1>
                   <div className="flex flex-col items-center mt-1.5 md:mt-2.5">
-                    <span className="font-mono text-[8px] sm:text-[9px] font-bold tracking-[0.2em] sm:tracking-[0.3em] text-[var(--ink-3)] whitespace-nowrap">WAITLIST RANK • COHORT {cohortVal}</span>
-                    <span className="font-mono text-[7.5px] sm:text-[8px] font-bold tracking-[0.12em] sm:tracking-[0.15em] text-[#F25A2B] whitespace-nowrap">{(cohortVal === '001' || cohortVal === '1') ? 'BETA ACCESS GRANTED' : 'POSITION SECURED'}</span>
+                    <span className="font-mono text-[8px] sm:text-[9px] font-bold tracking-[0.2em] sm:tracking-[0.3em] text-[var(--ink-3)] whitespace-nowrap">
+                      {cohortVal === 'TEAM' || waitlistPos === 0 ? 'WAITLIST RANK • TEAM EXCLUDED' : `WAITLIST RANK • COHORT ${cohortVal}`}
+                    </span>
+                    <span className="font-mono text-[7.5px] sm:text-[8px] font-bold tracking-[0.12em] sm:tracking-[0.15em] text-[#F25A2B] whitespace-nowrap">
+                      {cohortVal === 'TEAM' || waitlistPos === 0 ? 'TEAM ACCESS GRANTED' : ((cohortVal === '001' || cohortVal === '1') ? 'BETA ACCESS GRANTED' : 'POSITION SECURED')}
+                    </span>
                   </div>
                 </div>
 
@@ -328,7 +334,7 @@ export default function PublicProfilePage() {
                     <span className={`text-[9px] uppercase font-mono tracking-widest mt-0.5 ${isLight ? 'text-zinc-400' : 'text-white/40'}`}>Verified Artist</span>
                   </div>
                   <div className="flex flex-col items-end">
-                    <img src="/logo_wordmark.png" alt="ArtisTant" className={`w-24 md:w-32 h-auto object-contain opacity-85 -my-3 md:-my-4 ${isLight ? 'invert' : 'dark:invert-0'}`} />
+                    <img src="/logo_wordmark_flat.png" alt="ArtisTant" className={`w-24 md:w-32 h-auto object-contain opacity-85 ${isLight ? 'invert' : 'dark:invert-0'}`} />
                   </div>
                 </div>
               </div>
@@ -375,47 +381,79 @@ export default function PublicProfilePage() {
         <div className="absolute bottom-[15%] left-[5%] w-[550px] h-[550px] rounded-full blur-[110px] pointer-events-none animate-pulse transition-opacity duration-300" style={{ background: 'radial-gradient(circle, #D4567A 0%, transparent 70%)', animationDuration: '14s', opacity: isLight ? 0.07 : 0.22 }} />
       </div>
 
-      {/* Broadcast Notification */}
+      {/* Broadcast Notification Popup — Apple macOS Liquid Glass Style */}
       <AnimatePresence>
         {showNotification && reservation.custom_status_message && (
           <motion.div
-            initial={{ opacity: 0, y: -60, scale: 0.92 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -30, scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 380, damping: 28 }}
-            className="fixed top-5 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:right-6 z-[60] w-[360px] max-w-[calc(100vw-24px)] rounded-2xl overflow-hidden"
+            initial={{ opacity: 0, y: -20, scale: 0.94, filter: 'blur(10px)' }}
+            animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, y: -12, scale: 0.95, filter: 'blur(8px)' }}
+            transition={{ type: "spring", stiffness: 400, damping: 28, mass: 0.8 }}
+            className="fixed top-5 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:right-6 z-[60] w-[370px] max-w-[calc(100vw-24px)] rounded-[20px] overflow-hidden select-none"
             style={{
               background: isLight
-                ? 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(245,242,255,0.95) 100%)'
-                : 'linear-gradient(135deg, rgba(12,12,18,0.92) 0%, rgba(20,16,32,0.92) 100%)',
-              backdropFilter: 'blur(24px)',
-              WebkitBackdropFilter: 'blur(24px)',
-              border: isLight ? '1px solid rgba(124,92,255,0.2)' : '1px solid rgba(124,92,255,0.15)',
+                ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.75) 0%, rgba(245, 245, 252, 0.65) 100%)'
+                : 'linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.03) 45%, rgba(255, 255, 255, 0.01) 100%), linear-gradient(180deg, rgba(26, 26, 36, 0.76) 0%, rgba(13, 13, 20, 0.84) 100%)',
+              backdropFilter: 'blur(36px) saturate(210%) contrast(108%)',
+              WebkitBackdropFilter: 'blur(36px) saturate(210%) contrast(108%)',
+              border: isLight ? '1px solid rgba(124, 92, 255, 0.25)' : '1px solid rgba(255, 255, 255, 0.18)',
               boxShadow: isLight
-                ? '0 20px 50px rgba(124,92,255,0.08), 0 0 0 1px rgba(124,92,255,0.05)'
-                : '0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(124,92,255,0.08)',
+                ? 'inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.9), 0 20px 45px -10px rgba(124, 92, 255, 0.25), 0 0 35px -5px rgba(124, 92, 255, 0.2)'
+                : 'inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.45), inset 0 -1px 1px 0 rgba(0, 0, 0, 0.35), 0 20px 45px -10px rgba(0, 0, 0, 0.75), 0 0 35px -5px rgba(124, 92, 255, 0.35)',
             }}
           >
-            <div className={`px-4 py-2 flex items-center justify-between border-b ${isLight ? 'border-black/[0.05]' : 'border-white/[0.04]'}`}>
-              <div className="flex items-center gap-2">
-                <img src="/logo_a.png" alt="A" className={`w-3.5 h-3.5 ${isLight ? 'opacity-70' : 'opacity-50'}`} />
-                <span className={`text-[10px] font-bold uppercase tracking-[0.15em] ${isLight ? 'text-zinc-500' : 'text-white/35'}`}>New Message</span>
+            {/* Specular Liquid Edge Highlight */}
+            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/50 to-transparent pointer-events-none" />
+
+            {/* macOS Notification Header Bar */}
+            <div className={`px-3.5 pt-3 pb-1.5 flex items-center justify-between relative z-10 border-b ${isLight ? 'border-black/[0.06]' : 'border-white/[0.06]'}`}>
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-4.5 h-4.5 rounded-[5px] bg-gradient-to-br from-[#7C5CFF] via-[#F25A2B] to-[#D4567A] flex items-center justify-center text-[10px] font-black text-white shadow-sm border border-white/30 shrink-0">
+                  A
+                </div>
+                <span className={`text-[11px] font-semibold tracking-tight font-sans ${isLight ? 'text-zinc-800' : 'text-white/80'}`}>
+                  ARTISTANT
+                </span>
+                <span className={`text-[10px] ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>•</span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#F25A2B] opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#F25A2B]"></span>
+                  </span>
+                  <span className={`text-[10.5px] font-medium tracking-tight truncate ${isLight ? 'text-zinc-500' : 'text-white/50'}`}>
+                    Broadcast Stage
+                  </span>
+                </div>
               </div>
-              <button onClick={() => setShowNotification(false)} className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${isLight ? 'hover:bg-black/5 text-zinc-400 hover:text-zinc-700' : 'hover:bg-white/10 text-white/30 hover:text-white/60'}`}>
-                <X className="w-3 h-3" />
-              </button>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <span className={`text-[10.5px] font-normal ${isLight ? 'text-zinc-400' : 'text-white/40'}`}>
+                  now
+                </span>
+                <button 
+                  onClick={() => setShowNotification(false)} 
+                  className={`w-4.5 h-4.5 rounded-full flex items-center justify-center transition-all cursor-pointer ${isLight ? 'hover:bg-black/10 text-zinc-400 hover:text-zinc-700' : 'hover:bg-white/20 text-white/40 hover:text-white'}`}
+                  aria-label="Close notification"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
             </div>
-            <div className="p-4 flex gap-3 items-start">
-              <div className={`w-10 h-10 rounded-full shrink-0 overflow-hidden ring-2 flex items-center justify-center ${isLight ? 'ring-[#7C5CFF]/15 bg-gradient-to-br from-[#7C5CFF]/10 to-[#D4567A]/10' : 'ring-[#7C5CFF]/20 bg-gradient-to-br from-[#7C5CFF]/20 to-[#D4567A]/20'}`}>
+
+            {/* Content Body */}
+            <div className="p-3.5 flex gap-3 items-center relative z-10">
+              <div className={`w-8 h-8 rounded-[12px] shrink-0 overflow-hidden ring-1 flex items-center justify-center shadow-md ${isLight ? 'ring-[#7C5CFF]/30 bg-gradient-to-br from-[#7C5CFF]/10 to-[#D4567A]/10' : 'ring-white/20 bg-gradient-to-br from-[#7C5CFF]/20 to-[#D4567A]/20'}`}>
                 {reservation.profile_photo_url ? (
                   <img src={reservation.profile_photo_url} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <span className={`text-sm font-bold ${isLight ? 'text-zinc-700' : 'text-white/70'}`}>{displayName[0].toUpperCase()}</span>
+                  <span className={`text-xs font-extrabold ${isLight ? 'text-zinc-800' : 'text-white'}`}>{displayName[0].toUpperCase()}</span>
                 )}
               </div>
-              <div className="flex flex-col min-w-0">
-                <span className={`text-sm font-bold truncate ${isLight ? 'text-zinc-900' : 'text-white/90'}`}>{displayName}</span>
-                <p className={`text-[13px] mt-0.5 leading-relaxed ${isLight ? 'text-zinc-600' : 'text-white/50'}`}>{reservation.custom_status_message}</p>
+              <div className="flex flex-col min-w-0 flex-1 text-left">
+                <span className={`text-[11px] font-bold truncate ${isLight ? 'text-zinc-900' : 'text-white/70'}`}>{displayName}</span>
+                <p className={`text-[12.5px] font-medium leading-snug break-words tracking-tight font-sans ${isLight ? 'text-zinc-800' : 'text-white/95'}`}>
+                  {reservation.custom_status_message}
+                </p>
               </div>
             </div>
           </motion.div>
@@ -437,7 +475,7 @@ export default function PublicProfilePage() {
         <div className={`absolute inset-0 transition-colors duration-300 ${isLight ? 'bg-gradient-to-b from-black/15 via-transparent via-55% to-[#FAF9FD]' : 'bg-gradient-to-b from-black/35 via-transparent via-55% to-[#050508]'}`} />
 
         {/* Top Controls Bar (Mobile version) */}
-        <div className="absolute top-5 left-0 right-0 px-5 z-30 flex items-center justify-between">
+        <div className="absolute top-6 left-0 right-0 px-5 z-30 flex items-center justify-between">
           <button 
             onClick={() => router.push('/')}
             className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-lg ${isLight ? 'bg-white/75 hover:bg-white/90 border border-black/10 text-zinc-900' : 'bg-black/40 hover:bg-black/60 border border-white/10 text-white'}`}
@@ -932,10 +970,108 @@ export default function PublicProfilePage() {
                       src={reservation.youtube_url}
                       controls
                       playsInline
+                      preload="metadata"
                       className="w-full h-full object-cover"
                     />
                   ) : null}
                 </div>
+              </motion.section>
+            );
+          }
+
+          // Audio Samples & Track Discography Section
+          if (section === 'audio') {
+            return (
+              <motion.section
+                key="audio"
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{ duration: 0.5 }}
+                className="space-y-4 text-left"
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center border shadow-sm ${isLight ? 'bg-white border-black/10' : 'bg-white/5 border border-white/10'}`}>
+                      <span className="text-[#1DB954] font-bold text-xs font-mono">
+                        03
+                      </span>
+                    </div>
+                    <div>
+                      <h2 className={`text-lg font-bold tracking-tight ${isLight ? 'text-zinc-900' : 'text-white'}`}>
+                        Audio & Discography
+                      </h2>
+                      <p className={`text-[10px] font-mono tracking-wider uppercase ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>
+                        Live Mixes, Demos & Streaming
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Spotify Interactive Artist Player or Audio Sample Player Cards */}
+                {reservation.spotify_url ? (
+                  <SpotifyArtistPlayer 
+                    spotifyUrl={reservation.spotify_url} 
+                    artistName={displayName} 
+                    isLight={isLight} 
+                  />
+                ) : (
+                  <div className={`p-6 rounded-3xl border space-y-4 ${isLight ? 'bg-white border-black/10 shadow-[0_10px_30px_rgba(0,0,0,0.04)]' : 'bg-[#0B0C14] border-white/[0.06] shadow-[0_10px_40px_rgba(0,0,0,0.4)]'}`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#7C5CFF]/20 to-[#1DB954]/20 border border-[#1DB954]/30 flex items-center justify-center text-[#1DB954]">
+                          <Music className="w-5 h-5 animate-pulse" />
+                        </div>
+                        <div>
+                          <h3 className={`text-sm font-bold ${isLight ? 'text-zinc-900' : 'text-white'}`}>
+                            {displayName} — Featured Live Demo
+                          </h3>
+                          <p className={`text-[10px] font-mono ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>
+                            {reservation.category ? reservation.category.replace('_', ' ') : 'Live Performance Showcase'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Equalizer animation visualizer */}
+                      <div className="flex items-end gap-1 h-5 px-2">
+                        <span className="w-1 bg-[#1DB954] h-full rounded-full animate-bounce" style={{ animationDuration: '0.6s' }} />
+                        <span className="w-1 bg-[#7C5CFF] h-3/4 rounded-full animate-bounce" style={{ animationDuration: '0.9s' }} />
+                        <span className="w-1 bg-[#F25A2B] h-full rounded-full animate-bounce" style={{ animationDuration: '0.4s' }} />
+                        <span className="w-1 bg-[#D4567A] h-1/2 rounded-full animate-bounce" style={{ animationDuration: '0.7s' }} />
+                      </div>
+                    </div>
+
+                    <div className={`p-4 rounded-2xl border flex items-center justify-between gap-4 ${isLight ? 'bg-zinc-50 border-zinc-200' : 'bg-white/[0.02] border-white/[0.05]'}`}>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => {
+                            if (reservation.spotify_url) {
+                              window.open(reservation.spotify_url, '_blank');
+                            } else {
+                              setShowNotification(true);
+                            }
+                          }}
+                          className="w-10 h-10 rounded-full bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] text-white flex items-center justify-center shadow-lg hover:scale-105 transition-all cursor-pointer"
+                        >
+                          <Play className="w-4 h-4 ml-0.5" />
+                        </button>
+                        <div>
+                          <p className={`text-xs font-bold ${isLight ? 'text-zinc-900' : 'text-white'}`}>
+                            {reservation.custom_status_message || `${displayName} — Stage Reel Demo`}
+                          </p>
+                          <p className={`text-[10px] font-mono ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>
+                            High Quality Audio Showcase
+                          </p>
+                        </div>
+                      </div>
+
+                      <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-[#1DB954]/15 text-[#1DB954] border border-[#1DB954]/30 font-bold uppercase tracking-wider">
+                        PREVIEW
+                      </span>
+                    </div>
+                  </div>
+                )}
               </motion.section>
             );
           }

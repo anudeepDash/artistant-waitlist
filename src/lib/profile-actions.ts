@@ -8,7 +8,7 @@ import crypto from 'crypto';
 import { type WaitlistEntry } from './waitlist';
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
-const MAX_VIDEO_BYTES = 15 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
 
 const IMAGE_TYPES = {
   'image/jpeg': 'jpg',
@@ -655,6 +655,7 @@ export async function uploadShowreelVideoAction(
     .from('profiles')
     .upload(fileName, buffer, {
       contentType,
+      cacheControl: '3600',
       upsert: true,
     });
 
