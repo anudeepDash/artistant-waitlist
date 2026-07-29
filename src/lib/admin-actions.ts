@@ -45,11 +45,23 @@ export async function adminGetRegistrationsAction(idToken: string): Promise<Admi
 
   if (serviceRoleKey) {
     // Service Role Client: query the table directly bypassing RLS
-    const { data, error } = await client
+    let { data, error } = await client
       .from('waitlist_users')
       .select('*')
       .order('position_override', { nullsFirst: false, ascending: true })
       .order('reserved_at', { ascending: false });
+
+    if (error) {
+      console.warn('Could not order registrations by position_override, falling back:', error.message);
+      const fallbackRes = await client
+        .from('waitlist_users')
+        .select('*')
+        .order('reserved_at', { ascending: false });
+      if (!fallbackRes.error) {
+        data = fallbackRes.data;
+        error = null;
+      }
+    }
 
     if (error) {
       console.error('Error fetching registrations directly: [REDACTED_ERROR]');
@@ -88,39 +100,43 @@ export async function adminUpdateRegistrationAction(
   try {
     await verifyAdminToken(idToken);
 
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const client = createAdminClient();
-
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
 
     // 1. Fetch current status of this user registration for email alert triggers
     let existing: any = null;
     try {
-      let { data } = await client
+      let res = await client
         .from('waitlist_users')
-        .select('email, display_name, username, is_verified, is_blocked, position_override, feature_founding_card')
+        .select('*')
         .eq('user_id', userId)
         .maybeSingle();
 
-      if (!data) {
-        const byId = await client
+      if (!res.data && isUUID) {
+        res = await client
           .from('waitlist_users')
-          .select('email, display_name, username, is_verified, is_blocked, position_override, feature_founding_card')
+          .select('*')
           .eq('id', userId)
           .maybeSingle();
-        data = byId.data;
       }
 
-      if (!data) {
-        const byUsername = await client
+      if (!res.data) {
+        res = await client
           .from('waitlist_users')
-          .select('email, display_name, username, is_verified, is_blocked, position_override, feature_founding_card')
+          .select('*')
           .eq('username', userId.toLowerCase())
           .maybeSingle();
-        data = byUsername.data;
       }
 
-      existing = data;
+      if (!res.data) {
+        res = await client
+          .from('waitlist_users')
+          .select('*')
+          .eq('email', userId.toLowerCase())
+          .maybeSingle();
+      }
+
+      existing = res.data;
     } catch (e) {
       console.warn('Could not fetch existing registration info for email alerts:', e);
     }
@@ -128,78 +144,108 @@ export async function adminUpdateRegistrationAction(
     let updateSuccess = false;
     let lastError: string | null = null;
 
-    if (serviceRoleKey) {
-      const updatePayload: any = {
-        is_verified: isVerified,
-        is_blocked: isBlocked,
-        position_override: positionOverride !== undefined ? positionOverride : null,
-      };
-      if (featureFoundingCard !== undefined) {
-        updatePayload.feature_founding_card = featureFoundingCard;
-      }
-      if (excludeFromWaitlist !== undefined) {
-        updatePayload.exclude_from_waitlist = excludeFromWaitlist;
-      }
+    const isColumnErr = (err: any) =>
+      err &&
+      (err.code === 'PGRST204' ||
+        err.code === 'PGRST200' ||
+        err.code === '42703' ||
+        (err.message &&
+          (err.message.includes('column') ||
+            err.message.includes('does not exist') ||
+            err.message.includes('exclude_from_waitlist') ||
+            err.message.includes('feature_founding_card') ||
+            err.message.includes('position_override'))));
 
-      // Try match 1: user_id
-      let res = await client
-        .from('waitlist_users')
-        .update(updatePayload)
-        .eq('user_id', userId)
-        .select('id');
-
-      if ((!res.data || res.data.length === 0) && !res.error && isUUID) {
-        // Try match 2: id (UUID)
-        res = await client
-          .from('waitlist_users')
-          .update(updatePayload)
-          .eq('id', userId)
-          .select('id');
-      }
-
-      if ((!res.data || res.data.length === 0) && !res.error) {
-        // Try match 3: username
-        res = await client
-          .from('waitlist_users')
-          .update(updatePayload)
-          .eq('username', userId.toLowerCase())
-          .select('id');
-      }
-
-      if ((!res.data || res.data.length === 0) && !res.error) {
-        // Try match 4: email
-        res = await client
-          .from('waitlist_users')
-          .update(updatePayload)
-          .eq('email', userId.toLowerCase())
-          .select('id');
-      }
-
-      if (!res.error && res.data && res.data.length > 0) {
-        updateSuccess = true;
-      } else if (res.error) {
-        lastError = res.error.message;
-        console.error('Error updating registration status directly:', res.error);
-        
-        // Check for missing column error
-        const isColumnErr =
-          res.error.code === 'PGRST204' ||
-          res.error.code === '42703' ||
-          (res.error.message && (
-            res.error.message.includes('column') ||
-            res.error.message.includes('does not exist')
-          ));
-
-        if (isColumnErr) {
-          return {
-            success: false,
-            message: `Database table missing column. Please run supabase_migration_exclude_from_waitlist.sql in Supabase SQL Editor. Error: ${res.error.message}`
-          };
+    const attemptUpdate = async (payload: Record<string, any>) => {
+      const tryUpdateField = async (field: 'user_id' | 'id' | 'username' | 'email', value: string) => {
+        try {
+          const r = await client
+            .from('waitlist_users')
+            .update(payload)
+            .eq(field, value)
+            .select('id');
+          return r;
+        } catch (e: any) {
+          return { data: null, error: e };
         }
+      };
+
+      // 1. Match by user_id
+      let res = await tryUpdateField('user_id', userId);
+      if (res.data && res.data.length > 0) return res;
+
+      // 2. Match by id (UUID column - only if userId is valid UUID format)
+      if (isUUID) {
+        const idRes = await tryUpdateField('id', userId);
+        if (idRes.data && idRes.data.length > 0) return idRes;
+        if (idRes.error && idRes.error.code !== '22P02') res = idRes;
+      }
+
+      // 3. Match by username
+      const userRes = await tryUpdateField('username', userId.toLowerCase());
+      if (userRes.data && userRes.data.length > 0) return userRes;
+      if (userRes.error && userRes.error.code !== '22P02') res = userRes;
+
+      // 4. Match by email
+      const emailRes = await tryUpdateField('email', userId.toLowerCase());
+      if (emailRes.data && emailRes.data.length > 0) return emailRes;
+      if (emailRes.error && emailRes.error.code !== '22P02') res = emailRes;
+
+      return res;
+    };
+
+    const updatePayload: Record<string, any> = {
+      is_verified: isVerified,
+      is_blocked: isBlocked,
+    };
+    if (positionOverride !== undefined) {
+      updatePayload.position_override = positionOverride;
+    }
+    if (featureFoundingCard !== undefined) {
+      updatePayload.feature_founding_card = featureFoundingCard;
+    }
+    if (excludeFromWaitlist !== undefined) {
+      updatePayload.exclude_from_waitlist = excludeFromWaitlist;
+    }
+
+    let res = await attemptUpdate(updatePayload);
+
+    if (res.error && isColumnErr(res.error)) {
+      console.warn('Missing column in waitlist_users during update, falling back to core fields:', res.error.message);
+
+      // Fallback 1: strip exclude_from_waitlist
+      delete updatePayload.exclude_from_waitlist;
+      res = await attemptUpdate(updatePayload);
+
+      // Fallback 2: strip feature_founding_card
+      if (res.error && isColumnErr(res.error)) {
+        delete updatePayload.feature_founding_card;
+        res = await attemptUpdate(updatePayload);
+      }
+
+      // Fallback 3: strip position_override
+      if (res.error && isColumnErr(res.error)) {
+        delete updatePayload.position_override;
+        res = await attemptUpdate(updatePayload);
+      }
+
+      // Fallback 4: core fields only
+      if (res.error && isColumnErr(res.error)) {
+        res = await attemptUpdate({
+          is_verified: isVerified,
+          is_blocked: isBlocked,
+        });
       }
     }
 
-    // Fallback: If Service Role update was not used or failed, call RPC functions
+    if (!res.error && res.data && res.data.length > 0) {
+      updateSuccess = true;
+    } else if (res.error) {
+      lastError = res.error.message;
+      console.error('Error updating registration status directly:', res.error);
+    }
+
+    // Fallback: If direct update did not succeed, call RPC functions
     if (!updateSuccess) {
       let rpcRes = await client.rpc('admin_update_registration', {
         p_passcode: process.env.ADMIN_PASSCODE || '',
@@ -218,6 +264,15 @@ export async function adminUpdateRegistrationAction(
           p_is_verified: isVerified,
           p_is_blocked: isBlocked,
           p_position_override: positionOverride !== undefined ? positionOverride : null,
+        });
+      }
+
+      if (rpcRes.error) {
+        rpcRes = await client.rpc('admin_update_registration', {
+          p_passcode: process.env.ADMIN_PASSCODE || '',
+          p_user_id: userId,
+          p_is_verified: isVerified,
+          p_is_blocked: isBlocked,
         });
       }
 
@@ -341,8 +396,8 @@ export async function adminGetActivityLogsAction(idToken: string): Promise<any[]
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Error fetching activity logs: [REDACTED_ERROR]');
-    const ref = crypto.randomUUID(); console.error('Error Ref:', ref, error); throw new Error('An internal error occurred. Ref: ' + ref);
+    console.warn('Error fetching activity logs (table may not be migrated yet):', error.message);
+    return [];
   }
   return data || [];
 }
