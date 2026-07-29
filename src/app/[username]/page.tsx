@@ -1096,7 +1096,7 @@ export default function PublicProfilePage() {
           <div className={`rounded-[1.9rem] p-8 md:p-10 backdrop-blur-xl border flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden shadow-sm ${isLight ? 'bg-white border-[#7C5CFF]/10 shadow-[0_20px_40px_rgba(124,92,255,0.06)]' : 'bg-[#0A0A10]/90 border-white/[0.03]'}`}>
             {/* Giant Background Watermark Logo A */}
             <img 
-              src="/logo_a.png" 
+              src="/logo_a_watermark.png" 
               alt="" 
               className={`absolute -bottom-[20%] -left-[5%] h-[130%] w-auto max-w-none pointer-events-none z-0 select-none transition-all duration-300 ${isLight ? 'opacity-[0.05]' : 'opacity-[0.12]'}`}
             />

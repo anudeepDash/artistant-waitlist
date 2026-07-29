@@ -1657,7 +1657,7 @@ export default function ProfilePage() {
               <div className={`rounded-xl p-3 border flex flex-col items-center text-center gap-1.5 relative overflow-hidden shadow-sm ${isLight ? 'bg-white border-[#7C5CFF]/10 shadow-[0_10px_20px_rgba(124,92,255,0.04)]' : 'bg-[#0A0A10]/95 border border-white/[0.03]'}`}>
                 {/* Watermark logo matching public page */}
                 <img 
-                  src="/logo_a.png" 
+                  src="/logo_a_watermark.png" 
                   alt="" 
                   className={`absolute -bottom-[20%] -left-[5%] h-[130%] w-auto max-w-none pointer-events-none z-0 select-none ${isLight ? 'opacity-[0.03]' : 'opacity-[0.08]'}`}
                 />
@@ -3455,7 +3455,7 @@ export default function ProfilePage() {
                 
                 {/* Big Watermark Logo matching AuthModal */}
                 <img 
-                  src="/logo_a.png" 
+                  src="/logo_a_watermark.png" 
                   alt="" 
                   className={`absolute -bottom-[10%] -left-[10%] h-[70%] w-auto max-w-none pointer-events-none z-0 ${
                     isLight ? 'opacity-[0.04]' : 'opacity-[0.08]'
