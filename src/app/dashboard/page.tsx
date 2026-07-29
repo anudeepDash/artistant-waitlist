@@ -709,7 +709,7 @@ export default function ProfilePage() {
       const loadWatermark = new Promise((resolve) => {
         watermarkImg.onload = resolve;
         watermarkImg.onerror = resolve;
-        watermarkImg.src = '/logo_a_watermark.png';
+        watermarkImg.src = '/logo_a_highres.png';
       });
 
       const loadCardLogo = new Promise((resolve) => {
@@ -1657,7 +1657,7 @@ export default function ProfilePage() {
               <div className={`rounded-xl p-3 border flex flex-col items-center text-center gap-1.5 relative overflow-hidden shadow-sm ${isLight ? 'bg-white border-[#7C5CFF]/10 shadow-[0_10px_20px_rgba(124,92,255,0.04)]' : 'bg-[#0A0A10]/95 border border-white/[0.03]'}`}>
                 {/* Watermark logo matching public page */}
                 <img 
-                  src="/logo_a_watermark.png" 
+                  src="/logo_a_highres.png" 
                   alt="" 
                   className={`absolute -bottom-[20%] -left-[5%] h-[130%] w-auto max-w-none pointer-events-none z-0 select-none ${isLight ? 'opacity-[0.03]' : 'opacity-[0.08]'}`}
                 />
@@ -2383,7 +2383,7 @@ export default function ProfilePage() {
                         {/* A Watermark logo in background */}
                         <div className="absolute inset-0 z-[1] flex items-center justify-center pointer-events-none opacity-5">
                           <img 
-                            src="/logo_a_watermark.png" 
+                            src="/logo_a_highres.png" 
                             alt="Watermark" 
                             className="w-3/4 h-auto object-contain" 
                             style={{ filter: activeStoryTemplate === 2 ? 'invert(1)' : 'none' }}
@@ -3455,7 +3455,7 @@ export default function ProfilePage() {
                 
                 {/* Big Watermark Logo matching AuthModal */}
                 <img 
-                  src="/logo_a_watermark.png" 
+                  src="/logo_a_highres.png" 
                   alt="" 
                   className={`absolute -bottom-[10%] -left-[10%] h-[70%] w-auto max-w-none pointer-events-none z-0 ${
                     isLight ? 'opacity-[0.04]' : 'opacity-[0.08]'

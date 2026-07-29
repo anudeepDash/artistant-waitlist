@@ -1539,7 +1539,7 @@ export default function AdminPage() {
             
             {/* Giant Graphic Watermark */}
             <img 
-              src="/logo_a_watermark.png" 
+              src="/logo_a_highres.png" 
               alt="" 
               className="absolute -bottom-[10%] -left-[10%] h-[100%] w-auto max-w-none opacity-40 pointer-events-none z-0 select-none"
             />
