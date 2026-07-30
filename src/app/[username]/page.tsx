@@ -10,7 +10,9 @@ import {
 } from 'lucide-react';
 
 import { SpotifyArtistPlayer } from '@/components/SpotifyArtistPlayer';
+import { LiquidGlassAudioPlayer } from '@/components/LiquidGlassAudioPlayer';
 import { ensureValidDisplayName } from '@/lib/waitlist';
+import { parseSpotifyInput } from '@/lib/spotify';
 
 const categoryLabels: Record<string, string> = {
   singer: 'Singer',
@@ -80,20 +82,7 @@ export default function PublicProfilePage() {
   const [sheenX, setSheenX] = useState(50);
   const [sheenY, setSheenY] = useState(50);
 
-  // Audio Playback State
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [audioProgress, setAudioProgress] = useState(0);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const toggleAudioPlay = () => {
-    if (!audioRef.current) return;
-    if (isPlayingAudio) {
-      audioRef.current.pause();
-      setIsPlayingAudio(false);
-    } else {
-      audioRef.current.play().then(() => setIsPlayingAudio(true)).catch((err) => console.error("Audio playback error:", err));
-    }
-  };
 
   const heroRef = useRef<HTMLDivElement>(null);
   const { scrollY } = useScroll();
@@ -1066,7 +1055,12 @@ export default function PublicProfilePage() {
           if (section === 'audio') {
             const spotifyUrl = reservation.spotify_url?.trim() || '';
             const isDirectAudio = isDirectAudioUrl(spotifyUrl);
-            const isSpotifyEmbed = spotifyUrl.includes('spotify.com') || spotifyUrl.length === 22;
+            const spotifyParsed = parseSpotifyInput(spotifyUrl);
+            const isSpotifyEmbed = Boolean(spotifyUrl && spotifyParsed.id);
+
+            if (!isSpotifyEmbed && !isDirectAudio) {
+              return null;
+            }
 
             return (
               <motion.section
@@ -1077,22 +1071,6 @@ export default function PublicProfilePage() {
                 transition={{ duration: 0.5 }}
                 className="space-y-4 text-left"
               >
-                {/* Audio element for real playback */}
-                <audio
-                  ref={audioRef}
-                  src={
-                    isDirectAudio
-                      ? spotifyUrl
-                      : 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=ambient-electronic-112527.mp3'
-                  }
-                  onTimeUpdate={() => {
-                    if (audioRef.current && audioRef.current.duration) {
-                      setAudioProgress((audioRef.current.currentTime / audioRef.current.duration) * 100);
-                    }
-                  }}
-                  onEnded={() => setIsPlayingAudio(false)}
-                />
-
                 {/* Header */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -1112,7 +1090,7 @@ export default function PublicProfilePage() {
                   </div>
                 </div>
 
-                {/* Spotify Interactive Artist Player or Audio Sample Player Cards */}
+                {/* Spotify Interactive Artist Player or Liquid Glass Audio Sample Player */}
                 {isSpotifyEmbed ? (
                   <SpotifyArtistPlayer 
                     spotifyUrl={spotifyUrl} 
@@ -1120,68 +1098,17 @@ export default function PublicProfilePage() {
                     isLight={isLight} 
                   />
                 ) : (
-                  <div className={`p-6 rounded-3xl border space-y-4 ${isLight ? 'bg-white border-black/10 shadow-[0_10px_30px_rgba(0,0,0,0.04)]' : 'bg-[#0B0C14] border-white/[0.06] shadow-[0_10px_40px_rgba(0,0,0,0.4)]'}`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#7C5CFF]/20 to-[#1DB954]/20 border border-[#1DB954]/30 flex items-center justify-center text-[#1DB954]">
-                          <Music className={`w-5 h-5 ${isPlayingAudio ? 'animate-spin' : 'animate-pulse'}`} />
-                        </div>
-                        <div>
-                          <h3 className={`text-sm font-bold ${isLight ? 'text-zinc-900' : 'text-white'}`}>
-                            {displayName} — Featured Live Track
-                          </h3>
-                          <p className={`text-[10px] font-mono ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>
-                            {reservation.category ? reservation.category.replace('_', ' ') : 'Live Performance Showcase'}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Equalizer animation visualizer */}
-                      <div className="flex items-end gap-1 h-5 px-2">
-                        <span className={`w-1 bg-[#1DB954] rounded-full transition-all duration-300 ${isPlayingAudio ? 'h-full animate-bounce' : 'h-2'}`} style={{ animationDuration: '0.6s' }} />
-                        <span className={`w-1 bg-[#7C5CFF] rounded-full transition-all duration-300 ${isPlayingAudio ? 'h-3/4 animate-bounce' : 'h-3'}`} style={{ animationDuration: '0.9s' }} />
-                        <span className={`w-1 bg-[#F25A2B] rounded-full transition-all duration-300 ${isPlayingAudio ? 'h-full animate-bounce' : 'h-1.5'}`} style={{ animationDuration: '0.4s' }} />
-                        <span className={`w-1 bg-[#D4567A] rounded-full transition-all duration-300 ${isPlayingAudio ? 'h-1/2 animate-bounce' : 'h-2.5'}`} style={{ animationDuration: '0.7s' }} />
-                      </div>
-                    </div>
-
-                    <div className={`p-4 rounded-2xl border flex flex-col gap-3 ${isLight ? 'bg-zinc-50 border-zinc-200' : 'bg-white/[0.02] border-white/[0.05]'}`}>
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={toggleAudioPlay}
-                            className="w-11 h-11 rounded-full bg-gradient-to-r from-[#F25A2B] via-[#7C5CFF] to-[#1DB954] text-white flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer"
-                          >
-                            {isPlayingAudio ? (
-                              <span className="font-bold text-xs">❚❚</span>
-                            ) : (
-                              <Play className="w-5 h-5 ml-0.5" />
-                            )}
-                          </button>
-                          <div>
-                            <p className={`text-xs font-bold ${isLight ? 'text-zinc-900' : 'text-white'}`}>
-                              {reservation.custom_status_message || `${displayName} — Stage Reel Demo Track`}
-                            </p>
-                            <p className={`text-[10px] font-mono ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>
-                              {isPlayingAudio ? 'Playing Live Track...' : 'Click Play to Listen'}
-                            </p>
-                          </div>
-                        </div>
-
-                        <span className={`text-[10px] font-mono px-2.5 py-1 rounded-full border font-bold uppercase tracking-wider ${isPlayingAudio ? 'bg-[#1DB954]/20 text-[#1DB954] border-[#1DB954]/40 animate-pulse' : 'bg-white/10 text-zinc-400 border-white/10'}`}>
-                          {isPlayingAudio ? 'PLAYING' : 'AUDIO DEMO'}
-                        </span>
-                      </div>
-
-                      {/* Audio Progress Bar */}
-                      <div className="w-full bg-black/20 dark:bg-white/5 h-1.5 rounded-full overflow-hidden">
-                        <div
-                          className="bg-gradient-to-r from-[#F25A2B] to-[#1DB954] h-full transition-all duration-150 rounded-full"
-                          style={{ width: `${audioProgress}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
+                  <LiquidGlassAudioPlayer
+                    audioUrl={
+                      isDirectAudio
+                        ? spotifyUrl
+                        : 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=ambient-electronic-112527.mp3'
+                    }
+                    artistName={displayName}
+                    trackTitle={reservation.custom_status_message}
+                    category={reservation.category}
+                    isLight={isLight}
+                  />
                 )}
               </motion.section>
             );

@@ -252,8 +252,11 @@ function ClaimOnboardingContent() {
         await changeUsernameAction(idToken, username);
       }
 
-      // 2. Upload profile photo if a new one was selected
+      // 2. Validate & Upload profile photo
       let uploadedPhotoUrl = profilePhotoPreview;
+      if (!uploadedPhotoUrl) {
+        throw new Error('Profile picture is mandatory. Please upload a profile photo to complete claiming your handle.');
+      }
       if (profilePhotoFile && profilePhotoPreview && profilePhotoPreview.startsWith('data:')) {
         uploadedPhotoUrl = await uploadProfilePhotoAction(idToken, profilePhotoPreview, pendingFileExt);
       }
@@ -616,8 +619,11 @@ function ClaimOnboardingContent() {
                         </label>
                       </div>
                       <div>
-                        <h4 className="text-xs font-bold text-white">Profile Photo</h4>
-                        <p className="text-[10px] text-zinc-400 mt-0.5">Recommended crop: 3:2 layout profile ratio.</p>
+                        <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                          Profile Photo
+                          <span className="text-[9px] font-mono font-bold text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/20">Required *</span>
+                        </h4>
+                        <p className="text-[10px] text-zinc-400 mt-0.5">Profile picture is mandatory. Recommended crop: 3:2 layout profile ratio.</p>
                       </div>
                     </div>
 

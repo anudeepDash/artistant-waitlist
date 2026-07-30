@@ -1808,6 +1808,41 @@ export default function ProfilePage() {
           </motion.div>
         </section>
 
+        {/* Mandatory Profile Picture Alert Banner */}
+        {!reservation?.profile_photo_url && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }} 
+            animate={{ opacity: 1, y: 0 }}
+            className="max-w-3xl mx-auto mb-8 p-5 rounded-2xl bg-rose-500/10 border border-rose-500/30 backdrop-blur-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl text-left"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/20 flex items-center justify-center text-rose-400 shrink-0 border border-rose-500/30">
+                <Camera className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                  Action Required: Profile Picture Missing
+                  <span className="text-[9px] font-mono font-bold text-rose-400 bg-rose-500/20 px-2 py-0.5 rounded-full border border-rose-500/30 uppercase">Mandatory</span>
+                </h4>
+                <p className="text-xs text-rose-200/80 mt-0.5">Profile pictures are mandatory for all artist profiles. Please upload your profile photo to complete your profile.</p>
+              </div>
+            </div>
+            <button
+              id="dashboard-upload-photo-btn"
+              onClick={() => {
+                setActiveTab('portfolio');
+                setTimeout(() => {
+                  const input = document.getElementById('dashboard-photo-upload-input');
+                  if (input) input.click();
+                }, 300);
+              }}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-[#F25A2B] hover:opacity-90 text-white text-xs font-bold font-mono uppercase tracking-wider transition-all cursor-pointer shrink-0 shadow-lg shadow-rose-500/20"
+            >
+              Upload Photo
+            </button>
+          </motion.div>
+        )}
+
         {/* ── APPLE LIQUID GLASS DASHBOARD SUB-NAVIGATION TAB BAR ── */}
         <div className="flex justify-center mb-10 relative z-30">
           <div className="flex flex-wrap items-center justify-center p-1.5 rounded-full sm:rounded-2xl bg-white/[0.04] dark:bg-[#0D0E17]/60 border border-white/20 dark:border-white/10 backdrop-blur-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_15px_40px_rgba(0,0,0,0.4)] gap-1.5 relative overflow-hidden">
@@ -3528,7 +3563,7 @@ export default function ProfilePage() {
                       </div>
                       <label className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                         <Camera className="w-4 h-4 text-white" />
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                        <input id="dashboard-photo-upload-input" type="file" accept="image/*" className="hidden" onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (!file || !user) return;
                           

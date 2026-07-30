@@ -401,6 +401,12 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
   const handleProfileSubmit = useCallback(async (e: FormEvent) => {
     e.preventDefault();
     if (!pendingUser || !category) return;
+
+    if (!profilePhotoFile || !profilePhotoPreview) {
+      setError('Profile picture is mandatory. Please upload a profile photo before completing your registration.');
+      return;
+    }
+
     setError(null);
     setLoading(true);
     try {
@@ -448,10 +454,12 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
           const idToken = await pendingUser.getIdToken();
           const fileExt = profilePhotoFile.name.split('.').pop() || 'jpg';
           await uploadProfilePhotoAction(idToken, profilePhotoPreview, fileExt);
-        } catch (photoErr) {
+        } catch (photoErr: any) {
           console.error('Profile photo upload failed:', photoErr);
-          // Non-blocking — profile is still created, photo can be added later
+          throw new Error('Failed to upload profile photo: ' + (photoErr?.message || 'Please try uploading again.'));
         }
+      } else {
+        throw new Error('Profile picture is mandatory. Please upload a profile photo.');
       }
 
       // Log waitlist registration activity
@@ -1862,8 +1870,11 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                           transition={{ duration: 0.3, ease: 'easeOut' }}
                         >
                           <div className="text-center mb-6">
-                            <h2 className="font-display text-3xl font-bold text-white mb-2">Add a profile picture</h2>
-                            <p className="text-white/50 text-sm font-medium">Upload a profile picture to complete your identity.</p>
+                            <h2 className="font-display text-3xl font-bold text-white mb-2 flex items-center justify-center gap-2">
+                              Add a profile picture
+                              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 uppercase tracking-widest">Required</span>
+                            </h2>
+                            <p className="text-white/50 text-sm font-medium">Profile picture is mandatory to complete your artist identity.</p>
                           </div>
 
                           <div className="flex flex-col items-center mb-8">

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ExternalLink, Music, Loader2 } from 'lucide-react';
+import { parseSpotifyInput, makeEmbedUrl, makeSpotifyUrl } from '@/lib/spotify';
 
 interface SpotifyArtistPlayerProps {
   spotifyUrl: string;
@@ -16,8 +17,8 @@ const SpotifyIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 /**
- * Resolves any Spotify input (URL, handle, name, ID) into a valid embed URL
- * by calling our /api/spotify backend which uses the Spotify Web API.
+ * Resolves any Spotify input (URL, international link, URI, handle, name, ID)
+ * into a valid embed URL by calling our /api/spotify backend which uses the Spotify Web API.
  */
 export function SpotifyArtistPlayer({ spotifyUrl, artistName, isLight = false }: SpotifyArtistPlayerProps) {
   const [resolvedEmbedUrl, setResolvedEmbedUrl] = useState<string | null>(null);
@@ -37,7 +38,7 @@ export function SpotifyArtistPlayer({ spotifyUrl, artistName, isLight = false }:
     setLoading(true);
     setError(false);
 
-    // Call our backend API which resolves any input → valid Spotify ID → embed URL
+    // Call our backend API which resolves input → valid Spotify ID → embed URL
     fetch(`/api/spotify?url=${encodeURIComponent(spotifyUrl)}`)
       .then((res) => res.json())
       .then((data) => {
@@ -47,7 +48,7 @@ export function SpotifyArtistPlayer({ spotifyUrl, artistName, isLight = false }:
           if (data.artist?.name) setResolvedArtistName(data.artist.name);
           if (data.artist?.followers) setResolvedFollowers(data.artist.followers);
         } else {
-          // Fallback: if the URL already looks like a valid Spotify URL, try direct embed
+          // Fallback: try client-side extraction directly from URL/URI
           const directEmbed = tryDirectEmbed(spotifyUrl);
           if (directEmbed) {
             setResolvedEmbedUrl(directEmbed.embedUrl);
@@ -104,81 +105,69 @@ export function SpotifyArtistPlayer({ spotifyUrl, artistName, isLight = false }:
 
   // ─── ERROR / NO EMBED STATE ───
   if (error || !resolvedEmbedUrl) {
-    return (
-      <div className="relative w-full group">
-        <div className="absolute -inset-1.5 bg-gradient-to-br from-[#1DB954]/20 via-[#1ed760]/8 to-[#1DB954]/15 rounded-[28px] blur-2xl opacity-60 pointer-events-none" />
-        <div className={`relative w-full rounded-[24px] overflow-hidden border backdrop-blur-xl p-8 ${
-          isLight
-            ? 'bg-white/90 border-black/8'
-            : 'bg-[#0a0b12]/95 border-white/8'
-        }`}>
-          <SpotifyIcon className={`absolute -right-8 -bottom-8 w-56 h-56 pointer-events-none -rotate-12 ${
-            isLight ? 'text-[#1DB954]/[0.04]' : 'text-[#1DB954]/[0.06]'
-          }`} />
-          <div className="flex flex-col items-center gap-4 relative z-10">
-            <SpotifyIcon className="w-12 h-12 text-[#1DB954] animate-pulse" />
-            <p className={`text-sm font-medium text-center ${isLight ? 'text-zinc-600' : 'text-white/60'}`}>
-              Stream {displayName}&apos;s music on Spotify
-            </p>
-            <a
-              href={openUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2.5 px-6 py-3 rounded-full text-sm font-bold text-black bg-[#1DB954] hover:bg-[#1ed760] hover:scale-[1.03] transition-all shadow-xl shadow-[#1DB954]/20"
-            >
-              <SpotifyIcon className="w-5 h-5" />
-              Open on Spotify
-            </a>
-          </div>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   // ─── MAIN PLAYER ───
   // Determine embed height based on type
   const isTrack = resolvedEmbedUrl.includes('/embed/track/');
-  const embedHeight = isTrack ? 152 : 352;
+  const isAlbum = resolvedEmbedUrl.includes('/embed/album/');
+  const isPlaylist = resolvedEmbedUrl.includes('/embed/playlist/');
+  const embedHeight = isTrack ? 152 : (isAlbum || isPlaylist ? 380 : 352);
 
   return (
-    <div className="relative w-full group">
-      {/* Ambient glow */}
-      <div className="absolute -inset-2 bg-gradient-to-br from-[#1DB954]/25 via-[#1ed760]/10 to-[#7C5CFF]/15 rounded-[30px] blur-2xl opacity-60 group-hover:opacity-90 transition-opacity duration-700 pointer-events-none" />
+    <div className="relative w-full group select-none">
+      {/* Ambient Multi-color Glowing Glass Aura Mesh */}
+      <div
+        className="absolute -inset-2.5 rounded-[38px] blur-3xl opacity-60 group-hover:opacity-90 transition-opacity duration-1000 pointer-events-none"
+        style={{
+          background: isLight
+            ? 'radial-gradient(circle at 20% 50%, rgba(29,185,84,0.2), rgba(124,92,255,0.15) 60%, rgba(242,90,43,0.1) 100%)'
+            : 'radial-gradient(circle at 20% 50%, rgba(29,185,84,0.35), rgba(124,92,255,0.25) 60%, rgba(242,90,43,0.2) 100%)',
+        }}
+      />
 
-      {/* Glass container */}
-      <div className={`relative w-full rounded-[24px] overflow-hidden border backdrop-blur-xl transition-all duration-300 ${
-        isLight
-          ? 'bg-white/90 border-black/8 shadow-[0_12px_40px_rgba(0,0,0,0.06)]'
-          : 'bg-[#0a0b12]/95 border-white/8 shadow-[0_20px_60px_rgba(0,0,0,0.5)]'
-      }`}>
+      {/* Main Liquid Glass Container */}
+      <div
+        className={`relative w-full rounded-[30px] p-6 md:p-7 backdrop-blur-3xl border transition-all duration-500 overflow-hidden ${
+          isLight
+            ? 'bg-white/70 border-white/60 shadow-[0_20px_50px_rgba(0,0,0,0.06),inset_0_1px_2px_rgba(255,255,255,0.9)] hover:shadow-[0_25px_60px_rgba(0,0,0,0.09)]'
+            : 'bg-[#0b0c14]/75 border-white/10 shadow-[0_25px_70px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.15)] hover:border-white/20'
+        }`}
+      >
+        {/* Specular Top Sheen Highlight */}
+        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none" />
+
         {/* BIG SPOTIFY LOGO WATERMARK */}
         <SpotifyIcon className={`absolute -right-6 -bottom-6 w-52 h-52 md:w-64 md:h-64 pointer-events-none -rotate-12 transition-transform duration-700 group-hover:scale-110 group-hover:rotate-[-8deg] ${
           isLight ? 'text-[#1DB954]/[0.05]' : 'text-[#1DB954]/[0.07]'
         }`} />
 
         {/* Top bar with artist info */}
-        <div className="relative z-10 px-5 pt-5 pb-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-              isLight ? 'bg-[#1DB954]/10' : 'bg-[#1DB954]/15'
+        <div className="relative z-10 pb-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border shadow-inner ${
+              isLight
+                ? 'bg-[#1DB954]/10 border-[#1DB954]/20'
+                : 'bg-[#1DB954]/15 border-[#1DB954]/30'
             }`}>
               <SpotifyIcon className="w-5 h-5 text-[#1DB954]" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h4 className={`text-sm font-bold tracking-tight truncate ${isLight ? 'text-zinc-900' : 'text-white'}`}>
+                <h4 className={`text-base font-bold tracking-tight truncate ${isLight ? 'text-zinc-900' : 'text-white'}`}>
                   {displayName}
                 </h4>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[8px] font-mono font-bold uppercase tracking-wider shrink-0 ${
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider shrink-0 ${
                   isLight 
                     ? 'bg-[#1DB954]/10 text-[#1DB954] border border-[#1DB954]/20' 
-                    : 'bg-[#1DB954]/10 text-[#1DB954] border border-[#1DB954]/25'
+                    : 'bg-[#1DB954]/15 text-[#1DB954] border border-[#1DB954]/30'
                 }`}>
                   Spotify
                 </span>
               </div>
               {resolvedFollowers > 0 && (
-                <p className={`text-[10px] font-mono mt-0.5 ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>
+                <p className={`text-[10px] font-mono mt-0.5 ${isLight ? 'text-zinc-400' : 'text-white/40'}`}>
                   {resolvedFollowers.toLocaleString()} followers
                 </p>
               )}
@@ -189,21 +178,21 @@ export function SpotifyArtistPlayer({ spotifyUrl, artistName, isLight = false }:
             href={openUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-mono font-bold transition-all shrink-0 ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-[11px] font-mono font-bold transition-all shrink-0 shadow-sm ${
               isLight 
-                ? 'text-[#1DB954] bg-[#1DB954]/8 border border-[#1DB954]/15 hover:bg-[#1DB954] hover:text-white' 
-                : 'text-[#1DB954] bg-[#1DB954]/10 border border-[#1DB954]/20 hover:bg-[#1DB954] hover:text-black'
+                ? 'text-[#1DB954] bg-[#1DB954]/10 border border-[#1DB954]/20 hover:bg-[#1DB954] hover:text-white' 
+                : 'text-[#1DB954] bg-[#1DB954]/15 border border-[#1DB954]/30 hover:bg-[#1DB954] hover:text-black'
             }`}
           >
             <span className="hidden sm:inline">Open in Spotify</span>
-            <ExternalLink className="w-3 h-3" />
+            <ExternalLink className="w-3.5 h-3.5" />
           </a>
         </div>
 
-        {/* Spotify Native Embed Player — handles ALL playback, song list, album art */}
-        <div className="relative z-10 px-5 pb-5">
-          <div className={`w-full rounded-2xl overflow-hidden border ${
-            isLight ? 'border-black/5' : 'border-white/5'
+        {/* Spotify Native Embed Player */}
+        <div className="relative z-10">
+          <div className={`w-full rounded-2xl overflow-hidden border shadow-inner ${
+            isLight ? 'border-black/5' : 'border-white/10'
           }`}>
             <iframe
               key={resolvedEmbedUrl}
@@ -224,38 +213,17 @@ export function SpotifyArtistPlayer({ spotifyUrl, artistName, isLight = false }:
 
 /**
  * Fallback: try to construct a direct embed URL from the raw input
- * when API call fails. Only works with valid Spotify URLs containing 22-char IDs.
+ * when API call fails. Works with any valid Spotify URL/URI/ID.
  */
 function tryDirectEmbed(input: string): { embedUrl: string; spotifyUrl: string } | null {
   if (!input) return null;
-  const clean = input.trim();
-
-  const patterns: Array<{ match: string; type: string }> = [
-    { match: 'spotify.com/artist/', type: 'artist' },
-    { match: 'spotify.com/track/', type: 'track' },
-    { match: 'spotify.com/album/', type: 'album' },
-    { match: 'spotify.com/playlist/', type: 'playlist' },
-  ];
-
-  for (const { match, type } of patterns) {
-    if (clean.includes(match)) {
-      const id = clean.split(match)[1]?.split('?')[0]?.split('/')[0];
-      if (id && /^[a-zA-Z0-9]{22}$/.test(id)) {
-        return {
-          embedUrl: `https://open.spotify.com/embed/${type}/${id}?utm_source=generator&theme=0`,
-          spotifyUrl: `https://open.spotify.com/${type}/${id}`,
-        };
-      }
-    }
-  }
-
-  // Handle raw 22-char ID
-  if (/^[a-zA-Z0-9]{22}$/.test(clean)) {
+  const parsed = parseSpotifyInput(input);
+  if (parsed.id) {
+    const type = parsed.type === 'search' ? 'artist' : parsed.type;
     return {
-      embedUrl: `https://open.spotify.com/embed/artist/${clean}?utm_source=generator&theme=0`,
-      spotifyUrl: `https://open.spotify.com/artist/${clean}`,
+      embedUrl: makeEmbedUrl(type, parsed.id),
+      spotifyUrl: makeSpotifyUrl(type, parsed.id),
     };
   }
-
   return null;
 }
