@@ -93,16 +93,19 @@ export function ensureValidDisplayName(
     return displayName.trim();
   }
 
-  // Fallback 1: Derive from username if available
+  // Fallback 1: Derive clean human name from email local part if available
+  if (email && email.includes('@')) {
+    const localPart = email.split('@')[0];
+    const cleaned = localPart.replace(/[0-9]+/g, ' ').replace(/[-_.]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (cleaned.length >= 2) {
+      return cleaned.replace(/\b\w/g, (c) => c.toUpperCase());
+    }
+  }
+
+  // Fallback 2: Derive from username if available
   if (username && username.trim() !== '') {
     const cleaned = username.trim().replace(/[-_.]+/g, ' ');
     return cleaned.replace(/\b\w/g, (c) => c.toUpperCase());
-  }
-
-  // Fallback 2: Derive from email local part
-  if (email && email.includes('@')) {
-    const localPart = email.split('@')[0].replace(/[-_.]+/g, ' ');
-    return localPart.replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
   return 'Artist';

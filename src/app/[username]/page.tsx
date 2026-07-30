@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 
 import { SpotifyArtistPlayer } from '@/components/SpotifyArtistPlayer';
+import { ensureValidDisplayName } from '@/lib/waitlist';
 
 const categoryLabels: Record<string, string> = {
   singer: 'Singer',
@@ -224,7 +225,7 @@ export default function PublicProfilePage() {
     );
   }
 
-  const displayName = reservation.display_name || reservation.username;
+  const displayName = ensureValidDisplayName(reservation.display_name, reservation.username, reservation.email);
   const categoryLabel = categoryLabels[reservation.category || ''] || reservation.category || 'Artist';
   const genres = reservation.genres || [];
   const hasSocials = reservation.instagram_url || reservation.spotify_url || reservation.youtube_channel_url;

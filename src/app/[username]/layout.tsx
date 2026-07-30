@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getPublicProfileDataAction } from "@/lib/profile-actions";
+import { ensureValidDisplayName } from "@/lib/waitlist";
 
 interface ProfileLayoutProps {
   children: React.ReactNode;
@@ -14,11 +15,14 @@ export async function generateMetadata({
   const { username } = await params;
   const profile = await getPublicProfileDataAction(username);
 
-
-  const artistName = profile?.reservation?.display_name || `@${username}`;
+  const artistName = ensureValidDisplayName(
+    profile?.reservation?.display_name,
+    username,
+    profile?.reservation?.email
+  );
 
   return {
-    title: artistName,
+    title: `${artistName} | Artistant`,
   };
 }
 

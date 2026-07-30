@@ -504,7 +504,7 @@ export async function getPublicProfileDataAction(username: string): Promise<Publ
     return {
       reservation: {
         username: reservation.username,
-        display_name: reservation.display_name,
+        display_name: ensureValidDisplayName(reservation.display_name, reservation.username, reservation.email),
         role: reservation.role,
         category: reservation.category,
         genres: reservation.genres,
