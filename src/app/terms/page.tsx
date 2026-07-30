@@ -3,7 +3,7 @@ import Link from 'next/link';
 import Footer from '@/components/Footer';
 
 export const metadata = {
-  title: 'Terms of Service | ArtisTant',
+  title: 'Terms of Service',
   description: 'Terms and Conditions for using ArtisTant services.',
 };
 

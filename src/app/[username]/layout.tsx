@@ -22,7 +22,7 @@ export async function generateMetadata({
   );
 
   return {
-    title: `${artistName} | Artistant`,
+    title: artistName,
   };
 }
 

@@ -3,7 +3,7 @@ import Link from 'next/link';
 import Footer from '@/components/Footer';
 
 export const metadata = {
-  title: 'Privacy Policy | ArtisTant',
+  title: 'Privacy Policy',
   description: 'Privacy Policy for ArtisTant',
 };
 
