@@ -5,7 +5,7 @@ import { verifyIdToken } from './firebase/admin';
 import { sendContactInfoUpdatedEmail } from './mailer';
 import { cookies, headers } from 'next/headers';
 import crypto from 'crypto';
-import { type WaitlistEntry } from './waitlist';
+import { type WaitlistEntry, ensureValidDisplayName } from './waitlist';
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
@@ -299,8 +299,28 @@ export async function updateProfileDetailsAction(
   const decodedToken = await verifyIdToken(idToken);
   const client = createAdminClient();
 
+  // If display_name is passed, sanitize it and protect existing real names from email overwrite
+  let sanitizedDisplayName: string | undefined = details.display_name;
+  if (sanitizedDisplayName !== undefined) {
+    if (sanitizedDisplayName.includes('@') || sanitizedDisplayName.trim() === '') {
+      const { data: existingUser } = await client
+        .from('waitlist_users')
+        .select('display_name, username, email')
+        .eq('user_id', decodedToken.uid)
+        .maybeSingle();
+
+      if (existingUser && existingUser.display_name && !existingUser.display_name.includes('@')) {
+        sanitizedDisplayName = existingUser.display_name;
+      } else {
+        sanitizedDisplayName = ensureValidDisplayName(null, existingUser?.username, existingUser?.email || decodedToken.email);
+      }
+    } else {
+      sanitizedDisplayName = sanitizedDisplayName.trim();
+    }
+  }
+
   const fullPayload = {
-    ...(details.display_name !== undefined ? { display_name: details.display_name } : {}),
+    ...(sanitizedDisplayName !== undefined ? { display_name: sanitizedDisplayName } : {}),
     ...(details.category !== undefined ? { category: details.category } : {}),
     ...(details.genres !== undefined ? { genres: details.genres } : {}),
     ...(details.city !== undefined ? { city: details.city } : {}),
@@ -783,12 +803,26 @@ export async function linkImportedProfile(
   const decodedToken = await verifyIdToken(idToken);
   const client = createAdminClient();
 
+  const { data: existing } = await client
+    .from('waitlist_users')
+    .select('display_name, username, email')
+    .eq('id', waitlistId)
+    .maybeSingle();
+
+  const updatePayload: { user_id: string; email?: string; display_name?: string } = {
+    user_id: decodedToken.uid,
+    email: decodedToken.email || undefined
+  };
+
+  if (existing) {
+    if (!existing.display_name || existing.display_name.includes('@')) {
+      updatePayload.display_name = ensureValidDisplayName(null, existing.username, existing.email || decodedToken.email);
+    }
+  }
+
   const { error } = await client
     .from('waitlist_users')
-    .update({
-      user_id: decodedToken.uid,
-      email: decodedToken.email || undefined // updates email to match new Google or Auth email if logged in differently
-    })
+    .update(updatePayload)
     .eq('id', waitlistId);
 
   if (error) {

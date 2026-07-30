@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import { headers } from 'next/headers';
 
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import { type AdminWaitlistEntry } from './waitlist';
+import { type AdminWaitlistEntry, ensureValidDisplayName } from './waitlist';
 import { verifyAdminToken, verifyIdToken } from './firebase/admin';
 import {
   sendAdminAccessGrantedEmail,
@@ -23,7 +23,11 @@ function createAdminClient() {
 }
 
 function sortAdminRegistrations(entries: AdminWaitlistEntry[]): AdminWaitlistEntry[] {
-  return [...entries].sort((a, b) => {
+  const cleaned = entries.map(e => ({
+    ...e,
+    display_name: ensureValidDisplayName(e.display_name, e.username, e.email)
+  }));
+  return cleaned.sort((a, b) => {
     const posA = a.position_override !== null && a.position_override !== undefined ? a.position_override : Infinity;
     const posB = b.position_override !== null && b.position_override !== undefined ? b.position_override : Infinity;
     if (posA !== posB) {

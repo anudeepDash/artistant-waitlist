@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform, useMotionValueEvent } from 'motion/react';
 import { useAuth } from '@/hooks/useAuth';
-import { getUserReservation, getWaitlistPosition, getReferralCount, type WaitlistEntry } from '@/lib/waitlist';
+import { getUserReservation, getWaitlistPosition, getReferralCount, ensureValidDisplayName, type WaitlistEntry } from '@/lib/waitlist';
 import { getWaitlistDashboardDataAction, markStorySharedAction, type PublicLeaderboardEntry } from '@/lib/admin-actions';
 import { 
   updateCustomStatusMessageAction, 
@@ -497,7 +497,7 @@ export default function ProfilePage() {
       .then(async (res) => {
         if (!res) { router.push('/'); return; }
         setReservation(res);
-         setDisplayName(res.display_name || '');
+        setDisplayName(ensureValidDisplayName(res.display_name, res.username, res.email));
         setGalleryPhotos(res.gallery_photos || []);
         setCategory(res.category || '');
         setGenres(res.genres || []);
@@ -612,8 +612,9 @@ export default function ProfilePage() {
     setIsSaving(true);
     try {
       const idToken = await user.getIdToken();
+      const safeName = ensureValidDisplayName(displayName, reservation?.username, user.email);
       await updateProfileDetailsAction(idToken, {
-        display_name: displayName,
+        display_name: safeName,
         category: category,
         genres: genres,
         city: city,
@@ -627,7 +628,7 @@ export default function ProfilePage() {
       if (reservation) {
         setReservation({
           ...reservation,
-          display_name: displayName,
+          display_name: safeName,
           category: category as any,
           genres: genres,
           city: city,

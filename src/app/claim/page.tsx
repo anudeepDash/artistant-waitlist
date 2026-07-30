@@ -25,7 +25,7 @@ const YoutubeIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 import { useAuth } from '@/hooks/useAuth';
-import { getReservationById, getUserReservation, isUsernameAvailable, type WaitlistEntry, type ArtistCategory } from '@/lib/waitlist';
+import { getReservationById, getUserReservation, isUsernameAvailable, ensureValidDisplayName, type WaitlistEntry, type ArtistCategory } from '@/lib/waitlist';
 import { changeUsernameAction, updateProfileDetailsAction, uploadProfilePhotoAction, linkImportedProfile } from '@/lib/profile-actions';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -132,7 +132,7 @@ function ClaimOnboardingContent() {
           setReservation(res);
           setUsername(res.username || '');
           setOriginalUsername(res.username || '');
-          setDisplayName(res.display_name || '');
+          setDisplayName(ensureValidDisplayName(res.display_name, res.username, res.email));
           setCategory(res.category || '');
           setGenres(res.genres?.join(', ') || '');
           setCity(res.city || '');
@@ -154,7 +154,7 @@ function ClaimOnboardingContent() {
           setReservation(res);
           setUsername(res.username || '');
           setOriginalUsername(res.username || '');
-          setDisplayName(res.display_name || '');
+          setDisplayName(ensureValidDisplayName(res.display_name, res.username, res.email));
           setCategory(res.category || '');
           setGenres(res.genres?.join(', ') || '');
           setCity(res.city || '');
@@ -257,7 +257,7 @@ function ClaimOnboardingContent() {
         .filter(g => g.length > 0);
 
       await updateProfileDetailsAction(idToken, {
-        display_name: displayName,
+        display_name: ensureValidDisplayName(displayName, username, user?.email),
         category: category || undefined,
         genres: parsedGenres,
         city: city,

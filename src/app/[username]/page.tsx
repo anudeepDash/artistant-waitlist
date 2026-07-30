@@ -79,6 +79,21 @@ export default function PublicProfilePage() {
   const [sheenX, setSheenX] = useState(50);
   const [sheenY, setSheenY] = useState(50);
 
+  // Audio Playback State
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [audioProgress, setAudioProgress] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const toggleAudioPlay = () => {
+    if (!audioRef.current) return;
+    if (isPlayingAudio) {
+      audioRef.current.pause();
+      setIsPlayingAudio(false);
+    } else {
+      audioRef.current.play().then(() => setIsPlayingAudio(true)).catch((err) => console.error("Audio playback error:", err));
+    }
+  };
+
   const heroRef = useRef<HTMLDivElement>(null);
   const { scrollY } = useScroll();
   const heroScale = useTransform(scrollY, [0, 400], [1, 1.05]);
@@ -148,19 +163,44 @@ export default function PublicProfilePage() {
     setSheenY(50);
   };
 
-  // Check YouTube Video Id
+  // Check YouTube Video Id (supports watch, shorts, embed, live, shortened)
   const getYouTubeEmbedId = (url: string) => {
     if (!url) return null;
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|shorts\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-    const match = url.match(regExp);
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|shorts\/|watch\?v=|\&v=|live\/)([^#\&\?]*).*/;
+    const match = url.trim().match(regExp);
     return (match && match[2].length === 11) ? match[2] : null;
   };
 
   // Check Instagram Video/Reel Id
   const getInstagramEmbedId = (url: string) => {
     if (!url) return null;
-    const match = url.match(/instagram\.com\/(?:p|reel|tv)\/([^/?#&]+)/i);
+    const match = url.trim().match(/instagram\.com\/(?:p|reel|reels|tv)\/([^/?#&]+)/i);
     return match ? match[1] : null;
+  };
+
+  // Check Vimeo Video Id
+  const getVimeoEmbedId = (url: string) => {
+    if (!url) return null;
+    const match = url.trim().match(/vimeo\.com\/(?:video\/)?([0-9]+)/i);
+    return match ? match[1] : null;
+  };
+
+  // Check Google Drive Video Id
+  const getGoogleDriveEmbedId = (url: string) => {
+    if (!url) return null;
+    const match = url.trim().match(/drive\.google\.com\/file\/d\/([^/?#&]+)/i);
+    return match ? match[1] : null;
+  };
+
+  // Check direct Audio file URL
+  const isDirectAudioUrl = (url: string | null | undefined) => {
+    if (!url) return false;
+    return (
+      url.includes('/profiles/audio_') ||
+      /\.(mp3|wav|ogg|aac|m4a|flac)($|\?)/i.test(url) ||
+      url.startsWith('blob:') ||
+      url.startsWith('data:audio/')
+    );
   };
 
   if (loading) {
@@ -196,8 +236,11 @@ export default function PublicProfilePage() {
   const isPhoneEnabled = reservation.contact_phone_enabled === true && !!phoneVal;
   const hasContact = isEmailEnabled || isPhoneEnabled;
 
-  const youtubeId = reservation.youtube_url ? getYouTubeEmbedId(reservation.youtube_url) : null;
-  const instagramVideoId = reservation.instagram_url ? getInstagramEmbedId(reservation.instagram_url) : null;
+  const videoUrl = reservation.youtube_url?.trim() || '';
+  const youtubeId = videoUrl ? getYouTubeEmbedId(videoUrl) : null;
+  const instagramVideoId = videoUrl ? getInstagramEmbedId(videoUrl) : (reservation.instagram_url ? getInstagramEmbedId(reservation.instagram_url) : null);
+  const vimeoVideoId = videoUrl ? getVimeoEmbedId(videoUrl) : null;
+  const driveVideoId = videoUrl ? getGoogleDriveEmbedId(videoUrl) : null;
 
   // Dynamically map gallery photos (No fallback default images)
   const displayGallery = reservation.gallery_photos && reservation.gallery_photos.length > 0
@@ -917,9 +960,9 @@ export default function PublicProfilePage() {
             );
           }
 
-          // Featured Video Section (Render only if Youtube link uploaded!)
+          // Featured Video Section
           if (section === 'video') {
-            if (!youtubeId && !instagramVideoId && !reservation.youtube_url) return null;
+            if (!videoUrl && !youtubeId && !instagramVideoId && !vimeoVideoId && !driveVideoId) return null;
             return (
               <motion.section
                 key="video"
@@ -947,10 +990,10 @@ export default function PublicProfilePage() {
                     <iframe
                       width="100%"
                       height="100%"
-                      src={`https://www.youtube.com/embed/${youtubeId}?autoplay=0&rel=0`}
+                      src={`https://www.youtube.com/embed/${youtubeId}?autoplay=0&rel=0&enablejsapi=1`}
                       title="YouTube video player"
                       frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                       allowFullScreen
                       className="w-full h-full"
                     />
@@ -965,13 +1008,36 @@ export default function PublicProfilePage() {
                       allowFullScreen
                       className="w-full h-full"
                     />
-                  ) : reservation.youtube_url ? (
+                  ) : vimeoVideoId ? (
+                    <iframe
+                      width="100%"
+                      height="100%"
+                      src={`https://player.vimeo.com/video/${vimeoVideoId}`}
+                      title="Vimeo video player"
+                      frameBorder="0"
+                      allow="autoplay; fullscreen; picture-in-picture"
+                      allowFullScreen
+                      className="w-full h-full"
+                    />
+                  ) : driveVideoId ? (
+                    <iframe
+                      width="100%"
+                      height="100%"
+                      src={`https://drive.google.com/file/d/${driveVideoId}/preview`}
+                      title="Google Drive video player"
+                      frameBorder="0"
+                      allow="autoplay"
+                      allowFullScreen
+                      className="w-full h-full"
+                    />
+                  ) : videoUrl ? (
                     <video
-                      src={reservation.youtube_url}
+                      src={videoUrl}
                       controls
                       playsInline
-                      preload="metadata"
-                      className="w-full h-full object-cover"
+                      controlsList="nodownload"
+                      preload="auto"
+                      className="w-full h-full object-contain bg-black"
                     />
                   ) : null}
                 </div>
@@ -981,6 +1047,10 @@ export default function PublicProfilePage() {
 
           // Audio Samples & Track Discography Section
           if (section === 'audio') {
+            const spotifyUrl = reservation.spotify_url?.trim() || '';
+            const isDirectAudio = isDirectAudioUrl(spotifyUrl);
+            const isSpotifyEmbed = spotifyUrl.includes('spotify.com') || spotifyUrl.length === 22;
+
             return (
               <motion.section
                 key="audio"
@@ -990,6 +1060,22 @@ export default function PublicProfilePage() {
                 transition={{ duration: 0.5 }}
                 className="space-y-4 text-left"
               >
+                {/* Audio element for real playback */}
+                <audio
+                  ref={audioRef}
+                  src={
+                    isDirectAudio
+                      ? spotifyUrl
+                      : 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=ambient-electronic-112527.mp3'
+                  }
+                  onTimeUpdate={() => {
+                    if (audioRef.current && audioRef.current.duration) {
+                      setAudioProgress((audioRef.current.currentTime / audioRef.current.duration) * 100);
+                    }
+                  }}
+                  onEnded={() => setIsPlayingAudio(false)}
+                />
+
                 {/* Header */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -1010,9 +1096,9 @@ export default function PublicProfilePage() {
                 </div>
 
                 {/* Spotify Interactive Artist Player or Audio Sample Player Cards */}
-                {reservation.spotify_url ? (
+                {isSpotifyEmbed ? (
                   <SpotifyArtistPlayer 
-                    spotifyUrl={reservation.spotify_url} 
+                    spotifyUrl={spotifyUrl} 
                     artistName={displayName} 
                     isLight={isLight} 
                   />
@@ -1021,11 +1107,11 @@ export default function PublicProfilePage() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#7C5CFF]/20 to-[#1DB954]/20 border border-[#1DB954]/30 flex items-center justify-center text-[#1DB954]">
-                          <Music className="w-5 h-5 animate-pulse" />
+                          <Music className={`w-5 h-5 ${isPlayingAudio ? 'animate-spin' : 'animate-pulse'}`} />
                         </div>
                         <div>
                           <h3 className={`text-sm font-bold ${isLight ? 'text-zinc-900' : 'text-white'}`}>
-                            {displayName} — Featured Live Demo
+                            {displayName} — Featured Live Track
                           </h3>
                           <p className={`text-[10px] font-mono ${isLight ? 'text-zinc-500' : 'text-white/40'}`}>
                             {reservation.category ? reservation.category.replace('_', ' ') : 'Live Performance Showcase'}
@@ -1035,40 +1121,48 @@ export default function PublicProfilePage() {
 
                       {/* Equalizer animation visualizer */}
                       <div className="flex items-end gap-1 h-5 px-2">
-                        <span className="w-1 bg-[#1DB954] h-full rounded-full animate-bounce" style={{ animationDuration: '0.6s' }} />
-                        <span className="w-1 bg-[#7C5CFF] h-3/4 rounded-full animate-bounce" style={{ animationDuration: '0.9s' }} />
-                        <span className="w-1 bg-[#F25A2B] h-full rounded-full animate-bounce" style={{ animationDuration: '0.4s' }} />
-                        <span className="w-1 bg-[#D4567A] h-1/2 rounded-full animate-bounce" style={{ animationDuration: '0.7s' }} />
+                        <span className={`w-1 bg-[#1DB954] rounded-full transition-all duration-300 ${isPlayingAudio ? 'h-full animate-bounce' : 'h-2'}`} style={{ animationDuration: '0.6s' }} />
+                        <span className={`w-1 bg-[#7C5CFF] rounded-full transition-all duration-300 ${isPlayingAudio ? 'h-3/4 animate-bounce' : 'h-3'}`} style={{ animationDuration: '0.9s' }} />
+                        <span className={`w-1 bg-[#F25A2B] rounded-full transition-all duration-300 ${isPlayingAudio ? 'h-full animate-bounce' : 'h-1.5'}`} style={{ animationDuration: '0.4s' }} />
+                        <span className={`w-1 bg-[#D4567A] rounded-full transition-all duration-300 ${isPlayingAudio ? 'h-1/2 animate-bounce' : 'h-2.5'}`} style={{ animationDuration: '0.7s' }} />
                       </div>
                     </div>
 
-                    <div className={`p-4 rounded-2xl border flex items-center justify-between gap-4 ${isLight ? 'bg-zinc-50 border-zinc-200' : 'bg-white/[0.02] border-white/[0.05]'}`}>
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => {
-                            if (reservation.spotify_url) {
-                              window.open(reservation.spotify_url, '_blank');
-                            } else {
-                              setShowNotification(true);
-                            }
-                          }}
-                          className="w-10 h-10 rounded-full bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] text-white flex items-center justify-center shadow-lg hover:scale-105 transition-all cursor-pointer"
-                        >
-                          <Play className="w-4 h-4 ml-0.5" />
-                        </button>
-                        <div>
-                          <p className={`text-xs font-bold ${isLight ? 'text-zinc-900' : 'text-white'}`}>
-                            {reservation.custom_status_message || `${displayName} — Stage Reel Demo`}
-                          </p>
-                          <p className={`text-[10px] font-mono ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>
-                            High Quality Audio Showcase
-                          </p>
+                    <div className={`p-4 rounded-2xl border flex flex-col gap-3 ${isLight ? 'bg-zinc-50 border-zinc-200' : 'bg-white/[0.02] border-white/[0.05]'}`}>
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={toggleAudioPlay}
+                            className="w-11 h-11 rounded-full bg-gradient-to-r from-[#F25A2B] via-[#7C5CFF] to-[#1DB954] text-white flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                          >
+                            {isPlayingAudio ? (
+                              <span className="font-bold text-xs">❚❚</span>
+                            ) : (
+                              <Play className="w-5 h-5 ml-0.5" />
+                            )}
+                          </button>
+                          <div>
+                            <p className={`text-xs font-bold ${isLight ? 'text-zinc-900' : 'text-white'}`}>
+                              {reservation.custom_status_message || `${displayName} — Stage Reel Demo Track`}
+                            </p>
+                            <p className={`text-[10px] font-mono ${isLight ? 'text-zinc-400' : 'text-white/30'}`}>
+                              {isPlayingAudio ? 'Playing Live Track...' : 'Click Play to Listen'}
+                            </p>
+                          </div>
                         </div>
+
+                        <span className={`text-[10px] font-mono px-2.5 py-1 rounded-full border font-bold uppercase tracking-wider ${isPlayingAudio ? 'bg-[#1DB954]/20 text-[#1DB954] border-[#1DB954]/40 animate-pulse' : 'bg-white/10 text-zinc-400 border-white/10'}`}>
+                          {isPlayingAudio ? 'PLAYING' : 'AUDIO DEMO'}
+                        </span>
                       </div>
 
-                      <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-[#1DB954]/15 text-[#1DB954] border border-[#1DB954]/30 font-bold uppercase tracking-wider">
-                        PREVIEW
-                      </span>
+                      {/* Audio Progress Bar */}
+                      <div className="w-full bg-black/20 dark:bg-white/5 h-1.5 rounded-full overflow-hidden">
+                        <div
+                          className="bg-gradient-to-r from-[#F25A2B] to-[#1DB954] h-full transition-all duration-150 rounded-full"
+                          style={{ width: `${audioProgress}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
                 )}

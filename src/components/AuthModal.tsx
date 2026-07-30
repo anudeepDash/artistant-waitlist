@@ -10,7 +10,7 @@ import {
   signUpWithEmail,
   resetPassword,
 } from '@/lib/auth';
-import { reserveUsername, getUserReservation, updateReservationContactInfo, type ArtistCategory } from '@/lib/waitlist';
+import { reserveUsername, getUserReservation, updateReservationContactInfo, ensureValidDisplayName, type ArtistCategory } from '@/lib/waitlist';
 import { sendWelcomeEmailAction } from '@/lib/email-actions';
 import { logActivityAction } from '@/lib/admin-actions';
 import { uploadProfilePhotoAction } from '@/lib/profile-actions';
@@ -413,12 +413,14 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
           : undefined;
       const ref = typeof window !== 'undefined' ? localStorage.getItem('artistant_ref') || undefined : undefined;
 
+      const safeName = ensureValidDisplayName(pendingUser.displayName, normalised, resolvedEmail);
+
       // First reserve the username (without photo — photo is uploaded separately)
       await reserveUsername({
         uid: pendingUser.uid,
         username: normalised,
         email: resolvedEmail,
-        displayName: pendingUser.displayName ?? resolvedEmail ?? normalised,
+        displayName: safeName,
         role: 'artist',
         category,
         genres: selectedGenres,
@@ -454,7 +456,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
         sendWelcomeEmailAction({
           idToken,
           email: resolvedEmail,
-          name: pendingUser.displayName ?? resolvedEmail ?? normalised,
+          name: safeName,
           username: normalised,
         }).catch((err: unknown) => console.error("Error sending welcome email:", err));
       }).catch((err: unknown) => console.error("Error getting ID token for welcome email:", err));

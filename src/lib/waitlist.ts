@@ -82,6 +82,33 @@ export interface ReserveUsernameInput {
 // ---------------------------------------------------------------------------
 
 /**
+ * Ensures display_name is a valid human-readable name, and never an email ID or raw email address.
+ */
+export function ensureValidDisplayName(
+  displayName?: string | null,
+  username?: string | null,
+  email?: string | null
+): string {
+  if (displayName && displayName.trim() !== '' && !displayName.includes('@')) {
+    return displayName.trim();
+  }
+
+  // Fallback 1: Derive from username if available
+  if (username && username.trim() !== '') {
+    const cleaned = username.trim().replace(/[-_.]+/g, ' ');
+    return cleaned.replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
+  // Fallback 2: Derive from email local part
+  if (email && email.includes('@')) {
+    const localPart = email.split('@')[0].replace(/[-_.]+/g, ' ');
+    return localPart.replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
+  return 'Artist';
+}
+
+/**
  * Normalises a username to lowercase for consistent look-ups.
  */
 function normalise(username: string): string {
@@ -136,11 +163,13 @@ export async function reserveUsername(
     throw new Error('You cannot refer yourself.');
   }
 
+  const safeDisplayName = ensureValidDisplayName(displayName, normalisedUsername, email);
+
   const { error } = await supabase.from("waitlist_users").insert({
     user_id: uid,
     username: normalisedUsername,
     email: email,
-    display_name: displayName,
+    display_name: safeDisplayName,
     role: role || null,
     ...(category ? { category } : {}),
     ...(genres && genres.length > 0 ? { genres } : {}),
@@ -202,6 +231,11 @@ export async function getUserReservation(
 
   const entry = records[0] as WaitlistEntry;
 
+  // Sanitize display_name if it was corrupted to an email
+  if (entry) {
+    entry.display_name = ensureValidDisplayName(entry.display_name, entry.username, entry.email);
+  }
+
   // If profile was matched by email or phone but user_id was not yet linked, update link asynchronously
   if (entry.user_id !== uid) {
     supabase
@@ -228,11 +262,14 @@ export async function getReservationById(id: string): Promise<WaitlistEntry | nu
     .eq("id", id)
     .maybeSingle();
 
-  if (error) {
-    console.error("Error fetching reservation by ID:", error);
+  if (error || !data) {
+    if (error) console.error("Error fetching reservation by ID:", error);
     return null;
   }
-  return data as WaitlistEntry;
+
+  const entry = data as WaitlistEntry;
+  entry.display_name = ensureValidDisplayName(entry.display_name, entry.username, entry.email);
+  return entry;
 }
 
 /**
@@ -254,7 +291,9 @@ export async function getWaitlistEntryByUsername(
     return null;
   }
 
-  return data as WaitlistEntry;
+  const entry = data as WaitlistEntry;
+  entry.display_name = ensureValidDisplayName(entry.display_name, entry.username, entry.email);
+  return entry;
 }
 
 // ---------------------------------------------------------------------------
