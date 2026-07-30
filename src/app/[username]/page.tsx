@@ -510,53 +510,111 @@ export default function PublicProfilePage() {
       </AnimatePresence>
 
       {/* ── MOBILE HEADER (Visible only on mobile/tablet) ── */}
-      <div ref={heroRef} className="relative w-full h-[40vh] sm:h-[48vh] overflow-hidden block md:hidden">
-        {/* Background Image */}
-        <motion.div style={{ scale: heroScale }} className="absolute inset-0 w-full h-full">
-          {reservation.profile_photo_url ? (
+      {reservation?.profile_photo_url ? (
+        <div ref={heroRef} className="relative w-full h-[40vh] sm:h-[48vh] overflow-hidden block md:hidden">
+          {/* Background Image */}
+          <motion.div style={{ scale: heroScale }} className="absolute inset-0 w-full h-full">
             <img src={reservation.profile_photo_url} alt={displayName} className="w-full h-full object-cover object-center" />
-          ) : (
-            <div className={`w-full h-full ${isLight ? 'bg-gradient-to-br from-[#f5f3f7] via-[#edeaf0] to-[#e4e0e8]' : 'bg-gradient-to-br from-[#1a0d2e] via-[#0d0d1a] to-[#0a0a0f]'}`} />
-          )}
-        </motion.div>
+          </motion.div>
 
-        {/* Backdrop Overlay */}
-        <div className={`absolute inset-0 transition-colors duration-300 ${isLight ? 'bg-gradient-to-b from-black/15 via-transparent via-55% to-[#FAF9FD]' : 'bg-gradient-to-b from-black/35 via-transparent via-55% to-[#050508]'}`} />
+          {/* Backdrop Overlay */}
+          <div className={`absolute inset-0 transition-colors duration-300 ${isLight ? 'bg-gradient-to-b from-black/15 via-transparent via-55% to-[#FAF9FD]' : 'bg-gradient-to-b from-black/35 via-transparent via-55% to-[#050508]'}`} />
 
-        {/* Top Controls Bar (Mobile version) */}
-        <div className="absolute top-6 left-0 right-0 px-5 z-30 flex items-center justify-between">
-          <button 
-            onClick={() => router.push('/')}
-            className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-lg ${isLight ? 'bg-white/75 hover:bg-white/90 border border-black/10 text-zinc-900' : 'bg-black/40 hover:bg-black/60 border border-white/10 text-white'}`}
-          >
-            <ArrowLeft className="w-4.5 h-4.5" />
-          </button>
+          {/* Top Controls Bar (Mobile version) */}
+          <div className="absolute top-6 left-0 right-0 px-5 z-30 flex items-center justify-between">
+            <button 
+              onClick={() => router.push('/')}
+              className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-lg ${isLight ? 'bg-white/75 hover:bg-white/90 border border-black/10 text-zinc-900' : 'bg-black/40 hover:bg-black/60 border border-white/10 text-white'}`}
+            >
+              <ArrowLeft className="w-4.5 h-4.5" />
+            </button>
 
-          {/* Artistant Wordmark Logo Badge */}
-          <div className={`absolute left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-1 rounded-full backdrop-blur-md shadow-lg select-none ${isLight ? 'bg-white/80 border border-black/10' : 'bg-black/45 border border-white/10'}`}>
-            <img src="/logo_wordmark_flat.png" alt="ArtisTant" className="h-[18px] w-auto object-contain dark:invert-0 invert" />
-            <span className={`text-[9px] font-mono font-bold tracking-[0.2em] border-l pl-2 uppercase ${isLight ? 'text-zinc-500 border-black/15' : 'text-white/50 border-white/15'}`}>PORTFOLIO</span>
+            {/* Artistant Wordmark Logo Badge */}
+            <div className={`absolute left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-1 rounded-full backdrop-blur-md shadow-lg select-none ${isLight ? 'bg-white/80 border border-black/10' : 'bg-black/45 border border-white/10'}`}>
+              <img src="/logo_wordmark_flat.png" alt="ArtisTant" className="h-[18px] w-auto object-contain dark:invert-0 invert" />
+              <span className={`text-[9px] font-mono font-bold tracking-[0.2em] border-l pl-2 uppercase ${isLight ? 'text-zinc-500 border-black/15' : 'text-white/50 border-white/15'}`}>PORTFOLIO</span>
+            </div>
+          </div>
+
+          {/* Bottom Hero Overlay details (Category, Name & Genres) */}
+          <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-transparent to-transparent flex flex-col gap-2 z-20">
+            <div className="text-left space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`px-3.5 py-1 rounded-full text-[10px] font-bold backdrop-blur-sm uppercase tracking-wider font-mono shadow-sm ${isLight ? 'text-zinc-800 bg-white/90 border border-black/10' : 'text-white/85 bg-black/45 border border-white/10'}`}>
+                  {categoryLabel}
+                </span>
+                {reservation.city && (
+                  <span className={`inline-flex items-center gap-1 px-3.5 py-1 rounded-full text-[10px] font-bold backdrop-blur-sm uppercase tracking-wider font-mono shadow-sm ${isLight ? 'text-zinc-800 bg-white/90 border border-black/10' : 'text-white/85 bg-black/45 border border-white/10'}`}>
+                    <MapPin className="w-2.5 h-2.5 text-[#F25A2B]" /> {reservation.city}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <h1 className={`text-4xl font-black leading-tight font-serif-display ${isLight ? 'text-zinc-950' : 'text-white'}`}>
+                  {displayName}
+                </h1>
+                <div className="flex items-center gap-2.5 shrink-0">
+                  <button
+                    onClick={() => {
+                      setBookingMode('options');
+                      setIsBookingOpen(true);
+                    }}
+                    className="px-3.5 py-2 rounded-full text-xs font-bold font-mono uppercase bg-[#7C5CFF] text-white hover:bg-[#6838FF] shadow-lg active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Calendar className="w-3.5 h-3.5" /> Book Artist
+                  </button>
+                  <button 
+                    onClick={() => setLiked(!liked)}
+                    className={`w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-lg ${isLight ? 'bg-white/75 hover:bg-white/90 border border-black/10 text-zinc-900' : 'bg-black/40 hover:bg-black/60 border border-white/10 text-white'}`}
+                  >
+                    <Heart className={`w-4 h-4 transition-colors ${liked ? 'fill-red-500 text-red-500' : isLight ? 'text-zinc-800' : 'text-white'}`} />
+                  </button>
+                  <button 
+                    onClick={handleShare}
+                    className={`w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-lg ${isLight ? 'bg-white/75 hover:bg-white/90 border border-black/10 text-zinc-900' : 'bg-black/40 hover:bg-black/60 border border-white/10 text-white'}`}
+                  >
+                    <Share2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              {genres.length > 0 && (
+                <p className={`text-xs font-mono tracking-wider ${isLight ? 'text-zinc-600' : 'text-white/50'}`}>
+                  {genres.join(' · ')}
+                </p>
+              )}
+            </div>
           </div>
         </div>
-
-        {/* Bottom Hero Overlay details (Category, Name & Genres) */}
-        <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-transparent to-transparent flex flex-col gap-2 z-20">
-          <div className="text-left space-y-2">
+      ) : (
+        <div className="block md:hidden px-5 pt-8 pb-4 space-y-4">
+          <div className="flex items-center justify-between z-30 relative">
+            <button 
+              onClick={() => router.push('/')}
+              className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer ${isLight ? 'bg-white border border-black/10 text-zinc-900 shadow-sm' : 'bg-white/[0.02] border border-white/10 text-white'}`}
+            >
+              <ArrowLeft className="w-4.5 h-4.5" />
+            </button>
+            <div className={`flex items-center gap-2 px-3 py-1 rounded-full backdrop-blur-md shadow-sm select-none ${isLight ? 'bg-white border border-black/10' : 'bg-white/[0.02] border border-white/10'}`}>
+              <img src="/logo_wordmark_flat.png" alt="ArtisTant" className="h-[18px] w-auto object-contain dark:invert-0 invert" />
+              <span className={`text-[9px] font-mono font-bold tracking-[0.2em] border-l pl-2 uppercase ${isLight ? 'text-zinc-500 border-black/15' : 'text-white/50 border-white/15'}`}>PORTFOLIO</span>
+            </div>
+          </div>
+          <div className="text-left space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`px-3.5 py-1 rounded-full text-[10px] font-bold backdrop-blur-sm uppercase tracking-wider font-mono shadow-sm ${isLight ? 'text-zinc-800 bg-white/90 border border-black/10' : 'text-white/85 bg-black/45 border border-white/10'}`}>
+              <span className={`px-3.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider font-mono shadow-sm ${isLight ? 'text-zinc-800 bg-white border border-black/10' : 'text-white/85 bg-white/[0.04] border border-white/10'}`}>
                 {categoryLabel}
               </span>
               {reservation.city && (
-                <span className={`inline-flex items-center gap-1 px-3.5 py-1 rounded-full text-[10px] font-bold backdrop-blur-sm uppercase tracking-wider font-mono shadow-sm ${isLight ? 'text-zinc-800 bg-white/90 border border-black/10' : 'text-white/85 bg-black/45 border border-white/10'}`}>
+                <span className={`inline-flex items-center gap-1 px-3.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider font-mono shadow-sm ${isLight ? 'text-zinc-800 bg-white border border-black/10' : 'text-white/85 bg-white/[0.04] border border-white/10'}`}>
                   <MapPin className="w-2.5 h-2.5 text-[#F25A2B]" /> {reservation.city}
                 </span>
               )}
             </div>
             <div className="flex items-center justify-between gap-4">
-              <h1 className={`text-4xl font-black leading-tight font-serif-display ${isLight ? 'text-zinc-950' : 'text-white'}`}>
+              <h1 className={`text-3xl font-black leading-tight font-serif-display ${isLight ? 'text-zinc-950' : 'text-white'}`}>
                 {displayName}
               </h1>
-              <div className="flex items-center gap-2.5 shrink-0">
+              <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={() => {
                     setBookingMode('options');
@@ -568,13 +626,13 @@ export default function PublicProfilePage() {
                 </button>
                 <button 
                   onClick={() => setLiked(!liked)}
-                  className={`w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-lg ${isLight ? 'bg-white/75 hover:bg-white/90 border border-black/10 text-zinc-900' : 'bg-black/40 hover:bg-black/60 border border-white/10 text-white'}`}
+                  className={`w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-sm ${isLight ? 'bg-white border border-black/10 text-zinc-900' : 'bg-white/[0.02] border border-white/10 text-white'}`}
                 >
                   <Heart className={`w-4 h-4 transition-colors ${liked ? 'fill-red-500 text-red-500' : isLight ? 'text-zinc-800' : 'text-white'}`} />
                 </button>
                 <button 
                   onClick={handleShare}
-                  className={`w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-lg ${isLight ? 'bg-white/75 hover:bg-white/90 border border-black/10 text-zinc-900' : 'bg-black/40 hover:bg-black/60 border border-white/10 text-white'}`}
+                  className={`w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-sm ${isLight ? 'bg-white border border-black/10 text-zinc-900' : 'bg-white/[0.02] border border-white/10 text-white'}`}
                 >
                   <Share2 className="w-4 h-4" />
                 </button>
@@ -587,7 +645,7 @@ export default function PublicProfilePage() {
             )}
           </div>
         </div>
-      </div>
+      )}
 
       {/* ── DESKTOP HEADER BAR (Visible only on desktop md and up) ── */}
       <div className="hidden md:flex max-w-5xl mx-auto px-8 py-6 items-center justify-between z-30 relative">
@@ -634,18 +692,14 @@ export default function PublicProfilePage() {
         
         {/* ── DESKTOP SPLIT COLUMN VIEW (Only on desktop) ── */}
         <div className={`hidden md:flex gap-10 items-start border-b pb-10 ${isLight ? 'border-black/[0.06]' : 'border-white/[0.04]'}`}>
-          {/* Left Column: Portrait Photo card */}
-          <div className="w-[320px] shrink-0">
-            <div className={`aspect-[3/4] w-full rounded-[2.5rem] overflow-hidden border relative shadow-md ${isLight ? 'border-black/10 bg-white shadow-[0_20px_50px_rgba(124,92,255,0.06)]' : 'border-white/10 bg-white/[0.01] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)]'}`}>
-              {reservation.profile_photo_url ? (
+          {/* Left Column: Portrait Photo card (ONLY IF PHOTO UPLOADED) */}
+          {reservation.profile_photo_url && (
+            <div className="w-[320px] shrink-0">
+              <div className={`aspect-[3/4] w-full rounded-[2.5rem] overflow-hidden border relative shadow-md ${isLight ? 'border-black/10 bg-white shadow-[0_20px_50px_rgba(124,92,255,0.06)]' : 'border-white/10 bg-white/[0.01] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)]'}`}>
                 <img src={reservation.profile_photo_url} alt={displayName} className="w-full h-full object-cover object-center" />
-              ) : (
-                <div className={`w-full h-full flex items-center justify-center ${isLight ? 'bg-gradient-to-br from-[#f5f3f7] via-[#edeaf0] to-[#e4e0e8]' : 'bg-gradient-to-br from-[#1a0d2e] via-[#0d0d1a] to-[#0a0a0f]'}`}>
-                  <span className={`text-4xl font-black ${isLight ? 'text-black/10' : 'text-white/10'}`}>{displayName[0].toUpperCase()}</span>
-                </div>
-              )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Right Column: Bio, Connect links & Metadata */}
           <div className="flex-1 space-y-6 text-left">
@@ -1054,13 +1108,17 @@ export default function PublicProfilePage() {
           // Audio Samples & Track Discography Section
           if (section === 'audio') {
             const spotifyUrl = reservation.spotify_url?.trim() || '';
-            const isDirectAudio = isDirectAudioUrl(spotifyUrl);
-            const spotifyParsed = parseSpotifyInput(spotifyUrl);
-            const isSpotifyEmbed = Boolean(spotifyUrl && spotifyParsed.id);
-
-            if (!isSpotifyEmbed && !isDirectAudio) {
+            if (!spotifyUrl) {
               return null;
             }
+
+            const spotifyParsed = parseSpotifyInput(spotifyUrl);
+            const isSpotifyEmbed = Boolean(
+              spotifyUrl.includes('spotify.com') ||
+              spotifyUrl.includes('spotify.link') ||
+              spotifyUrl.startsWith('spotify:') ||
+              spotifyParsed.id
+            );
 
             return (
               <motion.section
@@ -1099,11 +1157,7 @@ export default function PublicProfilePage() {
                   />
                 ) : (
                   <LiquidGlassAudioPlayer
-                    audioUrl={
-                      isDirectAudio
-                        ? spotifyUrl
-                        : 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=ambient-electronic-112527.mp3'
-                    }
+                    audioUrl={spotifyUrl}
                     artistName={displayName}
                     trackTitle={reservation.custom_status_message}
                     category={reservation.category}

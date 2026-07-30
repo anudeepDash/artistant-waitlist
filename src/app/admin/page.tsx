@@ -350,6 +350,7 @@ export default function AdminPage() {
 
   // Booking Requests State
   const [bookingRequests, setBookingRequests] = useState<BookingRequestEntry[]>([]);
+  const [bookingRequestsError, setBookingRequestsError] = useState<string | null>(null);
   const [requestSearchQuery, setRequestSearchQuery] = useState("");
   const [requestStatusFilter, setRequestStatusFilter] = useState<string>("all");
   const [kanbanView, setKanbanView] = useState<"kanban" | "table">("kanban");
@@ -628,12 +629,14 @@ export default function AdminPage() {
     setDbError(null);
     try {
       const idToken = await getIdToken();
+      let bErrorMsg: string | null = null;
       const [regs, logs, admins, bRequests] = await Promise.all([
         adminGetRegistrationsAction(idToken),
         adminGetActivityLogsAction(idToken),
         adminGetAdminsAction(idToken),
         adminGetBookingRequestsAction(idToken).catch(err => {
           console.warn("Error fetching booking requests:", err);
+          bErrorMsg = err?.message || "Failed to fetch booking requests from database";
           return [];
         })
       ]);
@@ -641,6 +644,7 @@ export default function AdminPage() {
       setActivityLogs(logs);
       setAdminUsers(admins);
       setBookingRequests(bRequests || []);
+      setBookingRequestsError(bErrorMsg);
       setIsLiveMode(true);
       setIsUnlocked(true);
       if (!isSilent) showToast("Connected to Live Database.");
@@ -3637,6 +3641,25 @@ export default function AdminPage() {
             =================================================================== */}
         {activeTab === "requests" && (
           <div className="space-y-8 animate-in fade-in duration-200">
+            {bookingRequestsError && (
+              <div className="p-5 rounded-3xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-mono flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 backdrop-blur-md shadow-lg text-left">
+                <div>
+                  <p className="font-bold text-sm text-amber-300 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                    Database Migration Required for Booking Requests
+                  </p>
+                  <p className="text-xs text-amber-200/80 mt-1 leading-relaxed">
+                    The <code className="bg-black/40 px-1.5 py-0.5 rounded text-amber-300 font-bold">booking_requests</code> table is not active in Supabase ({bookingRequestsError}). Please run <code className="bg-black/40 px-1.5 py-0.5 rounded text-amber-300 font-bold">supabase_migration_booking_requests.sql</code> in your Supabase SQL Editor.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowSqlMigration(true)}
+                  className="px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 text-xs font-bold font-mono transition-all border border-amber-500/30 cursor-pointer shrink-0"
+                >
+                  View SQL Migration
+                </button>
+              </div>
+            )}
             
             {/* Metric cards */}
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
@@ -4534,6 +4557,138 @@ export default function AdminPage() {
                     </div>
                   </div>
                 )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* SQL Migration Script Modal */}
+      <AnimatePresence>
+        {showSqlMigration && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="w-full max-w-2xl bg-bg-card border border-line-soft rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] text-left"
+            >
+              <div className="p-6 border-b border-line-soft flex items-center justify-between bg-bg-soft/30">
+                <div>
+                  <h3 className="text-base font-display font-bold text-ink uppercase tracking-tight">Supabase Migration: Booking Requests Table</h3>
+                  <p className="text-xs text-ink-2 mt-0.5">Copy and run this SQL script in your Supabase SQL Editor</p>
+                </div>
+                <button
+                  onClick={() => setShowSqlMigration(false)}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center bg-bg-soft border border-line-soft text-ink-3 hover:text-ink transition-all cursor-pointer"
+                >
+                  <XCircle className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4 overflow-y-auto flex-1 font-mono text-xs">
+                <div className="p-4 rounded-2xl bg-[#0a0a0f] border border-line-soft text-emerald-400 overflow-x-auto text-[11px] leading-relaxed select-all">
+                  <pre>{`-- Run this script in the Supabase SQL Editor:
+-- https://supabase.com/dashboard/project/gpuedwozcbzlkhdkcebm/sql/new
+
+CREATE TABLE IF NOT EXISTS public.booking_requests (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  artist_username text NOT NULL,
+  artist_display_name text,
+  client_name text NOT NULL,
+  client_email text NOT NULL,
+  client_phone text NOT NULL,
+  event_date text NOT NULL,
+  city text NOT NULL,
+  event_type text NOT NULL,
+  budget text,
+  notes text,
+  status text DEFAULT 'pending',
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_booking_requests_artist_username ON public.booking_requests(artist_username);
+CREATE INDEX IF NOT EXISTS idx_booking_requests_created_at ON public.booking_requests(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_booking_requests_status ON public.booking_requests(status);
+
+ALTER TABLE public.booking_requests ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.booking_requests TO service_role, anon, authenticated;
+
+DROP POLICY IF EXISTS "Allow public insert to booking_requests" ON public.booking_requests;
+CREATE POLICY "Allow public insert to booking_requests"
+  ON public.booking_requests FOR INSERT TO anon, authenticated, service_role WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow select booking_requests" ON public.booking_requests;
+CREATE POLICY "Allow select booking_requests"
+  ON public.booking_requests FOR SELECT TO anon, authenticated, service_role USING (true);
+
+DROP POLICY IF EXISTS "Allow update booking_requests" ON public.booking_requests;
+CREATE POLICY "Allow update booking_requests"
+  ON public.booking_requests FOR UPDATE TO anon, authenticated, service_role USING (true);
+
+DROP POLICY IF EXISTS "Allow delete booking_requests" ON public.booking_requests;
+CREATE POLICY "Allow delete booking_requests"
+  ON public.booking_requests FOR DELETE TO anon, authenticated, service_role USING (true);`}</pre>
+                </div>
+              </div>
+
+              <div className="p-5 border-t border-line-soft bg-bg-soft/30 flex items-center justify-between">
+                <a
+                  href="https://supabase.com/dashboard/project/gpuedwozcbzlkhdkcebm/sql/new"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-mono text-[#7C5CFF] hover:underline flex items-center gap-1.5 font-bold"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" /> Open Supabase SQL Editor &rarr;
+                </a>
+                <button
+                  onClick={() => {
+                    const sqlText = `-- Run this script in the Supabase SQL Editor:
+CREATE TABLE IF NOT EXISTS public.booking_requests (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  artist_username text NOT NULL,
+  artist_display_name text,
+  client_name text NOT NULL,
+  client_email text NOT NULL,
+  client_phone text NOT NULL,
+  event_date text NOT NULL,
+  city text NOT NULL,
+  event_type text NOT NULL,
+  budget text,
+  notes text,
+  status text DEFAULT 'pending',
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_booking_requests_artist_username ON public.booking_requests(artist_username);
+CREATE INDEX IF NOT EXISTS idx_booking_requests_created_at ON public.booking_requests(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_booking_requests_status ON public.booking_requests(status);
+
+ALTER TABLE public.booking_requests ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.booking_requests TO service_role, anon, authenticated;
+
+DROP POLICY IF EXISTS "Allow public insert to booking_requests" ON public.booking_requests;
+CREATE POLICY "Allow public insert to booking_requests"
+  ON public.booking_requests FOR INSERT TO anon, authenticated, service_role WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow select booking_requests" ON public.booking_requests;
+CREATE POLICY "Allow select booking_requests"
+  ON public.booking_requests FOR SELECT TO anon, authenticated, service_role USING (true);
+
+DROP POLICY IF EXISTS "Allow update booking_requests" ON public.booking_requests;
+CREATE POLICY "Allow update booking_requests"
+  ON public.booking_requests FOR UPDATE TO anon, authenticated, service_role USING (true);
+
+DROP POLICY IF EXISTS "Allow delete booking_requests" ON public.booking_requests;
+CREATE POLICY "Allow delete booking_requests"
+  ON public.booking_requests FOR DELETE TO anon, authenticated, service_role USING (true);`;
+                    navigator.clipboard.writeText(sqlText);
+                    showToast("SQL script copied to clipboard!");
+                  }}
+                  className="px-4 py-2 rounded-xl bg-[#7C5CFF] text-white text-xs font-mono font-bold hover:bg-[#6a49ff] transition-all cursor-pointer shadow-md"
+                >
+                  Copy SQL Script
+                </button>
               </div>
             </motion.div>
           </div>

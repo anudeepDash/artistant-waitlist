@@ -869,7 +869,11 @@ export async function submitBookingRequestAction(params: SubmitBookingRequestPar
     });
 
     if (dbError) {
-      console.warn('Booking request DB insert notice:', dbError.message);
+      console.error('Booking request DB insert error:', dbError.message);
+      return {
+        success: false,
+        message: `Failed to store booking request in database (${dbError.message}). Please run the database migration if the table does not exist.`
+      };
     }
 
     // Trigger email notification to Artistant Concierge
