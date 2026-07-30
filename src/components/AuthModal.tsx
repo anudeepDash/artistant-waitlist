@@ -17,7 +17,7 @@ import { uploadProfilePhotoAction } from '@/lib/profile-actions';
 import { compressImage } from '@/lib/image-utils';
 
 import { auth, isFirebaseConfigured } from '@/lib/firebase/client';
-import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
+import { RecaptchaVerifier, signInWithPhoneNumber, updateProfile } from 'firebase/auth';
 import SuccessConfirmation from '@/components/SuccessConfirmation';
 import ImageCropperModal from '@/components/ImageCropperModal';
 
@@ -300,7 +300,8 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
   const [loading, setLoading] = useState(false);
   const [reservedUsername, setReservedUsername] = useState('');
 
-  // Extra contact fields collected alongside auth
+  // Extra contact & name fields collected alongside auth
+  const [extraName, setExtraName] = useState('');     // full name for non-Google login
   const [extraPhone, setExtraPhone] = useState('');   // phone for email/Google login
   const [extraEmail, setExtraEmail] = useState('');   // email for phone login
 
@@ -413,7 +414,14 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
           : undefined;
       const ref = typeof window !== 'undefined' ? localStorage.getItem('artistant_ref') || undefined : undefined;
 
-      const safeName = ensureValidDisplayName(pendingUser.displayName, normalised, resolvedEmail);
+      const resolvedName = extraName.trim() || pendingUser.displayName || '';
+      const safeName = ensureValidDisplayName(resolvedName, normalised, resolvedEmail);
+
+      if (extraName.trim() && pendingUser) {
+        try {
+          await updateProfile(pendingUser, { displayName: extraName.trim() });
+        } catch (_) {}
+      }
 
       // First reserve the username (without photo — photo is uploaded separately)
       await reserveUsername({
@@ -621,7 +629,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
       try {
         let result;
         try {
-          result = await signUpWithEmail(email, password);
+          result = await signUpWithEmail(email, password, extraName);
         } catch (err: any) {
           if (err.code === 'auth/email-already-in-use') {
             result = await signInWithEmail(email, password);
@@ -943,6 +951,17 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                         </div>
 
                         <form onSubmit={handleEmailSubmit} className="space-y-4">
+                          <div className="relative group">
+                            <input
+                              type="text"
+                              value={extraName}
+                              onChange={(e) => setExtraName(e.target.value)}
+                              placeholder="Full Name (e.g. Jasmine Sandlas)"
+                              className="w-full px-5 py-4 bg-black/40 border border-white/5 rounded-2xl text-white placeholder-white/30 text-sm focus:border-brand-purple/50 focus:ring-1 focus:ring-brand-purple/50 transition-all duration-300 outline-none shadow-inner"
+                              autoComplete="name"
+                            />
+                          </div>
+
                           <div className="relative group">
                             <input
                               type="email"
@@ -1566,16 +1585,15 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                               onClick={() => {
                                 const isMissingEmail = !pendingUser?.email;
                                 const isMissingPhone = !pendingUser?.phoneNumber;
-                                if (isMissingEmail || isMissingPhone) {
+                                const isMissingName = !pendingUser?.displayName && !extraName.trim();
+                                if (isMissingEmail || isMissingPhone || isMissingName) {
                                   setProfileSubStep('contact');
                                 } else {
                                   setProfileSubStep('links');
                                 }
                                 setError(null);
                               }}
-                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_4px_14px_0_rgba(124,92,255,0.39)]
-                                         transition-all hover:scale-[1.02] hover:shadow-[0_6px_20px_rgba(124,92,255,0.23)] active:scale-[0.98] 
-                                         disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_4px_14px_0_rgba(124,92,255,0.39)] transition-all hover:scale-[1.02] hover:shadow-[0_6px_20px_rgba(124,92,255,0.23)] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                               style={{ background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)' }}
                             >
                               Continue →
@@ -1584,7 +1602,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                         </motion.div>
                       )}
 
-                      {/* ── Slide 3.5: Contact info (Conditional) ── */}
+                      {/* ── Slide 3.5: Contact info & Full Name (Conditional) ── */}
                       {profileSubStep === 'contact' && (
                         <motion.div
                           key="profile-contact"
@@ -1595,17 +1613,32 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                         >
                           <div className="text-center mb-6">
                             <h2 className="font-display text-3xl font-bold text-white mb-2">
-                              {!pendingUser?.email ? 'Enter Email' : 'Enter Phone'}
+                              {!pendingUser?.displayName && !extraName.trim() ? 'Your Full Name' : (!pendingUser?.email ? 'Enter Email' : 'Enter Phone')}
                             </h2>
                             <p className="text-white/50 text-sm font-medium">
-                              {!pendingUser?.email
-                                ? 'Add your email to complete registration.'
-                                : 'Add your phone number to complete registration.'}
+                              Add your name and contact details to complete your artist profile.
                             </p>
                           </div>
 
                           <div className="space-y-4 mb-8">
-                            {!pendingUser?.email ? (
+                            {(!pendingUser?.displayName || !extraName.trim()) && (
+                              <div>
+                                <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-2">Full Name / Artist Name <span className="text-[#F25A2B]">*</span></label>
+                                <div className="w-full flex items-center bg-black/40 border border-white/5 rounded-xl px-4 py-3 focus-within:border-[#7C5CFF] focus-within:ring-1 focus-within:ring-[#7C5CFF] transition-all">
+                                  <input
+                                    type="text"
+                                    required
+                                    value={extraName}
+                                    onChange={e => setExtraName(e.target.value)}
+                                    placeholder="e.g. Jasmine Sandlas"
+                                    className="flex-1 bg-transparent border-none p-0 text-white placeholder-white/20 text-sm focus:ring-0 focus:outline-none"
+                                    autoFocus
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {!pendingUser?.email && (
                               <div>
                                 <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-2">Email Address <span className="text-[#F25A2B]">*</span></label>
                                 <div className="w-full flex items-center bg-black/40 border border-white/5 rounded-xl px-4 py-3 focus-within:border-[#7C5CFF] focus-within:ring-1 focus-within:ring-[#7C5CFF] transition-all">
@@ -1616,11 +1649,12 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                                     onChange={e => setExtraEmail(e.target.value)}
                                     placeholder="email@example.com"
                                     className="flex-1 bg-transparent border-none p-0 text-white placeholder-white/20 text-sm focus:ring-0 focus:outline-none"
-                                    autoFocus
                                   />
                                 </div>
                               </div>
-                            ) : (
+                            )}
+
+                            {pendingUser?.email && !pendingUser?.phoneNumber && (
                               <div>
                                 <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-2">Phone Number <span className="text-[#F25A2B]">*</span></label>
                                 <div className="w-full flex items-center bg-black/40 border border-white/5 rounded-xl px-4 py-3 focus-within:border-[#7C5CFF] focus-within:ring-1 focus-within:ring-[#7C5CFF] transition-all">
@@ -1633,7 +1667,6 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                                     onChange={e => setExtraPhone(e.target.value.replace(/\D/g, ''))}
                                     placeholder="Phone number"
                                     className="flex-1 bg-transparent border-none p-0 text-white placeholder-white/20 text-sm focus:ring-0 focus:outline-none pl-2.5"
-                                    autoFocus
                                   />
                                 </div>
                               </div>
@@ -1652,12 +1685,16 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                             <button
                               type="button"
                               onClick={() => {
+                                if (!extraName.trim() && !pendingUser?.displayName) {
+                                  setError('Please enter your full name.');
+                                  return;
+                                }
                                 if (!pendingUser?.email) {
                                   if (!extraEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(extraEmail)) {
                                     setError('Please enter a valid email address.');
                                     return;
                                   }
-                                } else {
+                                } else if (!pendingUser?.phoneNumber) {
                                   if (extraPhone.replace(/\D/g, '').length !== 10) {
                                     setError('Please enter a valid 10-digit phone number.');
                                     return;
@@ -1666,8 +1703,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                                 setError(null);
                                 setProfileSubStep('links');
                               }}
-                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_4px_14px_0_rgba(124,92,255,0.39)]
-                                         transition-all hover:scale-[1.02] hover:shadow-[0_6px_20px_rgba(124,92,255,0.23)] active:scale-[0.98]"
+                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_4px_14px_0_rgba(124,92,255,0.39)] transition-all hover:scale-[1.02] hover:shadow-[0_6px_20px_rgba(124,92,255,0.23)] active:scale-[0.98]"
                               style={{ background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)' }}
                             >
                               Continue →

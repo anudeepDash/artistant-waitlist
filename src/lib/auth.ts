@@ -35,14 +35,19 @@ export async function signInWithGoogle() {
   }
 }
 
-/**
- * Signs up a user with email and password via Firebase.
- */
-export async function signUpWithEmail(email: string, password: string) {
+export async function signUpWithEmail(email: string, password: string, displayName?: string) {
   if (!isFirebaseConfigured) {
     throw new Error(CONFIG_ERROR);
   }
   const result = await createUserWithEmailAndPassword(auth, email, password);
+  if (displayName && result.user) {
+    try {
+      const { updateProfile } = await import('firebase/auth');
+      await updateProfile(result.user, { displayName: displayName.trim() });
+    } catch (e) {
+      console.warn('Could not set Firebase user displayName:', e);
+    }
+  }
   return result;
 }
 
