@@ -3370,7 +3370,7 @@ export default function AdminPage() {
                             </a>
                             {(emailTemplateType === "migrated_artist" || emailCtaUrl.includes("/claim")) && (
                               <p className="text-[9.5px] font-mono text-emerald-500 font-semibold pt-2">
-                                ⚡ Unique Redirect: <span className="underline">https://artistant.in/claim?username=artist_handle</span>
+                                ⚡ Unique Redirect: <span className="underline">https://artistant.in/claim?id=...&username=handle&email=artist@domain.com</span>
                               </p>
                             )}
                           </div>

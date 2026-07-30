@@ -25,7 +25,7 @@ const YoutubeIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 import { useAuth } from '@/hooks/useAuth';
-import { getReservationById, getUserReservation, isUsernameAvailable, ensureValidDisplayName, type WaitlistEntry, type ArtistCategory } from '@/lib/waitlist';
+import { resolveClaimReservation, getUserReservation, isUsernameAvailable, ensureValidDisplayName, type WaitlistEntry, type ArtistCategory } from '@/lib/waitlist';
 import { changeUsernameAction, updateProfileDetailsAction, uploadProfilePhotoAction, linkImportedProfile } from '@/lib/profile-actions';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -47,7 +47,10 @@ function ClaimOnboardingContent() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const claimId = searchParams.get('id');
+
+  const claimId = searchParams.get('id') || searchParams.get('token') || searchParams.get('claim_token');
+  const claimUsername = searchParams.get('username') || searchParams.get('handle');
+  const claimEmail = searchParams.get('email');
 
   // Stepper state: 1 = Claim Username, 2 = Sign In Prompt, 3 = Profile Details Review
   const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
@@ -122,12 +125,17 @@ function ClaimOnboardingContent() {
     return () => clearTimeout(debounce);
   }, [username, originalUsername]);
 
-  // Load user reservation by ID or fallback to user matching
+  // Load user reservation by ID, username, email or fallback to user matching
   const fetchReservation = useCallback(async () => {
     setCheckingReservation(true);
     try {
-      if (claimId) {
-        const res = await getReservationById(claimId);
+      if (claimId || claimUsername || claimEmail) {
+        const res = await resolveClaimReservation({
+          id: claimId,
+          username: claimUsername,
+          email: claimEmail,
+        });
+
         if (res) {
           setReservation(res);
           setUsername(res.username || '');
@@ -176,7 +184,7 @@ function ClaimOnboardingContent() {
     } finally {
       setCheckingReservation(false);
     }
-  }, [user, claimId]);
+  }, [user, claimId, claimUsername, claimEmail]);
 
   useEffect(() => {
     if (!authLoading) {

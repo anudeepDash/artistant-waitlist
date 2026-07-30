@@ -94,11 +94,18 @@ export async function sendMassEmailAction({
       if (!recipient.email) continue;
 
       // Make CTA URL & claim_url dynamic and unique per artist recipient
-      const uniqueClaimUrl = `https://artistant.in/claim?username=${encodeURIComponent(recipient.username || '')}&email=${encodeURIComponent(recipient.email)}`;
+      const queryParts: string[] = [];
+      if (recipient.id) queryParts.push(`id=${encodeURIComponent(recipient.id)}`);
+      if (recipient.username) queryParts.push(`username=${encodeURIComponent(recipient.username)}`);
+      if (recipient.email) queryParts.push(`email=${encodeURIComponent(recipient.email)}`);
+
+      const uniqueClaimUrl = `https://artistant.in/claim${queryParts.length > 0 ? `?${queryParts.join('&')}` : ''}`;
       let finalCtaUrl = ctaUrl || uniqueClaimUrl;
 
-      if (ctaUrl && ctaUrl.includes('{{username}}')) {
-        finalCtaUrl = ctaUrl.replaceAll('{{username}}', recipient.username || '');
+      if (ctaUrl && (ctaUrl.includes('{{username}}') || ctaUrl.includes('{{id}}'))) {
+        finalCtaUrl = ctaUrl
+          .replaceAll('{{username}}', recipient.username || '')
+          .replaceAll('{{id}}', recipient.id || '');
       } else if (ctaUrl && (ctaUrl.includes('/claim') || templateType === 'migrated_artist')) {
         finalCtaUrl = uniqueClaimUrl;
       }

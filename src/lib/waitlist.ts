@@ -89,23 +89,20 @@ export function ensureValidDisplayName(
   username?: string | null,
   email?: string | null
 ): string {
+  // 1. If valid custom display name is set (not empty and not an email), return it
   if (displayName && displayName.trim() !== '' && !displayName.includes('@')) {
     return displayName.trim();
   }
 
-  // Fallback 1: Derive clean human name from email local part if available
-  if (email && email.includes('@')) {
-    const localPart = email.split('@')[0];
-    const cleaned = localPart.replace(/[0-9]+/g, ' ').replace(/[-_.]+/g, ' ').replace(/\s+/g, ' ').trim();
-    if (cleaned.length >= 2) {
-      return cleaned.replace(/\b\w/g, (c) => c.toUpperCase());
-    }
+  // 2. Fallback to the user's reserved username handle
+  if (username && username.trim() !== '') {
+    return username.trim();
   }
 
-  // Fallback 2: Derive from username if available
-  if (username && username.trim() !== '') {
-    const cleaned = username.trim().replace(/[-_.]+/g, ' ');
-    return cleaned.replace(/\b\w/g, (c) => c.toUpperCase());
+  // 3. Fallback to email local part if available
+  if (email && email.includes('@')) {
+    const localPart = email.split('@')[0].trim();
+    if (localPart) return localPart;
   }
 
   return 'Artist';
@@ -254,25 +251,106 @@ export async function getUserReservation(
   return entry;
 }
 
-/**
- * Fetch reservation record by its raw DB UUID (claim token)
- */
-export async function getReservationById(id: string): Promise<WaitlistEntry | null> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("waitlist_users")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
+export interface ResolveClaimParams {
+  id?: string | null;
+  username?: string | null;
+  email?: string | null;
+  token?: string | null;
+}
 
-  if (error || !data) {
-    if (error) console.error("Error fetching reservation by ID:", error);
-    return null;
+/**
+ * Resolves a waitlist reservation for profile claiming using any available key:
+ * 1. Database UUID (id or token)
+ * 2. Stage username handle
+ * 3. User email address
+ */
+export async function resolveClaimReservation(
+  params: ResolveClaimParams
+): Promise<WaitlistEntry | null> {
+  const supabase = createClient();
+  const rawId = params.id?.trim() || params.token?.trim();
+  const rawUsername = params.username?.trim();
+  const rawEmail = params.email?.trim();
+
+  // Step 1: Attempt lookup by DB UUID if candidate looks like a UUID
+  if (rawId) {
+    const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(rawId);
+    if (isUuid) {
+      const { data, error } = await supabase
+        .from("waitlist_users")
+        .select("*")
+        .eq("id", rawId)
+        .maybeSingle();
+
+      if (data && !error) {
+        const entry = data as WaitlistEntry;
+        entry.display_name = ensureValidDisplayName(entry.display_name, entry.username, entry.email);
+        return entry;
+      }
+    }
   }
 
-  const entry = data as WaitlistEntry;
-  entry.display_name = ensureValidDisplayName(entry.display_name, entry.username, entry.email);
-  return entry;
+  // Step 2: Attempt lookup by username handle
+  // Username can be provided via `username` param, or passed in `id`/`token` param if it's not a UUID and not an email
+  const candidateUsername = rawUsername || (rawId && !rawId.includes('@') && !rawId.includes('-') ? rawId : null);
+  if (candidateUsername) {
+    const normalised = normalise(candidateUsername);
+    const { data, error } = await supabase
+      .from("waitlist_users")
+      .select("*")
+      .eq("username", normalised)
+      .maybeSingle();
+
+    if (data && !error) {
+      const entry = data as WaitlistEntry;
+      entry.display_name = ensureValidDisplayName(entry.display_name, entry.username, entry.email);
+      return entry;
+    }
+  }
+
+  // Step 3: Attempt lookup by email address
+  // Email can be provided via `email` param, or passed in `id`/`username`/`token` if it contains '@'
+  const candidateEmail = rawEmail || 
+    (rawId && rawId.includes('@') ? rawId : null) || 
+    (rawUsername && rawUsername.includes('@') ? rawUsername : null);
+
+  if (candidateEmail) {
+    const { data, error } = await supabase
+      .from("waitlist_users")
+      .select("*")
+      .ilike("email", candidateEmail.trim())
+      .maybeSingle();
+
+    if (data && !error) {
+      const entry = data as WaitlistEntry;
+      entry.display_name = ensureValidDisplayName(entry.display_name, entry.username, entry.email);
+      return entry;
+    }
+  }
+
+  // Step 4: If rawId was passed but wasn't a strict UUID, check DB id anyway as fallback
+  if (rawId) {
+    const { data, error } = await supabase
+      .from("waitlist_users")
+      .select("*")
+      .eq("id", rawId)
+      .maybeSingle();
+
+    if (data && !error) {
+      const entry = data as WaitlistEntry;
+      entry.display_name = ensureValidDisplayName(entry.display_name, entry.username, entry.email);
+      return entry;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Fetch reservation record by its raw DB UUID, username, or email (claim token)
+ */
+export async function getReservationById(id: string): Promise<WaitlistEntry | null> {
+  return resolveClaimReservation({ id });
 }
 
 /**
