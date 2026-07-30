@@ -93,6 +93,9 @@ export async function sendMassEmailAction({
     for (const recipient of recipients) {
       if (!recipient.email) continue;
 
+      const recipientName = recipient.name || recipient.username || 'Artist';
+      const recipientUsername = recipient.username || 'artist';
+
       // Make CTA URL & claim_url dynamic and unique per artist recipient
       const queryParts: string[] = [];
       if (recipient.id) queryParts.push(`id=${encodeURIComponent(recipient.id)}`);
@@ -102,28 +105,41 @@ export async function sendMassEmailAction({
       const uniqueClaimUrl = `https://artistant.in/claim${queryParts.length > 0 ? `?${queryParts.join('&')}` : ''}`;
       let finalCtaUrl = ctaUrl || uniqueClaimUrl;
 
-      if (ctaUrl && (ctaUrl.includes('{{username}}') || ctaUrl.includes('{{id}}'))) {
+      if (ctaUrl && (ctaUrl.includes('{{username}}') || ctaUrl.includes('{{id}}') || ctaUrl.includes('{{name}}'))) {
         finalCtaUrl = ctaUrl
-          .replaceAll('{{username}}', recipient.username || '')
+          .replaceAll('{{name}}', recipientName)
+          .replaceAll('{{username}}', recipientUsername)
           .replaceAll('{{id}}', recipient.id || '');
       } else if (ctaUrl && (ctaUrl.includes('/claim') || templateType === 'migrated_artist')) {
         finalCtaUrl = uniqueClaimUrl;
       }
 
-      // Replace {{claim_url}} in body text dynamically for each recipient
-      const personalizedBody = (messageBody || '').replaceAll('{{claim_url}}', uniqueClaimUrl);
+      // Replace {{name}}, {{username}}, {{claim_url}} in body text dynamically
+      const personalizedBody = (messageBody || '')
+        .replaceAll('{{name}}', recipientName)
+        .replaceAll('{{username}}', recipientUsername)
+        .replaceAll('{{claim_url}}', uniqueClaimUrl);
+
+      // Replace {{name}}, {{username}} in subject line dynamically
+      const personalizedSubject = (subject || '')
+        .replaceAll('{{name}}', recipientName)
+        .replaceAll('{{username}}', recipientUsername);
+
+      const personalizedHeader = emailHeader
+        ? emailHeader.replaceAll('{{name}}', recipientName).replaceAll('{{username}}', recipientUsername)
+        : undefined;
 
       const res = await sendCustomEmail({
         toEmail: recipient.email,
-        name: recipient.name,
-        username: recipient.username,
-        subject,
+        name: recipientName,
+        username: recipientUsername,
+        subject: personalizedSubject,
         messageBody: personalizedBody,
         ctaText,
         ctaUrl: finalCtaUrl,
         senderAlias,
         templateType,
-        headerTitle: emailHeader,
+        headerTitle: personalizedHeader,
         pillTag,
         attachments,
       });

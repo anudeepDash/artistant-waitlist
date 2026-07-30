@@ -3299,7 +3299,7 @@ export default function AdminPage() {
                         />
 
                         {/* Graphic VIP / Stage Pass */}
-                        {(emailTemplateType === "welcome" || emailTemplateType === "vip") && (
+                        {(emailTemplateType === "welcome" || emailTemplateType === "vip" || emailTemplateType === "migrated_artist") && (
                           <div className="bg-[#0F172A] rounded-2xl overflow-hidden border border-slate-700/80 shadow-xl my-4 text-left">
                             <div className="h-1 bg-gradient-to-r from-[#F25A2B] via-[#FFB800] to-[#7C5CFF]" />
                             <div className="p-4 flex items-center justify-between">

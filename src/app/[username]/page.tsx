@@ -204,6 +204,20 @@ export default function PublicProfilePage() {
     );
   };
 
+  // Check direct Video file URL
+  const isDirectVideoUrl = (url: string | null | undefined) => {
+    if (!url) return false;
+    const trimmed = url.trim().toLowerCase();
+    if (trimmed === '' || trimmed === 'null' || trimmed === 'undefined' || trimmed === 'none') return false;
+    return (
+      trimmed.includes('/profiles/video_') ||
+      trimmed.includes('/storage/v1/object/') ||
+      /\.(mp4|webm|mov|m4v|ogv)($|\?)/i.test(trimmed) ||
+      trimmed.startsWith('blob:') ||
+      trimmed.startsWith('data:video/')
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#050508]">
@@ -242,6 +256,8 @@ export default function PublicProfilePage() {
   const instagramVideoId = videoUrl ? getInstagramEmbedId(videoUrl) : (reservation.instagram_url ? getInstagramEmbedId(reservation.instagram_url) : null);
   const vimeoVideoId = videoUrl ? getVimeoEmbedId(videoUrl) : null;
   const driveVideoId = videoUrl ? getGoogleDriveEmbedId(videoUrl) : null;
+  const hasDirectVideo = isDirectVideoUrl(videoUrl);
+  const hasValidVideo = !!(youtubeId || instagramVideoId || vimeoVideoId || driveVideoId || hasDirectVideo);
 
   // Dynamically map gallery photos (No fallback default images)
   const displayGallery = reservation.gallery_photos && reservation.gallery_photos.length > 0
@@ -963,7 +979,7 @@ export default function PublicProfilePage() {
 
           // Featured Video Section
           if (section === 'video') {
-            if (!videoUrl && !youtubeId && !instagramVideoId && !vimeoVideoId && !driveVideoId) return null;
+            if (!hasValidVideo) return null;
             return (
               <motion.section
                 key="video"
