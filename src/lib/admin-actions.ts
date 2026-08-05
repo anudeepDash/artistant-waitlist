@@ -1267,7 +1267,7 @@ export async function adminUpdateCareerJobAction(
 export async function adminDeleteCareerJobAction(
   idToken: string,
   jobId: string
-): Promise<boolean> {
+): Promise<{ success: boolean; message?: string }> {
   try {
     await verifyAdminToken(idToken);
     const client = createAdminClient();
@@ -1278,12 +1278,13 @@ export async function adminDeleteCareerJobAction(
       .eq('id', jobId);
 
     if (error) {
-      console.warn('Notice deleting career job from Supabase:', error.message);
+      console.error('Error deleting career job from Supabase:', error);
+      return { success: false, message: error.message };
     }
-    return true;
+    return { success: true };
   } catch (err: any) {
-    console.warn('Delete career job notice:', err?.message || err);
-    return true;
+    console.error('Delete career job exception:', err);
+    return { success: false, message: err?.message || 'Unknown error' };
   }
 }
 

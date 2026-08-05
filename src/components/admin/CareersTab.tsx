@@ -125,14 +125,18 @@ export default function CareersTab({
     try {
       const token = await getIdToken();
       if (token) {
-        await adminDeleteCareerJobAction(token, jobId);
+        const res = await adminDeleteCareerJobAction(token, jobId);
+        if (res && res.success) {
+          setJobs(prev => prev.filter(j => j.id !== jobId));
+          showToast("Job posting deleted.");
+        } else {
+          showToast(`Failed to delete: ${res?.message || 'Unknown error'}`);
+          setCareersError(res?.message || 'Failed to delete');
+        }
       }
-      setJobs(prev => prev.filter(j => j.id !== jobId));
-      showToast("Job posting deleted.");
     } catch (err: any) {
       console.error("Error deleting job:", err);
-      setJobs(prev => prev.filter(j => j.id !== jobId));
-      showToast("Job posting removed.");
+      showToast("Failed to delete job posting.");
     }
   };
 
