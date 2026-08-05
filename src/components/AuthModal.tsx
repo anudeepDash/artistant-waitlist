@@ -493,6 +493,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
     initialUsername,
     extraEmail,
     extraPhone,
+    extraName,
     city,
     eventTypes,
     spotifyUrl,
