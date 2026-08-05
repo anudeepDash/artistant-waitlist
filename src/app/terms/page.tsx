@@ -1,10 +1,20 @@
 import React from 'react';
 import Link from 'next/link';
 import Footer from '@/components/Footer';
+import type { Metadata } from 'next';
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Terms of Service',
-  description: 'Terms and Conditions for using ArtisTant services.',
+  description: 'Terms and Conditions for using Artistant services, contracts, escrow, and platform tools.',
+  alternates: {
+    canonical: '/terms',
+  },
+  openGraph: {
+    title: 'Terms of Service | Artistant',
+    description: 'Terms and Conditions for using Artistant services, contracts, escrow, and platform tools.',
+    url: 'https://artistant.in/terms',
+    type: 'website',
+  },
 };
 
 export default function TermsPage() {

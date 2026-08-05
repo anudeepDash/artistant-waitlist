@@ -255,7 +255,7 @@ interface CustomEmailParams {
   ctaText?: string;
   ctaUrl?: string;
   senderAlias?: string;
-  templateType?: 'standard' | 'welcome' | 'vip' | 'newsletter' | 'raw' | 'migrated_artist';
+  templateType?: 'standard' | 'welcome' | 'vip' | 'newsletter' | 'raw' | 'plain_minimal' | 'migrated_artist';
   headerTitle?: string;
   pillTag?: string;
   attachments?: EmailAttachmentItem[];
@@ -288,11 +288,11 @@ export async function sendCustomEmail({
 
     let compiledHtml = '';
 
-    if (templateType === 'raw') {
-      // Direct Minimal Email (No Template)
+    if (templateType === 'raw' || templateType === 'plain_minimal') {
+      // Direct Minimal Email (No Fancy Heavy Card, Gmail-like direct letter feel)
       const ctaHtml = ctaText && ctaUrl ? `
         <div style="margin-top: 25px; text-align: left;">
-          <a href="${escapeHtml(ctaUrl)}" target="_blank" style="display: inline-block; background-color: #7C5CFF; color: #ffffff; font-size: 13px; font-weight: 700; font-family: -apple-system, sans-serif; text-decoration: none; padding: 12px 24px; border-radius: 10px;">
+          <a href="${escapeHtml(ctaUrl)}" target="_blank" style="display: inline-block; background-color: #0F172A; color: #ffffff; font-size: 13px; font-weight: 700; font-family: -apple-system, sans-serif; text-decoration: none; padding: 12px 24px; border-radius: 10px;">
             ${escapeHtml(ctaText)}
           </a>
         </div>
@@ -306,8 +306,8 @@ export async function sendCustomEmail({
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(subject)}</title>
 </head>
-<body style="margin: 0; padding: 20px; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0F172A;">
-  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #E2E8F0; border-radius: 16px; padding: 32px;">
+<body style="margin: 0; padding: 24px; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0F172A; font-size: 15px; line-height: 1.6;">
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #E2E8F0; border-radius: 16px; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.03);">
     <tr>
       <td>
         <div style="margin-bottom: 24px; border-bottom: 1px solid #F1F5F9; padding-bottom: 16px;">
@@ -315,14 +315,14 @@ export async function sendCustomEmail({
             <img src="https://artistant.in/logo_wordmark_flat.png" alt="ArtisTant" width="120" style="display: block; width: 120px; height: auto;">
           </a>
         </div>
-        ${headerTitle ? `<h2 style="margin: 0 0 16px 0; font-size: 22px; font-weight: 800; color: #0F172A;">${escapeHtml(headerTitle)}</h2>` : ''}
-        <div style="font-size: 14px; line-height: 1.6; color: #334155;">
+        ${headerTitle ? `<h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 800; color: #0F172A; letter-spacing: -0.3px;">${escapeHtml(headerTitle)}</h2>` : ''}
+        <div style="font-size: 14.5px; line-height: 1.65; color: #334155;">
           ${formattedMessage}
         </div>
         ${attachmentHtml}
         ${ctaHtml}
         <div style="margin-top: 35px; border-top: 1px solid #F1F5F9; padding-top: 16px; font-size: 11px; color: #94A3B8;">
-          Sent directly from ArtisTant Official. &copy; ${new Date().getFullYear()} ArtisTant Inc.
+          Sent directly via ArtisTant • <a href="https://artistant.in" style="color: #64748B; text-decoration: underline;">artistant.in</a>
         </div>
       </td>
     </tr>

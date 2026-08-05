@@ -49,18 +49,97 @@ export async function sendWelcomeEmailAction({
 
 import { EmailAttachmentItem } from './mailer';
 
+export interface OutreachRecipient {
+  email: string;
+  name?: string;
+  first_name?: string;
+  username?: string;
+  company?: string;
+  city?: string;
+  id?: string;
+  custom_note?: string;
+  position?: number | string;
+}
+
 interface SendMassEmailActionParams {
   idToken: string;
-  recipients: { email: string; name: string; username?: string; id?: string }[];
+  recipients: OutreachRecipient[];
   subject: string;
   messageBody: string;
   ctaText?: string;
   ctaUrl?: string;
   senderAlias?: string;
-  templateType?: 'standard' | 'welcome' | 'vip' | 'newsletter' | 'raw' | 'migrated_artist';
+  templateType?: 'standard' | 'welcome' | 'vip' | 'newsletter' | 'raw' | 'plain_minimal' | 'migrated_artist';
   emailHeader?: string;
   pillTag?: string;
   attachments?: EmailAttachmentItem[];
+}
+
+import { substitutePersonalizationTokens } from './outreach-helpers';
+
+/**
+ * Next.js Server Action to send a single personalized outreach email.
+ */
+export async function sendSingleOutreachEmailAction({
+  idToken,
+  recipient,
+  subject,
+  messageBody,
+  ctaText,
+  ctaUrl,
+  senderAlias,
+  templateType = 'standard',
+  emailHeader,
+  pillTag,
+  attachments = [],
+}: {
+  idToken: string;
+  recipient: OutreachRecipient;
+  subject: string;
+  messageBody: string;
+  ctaText?: string;
+  ctaUrl?: string;
+  senderAlias?: string;
+  templateType?: 'standard' | 'welcome' | 'vip' | 'newsletter' | 'raw' | 'plain_minimal' | 'migrated_artist';
+  emailHeader?: string;
+  pillTag?: string;
+  attachments?: EmailAttachmentItem[];
+}) {
+  try {
+    await verifyAdminToken(idToken);
+
+    if (!recipient.email) {
+      return { success: false, message: 'Recipient email is required.' };
+    }
+
+    const recipientName = recipient.name || recipient.username || recipient.email.split('@')[0] || 'Member';
+    const recipientUsername = recipient.username || recipient.email.split('@')[0] || 'artist';
+
+    const personalizedSubject = substitutePersonalizationTokens(subject, recipient);
+    const personalizedBody = substitutePersonalizationTokens(messageBody, recipient);
+    const personalizedHeader = emailHeader ? substitutePersonalizationTokens(emailHeader, recipient) : undefined;
+    const personalizedCtaUrl = ctaUrl ? substitutePersonalizationTokens(ctaUrl, recipient) : undefined;
+
+    const res = await sendCustomEmail({
+      toEmail: recipient.email,
+      name: recipientName,
+      username: recipientUsername,
+      subject: personalizedSubject,
+      messageBody: personalizedBody,
+      ctaText,
+      ctaUrl: personalizedCtaUrl,
+      senderAlias,
+      templateType,
+      headerTitle: personalizedHeader,
+      pillTag,
+      attachments,
+    });
+
+    return res;
+  } catch (error: any) {
+    console.error('Failed in sendSingleOutreachEmailAction:', error);
+    return { success: false, message: error?.message || 'Server action error.' };
+  }
 }
 
 /**
@@ -93,41 +172,13 @@ export async function sendMassEmailAction({
     for (const recipient of recipients) {
       if (!recipient.email) continue;
 
-      const recipientName = recipient.name || recipient.username || 'Artist';
-      const recipientUsername = recipient.username || 'artist';
+      const recipientName = recipient.name || recipient.username || recipient.email.split('@')[0] || 'Member';
+      const recipientUsername = recipient.username || recipient.email.split('@')[0] || 'artist';
 
-      // Make CTA URL & claim_url dynamic and unique per artist recipient
-      const queryParts: string[] = [];
-      if (recipient.id) queryParts.push(`id=${encodeURIComponent(recipient.id)}`);
-      if (recipient.username) queryParts.push(`username=${encodeURIComponent(recipient.username)}`);
-      if (recipient.email) queryParts.push(`email=${encodeURIComponent(recipient.email)}`);
-
-      const uniqueClaimUrl = `https://artistant.in/claim${queryParts.length > 0 ? `?${queryParts.join('&')}` : ''}`;
-      let finalCtaUrl = ctaUrl || uniqueClaimUrl;
-
-      if (ctaUrl && (ctaUrl.includes('{{username}}') || ctaUrl.includes('{{id}}') || ctaUrl.includes('{{name}}'))) {
-        finalCtaUrl = ctaUrl
-          .replaceAll('{{name}}', recipientName)
-          .replaceAll('{{username}}', recipientUsername)
-          .replaceAll('{{id}}', recipient.id || '');
-      } else if (ctaUrl && (ctaUrl.includes('/claim') || templateType === 'migrated_artist')) {
-        finalCtaUrl = uniqueClaimUrl;
-      }
-
-      // Replace {{name}}, {{username}}, {{claim_url}} in body text dynamically
-      const personalizedBody = (messageBody || '')
-        .replaceAll('{{name}}', recipientName)
-        .replaceAll('{{username}}', recipientUsername)
-        .replaceAll('{{claim_url}}', uniqueClaimUrl);
-
-      // Replace {{name}}, {{username}} in subject line dynamically
-      const personalizedSubject = (subject || '')
-        .replaceAll('{{name}}', recipientName)
-        .replaceAll('{{username}}', recipientUsername);
-
-      const personalizedHeader = emailHeader
-        ? emailHeader.replaceAll('{{name}}', recipientName).replaceAll('{{username}}', recipientUsername)
-        : undefined;
+      const personalizedSubject = substitutePersonalizationTokens(subject, recipient);
+      const personalizedBody = substitutePersonalizationTokens(messageBody, recipient);
+      const personalizedHeader = emailHeader ? substitutePersonalizationTokens(emailHeader, recipient) : undefined;
+      const personalizedCtaUrl = ctaUrl ? substitutePersonalizationTokens(ctaUrl, recipient) : undefined;
 
       const res = await sendCustomEmail({
         toEmail: recipient.email,
@@ -136,7 +187,7 @@ export async function sendMassEmailAction({
         subject: personalizedSubject,
         messageBody: personalizedBody,
         ctaText,
-        ctaUrl: finalCtaUrl,
+        ctaUrl: personalizedCtaUrl,
         senderAlias,
         templateType,
         headerTitle: personalizedHeader,
@@ -150,6 +201,7 @@ export async function sendMassEmailAction({
       
       results.push({ 
         email: recipient.email, 
+        name: recipientName,
         success: res.success, 
         message: res.message 
       });

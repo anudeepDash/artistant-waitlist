@@ -193,6 +193,74 @@ export async function updateProfilePhotoUrlAction(
   return true;
 }
 
+export async function uploadCoverPhotoAction(
+  idToken: string,
+  base64DataUrl: string,
+): Promise<string> {
+  const decodedToken = await verifyIdToken(idToken);
+  const uid = decodedToken.uid;
+  const client = createAdminClient();
+
+  const { buffer, contentType, extension } = parseBase64Upload(base64DataUrl, IMAGE_TYPES, MAX_IMAGE_BYTES);
+  const fileName = `cover_${uid}_${Date.now()}.${extension}`;
+
+  const { data: buckets } = await client.storage.listBuckets();
+  const bucketExists = buckets?.some(b => b.name === 'covers');
+  if (!bucketExists) {
+    await client.storage.createBucket('covers', { public: true });
+  }
+
+  const { error: uploadError } = await client.storage
+    .from('covers')
+    .upload(fileName, buffer, {
+      contentType,
+      upsert: true,
+    });
+
+  if (uploadError) {
+    console.error('Cover upload error:', uploadError);
+    throw new Error(`Failed to upload cover: ${uploadError.message}`);
+  }
+
+  const { data: publicUrlData } = client.storage
+    .from('covers')
+    .getPublicUrl(fileName);
+  
+  const publicUrl = publicUrlData.publicUrl;
+
+  const { error: updateError } = await client
+    .from('waitlist_users')
+    .update({ cover_photo_url: publicUrl })
+    .eq('user_id', uid);
+
+  if (updateError) {
+    console.error('DB update error:', updateError);
+    throw new Error('Cover photo uploaded but failed to save URL');
+  }
+
+  return publicUrl;
+}
+
+export async function updatePortfolioThemeAction(
+  idToken: string,
+  theme: 'dark' | 'minimal' | 'creative' | 'bold',
+): Promise<boolean> {
+  const decodedToken = await verifyIdToken(idToken);
+  const client = createAdminClient();
+
+  const { error } = await client
+    .from('waitlist_users')
+    .update({ portfolio_theme: theme })
+    .eq('user_id', decodedToken.uid);
+
+  if (error) {
+    console.error('Error updating portfolio theme:', error);
+    throw new Error('Failed to update portfolio theme');
+  }
+
+  return true;
+}
+
 export async function updateSectionOrderAction(
   idToken: string,
   sectionOrder: string[]
@@ -416,6 +484,8 @@ export type PublicProfileReservation = Pick<WaitlistEntry,
   | 'youtube_channel_url'
   | 'bio'
   | 'profile_photo_url'
+  | 'cover_photo_url'
+  | 'portfolio_theme'
   | 'gallery_photos'
   | 'profile_visitors_count'
   | 'custom_status_message'
@@ -515,6 +585,8 @@ export async function getPublicProfileDataAction(username: string): Promise<Publ
         youtube_url: reservation.youtube_url,
         bio: reservation.bio,
         profile_photo_url: reservation.profile_photo_url,
+        cover_photo_url: reservation.cover_photo_url || null,
+        portfolio_theme: reservation.portfolio_theme || 'dark',
         gallery_photos: reservation.gallery_photos,
         profile_visitors_count: reservation.profile_visitors_count,
         custom_status_message: reservation.custom_status_message,
@@ -889,6 +961,52 @@ export async function submitBookingRequestAction(params: SubmitBookingRequestPar
   } catch (err: any) {
     console.error('Error submitting booking request:', err);
     return { success: false, message: err?.message || 'Failed to submit booking request.' };
+  }
+}
+
+export async function getPublicCreatorsDirectoryAction(params?: {
+  category?: string;
+  city?: string;
+  search?: string;
+  verifiedOnly?: boolean;
+}) {
+  try {
+    const client = createAdminClient();
+    let query = client
+      .from('waitlist_users')
+      .select('username, display_name, role, category, genres, city, profile_photo_url, cover_photo_url, spotify_url, is_verified, feature_founding_card, reserved_at')
+      .eq('is_blocked', false)
+      .not('username', 'is', null);
+
+    if (params?.category && params.category !== 'all') {
+      query = query.eq('category', params.category);
+    }
+
+    if (params?.city && params.city !== 'all') {
+      query = query.ilike('city', `%${params.city}%`);
+    }
+
+    if (params?.verifiedOnly) {
+      query = query.eq('is_verified', true);
+    }
+
+    if (params?.search && params.search.trim() !== '') {
+      const s = params.search.trim();
+      query = query.or(`username.ilike.%${s}%,display_name.ilike.%${s}%`);
+    }
+
+    query = query.order('is_verified', { ascending: false }).order('reserved_at', { ascending: true }).limit(60);
+
+    const { data, error } = await query;
+    if (error) {
+      console.error('Error fetching creator directory:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (err) {
+    console.error('Unhandled error in getPublicCreatorsDirectoryAction:', err);
+    return [];
   }
 }
 

@@ -383,15 +383,31 @@ function ClaimOnboardingContent() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
-                  className="rounded-3xl border border-rose-500/10 bg-rose-500/[0.01] backdrop-blur-md p-8 md:p-12 text-center space-y-6 shadow-2xl"
+                  className={`rounded-3xl border backdrop-blur-md p-8 md:p-12 text-center space-y-6 shadow-2xl ${
+                    (claimId || claimUsername || claimEmail) 
+                      ? "border-rose-500/10 bg-rose-500/[0.01]" 
+                      : "border-white/10 bg-white/[0.02]"
+                  }`}
                 >
-                  <div className="w-16 h-16 mx-auto rounded-2xl bg-rose-500/10 flex items-center justify-center border border-rose-500/20">
-                    <ShieldAlert className="w-8 h-8 text-rose-500" />
+                  <div className={`w-16 h-16 mx-auto rounded-2xl flex items-center justify-center border ${
+                    (claimId || claimUsername || claimEmail)
+                      ? "bg-rose-500/10 border-rose-500/20"
+                      : "bg-[#7C5CFF]/10 border-[#7C5CFF]/20"
+                  }`}>
+                    {(claimId || claimUsername || claimEmail) ? (
+                      <ShieldAlert className="w-8 h-8 text-rose-500" />
+                    ) : (
+                      <User className="w-8 h-8 text-[#7C5CFF]" />
+                    )}
                   </div>
                   <div className="space-y-2">
-                    <h3 className="text-xl font-bold text-white">Invalid or Expired Link</h3>
+                    <h3 className="text-xl font-bold text-white">
+                      {(claimId || claimUsername || claimEmail) ? "Invalid or Expired Link" : "Claim Your Profile"}
+                    </h3>
                     <p className="text-sm text-zinc-400 max-w-sm mx-auto">
-                      We couldn't resolve your waitlist profile using this link. Please check your onboarding email or sign in directly.
+                      {(claimId || claimUsername || claimEmail)
+                        ? "We couldn't resolve your waitlist profile using this link. Please check your onboarding email or sign in directly."
+                        : "Sign in with your email or phone number to claim your waitlist reservation."}
                     </p>
                   </div>
                   <div className="flex justify-center gap-3">

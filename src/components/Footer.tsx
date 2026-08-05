@@ -67,6 +67,15 @@ export default function Footer() {
                   Roadmap
                   <span className="absolute -bottom-1 left-0 w-0 h-[1px] bg-ink transition-all duration-300 group-hover:w-full opacity-50"></span>
                 </Link>
+                <Link href="/changelog" className="text-ink-2 hover:text-ink transition-colors duration-300 relative group w-fit text-[15px] cursor-pointer">
+                  What&apos;s New
+                  <span className="absolute -bottom-1 left-0 w-0 h-[1px] bg-ink transition-all duration-300 group-hover:w-full opacity-50"></span>
+                </Link>
+                <Link href="/careers" className="text-ink-2 hover:text-ink transition-colors duration-300 relative group w-fit text-[15px] cursor-pointer flex items-center gap-1.5">
+                  <svg className="w-3.5 h-3.5 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                  Careers
+                  <span className="absolute -bottom-1 left-0 w-0 h-[1px] bg-ink transition-all duration-300 group-hover:w-full opacity-50"></span>
+                </Link>
                 <Link href="/admin" className="text-ink-2 hover:text-ink transition-colors duration-300 relative group w-fit text-[15px] cursor-pointer flex items-center gap-1.5">
                   <svg className="w-3.5 h-3.5 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                   Admin Portal
@@ -135,6 +144,7 @@ export default function Footer() {
             </span>
           </div>
           <div className="flex gap-8 items-center font-medium">
+            <Link href="/careers" className="hover:text-ink transition-colors duration-300 cursor-pointer">Careers</Link>
             <Link href="/terms" className="hover:text-ink transition-colors duration-300 cursor-pointer">Terms of Service</Link>
             <Link href="/privacy" className="hover:text-ink transition-colors duration-300 cursor-pointer">Privacy Policy</Link>
           </div>

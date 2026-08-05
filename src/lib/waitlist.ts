@@ -31,6 +31,8 @@ export interface WaitlistEntry {
   youtube_channel_url?: string | null;
   bio?: string | null;
   profile_photo_url?: string | null;
+  cover_photo_url?: string | null;
+  portfolio_theme?: 'dark' | 'minimal' | 'creative' | 'bold' | null;
   gallery_photos?: string[] | null;
   profile_visitors_count?: number;
   custom_status_message?: string | null;
@@ -89,8 +91,8 @@ export function ensureValidDisplayName(
   username?: string | null,
   email?: string | null
 ): string {
-  // 1. If valid custom display name is set (not empty and not an email), return it
-  if (displayName && displayName.trim() !== '' && !displayName.includes('@')) {
+  // 1. If valid custom display name is set (at least 2 characters and not an email), return it
+  if (displayName && displayName.trim().length >= 2 && !displayName.includes('@')) {
     return displayName.trim();
   }
 
@@ -103,6 +105,10 @@ export function ensureValidDisplayName(
   if (email && email.includes('@')) {
     const localPart = email.split('@')[0].trim();
     if (localPart) return localPart;
+  }
+
+  if (displayName && displayName.trim() !== '' && !displayName.includes('@')) {
+    return displayName.trim();
   }
 
   return 'Artist';

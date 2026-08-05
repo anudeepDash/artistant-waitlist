@@ -1,10 +1,20 @@
 import React from 'react';
 import Link from 'next/link';
 import Footer from '@/components/Footer';
+import type { Metadata } from 'next';
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Privacy Policy',
-  description: 'Privacy Policy for ArtisTant',
+  description: 'Read the Privacy Policy for Artistant — how we handle, store, and protect user data.',
+  alternates: {
+    canonical: '/privacy',
+  },
+  openGraph: {
+    title: 'Privacy Policy | Artistant',
+    description: 'Read the Privacy Policy for Artistant — how we handle, store, and protect user data.',
+    url: 'https://artistant.in/privacy',
+    type: 'website',
+  },
 };
 
 export default function PrivacyPage() {

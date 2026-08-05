@@ -1330,9 +1330,9 @@ export default function ProfilePage() {
               <div className={`w-6 h-6 rounded-full flex items-center justify-center backdrop-blur-md text-[10px] ${isLight ? 'bg-white/75 border border-black/10 text-zinc-900 shadow-sm' : 'bg-black/40 border border-white/10 text-white'}`}>
                 &larr;
               </div>
-              <div className={`absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1 rounded-full backdrop-blur-md shadow-sm select-none ${isLight ? 'bg-white/80 border border-black/10' : 'bg-black/45 border border-white/10'}`}>
-                <img src="/logo_wordmark_flat.png" alt="ArtisTant" className="h-[14px] w-auto object-contain dark:invert-0 invert" />
-                <span className={`text-[7px] font-mono font-bold tracking-[0.25em] border-l pl-2 uppercase ${isLight ? 'text-zinc-500 border-black/15' : 'text-white/50 border-white/15'}`}>PORTFOLIO</span>
+              <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full backdrop-blur-md shadow-sm select-none ${isLight ? 'bg-white/80 border border-black/10' : 'bg-black/45 border border-white/10'}`}>
+                <img src="/logo_wordmark_flat.png" alt="ArtisTant" className="h-[11px] w-auto object-contain dark:invert-0 invert" />
+                <span className={`text-[6.5px] font-mono font-bold tracking-[0.2em] border-l pl-1.5 uppercase ${isLight ? 'text-zinc-500 border-black/15' : 'text-white/50 border-white/15'}`}>PORTFOLIO</span>
               </div>
             </div>
 
@@ -1844,8 +1844,8 @@ export default function ProfilePage() {
         )}
 
         {/* ── APPLE LIQUID GLASS DASHBOARD SUB-NAVIGATION TAB BAR ── */}
-        <div className="flex justify-center mb-10 relative z-30">
-          <div className="flex flex-wrap items-center justify-center p-1.5 rounded-full sm:rounded-2xl bg-white/[0.04] dark:bg-[#0D0E17]/60 border border-white/20 dark:border-white/10 backdrop-blur-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_15px_40px_rgba(0,0,0,0.4)] gap-1.5 relative overflow-hidden">
+        <div className="flex justify-center mb-6 sm:mb-10 relative z-30 max-w-full px-2">
+          <div className="flex items-center justify-start sm:justify-center max-w-full overflow-x-auto no-scrollbar mobile-touch-scroll p-1.5 rounded-full sm:rounded-2xl bg-white/[0.04] dark:bg-[#0D0E17]/60 border border-white/20 dark:border-white/10 backdrop-blur-3xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_15px_40px_rgba(0,0,0,0.4)] gap-1.5 relative shrink-0">
             {/* Top Specular Light Highlight */}
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none" />
 
@@ -1859,7 +1859,7 @@ export default function ProfilePage() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-2.5 px-6 py-2.5 rounded-full sm:rounded-xl text-[11px] font-bold font-mono uppercase tracking-wider transition-all duration-300 relative cursor-pointer backdrop-blur-2xl ${
+                  className={`flex items-center gap-2 px-4 py-2 sm:px-6 sm:py-2.5 rounded-full sm:rounded-xl text-[10px] sm:text-[11px] font-bold font-mono uppercase tracking-wider transition-all duration-300 relative cursor-pointer backdrop-blur-2xl shrink-0 active:scale-95 ${
                     isActive 
                       ? 'text-white border border-white/30 dark:border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.5),0_6px_20px_rgba(0,0,0,0.3)] scale-[1.02]' 
                       : 'text-zinc-400 hover:text-white border border-transparent hover:bg-white/10 dark:hover:bg-white/5'
@@ -3557,7 +3557,7 @@ export default function ProfilePage() {
                           <img src={reservation.profile_photo_url} alt="Profile" className="w-full h-full object-cover" />
                         ) : (
                           <span className={`text-xl font-black ${isLight ? 'text-black/40' : 'text-white/40'}`}>
-                            {displayName[0]?.toUpperCase() || reservation.username[0].toUpperCase()}
+                            {(displayName?.[0] || reservation?.username?.[0] || 'A').toUpperCase()}
                           </span>
                         )}
                       </div>

@@ -133,7 +133,7 @@ export default function MobileBottomClaimBar({
   };
 
   return (
-    <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 pointer-events-auto select-none w-full max-w-[460px] px-4">
+    <div className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 pointer-events-auto select-none w-[calc(100%-2rem)] max-w-[460px] px-2 sm:px-0">
       
       {/* ── Floating Suggestions & Validation Tooltip Panel above the capsule ── */}
       <div className="relative w-full flex flex-col items-center gap-1.5">
@@ -145,7 +145,7 @@ export default function MobileBottomClaimBar({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 8, scale: 0.96 }}
               className="
-                flex items-center gap-1.5 p-1.5 rounded-2xl border shadow-lg max-w-full overflow-x-auto no-scrollbar
+                flex items-center gap-1.5 p-1.5 rounded-2xl border shadow-lg max-w-full overflow-x-auto no-scrollbar mobile-touch-scroll
               "
               style={dropdownStyle}
             >
@@ -157,7 +157,7 @@ export default function MobileBottomClaimBar({
                   onClick={() => onSuggestionClick(suggestion)}
                   className="
                     px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold cursor-pointer transition-all duration-150 shrink-0
-                    bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 text-brand hover:bg-brand/10 hover:border-brand/30
+                    bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 text-brand hover:bg-brand/10 hover:border-brand/30 active:scale-95
                   "
                 >
                   @{suggestion}
@@ -217,7 +217,7 @@ export default function MobileBottomClaimBar({
       <motion.div
         className="
           h-[54px] w-full rounded-full transition-all duration-300
-          flex items-center justify-between pl-4 pr-2 sm:pr-2.5 gap-1.5
+          flex items-center justify-between pl-3.5 pr-2 sm:pr-2.5 gap-1.5
         "
         style={capsuleStyle}
         animate={isHighlighted ? {
@@ -244,7 +244,7 @@ export default function MobileBottomClaimBar({
                 className="
                   bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] hover:opacity-95 text-white
                   shrink-0 py-1.5 px-3 rounded-full text-[10px] font-bold font-mono uppercase tracking-wider
-                  flex items-center gap-1 cursor-pointer transition-all duration-200 shadow-sm hover:scale-[1.02]
+                  flex items-center gap-1 cursor-pointer transition-all duration-200 shadow-sm hover:scale-[1.02] active:scale-95
                 "
               >
                 Dashboard <ArrowRight className="w-3 h-3" />
@@ -254,7 +254,7 @@ export default function MobileBottomClaimBar({
             // Waitlist claim input layout
             <form onSubmit={onSubmit} className="flex items-center w-full gap-1.5">
               <div className="flex items-center gap-1 flex-1 min-w-0">
-                <span className="font-mono text-xs sm:text-sm text-brand font-bold select-none shrink-0">@</span>
+                <span className="font-mono text-sm text-brand font-bold select-none shrink-0">@</span>
                 <input
                   id="bottom-username-input"
                   type="text"
@@ -264,7 +264,7 @@ export default function MobileBottomClaimBar({
                   onFocus={() => setIsFocused(true)}
                   onBlur={() => setIsFocused(false)}
                   className="
-                    w-full font-mono text-xs sm:text-sm py-1.5 bg-transparent outline-none border-0 text-ink placeholder:text-ink-3 placeholder:opacity-50
+                    w-full font-mono text-sm py-1.5 bg-transparent outline-none border-0 text-ink placeholder:text-ink-3 placeholder:opacity-50
                   "
                   autoComplete="off"
                   autoCorrect="off"
@@ -277,7 +277,7 @@ export default function MobileBottomClaimBar({
                 type="submit"
                 disabled={availStatus !== 'available' && availStatus !== 'locked'}
                 className={`
-                  shrink-0 px-4 py-2 rounded-full text-[10px] sm:text-xs font-bold font-mono uppercase tracking-wider 
+                  shrink-0 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-[11px] sm:text-xs font-bold font-mono uppercase tracking-wider 
                   transition-all duration-200 cursor-pointer shadow-md
                   ${availStatus === 'available' || availStatus === 'locked'
                     ? 'bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] hover:scale-[1.04] active:scale-[0.96] text-white'
@@ -297,7 +297,7 @@ export default function MobileBottomClaimBar({
           <button
             type="button"
             onClick={() => setMenuOpen(!menuOpen)}
-            className="w-9 h-9 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all duration-200 text-ink hover:text-brand cursor-pointer"
+            className="w-10 h-10 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all duration-200 text-ink hover:text-brand cursor-pointer"
             title="Menu"
             aria-label="Menu"
           >
@@ -326,73 +326,87 @@ export default function MobileBottomClaimBar({
             </svg>
           </button>
 
-          {/* Floating dropdown popup bubble */}
+          {/* Floating Mobile Drawer / Sheet menu */}
           <AnimatePresence>
             {menuOpen && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 12 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 12 }}
-                transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-                className="
-                  absolute bottom-14 right-0 min-w-[170px] rounded-2xl p-1.5 flex flex-col gap-1 z-50 shadow-xl backdrop-blur-2xl
-                "
-                style={dropdownStyle}
-              >
-                {user ? (
-                  <>
-                    <button
-                      onClick={() => { router.push('/dashboard'); setMenuOpen(false); }}
-                      className="flex items-center gap-2.5 w-full text-left px-3.5 py-2.5 text-xs font-semibold rounded-xl text-ink hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
-                    >
-                      <UserIcon className="w-4 h-4 text-brand" />
-                      Dashboard
-                    </button>
-                    <div className="h-[1px] bg-black/5 dark:bg-white/5 my-0.5" />
-                  </>
-                ) : (
-                  <>
-                    <button
-                      onClick={handleSignIn}
-                      className="flex items-center gap-2.5 w-full text-left px-3.5 py-2.5 text-xs font-semibold rounded-xl text-ink hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
-                    >
-                      <LogIn className="w-4 h-4 text-brand" />
-                      Sign In / Log In
-                    </button>
-                    <div className="h-[1px] bg-black/5 dark:bg-white/5 my-0.5" />
-                  </>
-                )}
+              <>
+                {/* Backdrop touch dismiss */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setMenuOpen(false)}
+                  className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm sm:hidden"
+                />
 
-                <button
-                  onClick={handleToggleTheme}
-                  className="flex items-center gap-2.5 w-full text-left px-3.5 py-2.5 text-xs font-semibold rounded-xl text-ink hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.92, y: 16 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.92, y: 16 }}
+                  transition={{ type: 'spring', stiffness: 380, damping: 26 }}
+                  className="
+                    fixed sm:absolute bottom-20 right-4 sm:bottom-14 sm:right-0 w-[calc(100vw-2rem)] max-w-[240px] sm:w-[200px] rounded-2xl p-2 flex flex-col gap-1 z-50 shadow-2xl backdrop-blur-2xl border
+                  "
+                  style={dropdownStyle}
                 >
-                  {mounted && resolvedTheme === "light" ? (
+                  {/* Small drag bar indicator on mobile */}
+                  <div className="w-8 h-1 bg-ink/15 dark:bg-white/15 rounded-full mx-auto my-1 sm:hidden" />
+
+                  {user ? (
                     <>
-                      <Moon className="w-4 h-4 text-brand" />
-                      <span>Dark Mode</span>
+                      <button
+                        onClick={() => { router.push('/dashboard'); setMenuOpen(false); }}
+                        className="flex items-center gap-3 w-full text-left px-3.5 py-3 text-xs font-semibold rounded-xl text-ink hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 transition-colors cursor-pointer"
+                      >
+                        <UserIcon className="w-4 h-4 text-brand" />
+                        <span>Dashboard</span>
+                      </button>
+                      <div className="h-[1px] bg-black/5 dark:bg-white/5 my-0.5" />
                     </>
                   ) : (
                     <>
-                      <Sun className="w-4 h-4 text-brand" />
-                      <span>Light Mode</span>
+                      <button
+                        onClick={handleSignIn}
+                        className="flex items-center gap-3 w-full text-left px-3.5 py-3 text-xs font-semibold rounded-xl text-ink hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 transition-colors cursor-pointer"
+                      >
+                        <LogIn className="w-4 h-4 text-brand" />
+                        <span>Sign In / Log In</span>
+                      </button>
+                      <div className="h-[1px] bg-black/5 dark:bg-white/5 my-0.5" />
                     </>
                   )}
-                </button>
 
-                {user && (
-                  <>
-                    <div className="h-[1px] bg-black/5 dark:bg-white/5 my-0.5" />
-                    <button
-                      onClick={handleSignOutClick}
-                      className="flex items-center gap-2.5 w-full text-left px-3.5 py-2.5 text-xs font-semibold rounded-xl text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      Sign Out
-                    </button>
-                  </>
-                )}
-              </motion.div>
+                  <button
+                    onClick={handleToggleTheme}
+                    className="flex items-center gap-3 w-full text-left px-3.5 py-3 text-xs font-semibold rounded-xl text-ink hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 transition-colors cursor-pointer"
+                  >
+                    {mounted && resolvedTheme === "light" ? (
+                      <>
+                        <Moon className="w-4 h-4 text-brand" />
+                        <span>Dark Mode</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sun className="w-4 h-4 text-brand" />
+                        <span>Light Mode</span>
+                      </>
+                    )}
+                  </button>
+
+                  {user && (
+                    <>
+                      <div className="h-[1px] bg-black/5 dark:bg-white/5 my-0.5" />
+                      <button
+                        onClick={handleSignOutClick}
+                        className="flex items-center gap-3 w-full text-left px-3.5 py-3 text-xs font-semibold rounded-xl text-rose-500 hover:bg-rose-500/10 active:bg-rose-500/20 transition-colors cursor-pointer"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span>Sign Out</span>
+                      </button>
+                    </>
+                  )}
+                </motion.div>
+              </>
             )}
           </AnimatePresence>
         </div>

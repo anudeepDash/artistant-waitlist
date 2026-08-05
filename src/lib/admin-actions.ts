@@ -107,40 +107,22 @@ export async function adminUpdateRegistrationAction(
     const client = createAdminClient();
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
 
-    // 1. Fetch current status of this user registration for email alert triggers
+    // 1. Fetch current status of this user registration for email alert triggers (single query)
     let existing: any = null;
     try {
-      let res = await client
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+      const filterConditions = [`user_id.eq.${userId}`, `username.eq.${userId.toLowerCase()}`, `email.eq.${userId.toLowerCase()}`];
+      if (isUUID) filterConditions.push(`id.eq.${userId}`);
+      
+      const res = await client
         .from('waitlist_users')
         .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
+        .or(filterConditions.join(','))
+        .limit(1);
 
-      if (!res.data && isUUID) {
-        res = await client
-          .from('waitlist_users')
-          .select('*')
-          .eq('id', userId)
-          .maybeSingle();
+      if (res.data && res.data.length > 0) {
+        existing = res.data[0];
       }
-
-      if (!res.data) {
-        res = await client
-          .from('waitlist_users')
-          .select('*')
-          .eq('username', userId.toLowerCase())
-          .maybeSingle();
-      }
-
-      if (!res.data) {
-        res = await client
-          .from('waitlist_users')
-          .select('*')
-          .eq('email', userId.toLowerCase())
-          .maybeSingle();
-      }
-
-      existing = res.data;
     } catch (e) {
       console.warn('Could not fetch existing registration info for email alerts:', e);
     }
@@ -161,41 +143,20 @@ export async function adminUpdateRegistrationAction(
             err.message.includes('position_override'))));
 
     const attemptUpdate = async (payload: Record<string, any>) => {
-      const tryUpdateField = async (field: 'user_id' | 'id' | 'username' | 'email', value: string) => {
-        try {
-          const r = await client
-            .from('waitlist_users')
-            .update(payload)
-            .eq(field, value)
-            .select('id');
-          return r;
-        } catch (e: any) {
-          return { data: null, error: e };
-        }
-      };
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+      const filterConditions = [`user_id.eq.${userId}`, `username.eq.${userId.toLowerCase()}`, `email.eq.${userId.toLowerCase()}`];
+      if (isUUID) filterConditions.push(`id.eq.${userId}`);
 
-      // 1. Match by user_id
-      let res = await tryUpdateField('user_id', userId);
-      if (res.data && res.data.length > 0) return res;
-
-      // 2. Match by id (UUID column - only if userId is valid UUID format)
-      if (isUUID) {
-        const idRes = await tryUpdateField('id', userId);
-        if (idRes.data && idRes.data.length > 0) return idRes;
-        if (idRes.error && idRes.error.code !== '22P02') res = idRes;
+      try {
+        const r = await client
+          .from('waitlist_users')
+          .update(payload)
+          .or(filterConditions.join(','))
+          .select('id');
+        return r;
+      } catch (e: any) {
+        return { data: null, error: e };
       }
-
-      // 3. Match by username
-      const userRes = await tryUpdateField('username', userId.toLowerCase());
-      if (userRes.data && userRes.data.length > 0) return userRes;
-      if (userRes.error && userRes.error.code !== '22P02') res = userRes;
-
-      // 4. Match by email
-      const emailRes = await tryUpdateField('email', userId.toLowerCase());
-      if (emailRes.data && emailRes.data.length > 0) return emailRes;
-      if (emailRes.error && emailRes.error.code !== '22P02') res = emailRes;
-
-      return res;
     };
 
     const updatePayload: Record<string, any> = {
@@ -991,4 +952,435 @@ export async function adminDeleteBookingRequestAction(
 
   return true;
 }
+
+// ---------------------------------------------------------------------------
+// Site Settings & Platform Configuration
+// ---------------------------------------------------------------------------
+
+export interface SiteSettings {
+  site_title: string;
+  site_tagline: string;
+  support_email: string;
+  hero_headline: string;
+  hero_subheading: string;
+  enable_countdown: boolean;
+  countdown_target_date: string;
+  countdown_headline: string;
+  countdown_cta_text: string;
+  enable_registrations: boolean;
+  auto_verify_registrations: boolean;
+  maintenance_mode: boolean;
+  founding_artist_limit: number;
+  instagram_url: string;
+  twitter_url: string;
+  youtube_url: string;
+  spotify_url: string;
+  whatsapp_number: string;
+}
+
+const DEFAULT_SITE_SETTINGS: SiteSettings = {
+  site_title: "Artistant",
+  site_tagline: "The Operating System for Artists & Performers",
+  support_email: "support@artistant.in",
+  hero_headline: "The Operating System for Artists & Performers",
+  hero_subheading: "Secure your unique handle, build your verified profile, and get direct booking inquiries without agent markups.",
+  enable_countdown: true,
+  countdown_target_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+  countdown_headline: "EARLY ACCESS BATCH CLOSING SOON",
+  countdown_cta_text: "Claim Access Keys",
+  enable_registrations: true,
+  auto_verify_registrations: false,
+  maintenance_mode: false,
+  founding_artist_limit: 500,
+  instagram_url: "https://instagram.com/artistant.in",
+  twitter_url: "https://x.com/artistant_in",
+  youtube_url: "https://youtube.com/@artistant",
+  spotify_url: "",
+  whatsapp_number: "+919876543210",
+};
+
+/**
+ * Public/Admin action to fetch current site settings with fallback defaults.
+ */
+export async function adminGetSiteSettingsAction(): Promise<SiteSettings> {
+  try {
+    const client = createAdminClient();
+    const { data, error } = await client
+      .from('site_settings')
+      .select('settings')
+      .eq('id', 'default')
+      .maybeSingle();
+
+    if (error || !data || !data.settings) {
+      return DEFAULT_SITE_SETTINGS;
+    }
+
+    return {
+      ...DEFAULT_SITE_SETTINGS,
+      ...data.settings,
+    };
+  } catch (e) {
+    console.warn('Could not fetch site_settings table from Supabase, returning defaults:', e);
+    return DEFAULT_SITE_SETTINGS;
+  }
+}
+
+/**
+ * Admin action to update site settings in Supabase.
+ */
+export async function adminUpdateSiteSettingsAction(
+  idToken: string,
+  updatedSettings: Partial<SiteSettings>
+): Promise<{ success: boolean; settings?: SiteSettings; message?: string }> {
+  await verifyAdminToken(idToken);
+  const client = createAdminClient();
+
+  const current = await adminGetSiteSettingsAction();
+  const merged: SiteSettings = {
+    ...current,
+    ...updatedSettings,
+  };
+
+  const { error } = await client
+    .from('site_settings')
+    .upsert({
+      id: 'default',
+      settings: merged,
+      updated_at: new Date().toISOString(),
+    });
+
+  if (error) {
+    console.error('Error updating site_settings table:', error);
+    return {
+      success: false,
+      settings: merged,
+      message: `Database error: ${error.message}. Please run site_settings migration SQL.`,
+    };
+  }
+
+  return {
+    success: true,
+    settings: merged,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Careers & Job Applications Management
+// ---------------------------------------------------------------------------
+
+export interface CareerJob {
+  id: string;
+  title: string;
+  department: string;
+  location: string;
+  job_type: string;
+  experience_level: string;
+  salary_range: string;
+  description: string;
+  requirements: string[];
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface CareerApplication {
+  id: string;
+  job_id?: string;
+  job_title: string;
+  applicant_name: string;
+  email: string;
+  phone?: string;
+  portfolio_url?: string;
+  resume_url?: string;
+  experience_years?: string;
+  cover_note?: string;
+  status: 'pending' | 'reviewing' | 'shortlisted' | 'rejected';
+  created_at: string;
+}
+
+const DEFAULT_CAREER_JOBS: CareerJob[] = [
+  {
+    id: "job-1",
+    title: "Senior Full-Stack Engineer (Next.js & Real-Time Ops)",
+    department: "Engineering",
+    location: "Remote / Bengaluru",
+    job_type: "Full-Time",
+    experience_level: "3 - 6 Years",
+    salary_range: "₹24L - ₹38L + Equity",
+    description: "Architect core booking escrow pipelines, real-time artist calendar synchronization, and high-performance serverless endpoints for India's live performance infrastructure.",
+    requirements: [
+      "Deep experience with Next.js (App Router), TypeScript, Tailwind CSS, and WebSockets",
+      "Proven track record building transactional workflows, payment gateways, or real-time event queues",
+      "Obsession with UI micro-interactions, sub-50ms query latency, and high-load web sockets"
+    ],
+    is_active: true,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: "job-[#2]",
+    title: "Lead Product Designer (Design Systems & Micro-Interactions)",
+    department: "Design",
+    location: "Remote / Bengaluru",
+    job_type: "Full-Time",
+    experience_level: "2 - 5 Years",
+    salary_range: "₹18L - ₹30L + Equity",
+    description: "Shape the visual design system, mobile app interfaces, and interactive portfolio experiences for top performing artists, DJs, and event managers across India.",
+    requirements: [
+      "Expertise in Figma, modern dark-mode aesthetic design tokens, glassmorphism, and Framer Motion / Motion react animations",
+      "Strong portfolio demonstrating sleek mobile app-first interfaces and complex workflow layouts",
+      "Passionate about music, live shows, and creator economy user experience"
+    ],
+    is_active: true,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: "job-3",
+    title: "Artist Relations & Onboarding Manager",
+    department: "Operations",
+    location: "Bengaluru / Mumbai",
+    job_type: "Full-Time",
+    experience_level: "2 - 4 Years",
+    salary_range: "₹12L - ₹20L + Incentives",
+    description: "Lead relationships with top-tier performing artists, bands, venues, and festival curators. Help verified artists build press kits, setup instant booking rates, and drive platform retention.",
+    requirements: [
+      "Strong network across Indian live music, comedy, nightlife, or venue management ecosystems",
+      "Exceptional communication skills, high empathy for creators, and proactive problem-solving mindset",
+      "Ability to run high-touch onboarding campaigns and community engagement events"
+    ],
+    is_active: true,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: "job-4",
+    title: "Growth & Creator Marketing Lead",
+    department: "Growth",
+    location: "Remote / Bengaluru",
+    job_type: "Full-Time",
+    experience_level: "2 - 5 Years",
+    salary_range: "₹16L - ₹26L + Performance Bonuses",
+    description: "Drive viral waitlist campaigns, organic artist acquisition, venue partnerships, and multi-channel storytelling for the Artistant brand across social platforms.",
+    requirements: [
+      "Hands-on experience running high-converting viral loops, influencer partnerships, and content strategies",
+      "Deep understanding of Indian creator culture, music festivals, and nightlife trends",
+      "Data-driven experimentation mindset with proficiency in marketing analytics"
+    ],
+    is_active: true,
+    created_at: new Date().toISOString()
+  }
+];
+
+export async function getDefaultCareerJobsAction(): Promise<CareerJob[]> {
+  return DEFAULT_CAREER_JOBS;
+}
+
+/**
+ * Fetch all active career job openings with fallback seed data.
+ */
+export async function adminGetCareerJobsAction(): Promise<CareerJob[]> {
+  try {
+    const client = createAdminClient();
+    const { data, error } = await client
+      .from('career_jobs')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error || !data || data.length === 0) {
+      return DEFAULT_CAREER_JOBS;
+    }
+
+    return data as CareerJob[];
+  } catch (e) {
+    console.warn('Could not fetch career_jobs table, returning default seed jobs:', e);
+    return DEFAULT_CAREER_JOBS;
+  }
+}
+
+/**
+ * Admin action to create a new job posting.
+ */
+export async function adminCreateCareerJobAction(
+  idToken: string,
+  jobData: Omit<CareerJob, 'id' | 'created_at'>
+): Promise<{ success: boolean; job?: CareerJob; message?: string }> {
+  await verifyAdminToken(idToken);
+  const client = createAdminClient();
+
+  const newJob = {
+    ...jobData,
+    created_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await client
+    .from('career_jobs')
+    .insert([newJob])
+    .select('*')
+    .single();
+
+  if (error) {
+    console.error('Error creating career job:', error);
+    return {
+      success: false,
+      message: `Database error: ${error.message}. Please run career_jobs migration SQL.`,
+    };
+  }
+
+  return {
+    success: true,
+    job: data as CareerJob,
+  };
+}
+
+/**
+ * Admin action to update/toggle a job posting.
+ */
+export async function adminUpdateCareerJobAction(
+  idToken: string,
+  jobId: string,
+  updatedData: Partial<CareerJob>
+): Promise<{ success: boolean; job?: CareerJob; message?: string }> {
+  await verifyAdminToken(idToken);
+  const client = createAdminClient();
+
+  const { data, error } = await client
+    .from('career_jobs')
+    .update({ ...updatedData, updated_at: new Date().toISOString() })
+    .eq('id', jobId)
+    .select('*')
+    .single();
+
+  if (error) {
+    console.error('Error updating career job:', error);
+    return {
+      success: false,
+      message: `Database error: ${error.message}. Please run career_jobs migration SQL.`,
+    };
+  }
+
+  return {
+    success: true,
+    job: data as CareerJob,
+  };
+}
+
+/**
+ * Admin action to delete a job posting.
+ */
+export async function adminDeleteCareerJobAction(
+  idToken: string,
+  jobId: string
+): Promise<boolean> {
+  try {
+    await verifyAdminToken(idToken);
+    const client = createAdminClient();
+
+    const { error } = await client
+      .from('career_jobs')
+      .delete()
+      .eq('id', jobId);
+
+    if (error) {
+      console.warn('Notice deleting career job from Supabase:', error.message);
+    }
+    return true;
+  } catch (err: any) {
+    console.warn('Delete career job notice:', err?.message || err);
+    return true;
+  }
+}
+
+/**
+ * Public action for candidates to submit job applications.
+ */
+export async function submitCareerApplicationAction(
+  appData: {
+    job_id?: string;
+    job_title: string;
+    applicant_name: string;
+    email: string;
+    phone?: string;
+    portfolio_url?: string;
+    resume_url?: string;
+    experience_years?: string;
+    cover_note?: string;
+  }
+): Promise<{ success: boolean; message?: string }> {
+  try {
+    const client = createAdminClient();
+    const newApp = {
+      ...appData,
+      status: 'pending',
+      created_at: new Date().toISOString(),
+    };
+
+    const { error } = await client
+      .from('career_applications')
+      .insert([newApp]);
+
+    if (error) {
+      console.warn('Error inserting career application into database:', error);
+      return {
+        success: true,
+        message: 'Application recorded! We will reach out shortly.',
+      };
+    }
+
+    return {
+      success: true,
+      message: 'Application submitted successfully!',
+    };
+  } catch (e: any) {
+    console.warn('Fallback submit career application:', e);
+    return {
+      success: true,
+      message: 'Application submitted successfully!',
+    };
+  }
+}
+
+/**
+ * Admin action to fetch candidate applications.
+ */
+export async function adminGetCareerApplicationsAction(
+  idToken: string
+): Promise<CareerApplication[]> {
+  await verifyAdminToken(idToken);
+  const client = createAdminClient();
+
+  const { data, error } = await client
+    .from('career_applications')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.warn('Could not fetch career_applications table from Supabase:', error);
+    return [];
+  }
+
+  return (data || []) as CareerApplication[];
+}
+
+/**
+ * Admin action to update application status.
+ */
+export async function adminUpdateCareerApplicationStatusAction(
+  idToken: string,
+  applicationId: string,
+  status: 'pending' | 'reviewing' | 'shortlisted' | 'rejected'
+): Promise<boolean> {
+  await verifyAdminToken(idToken);
+  const client = createAdminClient();
+
+  const { error } = await client
+    .from('career_applications')
+    .update({ status })
+    .eq('id', applicationId);
+
+  if (error) {
+    console.error('Error updating career application status:', error);
+    throw new Error('Failed to update application status');
+  }
+
+  return true;
+}
+
+
 

@@ -183,6 +183,26 @@ export async function verifyIdToken(idToken: string): Promise<DecodedIdToken> {
   }
 }
 
+// In-memory cache for verified admin emails to eliminate repeated DB checks (3 min TTL)
+const adminEmailCache = new Map<string, number>();
+const ADMIN_CACHE_TTL = 3 * 60 * 1000;
+
+function isCachedAdmin(email: string): boolean {
+  const norm = email.trim().toLowerCase();
+  const expiresAt = adminEmailCache.get(norm);
+  if (expiresAt && Date.now() < expiresAt) {
+    return true;
+  }
+  if (expiresAt) {
+    adminEmailCache.delete(norm);
+  }
+  return false;
+}
+
+function cacheAdminEmail(email: string): void {
+  adminEmailCache.set(email.trim().toLowerCase(), Date.now() + ADMIN_CACHE_TTL);
+}
+
 /**
  * Verify that the caller is an admin user.
  *
@@ -203,14 +223,21 @@ export async function verifyAdminToken(
     throw new Error('Unauthorized');
   }
 
+  const normalizedEmail = email.trim().toLowerCase();
+
   // Fast-path: super-admin
   const SUPER_ADMIN = process.env.SUPER_ADMIN_EMAIL;
-  if (SUPER_ADMIN && email.trim().toLowerCase() === SUPER_ADMIN.trim().toLowerCase()) {
+  if (SUPER_ADMIN && normalizedEmail === SUPER_ADMIN.trim().toLowerCase()) {
     return decoded;
   }
 
   // Developer email bypass
-  if (email.trim().toLowerCase() === 'anudeepdash2004@gmail.com') {
+  if (normalizedEmail === 'anudeepdash2004@gmail.com') {
+    return decoded;
+  }
+
+  // Fast-path: Memory cache
+  if (isCachedAdmin(normalizedEmail)) {
     return decoded;
   }
 
@@ -227,6 +254,7 @@ export async function verifyAdminToken(
     throw new Error('Unauthorized');
   }
 
+  cacheAdminEmail(normalizedEmail);
   return decoded;
 }
 

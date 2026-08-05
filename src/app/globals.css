@@ -967,7 +967,7 @@
 
 /* ═══ CATEGORY MARQUEE ROWS ═══ */
 .category-marquee-section {
-  padding: 100px var(--gutter) 80px;
+  padding: 100px var(--gutter) 110px;
   background: var(--bg-card);
   border-top: 1px solid var(--line-soft);
   overflow: hidden;
@@ -2790,5 +2790,104 @@
   color: var(--ink-3) !important;
   opacity: 0.55 !important;
 }
+
+/* ============================================
+   MOBILE UX & RESPONSIVE TOUCH ENGINE
+   ============================================ */
+
+/* Disable blue tap highlight on mobile browsers */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Safe area inset helpers for modern smartphones */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 16px);
+}
+.mb-safe {
+  margin-bottom: env(safe-area-inset-bottom, 16px);
+}
+
+/* Smooth momentum touch scrolling */
+.mobile-touch-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Touch scroll snap */
+.snap-x-mandatory {
+  scroll-snap-type: x mandatory;
+}
+.snap-align-center {
+  scroll-snap-align: center;
+}
+.snap-align-start {
+  scroll-snap-align: start;
+}
+
+/* Hide scrollbars cleanly across browsers */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Prevent auto-zoom on iOS Safari when focusing text inputs */
+@media (max-width: 639px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="password"],
+  input[type="number"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* Mobile Bottom Sheet Drawer Base Animations */
+.mobile-sheet-backdrop {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ── Mobile Touch Swipe Carousel System ── */
+@media (max-width: 768px) {
+  .mobile-swipe-carousel {
+    display: flex !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scroll-snap-type: x mandatory !important;
+    -webkit-overflow-scrolling: touch !important;
+    gap: 16px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    padding-bottom: 20px !important;
+    margin-left: -16px !important;
+    margin-right: -16px !important;
+    width: calc(100% + 32px) !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  .mobile-swipe-carousel::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .mobile-swipe-carousel > * {
+    flex: 0 0 84vw !important;
+    width: 84vw !important;
+    max-width: 330px !important;
+    scroll-snap-align: center !important;
+    scroll-snap-stop: always !important;
+  }
+}
+
 
 

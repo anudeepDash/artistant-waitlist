@@ -5,9 +5,13 @@ import { motion, useScroll, useTransform, useSpring, useMotionValue, useInView, 
 import dynamic from 'next/dynamic';
 import Footer from '@/components/Footer';
 import InteractiveTeaser from '@/components/InteractiveTeaser';
-import UIMockupSequence from '@/components/UIMockupSequence';
 import Navbar from '@/components/Navbar';
 import MobileBottomClaimBar from '@/components/MobileBottomClaimBar';
+import UIMockupSequence from '@/components/UIMockupSequence';
+import CountdownBanner from '@/components/CountdownBanner';
+import FutureHomeSection from '@/components/FutureHomeSection';
+import ExitIntentModal from '@/components/ExitIntentModal';
+import { Sparkles, Zap, ShieldCheck } from 'lucide-react';
 
 // Dynamic lazy imports for heavy components & modals to reduce initial JavaScript payload & load time
 const ParticleBackground = dynamic(() => import('@/components/ParticleBackground'), { ssr: false });
@@ -20,7 +24,7 @@ import { signInWithGoogle, signOut } from '@/lib/auth';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
-import { logActivityAction, checkUsernameAvailableAction, checkMultipleUsernamesAvailableAction } from '@/lib/admin-actions';
+import { logActivityAction, checkUsernameAvailableAction, checkMultipleUsernamesAvailableAction, checkIsAdminAction, adminGetSiteSettingsAction, type SiteSettings } from '@/lib/admin-actions';
 
 const isUsernameAvailable = checkUsernameAvailableAction;
 
@@ -778,6 +782,32 @@ export default function Home() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      setIsAdmin(false);
+      return;
+    }
+    const checkAccess = async () => {
+      try {
+        const idToken = await user.getIdToken();
+        const res = await checkIsAdminAction(idToken);
+        setIsAdmin(res);
+      } catch (err) {
+        setIsAdmin(false);
+      }
+    };
+    checkAccess();
+  }, [user]);
+
+  const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
+
+  useEffect(() => {
+    adminGetSiteSettingsAction().then(setSiteSettings).catch(console.error);
+  }, []);
+
   const [selectedRole, setSelectedRole] = useState<'organizer' | 'attendee' | 'venue' | null>(null);
   const [usernameInput, setUsernameInput] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -807,6 +837,7 @@ export default function Home() {
     accentColor: string;
   } | null>(null);
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState(false);
+  const [isBannerVisible, setIsBannerVisible] = useState(true);
 
   const handleSuggestionClick = (name: string) => {
     setUsernameInput(name);
@@ -1176,14 +1207,31 @@ export default function Home() {
 
 
 
-      {/* ──────────────────────── NAV ──────────────────────── */}
-      <Navbar
-        user={user}
-        userReservation={userReservation}
-        onSignInClick={openModal}
-        onSignOut={handleSignOut}
-        onProfileClick={() => router.push('/dashboard')}
-      />
+      {/* ──────────────────────── FIXED TOP HEADER ──────────────────────── */}
+      <header className="fixed top-0 inset-x-0 z-50 pointer-events-none flex flex-col">
+        {isBannerVisible && (
+          <CountdownBanner
+            enabled={siteSettings ? siteSettings.enable_countdown : true}
+            targetDate={siteSettings?.countdown_target_date ? new Date(siteSettings.countdown_target_date) : undefined}
+            headline={siteSettings?.countdown_headline || "Cohort 001 Priority Rollout"}
+            ctaText={siteSettings?.countdown_cta_text || "Claim Access Keys"}
+            onClaimClick={highlightBottomBarPill}
+            onDismiss={() => setIsBannerVisible(false)}
+          />
+        )}
+
+        <Navbar
+          user={user}
+          userReservation={userReservation}
+          onSignInClick={openModal}
+          onSignOut={handleSignOut}
+          onProfileClick={() => router.push('/dashboard')}
+          onOpenRoleModal={(role) => { setSelectedRole(role); setIsRoleModalOpen(true); }}
+          isMobileDrawerOpen={isMobileDrawerOpen}
+          setIsMobileDrawerOpen={setIsMobileDrawerOpen}
+          isBannerVisible={isBannerVisible}
+        />
+      </header>
 
       {/* ──────────────────────── SCROLL-DRIVEN 3D SCATTER HERO ──────────────────────── */}
       <section
@@ -1390,7 +1438,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ──────────────────────── WHAT IS ARTISTANT? ──────────────────────── */}
+      {/* ──────────────────────── WHAT IS ARTISTANT? (REDESIGNED HIGH-TECH HUB) ──────────────────────── */}
       <section id="what-is-artistant" className="section" style={{ borderTop: '1px solid var(--line-soft)', position: 'relative', overflow: 'hidden' }}>
         {/* Ambient background glow */}
         <div aria-hidden="true" style={{
@@ -1441,57 +1489,56 @@ export default function Home() {
               margin: '0 auto 56px auto',
             }}
           >
-            ArtisTant is India&apos;s first dedicated booking infrastructure for the live performance industry.
-            We&apos;re replacing the broken, informal booking culture — scattered WhatsApp chats, unreliable agents, delayed payments —
-            with a professional, technology-driven platform that empowers artists, organizers, and venues alike.
+            ArtisTant is India&apos;s first dedicated booking infrastructure for the live performance industry — replacing scattered WhatsApp chats, unreliable agents, and delayed payouts with an autonomous booking operating system.
           </motion.p>
 
-          {/* Three Value Pillars */}
+          {/* Three Redesigned Modern Cards Grid Matching Screenshot */}
           <motion.div
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, amount: 0.15 }}
             variants={staggerContainer}
-            className="what-is-grid"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-              gap: '24px',
-              maxWidth: '1100px',
-              margin: '0 auto',
-            }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-[1100px] mx-auto mobile-swipe-carousel"
           >
-            {/* Pillar 1 — For Artists */}
+            {/* Pillar 1 — For Performers */}
             <motion.div 
               variants={scaleIn} 
-              className="what-is-card"
-              whileHover={{ scale: 1.02, borderColor: 'rgba(242, 90, 43, 0.4)' }}
+              className="what-is-card group relative rounded-3xl border border-[#F25A2B]/30 bg-[#0C0D14]/95 p-7 sm:p-8 flex flex-col justify-between overflow-hidden shadow-2xl transition-all duration-300"
+              whileHover={{ scale: 1.02, borderColor: '#F25A2B' }}
               whileTap={{ scale: 0.98 }}
               style={{ cursor: 'pointer' }}
             >
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '150px', background: 'var(--what-is-card-glow-1)', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '160px', background: 'radial-gradient(ellipse at top, rgba(242,90,43,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
+
               <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', height: '100%' }}>
-                <div style={{ fontSize: '12px', color: '#F25A2B', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '16px', fontWeight: 600 }}>
+                <div style={{ fontSize: '12px', color: '#F25A2B', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '16px', fontWeight: 600 }}>
                   FOR PERFORMERS
                 </div>
                 <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--ink)', marginBottom: '16px', letterSpacing: '-0.02em', textTransform: 'uppercase', lineHeight: '1.1' }}>
                   SHOWCASE & GET <span style={{ color: '#F25A2B' }}>BOOKED</span>.
                 </h3>
-                <p className="what-is-card-desc" style={{ fontSize: '14px', color: 'var(--ink-2)', lineHeight: '1.5', marginBottom: '20px' }}>
+                <p className="what-is-card-desc" style={{ fontSize: '14px', color: 'var(--ink-2)', lineHeight: '1.5', marginBottom: '24px' }}>
                   Everything you need to run your live performance business professionally, without commissions.
                 </p>
-                <ul className="what-is-card-points">
-                  <li className="what-is-card-point">
-                    <span className="what-is-card-point-bullet" style={{ background: '#F25A2B' }} />
-                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)' }}><strong style={{ color: 'var(--ink)' }}>Digital Booking Profile:</strong> Houses press kits, media showreels, and technical riders in a clean layout.</span>
+
+                <ul className="what-is-card-points" style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <li style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#F25A2B', marginTop: '6px', flexShrink: 0 }} />
+                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)', lineHeight: '1.5' }}>
+                      <strong style={{ color: 'var(--ink)' }}>Digital Booking Profile:</strong> Houses press kits, media showreels, and technical riders.
+                    </span>
                   </li>
-                  <li className="what-is-card-point">
-                    <span className="what-is-card-point-bullet" style={{ background: '#F25A2B' }} />
-                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)' }}><strong style={{ color: 'var(--ink)' }}>Direct Bookings:</strong> Receive formal gig offers directly from venue managers and organizers, eliminating middlemen.</span>
+                  <li style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#F25A2B', marginTop: '6px', flexShrink: 0 }} />
+                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)', lineHeight: '1.5' }}>
+                      <strong style={{ color: 'var(--ink)' }}>Direct Bookings:</strong> Receive formal gig offers directly from venue managers.
+                    </span>
                   </li>
-                  <li className="what-is-card-point">
-                    <span className="what-is-card-point-bullet" style={{ background: '#F25A2B' }} />
-                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)' }}><strong style={{ color: 'var(--ink)' }}>Zero Commission:</strong> Set your own transparent rates and keep 100% of your performance earnings.</span>
+                  <li style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#F25A2B', marginTop: '6px', flexShrink: 0 }} />
+                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)', lineHeight: '1.5' }}>
+                      <strong style={{ color: 'var(--ink)' }}>Zero Commission:</strong> Set your own transparent rates and keep 100% earnings.
+                    </span>
                   </li>
                 </ul>
               </div>
@@ -1500,70 +1547,86 @@ export default function Home() {
             {/* Pillar 2 — For Organizers */}
             <motion.div 
               variants={scaleIn} 
-              className="what-is-card"
-              whileHover={{ scale: 1.02, borderColor: 'rgba(124, 92, 255, 0.4)' }}
+              className="what-is-card group relative rounded-3xl border border-[#7C5CFF]/30 bg-[#0C0D14]/95 p-7 sm:p-8 flex flex-col justify-between overflow-hidden shadow-2xl transition-all duration-300"
+              whileHover={{ scale: 1.02, borderColor: '#7C5CFF' }}
               whileTap={{ scale: 0.98 }}
               style={{ cursor: 'pointer' }}
             >
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '150px', background: 'var(--what-is-card-glow-2)', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '160px', background: 'radial-gradient(ellipse at top, rgba(124,92,255,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
+
               <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', height: '100%' }}>
-                <div style={{ fontSize: '12px', color: '#7C5CFF', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '16px', fontWeight: 600 }}>
+                <div style={{ fontSize: '12px', color: '#7C5CFF', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '16px', fontWeight: 600 }}>
                   FOR ORGANIZERS
                 </div>
                 <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--ink)', marginBottom: '16px', letterSpacing: '-0.02em', textTransform: 'uppercase', lineHeight: '1.1' }}>
                   DISCOVER & HIRE <span style={{ color: '#7C5CFF' }}>TALENT</span>.
                 </h3>
-                <p className="what-is-card-desc" style={{ fontSize: '14px', color: 'var(--ink-2)', lineHeight: '1.5', marginBottom: '20px' }}>
+                <p className="what-is-card-desc" style={{ fontSize: '14px', color: 'var(--ink-2)', lineHeight: '1.5', marginBottom: '24px' }}>
                   A streamlined discovery and workflow engine to source and hire live talent with confidence.
                 </p>
-                <ul className="what-is-card-points">
-                  <li className="what-is-card-point">
-                    <span className="what-is-card-point-bullet" style={{ background: '#7C5CFF' }} />
-                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)' }}><strong style={{ color: 'var(--ink)' }}>Real-Time Availability:</strong> View up-to-date artist availability instantly, avoiding coordinate checks.</span>
+
+                <ul className="what-is-card-points" style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <li style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#7C5CFF', marginTop: '6px', flexShrink: 0 }} />
+                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)', lineHeight: '1.5' }}>
+                      <strong style={{ color: 'var(--ink)' }}>Real-Time Availability:</strong> View up-to-date artist availability instantly.
+                    </span>
                   </li>
-                  <li className="what-is-card-point">
-                    <span className="what-is-card-point-bullet" style={{ background: '#7C5CFF' }} />
-                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)' }}><strong style={{ color: 'var(--ink)' }}>Verified Directory:</strong> Discover verified local performers, review portfolios, and compare pricing.</span>
+                  <li style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#7C5CFF', marginTop: '6px', flexShrink: 0 }} />
+                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)', lineHeight: '1.5' }}>
+                      <strong style={{ color: 'var(--ink)' }}>Verified Directory:</strong> Discover local performers, showreels, and pricing.
+                    </span>
                   </li>
-                  <li className="what-is-card-point">
-                    <span className="what-is-card-point-bullet" style={{ background: '#7C5CFF' }} />
-                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)' }}><strong style={{ color: 'var(--ink)' }}>Structured Contracts:</strong> Send standardized gig agreements that log terms and keep matches secure.</span>
+                  <li style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#7C5CFF', marginTop: '6px', flexShrink: 0 }} />
+                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)', lineHeight: '1.5' }}>
+                      <strong style={{ color: 'var(--ink)' }}>Structured Contracts:</strong> Send standardized gig agreements that log terms securely.
+                    </span>
                   </li>
                 </ul>
               </div>
             </motion.div>
 
-            {/* Pillar 3 — The Infrastructure */}
+            {/* Pillar 3 — Trust Layer */}
             <motion.div 
               variants={scaleIn} 
-              className="what-is-card"
-              whileHover={{ scale: 1.02, borderColor: 'rgba(212, 86, 122, 0.4)' }}
+              className="what-is-card group relative rounded-3xl border border-[#D4567A]/30 bg-[#0C0D14]/95 p-7 sm:p-8 flex flex-col justify-between overflow-hidden shadow-2xl transition-all duration-300"
+              whileHover={{ scale: 1.02, borderColor: '#D4567A' }}
               whileTap={{ scale: 0.98 }}
               style={{ cursor: 'pointer' }}
             >
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '150px', background: 'var(--what-is-card-glow-3)', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '160px', background: 'radial-gradient(ellipse at top, rgba(212,86,122,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
+
               <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', height: '100%' }}>
-                <div style={{ fontSize: '12px', color: '#D4567A', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '16px', fontWeight: 600 }}>
-                  TRUST LAYER
+                <div style={{ fontSize: '12px', color: '#D4567A', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '16px', fontWeight: 600 }}>
+                  PAYMENT VAULT
                 </div>
                 <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--ink)', marginBottom: '16px', letterSpacing: '-0.02em', textTransform: 'uppercase', lineHeight: '1.1' }}>
-                  SECURED GIGS & <span style={{ color: '#D4567A' }}>PAYMENTS</span>.
+                  GIGSAFE <span style={{ color: '#D4567A' }}>ESCROW</span>.
                 </h3>
-                <p className="what-is-card-desc" style={{ fontSize: '14px', color: 'var(--ink-2)', lineHeight: '1.5', marginBottom: '20px' }}>
-                  Modern payment and scheduling protections that keep the performance industry secure.
+                <p className="what-is-card-desc" style={{ fontSize: '14px', color: 'var(--ink-2)', lineHeight: '1.5', marginBottom: '24px' }}>
+                  Performance fees are locked safely in escrow before showtime and auto-released post-gig (T+1). Zero payment delays.
                 </p>
-                <ul className="what-is-card-points">
-                  <li className="what-is-card-point">
-                    <span className="what-is-card-point-bullet" style={{ background: '#D4567A' }} />
-                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)' }}><strong style={{ color: 'var(--ink)' }}>GigSafe Escrow:</strong> Pay upfront with automated release (T+1 post-show), assuring payments and refunds.</span>
+
+                <ul className="what-is-card-points" style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <li style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#D4567A', marginTop: '6px', flexShrink: 0 }} />
+                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)', lineHeight: '1.5' }}>
+                      <strong style={{ color: 'var(--ink)' }}>T+1 Payouts:</strong> Automated release post-show.
+                    </span>
                   </li>
-                  <li className="what-is-card-point">
-                    <span className="what-is-card-point-bullet" style={{ background: '#D4567A' }} />
-                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)' }}><strong style={{ color: 'var(--ink)' }}>Bookability Score™:</strong> Data-backed ratings scoring artists based on response times and gig success.</span>
+                  <li style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#D4567A', marginTop: '6px', flexShrink: 0 }} />
+                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)', lineHeight: '1.5' }}>
+                      <strong style={{ color: 'var(--ink)' }}>0% Fee:</strong> Lifetime 0% platform fee for Founding Artists.
+                    </span>
                   </li>
-                  <li className="what-is-card-point">
-                    <span className="what-is-card-point-bullet" style={{ background: '#D4567A' }} />
-                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)' }}><strong style={{ color: 'var(--ink)' }}>Replacement Guarantee:</strong> Peace of mind with automated matching to equivalent performers.</span>
+                  <li style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#D4567A', marginTop: '6px', flexShrink: 0 }} />
+                    <span style={{ fontSize: '13.5px', color: 'var(--ink-2)', lineHeight: '1.5' }}>
+                      <strong style={{ color: 'var(--ink)' }}>Replacement Guarantee:</strong> Peace of mind with automated matching.
+                    </span>
                   </li>
                 </ul>
               </div>
@@ -1571,6 +1634,9 @@ export default function Home() {
           </motion.div>
         </div>
       </section>
+
+      {/* ──────────────────────── THE FUTURE HOME OF ARTISTS ──────────────────────── */}
+      <FutureHomeSection AnimatedTitle={AnimatedTitle} fUp={fUp} staggerContainer={staggerContainer} scaleIn={scaleIn} onClaimClick={highlightBottomBarPill} />
 
       {/* ──────────────────────── THE PROBLEM (REAL VOICES) ──────────────────────── */}
       <section id="problem-voices" className="section" style={{ borderTop: '1px solid var(--line-soft)', paddingBottom: '40px', position: 'relative', overflow: 'hidden' }}>
@@ -1598,7 +1664,7 @@ export default function Home() {
             India runs on live events, but booking runs on <AnimatedTitle text="chaos." className="brand-text" />
           </motion.h2>
 
-          <div className="voices-grid" style={{ marginTop: 48 }}>
+          <div className="voices-grid mobile-swipe-carousel" style={{ marginTop: 48 }}>
             {/* Voice 01 */}
             <motion.div 
               className="voice-card"
@@ -2038,7 +2104,7 @@ export default function Home() {
         `}} />
 
         {/* Horizontal Carousel */}
-        <div ref={roadmapScrollRef} className="w-full overflow-x-auto overflow-y-hidden snap-x snap-mandatory flex gap-6 px-6 pt-6 pb-12 -mt-6 hide-scrollbar scroll-smooth">
+        <div ref={roadmapScrollRef} className="w-full overflow-x-auto overflow-y-hidden snap-x snap-mandatory flex gap-4 sm:gap-6 px-4 sm:px-6 pt-4 sm:pt-6 pb-10 sm:pb-12 -mt-4 sm:-mt-6 hide-scrollbar mobile-touch-scroll">
           {ROADMAP_PHASES.flatMap((phase) => 
             phase.features.map((feature, fIdx) => (
               <motion.div 
@@ -2055,7 +2121,7 @@ export default function Home() {
                   setIsFeatureModalOpen(true);
                 }}
                 transition={{ type: "spring", stiffness: 100, damping: 20 }}
-                className="snap-center shrink-0 w-[300px] md:w-[380px] h-[480px] rounded-[2.5rem] p-8 relative overflow-hidden bg-bg-card border border-line shadow-2xl flex flex-col justify-between group cursor-pointer hover:border-white/20 hover:shadow-2xl transition-all duration-300"
+                className="snap-center shrink-0 w-[84vw] sm:w-[340px] md:w-[380px] h-[430px] sm:h-[480px] rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-8 relative overflow-hidden bg-bg-card border border-line shadow-2xl flex flex-col justify-between group cursor-pointer hover:border-white/20 hover:shadow-2xl transition-all duration-300 active:scale-[0.98]"
               >
                 {/* Dynamic Card Backgrounds based on phase */}
                 <div className="absolute inset-0 opacity-20 group-hover:opacity-40 transition-opacity duration-500" style={{
@@ -3108,6 +3174,8 @@ export default function Home() {
         onSuggestionClick={handleSuggestionClick}
         isHighlighted={bottomPillHighlighted}
       />
+
+      <ExitIntentModal onClaimClick={highlightBottomBarPill} />
     </main>
   );
 }

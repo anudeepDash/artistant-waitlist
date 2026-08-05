@@ -246,40 +246,39 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
   };
 
   if (!role) return null;
-
   return (
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          key="role-overlay"
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto"
+          key="role-modal-overlay"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md"
           variants={overlayVariants}
           initial="hidden"
           animate="visible"
           exit="exit"
           onClick={onClose}
-          aria-modal="true"
-          role="dialog"
-          style={{ background: 'rgba(5, 7, 10, 0.85)', backdropFilter: 'blur(8px)' }}
         >
-          <div className="min-h-full w-full flex items-center justify-center py-6">
-            <motion.div
-              key="role-card"
-              className="relative max-w-lg w-full rounded-2xl p-6 sm:p-8 overflow-hidden text-left"
-              variants={cardVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                '--accent-color': roleTokens.accent,
-                '--accent-color-rgb': roleTokens.accentRgb,
-                background: 'rgba(10, 10, 10, 0.8)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                backdropFilter: 'blur(10px)',
-                boxShadow: '0 10px 30px -10px rgba(0, 0, 0, 0.5)'
-              } as React.CSSProperties}
-            >
+          {/* Modal Container */}
+          <motion.div
+            key="role-modal-card"
+            className="relative w-full max-w-lg rounded-t-[1.75rem] sm:rounded-3xl p-5 sm:p-8 max-h-[92vh] overflow-y-auto mobile-touch-scroll border-t sm:border border-white/10 my-0 sm:my-8 z-50 shadow-2xl"
+            variants={cardVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              '--accent-color': roleTokens.accent,
+              '--accent-color-rgb': roleTokens.accentRgb,
+              background: 'rgba(10, 10, 10, 0.95)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              backdropFilter: 'blur(16px)',
+              boxShadow: '0 10px 30px -10px rgba(0, 0, 0, 0.5)'
+            } as React.CSSProperties}
+          >
+            {/* Small drag bar indicator on mobile */}
+            <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-3 shrink-0 sm:hidden" />
+              
               {/* Radial Glow Watermark inside card - matching landing page design */}
               <div 
                 style={{ 
@@ -847,7 +846,6 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
                 )}
               </AnimatePresence>
             </motion.div>
-          </div>
         </motion.div>
       )}
     </AnimatePresence>

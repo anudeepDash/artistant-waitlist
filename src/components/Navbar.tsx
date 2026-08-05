@@ -8,23 +8,43 @@ import { type WaitlistEntry } from '@/lib/waitlist';
 import { usePathname, useRouter } from 'next/navigation';
 import { deleteAccountDataAction } from '@/lib/account-actions';
 import { checkIsAdminAction } from '@/lib/admin-actions';
+import MobileNavDrawer from '@/components/MobileNavDrawer';
 
 interface NavbarProps {
-  user: User | null;
-  userReservation: WaitlistEntry | null;
-  onSignInClick: () => void;
-  onSignOut: () => Promise<void>;
+  user?: User | null;
+  userReservation?: WaitlistEntry | null;
+  onSignInClick?: () => void;
+  onSignOut?: () => Promise<void>;
   onProfileClick?: () => void;
   foundingPoints?: number;
+  onOpenRoleModal?: (role: 'organizer' | 'attendee' | 'venue') => void;
+  isMobileDrawerOpen?: boolean;
+  setIsMobileDrawerOpen?: (open: boolean) => void;
+  isBannerVisible?: boolean;
 }
 
-const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClick, foundingPoints }: NavbarProps) => {
+const Navbar = ({ 
+  user = null, 
+  userReservation = null, 
+  onSignInClick = () => {}, 
+  onSignOut = async () => {}, 
+  onProfileClick, 
+  foundingPoints,
+  onOpenRoleModal,
+  isMobileDrawerOpen,
+  setIsMobileDrawerOpen,
+  isBannerVisible = true
+}: NavbarProps) => {
   const [scrolled, setScrolled] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [internalDrawerOpen, setInternalDrawerOpen] = useState(false);
+
+  const drawerOpen = isMobileDrawerOpen !== undefined ? isMobileDrawerOpen : internalDrawerOpen;
+  const setDrawerOpen = setIsMobileDrawerOpen || setInternalDrawerOpen;
 
   useEffect(() => {
     if (!user) {
@@ -133,12 +153,14 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
       : '0 4px 30px rgba(0, 0, 0, 0.02), inset 0 1px 1px rgba(255, 255, 255, 0.4)'
   };
 
+  const isHomePage = pathname === '/';
+
   return (
     <motion.nav
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="fixed top-0 inset-x-0 z-50 px-3 pt-3 md:px-6 md:pt-4 pointer-events-none"
+      className={`${isHomePage ? 'w-full' : 'fixed top-0 inset-x-0 z-50'} px-3 pt-2 md:px-6 md:pt-3 pointer-events-none transition-all duration-300`}
     >
       <div
         className={[
@@ -424,10 +446,40 @@ const Navbar = ({ user, userReservation, onSignInClick, onSignOut, onProfileClic
                 </svg>
               </button>
             )}
+
+            {/* Mobile App Navigation Drawer Trigger (Mobile Viewports) */}
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              className="
+                sm:hidden w-8 h-8 rounded-full flex items-center justify-center
+                bg-ink/5 dark:bg-white/5 border border-glass-border
+                text-ink hover:text-[#F25A2B] active:scale-95 transition-all cursor-pointer shrink-0
+              "
+              aria-label="Open mobile menu drawer"
+            >
+              <svg width="16" height="11" viewBox="0 0 16 11" fill="none" className="stroke-current">
+                <line x1="1" y1="2" x2="15" y2="2" strokeWidth="2" strokeLinecap="round" />
+                <line x1="1" y1="9" x2="15" y2="9" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </button>
           </div>
 
         </div>
       </div>
+
+      {/* Render Slide-Over Mobile App Drawer */}
+      <MobileNavDrawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        user={user}
+        userReservation={userReservation}
+        isAdmin={isAdmin}
+        foundingPoints={foundingPoints}
+        onSignInClick={onSignInClick}
+        onSignOut={onSignOut}
+        onOpenRoleModal={onOpenRoleModal}
+      />
     </motion.nav>
   );
 };

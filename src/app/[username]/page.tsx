@@ -495,7 +495,7 @@ export default function PublicProfilePage() {
                 {reservation.profile_photo_url ? (
                   <img src={reservation.profile_photo_url} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <span className={`text-xs font-extrabold ${isLight ? 'text-zinc-800' : 'text-white'}`}>{displayName[0].toUpperCase()}</span>
+                  <span className={`text-xs font-extrabold ${isLight ? 'text-zinc-800' : 'text-white'}`}>{(displayName?.[0] || 'A').toUpperCase()}</span>
                 )}
               </div>
               <div className="flex flex-col min-w-0 flex-1 text-left">
@@ -521,18 +521,18 @@ export default function PublicProfilePage() {
           <div className={`absolute inset-0 transition-colors duration-300 ${isLight ? 'bg-gradient-to-b from-black/15 via-transparent via-55% to-[#FAF9FD]' : 'bg-gradient-to-b from-black/35 via-transparent via-55% to-[#050508]'}`} />
 
           {/* Top Controls Bar (Mobile version) */}
-          <div className="absolute top-6 left-0 right-0 px-5 z-30 flex items-center justify-between">
+          <div className="absolute top-5 left-0 right-0 px-4.5 z-30 flex items-center justify-between">
             <button 
               onClick={() => router.push('/')}
-              className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-lg ${isLight ? 'bg-white/75 hover:bg-white/90 border border-black/10 text-zinc-900' : 'bg-black/40 hover:bg-black/60 border border-white/10 text-white'}`}
+              className={`w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer shadow-lg ${isLight ? 'bg-white/75 hover:bg-white/90 border border-black/10 text-zinc-900' : 'bg-black/40 hover:bg-black/60 border border-white/10 text-white'}`}
             >
-              <ArrowLeft className="w-4.5 h-4.5" />
+              <ArrowLeft className="w-4 h-4" />
             </button>
 
-            {/* Artistant Wordmark Logo Badge */}
-            <div className={`absolute left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-1 rounded-full backdrop-blur-md shadow-lg select-none ${isLight ? 'bg-white/80 border border-black/10' : 'bg-black/45 border border-white/10'}`}>
-              <img src="/logo_wordmark_flat.png" alt="ArtisTant" className="h-[18px] w-auto object-contain dark:invert-0 invert" />
-              <span className={`text-[9px] font-mono font-bold tracking-[0.2em] border-l pl-2 uppercase ${isLight ? 'text-zinc-500 border-black/15' : 'text-white/50 border-white/15'}`}>PORTFOLIO</span>
+            {/* Artistant Wordmark Logo Badge - Positioned on Top Right to keep center (artist face) clear */}
+            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full backdrop-blur-md shadow-lg select-none ${isLight ? 'bg-white/80 border border-black/10' : 'bg-black/45 border border-white/10'}`}>
+              <img src="/logo_wordmark_flat.png" alt="ArtisTant" className="h-[14px] w-auto object-contain dark:invert-0 invert" />
+              <span className={`text-[8px] font-mono font-bold tracking-[0.18em] border-l pl-1.5 uppercase ${isLight ? 'text-zinc-500 border-black/15' : 'text-white/50 border-white/15'}`}>PORTFOLIO</span>
             </div>
           </div>
 
@@ -590,13 +590,13 @@ export default function PublicProfilePage() {
           <div className="flex items-center justify-between z-30 relative">
             <button 
               onClick={() => router.push('/')}
-              className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer ${isLight ? 'bg-white border border-black/10 text-zinc-900 shadow-sm' : 'bg-white/[0.02] border border-white/10 text-white'}`}
+              className={`w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer ${isLight ? 'bg-white border border-black/10 text-zinc-900 shadow-sm' : 'bg-white/[0.02] border border-white/10 text-white'}`}
             >
-              <ArrowLeft className="w-4.5 h-4.5" />
+              <ArrowLeft className="w-4 h-4" />
             </button>
-            <div className={`flex items-center gap-2 px-3 py-1 rounded-full backdrop-blur-md shadow-sm select-none ${isLight ? 'bg-white border border-black/10' : 'bg-white/[0.02] border border-white/10'}`}>
-              <img src="/logo_wordmark_flat.png" alt="ArtisTant" className="h-[18px] w-auto object-contain dark:invert-0 invert" />
-              <span className={`text-[9px] font-mono font-bold tracking-[0.2em] border-l pl-2 uppercase ${isLight ? 'text-zinc-500 border-black/15' : 'text-white/50 border-white/15'}`}>PORTFOLIO</span>
+            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full backdrop-blur-md shadow-sm select-none ${isLight ? 'bg-white border border-black/10' : 'bg-white/[0.02] border border-white/10'}`}>
+              <img src="/logo_wordmark_flat.png" alt="ArtisTant" className="h-[14px] w-auto object-contain dark:invert-0 invert" />
+              <span className={`text-[8px] font-mono font-bold tracking-[0.18em] border-l pl-1.5 uppercase ${isLight ? 'text-zinc-500 border-black/15' : 'text-white/50 border-white/15'}`}>PORTFOLIO</span>
             </div>
           </div>
           <div className="text-left space-y-3">
@@ -1276,7 +1276,7 @@ export default function PublicProfilePage() {
       {/* Booking Options Modal Overlay */}
       <AnimatePresence>
         {isBookingOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6 overflow-y-auto">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1290,7 +1290,7 @@ export default function PublicProfilePage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.94, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="relative w-full max-w-lg rounded-[2.2rem] overflow-hidden p-6 sm:p-7 z-10 border shadow-[0_30px_90px_-20px_rgba(0,0,0,0.85)] my-8 backdrop-blur-2xl transition-all"
+              className="relative w-full max-w-lg rounded-t-[1.75rem] sm:rounded-[2.2rem] overflow-hidden p-5 sm:p-7 z-10 border shadow-[0_30px_90px_-20px_rgba(0,0,0,0.85)] my-0 sm:my-8 backdrop-blur-2xl transition-all mobile-touch-scroll max-h-[92vh] overflow-y-auto"
               style={{
                 background: isLight 
                   ? 'linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(246,243,255,0.98) 100%)'
@@ -1298,6 +1298,8 @@ export default function PublicProfilePage() {
                 borderColor: isLight ? 'rgba(124,92,255,0.22)' : 'rgba(124,92,255,0.3)'
               }}
             >
+              {/* Drag bar indicator on mobile */}
+              <div className="w-12 h-1 bg-black/20 dark:bg-white/20 rounded-full mx-auto mb-3 shrink-0 sm:hidden" />
               {/* Background Glow Orbs */}
               <div className="absolute -top-20 -left-20 w-64 h-64 bg-[#7C5CFF]/15 rounded-full blur-3xl pointer-events-none" />
               <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-[#F25A2B]/15 rounded-full blur-3xl pointer-events-none" />
@@ -1746,6 +1748,34 @@ export default function PublicProfilePage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* ── Sticky Mobile Bottom Quick Action Bar ── */}
+      {reservation && (
+        <div className="fixed bottom-0 inset-x-0 z-30 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] bg-black/85 dark:bg-[#0c0d12]/90 backdrop-blur-xl border-t border-white/10 flex items-center justify-between gap-2 md:hidden">
+          <div className="flex flex-col min-w-0 pl-1">
+            <span className="text-[9px] text-white/50 font-mono uppercase tracking-wider leading-none">Artist</span>
+            <span className="text-xs font-bold text-white font-mono truncate">@{username}</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleShare}
+              className="p-2.5 rounded-full bg-white/10 text-white hover:bg-white/20 active:scale-95 transition-all cursor-pointer"
+              title="Share profile"
+            >
+              {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4" />}
+            </button>
+            <button
+              onClick={() => {
+                setBookingMode('options');
+                setIsBookingOpen(true);
+              }}
+              className="px-4 py-2.5 rounded-full bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] text-white font-bold font-mono text-xs uppercase tracking-wider shadow-lg active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <Calendar className="w-3.5 h-3.5" /> Book Artist
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );

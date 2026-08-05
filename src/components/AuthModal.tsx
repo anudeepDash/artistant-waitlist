@@ -806,7 +806,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
       {isOpen && (
         <motion.div
           key="auth-overlay"
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md"
+          className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4 bg-black/80 backdrop-blur-md"
           variants={overlayVariants}
           initial="hidden"
           animate="visible"
@@ -818,7 +818,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
           {/* ── Modal Card ─────────────────────────────────── */}
           <motion.div
             key="auth-card"
-            className="relative w-full max-w-sm md:max-w-4xl mx-4 rounded-3xl md:rounded-[2rem] shadow-[0_32px_80px_-20px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col md:flex-row border border-white/5 bg-[#121218]"
+            className="relative w-full max-w-full md:max-w-4xl mx-0 md:mx-4 rounded-t-[1.75rem] md:rounded-[2rem] shadow-[0_32px_80px_-20px_rgba(0,0,0,0.8)] overflow-y-auto md:overflow-hidden max-h-[92vh] md:max-h-[85vh] flex flex-col md:flex-row border-t md:border border-white/10 bg-[#121218] mobile-touch-scroll"
             style={{ 
               background: 'rgba(18, 18, 24, 0.98)',
               backdropFilter: 'blur(24px)',
@@ -829,6 +829,8 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
             exit="exit"
             onClick={(e) => e.stopPropagation()} // prevent overlay close
           >
+            {/* Small drag bar indicator on mobile */}
+            <div className="w-12 h-1 bg-white/20 rounded-full mx-auto my-2 shrink-0 md:hidden" />
             {/* ── Left Column (Brand / Visual) ── */}
             <div className="hidden md:flex flex-col justify-between w-1/2 p-10 relative overflow-hidden bg-black/50">
               {/* Decorative gradients */}
@@ -1593,7 +1595,8 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                               onClick={() => {
                                 const isMissingEmail = !pendingUser?.email;
                                 const isMissingPhone = !pendingUser?.phoneNumber;
-                                const isMissingName = !pendingUser?.displayName && !extraName.trim();
+                                const hasValidDisplayName = pendingUser?.displayName && pendingUser.displayName.trim().length > 1;
+                                const isMissingName = !hasValidDisplayName && (!extraName || extraName.trim().length <= 1);
                                 if (isMissingEmail || isMissingPhone || isMissingName) {
                                   setProfileSubStep('contact');
                                 } else {
@@ -1621,7 +1624,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                         >
                           <div className="text-center mb-6">
                             <h2 className="font-display text-3xl font-bold text-white mb-2">
-                              {!pendingUser?.displayName && !extraName.trim() ? 'Your Full Name' : (!pendingUser?.email ? 'Enter Email' : 'Enter Phone')}
+                              {(!pendingUser?.displayName || pendingUser.displayName.trim().length <= 1) && (!extraName || extraName.trim().length <= 1) ? 'Your Full Name' : (!pendingUser?.email ? 'Enter Email' : 'Enter Phone')}
                             </h2>
                             <p className="text-white/50 text-sm font-medium">
                               Add your name and contact details to complete your artist profile.
@@ -1629,7 +1632,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                           </div>
 
                           <div className="space-y-4 mb-8">
-                            {(!pendingUser?.displayName || !extraName.trim()) && (
+                            {(!pendingUser?.displayName || pendingUser.displayName.trim().length <= 1) && (
                               <div>
                                 <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-2">Full Name / Artist Name <span className="text-[#F25A2B]">*</span></label>
                                 <div className="w-full flex items-center bg-black/40 border border-white/5 rounded-xl px-4 py-3 focus-within:border-[#7C5CFF] focus-within:ring-1 focus-within:ring-[#7C5CFF] transition-all">
@@ -1693,8 +1696,8 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                             <button
                               type="button"
                               onClick={() => {
-                                if (!extraName.trim() && !pendingUser?.displayName) {
-                                  setError('Please enter your full name.');
+                                if ((!pendingUser?.displayName || pendingUser.displayName.trim().length <= 1) && (!extraName || extraName.trim().length <= 1)) {
+                                  setError('Please enter your full name (at least 2 characters).');
                                   return;
                                 }
                                 if (!pendingUser?.email) {

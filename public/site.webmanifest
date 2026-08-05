@@ -1,0 +1,21 @@
+{
+  "name": "Artistant - India's Live Entertainment Infrastructure",
+  "short_name": "Artistant",
+  "description": "Contract, escrow, and payment infrastructure for India's independent live artists & creators.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B1120",
+  "theme_color": "#0B1120",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo_a_highres.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

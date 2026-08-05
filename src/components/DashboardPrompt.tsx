@@ -1,17 +1,61 @@
 'use client';
 
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, ArrowRight } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface DashboardPromptProps {
   onClose: () => void;
   username?: string;
   profilePhotoUrl?: string | null;
+  autoHideDuration?: number; // Duration in ms before auto-hiding (default 5000ms)
 }
 
-export default function DashboardPrompt({ onClose, username, profilePhotoUrl }: DashboardPromptProps) {
+export default function DashboardPrompt({ 
+  onClose, 
+  username, 
+  profilePhotoUrl,
+  autoHideDuration = 5000 
+}: DashboardPromptProps) {
   const router = useRouter();
+  const [isVisible, setIsVisible] = useState(true);
+  const onCloseRef = useRef(onClose);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Keep onCloseRef current without triggering effect re-runs
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  const handleDismiss = () => {
+    setIsVisible(false);
+    onCloseRef.current();
+  };
+
+  const startAutoHideTimer = () => {
+    if (autoHideDuration > 0) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        setIsVisible(false);
+        onCloseRef.current();
+      }, autoHideDuration);
+    }
+  };
+
+  const clearAutoHideTimer = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    startAutoHideTimer();
+    return () => clearAutoHideTimer();
+  }, [autoHideDuration]);
+
+  if (!isVisible) return null;
 
   return (
     <motion.div
@@ -19,16 +63,18 @@ export default function DashboardPrompt({ onClose, username, profilePhotoUrl }: 
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -15, scale: 0.92, transition: { duration: 0.15 } }}
       transition={{ type: 'spring', stiffness: 420, damping: 30 }}
-      className="fixed top-16 right-4 md:top-20 md:right-6 z-50 select-none group max-w-[300px] w-full"
+      onMouseEnter={clearAutoHideTimer}
+      onMouseLeave={startAutoHideTimer}
+      className="fixed top-16 right-4 md:top-20 md:right-6 z-[100] select-none group max-w-[300px] w-full"
     >
       {/* Ambient Gradient Glow Background */}
       <div className="absolute -inset-0.5 bg-gradient-to-r from-[#F25A2B]/40 via-[#D4567A]/30 to-[#7C5CFF]/40 rounded-2xl blur-lg opacity-60 group-hover:opacity-100 transition duration-500" />
 
-      {/* Main Glass Box */}
-      <div className="relative rounded-2xl bg-[#0B0C10]/90 dark:bg-[#090A0D]/95 backdrop-blur-2xl border border-white/15 p-3.5 shadow-[0_16px_40px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col gap-3">
+      {/* Main Solid Glass Box — 100% Opaque bg-[#0C0D14] to eliminate transparency bleed */}
+      <div className="relative rounded-2xl bg-[#0C0D14] border border-white/20 p-3.5 shadow-[0_20px_60px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col gap-3">
         {/* Decorative Light Rays */}
-        <div className="absolute -top-12 -right-12 w-28 h-28 bg-[#7C5CFF]/15 rounded-full blur-2xl pointer-events-none" />
-        <div className="absolute -bottom-12 -left-12 w-28 h-28 bg-[#F25A2B]/15 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -top-12 -right-12 w-28 h-28 bg-[#7C5CFF]/20 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -bottom-12 -left-12 w-28 h-28 bg-[#F25A2B]/20 rounded-full blur-2xl pointer-events-none" />
 
         {/* Top Header Strip */}
         <div className="flex items-center justify-between">
@@ -37,14 +83,14 @@ export default function DashboardPrompt({ onClose, username, profilePhotoUrl }: 
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#F25A2B] opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-[#F25A2B]"></span>
             </span>
-            <span className="text-[10px] font-mono font-bold tracking-widest text-white/60 uppercase flex items-center gap-1">
+            <span className="text-[10px] font-mono font-bold tracking-widest text-white/70 uppercase flex items-center gap-1">
               ArtisTant
             </span>
           </div>
 
           <button
-            onClick={onClose}
-            className="text-white/40 hover:text-white hover:bg-white/10 p-1 rounded-lg transition-all duration-150 cursor-pointer"
+            onClick={handleDismiss}
+            className="text-white/60 hover:text-white hover:bg-white/10 p-1 rounded-lg transition-all duration-150 cursor-pointer"
             aria-label="Dismiss prompt"
           >
             <X className="w-3.5 h-3.5" />
@@ -80,7 +126,7 @@ export default function DashboardPrompt({ onClose, username, profilePhotoUrl }: 
                 Active
               </span>
             </div>
-            <p className="text-[10.5px] text-white/60 truncate font-medium mt-0.5">
+            <p className="text-[10.5px] text-white/70 truncate font-medium mt-0.5">
               Manage your profile & dashboard
             </p>
           </div>
@@ -102,6 +148,16 @@ export default function DashboardPrompt({ onClose, username, profilePhotoUrl }: 
           <span>Open Dashboard</span>
           <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-1 transition-transform" />
         </motion.button>
+
+        {/* Subtle Auto-Hide Timer Bar Indicator */}
+        <div className="w-full h-0.5 bg-white/15 rounded-full overflow-hidden">
+          <motion.div
+            initial={{ width: '100%' }}
+            animate={{ width: '0%' }}
+            transition={{ duration: autoHideDuration / 1000, ease: 'linear' }}
+            className="h-full bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF]"
+          />
+        </div>
       </div>
     </motion.div>
   );
