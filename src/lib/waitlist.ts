@@ -171,7 +171,7 @@ export async function reserveUsername(
 
   const safeDisplayName = ensureValidDisplayName(displayName, normalisedUsername, email);
 
-  const { error } = await supabase.from("waitlist_users").insert({
+  const payload = {
     user_id: uid,
     username: normalisedUsername,
     email: email,
@@ -189,13 +189,38 @@ export async function reserveUsername(
     ...(youtubeChannelUrl ? { youtube_channel_url: youtubeChannelUrl } : {}),
     ...(bio ? { bio } : {}),
     ...(profilePhotoUrl ? { profile_photo_url: profilePhotoUrl } : {}),
-  });
+  };
+
+  // Check if user already has an entry
+  const { data: existingUser, error: checkError } = await supabase
+    .from("waitlist_users")
+    .select("id")
+    .eq("user_id", uid)
+    .maybeSingle();
+
+  if (checkError) {
+    const ref = crypto.randomUUID(); console.error('Error Ref:', ref, checkError); throw new Error('An internal error occurred. Ref: ' + ref);
+  }
+
+  let error;
+  if (existingUser) {
+    const { error: updateError } = await supabase
+      .from("waitlist_users")
+      .update(payload)
+      .eq("id", existingUser.id);
+    error = updateError;
+  } else {
+    const { error: insertError } = await supabase
+      .from("waitlist_users")
+      .insert(payload);
+    error = insertError;
+  }
 
   if (error) {
     if (error.code === '23505') { // Postgres Unique Violation
       throw new Error(`Username "${username}" is already taken.`);
     }
-    const ref = crypto.randomUUID(); console.error('Error Ref:', ref, '[REDACTED_ERROR]'); throw new Error('An internal error occurred. Ref: ' + ref);
+    const ref = crypto.randomUUID(); console.error('Error Ref:', ref, error); throw new Error('An internal error occurred. Ref: ' + ref);
   }
 }
 

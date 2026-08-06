@@ -351,13 +351,26 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
     getUserReservation(firebaseUser.uid, emailToQuery, phoneToQuery)
       .then((existingReservation) => {
         if (existingReservation) {
-          // Update missing/different contact details in Supabase
-          updateReservationContactInfo(existingReservation.id, existingReservation, emailToQuery, phoneToQuery)
-            .then(() => onClose())
-            .catch((updateErr) => {
-              console.error('Error auto-updating merged profile contact info:', updateErr);
-              onClose();
-            });
+          const isProfileIncomplete = !existingReservation.profile_photo_url || !existingReservation.category;
+          if (isProfileIncomplete) {
+            setPendingUser(firebaseUser);
+            if (existingReservation.category) setCategory(existingReservation.category as ArtistCategory);
+            if (existingReservation.genres) setSelectedGenres(existingReservation.genres);
+            if (existingReservation.city) setCity(existingReservation.city);
+            if (existingReservation.bio) setBio(existingReservation.bio);
+            if (existingReservation.spotify_url) setSpotifyUrl(existingReservation.spotify_url);
+            if (existingReservation.instagram_url) setInstagramUrl(existingReservation.instagram_url);
+            if (existingReservation.youtube_url) setYoutubeUrl(existingReservation.youtube_url);
+            setStep('profile');
+          } else {
+            // Update missing/different contact details in Supabase
+            updateReservationContactInfo(existingReservation.id, existingReservation, emailToQuery, phoneToQuery)
+              .then(() => onClose())
+              .catch((updateErr) => {
+                console.error('Error auto-updating merged profile contact info:', updateErr);
+                onClose();
+              });
+          }
         } else {
           // No existing reservation, proceed with onboarding/profiling
           if (!initialUsername || initialUsername.trim() === '') {

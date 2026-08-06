@@ -650,8 +650,10 @@ export async function getWaitlistDashboardDataAction(idToken: string): Promise<{
   const mapped = users.map(u => {
     const usernameKey = u.username.toLowerCase().trim();
     const verifiedRefs = verifiedReferralsMap[usernameKey] || 0;
+    const unverifiedRefs = unverifiedReferralsMap[usernameKey] || 0;
+    const totalRefs = verifiedRefs + unverifiedRefs;
     const storyShared = u.story_shared === true; // Handle null/undefined values
-    const points = 100 + (verifiedRefs * 50) + (storyShared ? 80 : 0);
+    const points = 100 + (totalRefs * 50) + (storyShared ? 80 : 0);
     const userEmail = u.email ? u.email.trim().toLowerCase() : '';
     const isExcluded = u.exclude_from_waitlist === true || (userEmail !== '' && adminEmailsSet.has(userEmail));
     
@@ -663,7 +665,7 @@ export async function getWaitlistDashboardDataAction(idToken: string): Promise<{
       role: u.role,
       is_verified: u.is_verified,
       points,
-      referrals_count: verifiedRefs,
+      referrals_count: totalRefs,
       story_shared: storyShared,
       reserved_at: u.reserved_at,
       position_override: u.position_override !== undefined && u.position_override !== null ? u.position_override : null,

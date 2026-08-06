@@ -2066,14 +2066,14 @@ export default function ProfilePage() {
                       {unverifiedReferrals > 0 && (
                         <div className="px-4 py-3 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-amber-500 font-mono flex items-center gap-2.5 shadow-inner text-[10px]">
                           <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0 shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
-                          <span>Your referrals are being verified. Once approved, points will unlock and climb your rank! ({unverifiedReferrals} pending)</span>
+                          <span>{unverifiedReferrals} of your referrals are pending profile setup. You've been awarded points for them!</span>
                         </div>
                       )}
 
                       {/* Dynamic competitive notification */}
-                      {verifiedReferrals >= 3 ? (
+                      {(verifiedReferrals + unverifiedReferrals) >= 3 ? (
                         <div className="px-4 py-3 rounded-2xl bg-[#7C5CFF]/5 border border-[#7C5CFF]/10 text-zinc-300 text-[10px] font-mono leading-relaxed shadow-sm">
-                          🚀 **You've referred {verifiedReferrals} peers! But don't stop there.** Earning more points helps you climb the leaderboard, secure your priority position in **Cohort 001**, and prevents other artists from overtaking your rank!
+                          🚀 **You've referred {verifiedReferrals + unverifiedReferrals} peers! But don't stop there.** Earning more points helps you climb the leaderboard, secure your priority position in **Cohort 001**, and prevents other artists from overtaking your rank!
                         </div>
                       ) : (
                         <div className="text-[9px] font-mono text-zinc-500 text-left">
@@ -2095,13 +2095,13 @@ export default function ProfilePage() {
                         <Users className="w-3.5 h-3.5 text-[#F25A2B]" /> Vouch Engine
                       </h3>
                       <div className="flex items-center gap-2">
-                        {verifiedReferrals > 0 ? (
+                        {(verifiedReferrals + unverifiedReferrals) > 0 ? (
                           <span className="font-mono text-[9px] uppercase font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full select-none">
-                            {verifiedReferrals} approved
+                            {verifiedReferrals + unverifiedReferrals} referred
                           </span>
                         ) : (
                           <span className="font-mono text-[9px] uppercase font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full select-none animate-pulse">
-                            0 approved
+                            0 referred
                           </span>
                         )}
                         <motion.button 

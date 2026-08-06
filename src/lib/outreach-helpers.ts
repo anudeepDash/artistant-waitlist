@@ -34,5 +34,6 @@ export function substitutePersonalizationTokens(
     .replaceAll('{{email}}', email)
     .replaceAll('{{position}}', position)
     .replaceAll('{{claim_url}}', uniqueClaimUrl)
-    .replaceAll('{{custom_note}}', customNote);
+    .replaceAll('{{custom_note}}', customNote)
+    .replaceAll('{{id}}', recipient.id || '');
 }

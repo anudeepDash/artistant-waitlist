@@ -520,15 +520,14 @@ export async function getPublicProfileDataAction(username: string): Promise<Publ
       return null;
     }
     
-    // 2. Fetch referral count (verified)
+    // 2. Fetch referral count (all)
     const { count: referralCount } = await client
       .from('waitlist_users')
       .select('id', { count: 'exact', head: true })
-      .eq('referred_by', normalisedUsername)
-      .eq('is_verified', true);
+      .eq('referred_by', normalisedUsername);
       
-    const verifiedRefs = referralCount || 0;
-    const calculatedPoints = 100 + verifiedRefs * 50 + (reservation.story_shared === true ? 80 : 0);
+    const totalRefs = referralCount || 0;
+    const calculatedPoints = 100 + totalRefs * 50 + (reservation.story_shared === true ? 80 : 0);
     
     // Check if user is admin or excluded
     const adminEmailsSet = new Set<string>();
