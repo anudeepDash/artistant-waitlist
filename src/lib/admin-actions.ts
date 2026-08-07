@@ -1274,6 +1274,11 @@ export async function adminDeleteCareerJobAction(
     await verifyAdminToken(idToken);
     const client = createAdminClient();
 
+    const isUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(jobId);
+    if (!isUUID) {
+      return { success: true, message: 'Seed job removed from view.' };
+    }
+
     const { error } = await client
       .from('career_jobs')
       .delete()
@@ -1308,15 +1313,32 @@ export async function submitCareerApplicationAction(
 ): Promise<{ success: boolean; message?: string }> {
   try {
     const client = createAdminClient();
-    const newApp = {
+
+    // Check if job_id is a valid UUID format (static fallback job IDs like "job-1" are not valid Postgres UUIDs)
+    const isUUID = appData.job_id
+      ? /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(appData.job_id)
+      : false;
+
+    const payload = {
       ...appData,
+      job_id: isUUID ? appData.job_id : null,
       status: 'pending',
       created_at: new Date().toISOString(),
     };
 
-    const { error } = await client
+    let { error } = await client
       .from('career_applications')
-      .insert([newApp]);
+      .insert([payload]);
+
+    // Fallback: If foreign key constraint or DB error occurs with job_id, retry with job_id: null
+    if (error && payload.job_id) {
+      console.warn('Retrying career application submission without job_id reference:', error.message);
+      const fallbackPayload = { ...payload, job_id: null };
+      const retryResult = await client
+        .from('career_applications')
+        .insert([fallbackPayload]);
+      error = retryResult.error;
+    }
 
     if (error) {
       console.warn('Error inserting career application into database:', error);
@@ -1371,6 +1393,12 @@ export async function adminUpdateCareerApplicationStatusAction(
 ): Promise<boolean> {
   await verifyAdminToken(idToken);
   const client = createAdminClient();
+
+  const isUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(applicationId);
+  if (!isUUID) {
+    console.warn(`Application ID "${applicationId}" is not a valid UUID.`);
+    return false;
+  }
 
   const { error } = await client
     .from('career_applications')
