@@ -55,16 +55,22 @@ export default function Footer() {
             <div className="flex flex-col gap-6">
               <h3 className="text-ink font-semibold text-xs tracking-[0.15em] uppercase opacity-90">Quick Links</h3>
               <div className="flex flex-col gap-4">
+                <Link href="/links" className="text-ink-2 hover:text-ink transition-colors duration-300 relative group w-fit text-[15px] cursor-pointer flex items-center gap-1.5 font-bold text-[#F25A2B]">
+                  <QrCode className="w-3.5 h-3.5" />
+                  Official Links & QR
+                  <span className="absolute -bottom-1 left-0 w-0 h-[1px] bg-[#F25A2B] transition-all duration-300 group-hover:w-full opacity-80"></span>
+                </Link>
+                <Link href="/card" className="text-ink-2 hover:text-ink transition-colors duration-300 relative group w-fit text-[15px] cursor-pointer flex items-center gap-1.5 font-bold text-[#7C5CFF]">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V4a2 2 0 012-2h2a2 2 0 012 2v2m-4 0h4" /></svg>
+                  Founder Cards
+                  <span className="absolute -bottom-1 left-0 w-0 h-[1px] bg-[#7C5CFF] transition-all duration-300 group-hover:w-full opacity-80"></span>
+                </Link>
                 <Link href="/#join" className="text-ink-2 hover:text-ink transition-colors duration-300 relative group w-fit text-[15px] cursor-pointer">
                   Reserve Username
                   <span className="absolute -bottom-1 left-0 w-0 h-[1px] bg-ink transition-all duration-300 group-hover:w-full opacity-50"></span>
                 </Link>
                 <Link href="/#problem-voices" className="text-ink-2 hover:text-ink transition-colors duration-300 relative group w-fit text-[15px] cursor-pointer">
                   Voices
-                  <span className="absolute -bottom-1 left-0 w-0 h-[1px] bg-ink transition-all duration-300 group-hover:w-full opacity-50"></span>
-                </Link>
-                <Link href="/#standard" className="text-ink-2 hover:text-ink transition-colors duration-300 relative group w-fit text-[15px] cursor-pointer">
-                  Roadmap
                   <span className="absolute -bottom-1 left-0 w-0 h-[1px] bg-ink transition-all duration-300 group-hover:w-full opacity-50"></span>
                 </Link>
                 <Link href="/changelog" className="text-ink-2 hover:text-ink transition-colors duration-300 relative group w-fit text-[15px] cursor-pointer">

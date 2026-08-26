@@ -9,7 +9,7 @@ import { type WaitlistEntry } from '@/lib/waitlist';
 import { 
   X, Home, Sparkles, User as UserIcon, LogIn, LogOut, Sun, Moon, 
   Shield, Layers, ChevronRight, Settings, ExternalLink, Calendar,
-  Music, MapPin, Building, Ticket, Award
+  Music, MapPin, Building, Ticket, Award, QrCode, Briefcase
 } from 'lucide-react';
 
 interface MobileNavDrawerProps {
@@ -267,6 +267,40 @@ export default function MobileNavDrawer({
                     <span>Event Calendar</span>
                   </div>
                   {pathname === '/events' && <div className="w-1.5 h-1.5 rounded-full bg-[#D4567A]" />}
+                </button>
+
+                <button
+                  onClick={() => handleNavigate('/links')}
+                  className={`
+                    w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold
+                    transition-all cursor-pointer
+                    ${pathname === '/links' ? 'bg-[#F25A2B]/20 text-[#F25A2B] border border-[#F25A2B]/30' : 'text-white/80 hover:bg-white/5 hover:text-white'}
+                  `}
+                >
+                  <div className="flex items-center gap-3">
+                    <QrCode className="w-4 h-4 text-[#F25A2B]" />
+                    <span>Official Links & QR</span>
+                  </div>
+                  <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#F25A2B]/20 text-[#F25A2B] border border-[#F25A2B]/30">
+                    HUB
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => handleNavigate('/card')}
+                  className={`
+                    w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold
+                    transition-all cursor-pointer
+                    ${pathname?.startsWith('/card') ? 'bg-[#7C5CFF]/20 text-[#7C5CFF] border border-[#7C5CFF]/30' : 'text-white/80 hover:bg-white/5 hover:text-white'}
+                  `}
+                >
+                  <div className="flex items-center gap-3">
+                    <Briefcase className="w-4 h-4 text-[#7C5CFF]" />
+                    <span>Founder Cards</span>
+                  </div>
+                  <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#7C5CFF]/20 text-[#7C5CFF] border border-[#7C5CFF]/30">
+                    VCARD
+                  </span>
                 </button>
 
                 <button

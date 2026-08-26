@@ -5,8 +5,8 @@ import { checkUsernameAvailableAction } from "./admin-actions";
 // Types
 // ---------------------------------------------------------------------------
 
-/** The set of roles a waitlist member can self-select. */
-export type WaitlistRole = "artist" | "venue" | "vendor" | "fan";
+/** The set of roles a waitlist member can select or be assigned. */
+export type WaitlistRole = "artist" | "venue" | "vendor" | "fan" | "founder";
 
 export interface WaitlistEntry {
   id: string;

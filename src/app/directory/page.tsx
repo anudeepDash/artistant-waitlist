@@ -5,7 +5,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { getPublicCreatorsDirectoryAction } from '@/lib/profile-actions';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, MapPin, CheckCircle, Sparkles, Filter, Music, ArrowRight, UserCheck } from 'lucide-react';
+import { Search, MapPin, CheckCircle, Sparkles, Filter, Music, ArrowRight, UserCheck, Briefcase } from 'lucide-react';
 import Link from 'next/link';
 
 const CATEGORIES = [
@@ -106,6 +106,14 @@ export default function DirectoryPage() {
           
           {/* Category Tabs */}
           <div className="flex items-center gap-2 overflow-x-auto w-full lg:w-auto pb-2 lg:pb-0 hide-scrollbar">
+            <Link
+              href="/card"
+              className="px-4 py-2 rounded-full text-xs font-mono font-bold uppercase whitespace-nowrap transition-all cursor-pointer bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] text-white shadow-md flex items-center gap-1.5 shrink-0 hover:scale-[1.03] active:scale-95"
+            >
+              <Briefcase className="w-3.5 h-3.5" />
+              <span>Founders & Executive Team</span>
+            </Link>
+
             {CATEGORIES.map((cat) => (
               <button
                 key={cat.id}

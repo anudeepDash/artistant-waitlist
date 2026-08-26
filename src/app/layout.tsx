@@ -5,6 +5,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import JsonLd from "@/components/JsonLd";
+import ComingSoonGuard from "@/components/ComingSoonGuard";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -150,7 +151,9 @@ export default function RootLayout({
       <body className="min-h-screen antialiased bg-bg text-ink transition-colors duration-300">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <AuthProvider>
-            {children}
+            <ComingSoonGuard>
+              {children}
+            </ComingSoonGuard>
           </AuthProvider>
         </ThemeProvider>
         <Analytics />
