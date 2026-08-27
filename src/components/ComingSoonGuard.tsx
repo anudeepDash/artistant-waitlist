@@ -244,7 +244,7 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
             : 'filter-none opacity-100 pointer-events-auto select-auto scale-100'
         }`}
         aria-hidden={!isAdminUnlocked}
-        {...(!isAdminUnlocked ? { inert: '' } : {})}
+        inert={!isAdminUnlocked ? true : undefined}
       >
         {children}
       </div>
