@@ -359,7 +359,7 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
                 className="group inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-white/20 text-xs sm:text-sm font-mono text-zinc-200 transition-all duration-300 cursor-pointer shadow-lg active:scale-95 hover:shadow-[0_0_25px_rgba(242,90,43,0.2)]"
               >
                 <Zap className="w-3.5 h-3.5 text-[#F25A2B] group-hover:scale-110 transition-transform duration-300" />
-                <span>Play Soundwave Rider</span>
+                <span>Play Sine Wave Surfer</span>
               </button>
             </motion.div>
 
