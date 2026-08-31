@@ -465,10 +465,10 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
               >
                 <div className="flex flex-col gap-0.5">
                   <h3 className="text-sm sm:text-base font-semibold tracking-tight text-white">
-                    Sine Wave Surfer
+                    Stack
                   </h3>
                   <p className="text-zinc-500 text-[11px] sm:text-xs">
-                    Play a game while you wait.
+                    Tap to stack. Don&apos;t miss.
                   </p>
                 </div>
                 <div className="w-9 h-9 sm:w-10 sm:h-10 bg-white/[0.04] rounded-lg border border-white/[0.06] flex items-center justify-center shrink-0 group-hover:bg-white/[0.08] transition-colors">

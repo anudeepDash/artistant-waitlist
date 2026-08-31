@@ -2,97 +2,27 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ArrowRight, RotateCcw, Volume2, VolumeX } from 'lucide-react';
+import { X, RotateCcw, Volume2, VolumeX } from 'lucide-react';
 
 interface MiniGameModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-// ── Theremin Synthesizer (Web Audio) ──
-class WaveSynthesizer {
+// ── Minimal Audio ──
+class StackAudio {
   private ctx: AudioContext | null = null;
-  private osc: OscillatorNode | null = null;
-  private subOsc: OscillatorNode | null = null;
-  private filter: BiquadFilterNode | null = null;
-  private masterGain: GainNode | null = null;
-  public enabled: boolean = true;
-  private isRunning: boolean = false;
+  public enabled = true;
 
   private init() {
     if (!this.ctx && typeof window !== 'undefined') {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (AudioCtx) {
-        this.ctx = new AudioCtx();
-        this.masterGain = this.ctx.createGain();
-        this.masterGain.gain.setValueAtTime(0.001, this.ctx.currentTime);
-        this.masterGain.connect(this.ctx.destination);
-      }
+      const AC = window.AudioContext || (window as any).webkitAudioContext;
+      if (AC) this.ctx = new AC();
     }
-    if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
-    }
+    if (this.ctx?.state === 'suspended') this.ctx.resume();
   }
 
-  startDrone() {
-    if (!this.enabled) return;
-    this.init();
-    if (!this.ctx || !this.masterGain || this.isRunning) return;
-    try {
-      const now = this.ctx.currentTime;
-      this.filter = this.ctx.createBiquadFilter();
-      this.filter.type = 'lowpass';
-      this.filter.frequency.setValueAtTime(800, now);
-
-      this.osc = this.ctx.createOscillator();
-      this.osc.type = 'sine';
-      this.osc.frequency.setValueAtTime(220, now);
-
-      this.subOsc = this.ctx.createOscillator();
-      this.subOsc.type = 'triangle';
-      this.subOsc.frequency.setValueAtTime(110, now);
-
-      this.osc.connect(this.filter);
-      this.subOsc.connect(this.filter);
-      this.filter.connect(this.masterGain);
-
-      this.osc.start(now);
-      this.subOsc.start(now);
-
-      this.masterGain.gain.cancelScheduledValues(now);
-      this.masterGain.gain.setValueAtTime(0.001, now);
-      this.masterGain.gain.linearRampToValueAtTime(0.08, now + 0.1);
-      this.isRunning = true;
-    } catch (e) {}
-  }
-
-  updatePitch(normalizedHeight: number) {
-    if (!this.enabled || !this.ctx || !this.osc || !this.subOsc || !this.filter || !this.isRunning) return;
-    try {
-      const freq = 140 + normalizedHeight * 360;
-      const now = this.ctx.currentTime;
-      this.osc.frequency.setTargetAtTime(freq, now, 0.05);
-      this.subOsc.frequency.setTargetAtTime(freq / 2, now, 0.05);
-      this.filter.frequency.setTargetAtTime(400 + normalizedHeight * 1200, now, 0.05);
-    } catch (e) {}
-  }
-
-  stopDrone() {
-    if (!this.ctx || !this.masterGain || !this.isRunning) return;
-    try {
-      const now = this.ctx.currentTime;
-      this.masterGain.gain.cancelScheduledValues(now);
-      this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
-      this.masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
-      setTimeout(() => {
-        if (this.osc) { try { this.osc.stop(); this.osc.disconnect(); } catch (e) {} this.osc = null; }
-        if (this.subOsc) { try { this.subOsc.stop(); this.subOsc.disconnect(); } catch (e) {} this.subOsc = null; }
-        this.isRunning = false;
-      }, 160);
-    } catch (e) {}
-  }
-
-  playChime(pitchMultiplier: number = 1) {
+  playPlace(pitch: number) {
     if (!this.enabled) return;
     this.init();
     if (!this.ctx) return;
@@ -100,20 +30,41 @@ class WaveSynthesizer {
       const now = this.ctx.currentTime;
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
+      // Rising pitch as stack grows — satisfying
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(523.25 * pitchMultiplier, now);
-      osc.frequency.setValueAtTime(659.25 * pitchMultiplier, now + 0.05);
-      osc.frequency.setValueAtTime(783.99 * pitchMultiplier, now + 0.1);
+      osc.frequency.setValueAtTime(300 + pitch * 18, now);
       gain.gain.setValueAtTime(0.12, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
       osc.connect(gain);
       gain.connect(this.ctx.destination);
       osc.start(now);
-      osc.stop(now + 0.29);
-    } catch (e) {}
+      osc.stop(now + 0.16);
+    } catch {}
   }
 
-  playCrash() {
+  playPerfect(pitch: number) {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      // Two-note chime for perfect placement
+      for (let i = 0; i < 2; i++) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime((400 + pitch * 20) * (1 + i * 0.25), now + i * 0.08);
+        gain.gain.setValueAtTime(0.15, now + i * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.2);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now + i * 0.08);
+        osc.stop(now + i * 0.08 + 0.21);
+      }
+    } catch {}
+  }
+
+  playFail() {
     if (!this.enabled) return;
     this.init();
     if (!this.ctx) return;
@@ -121,50 +72,80 @@ class WaveSynthesizer {
       const now = this.ctx.currentTime;
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(160, now);
-      osc.frequency.exponentialRampToValueAtTime(30, now + 0.4);
-      gain.gain.setValueAtTime(0.2, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(180, now);
+      osc.frequency.exponentialRampToValueAtTime(60, now + 0.3);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
       osc.connect(gain);
       gain.connect(this.ctx.destination);
       osc.start(now);
-      osc.stop(now + 0.41);
-    } catch (e) {}
+      osc.stop(now + 0.31);
+    } catch {}
   }
 }
 
-const synth = new WaveSynthesizer();
+const audio = new StackAudio();
 
-interface Gate { x: number; gapY: number; gapHeight: number; passed: boolean; }
-interface Orb { x: number; y: number; radius: number; collected: boolean; }
-interface Particle { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; color: string; size: number; }
+interface StackBlock {
+  x: number;
+  y: number;
+  width: number;
+  placed: boolean;
+}
+
+interface FallingPiece {
+  x: number;
+  y: number;
+  width: number;
+  vy: number;
+  opacity: number;
+}
 
 export default function MiniGameModal({ isOpen, onClose }: MiniGameModalProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [gameState, setGameState] = useState<'idle' | 'playing' | 'gameover'>('idle');
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
-  const [orbCount, setOrbCount] = useState(0);
+  const [perfectStreak, setPerfectStreak] = useState(0);
   const [soundMuted, setSoundMuted] = useState(false);
+  const [lastPerfect, setLastPerfect] = useState(false);
 
-  const animationFrameId = useRef<number | null>(null);
-  const isPlayingRef = useRef(false);
-  const isHoldingRef = useRef(false);
-  const scoreRef = useRef(0);
+  const animRef = useRef<number | null>(null);
+  const gameRef = useRef<{
+    blocks: StackBlock[];
+    current: { x: number; width: number; dir: number; speed: number } | null;
+    falling: FallingPiece[];
+    cameraY: number;
+    targetCameraY: number;
+    score: number;
+    perfectStreak: number;
+    playing: boolean;
+  }>({
+    blocks: [],
+    current: null,
+    falling: [],
+    cameraY: 0,
+    targetCameraY: 0,
+    score: 0,
+    perfectStreak: 0,
+    playing: false,
+  });
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('artistant_sine_highscore');
+      const saved = localStorage.getItem('artistant_stack_highscore');
       if (saved) setHighScore(parseInt(saved, 10) || 0);
     }
   }, []);
 
-  // ── Canvas Game Engine ──
+  const BLOCK_HEIGHT = 22;
+  const PERFECT_THRESHOLD = 4; // pixels of tolerance for "perfect"
+
+  // ── Game Engine ──
   useEffect(() => {
     if (!isOpen) {
-      if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
-      synth.stopDrone();
+      if (animRef.current) cancelAnimationFrame(animRef.current);
       return;
     }
 
@@ -181,266 +162,230 @@ export default function MiniGameModal({ isOpen, onClose }: MiniGameModalProps) {
 
     const W = rect.width;
     const H = rect.height;
+    const g = gameRef.current;
 
-    const wave = { x: W * 0.22, y: H * 0.5, vy: 0, radius: 5, history: [] as { x: number; y: number }[] };
+    const getBlockColor = (index: number): string => {
+      // Subtle shifting monochrome with slight warm tint as you go higher
+      const base = 18 + Math.min(index * 2, 40);
+      const r = base + Math.min(index, 20);
+      const gb = base;
+      return `rgb(${r}, ${gb}, ${gb})`;
+    };
 
-    let gates: Gate[] = [];
-    let orbs: Orb[] = [];
-    let particles: Particle[] = [];
-    let speed = 3.6;
-    let gateTimer = 0;
-    let distance = 0;
-    let orbsCollected = 0;
-    let cameraShake = 0;
-
-    const gameLoop = () => {
-      ctx.save();
-
-      if (cameraShake > 0) {
-        ctx.translate((Math.random() - 0.5) * cameraShake, (Math.random() - 0.5) * cameraShake);
-        cameraShake *= 0.85;
-        if (cameraShake < 0.5) cameraShake = 0;
-      }
+    const loop = () => {
+      ctx.clearRect(0, 0, W, H);
 
       // Background
       ctx.fillStyle = '#0A0A0F';
       ctx.fillRect(0, 0, W, H);
 
-      // Subtle grid
-      ctx.strokeStyle = 'rgba(255,255,255,0.02)';
-      ctx.lineWidth = 1;
-      for (let y = 0; y < H; y += 32) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      // Smooth camera follow
+      g.cameraY += (g.targetCameraY - g.cameraY) * 0.08;
+
+      ctx.save();
+      ctx.translate(0, g.cameraY);
+
+      // Draw placed blocks
+      for (let i = 0; i < g.blocks.length; i++) {
+        const b = g.blocks[i];
+        ctx.fillStyle = getBlockColor(i);
+        ctx.fillRect(b.x, b.y, b.width, BLOCK_HEIGHT);
+
+        // Subtle top edge highlight
+        ctx.fillStyle = 'rgba(255,255,255,0.04)';
+        ctx.fillRect(b.x, b.y, b.width, 1);
       }
 
-      if (isPlayingRef.current) {
-        if (isHoldingRef.current) wave.vy += -0.42;
-        else wave.vy += 0.34;
+      // Draw & update current sliding block
+      if (g.current && g.playing) {
+        const c = g.current;
+        c.x += c.dir * c.speed;
 
-        wave.vy = Math.max(-5.5, Math.min(5.5, wave.vy * 0.98));
-        wave.y += wave.vy;
+        // Bounce off edges
+        if (c.x + c.width > W) { c.x = W - c.width; c.dir = -1; }
+        if (c.x < 0) { c.x = 0; c.dir = 1; }
 
-        synth.updatePitch(1 - Math.max(0, Math.min(1, wave.y / H)));
+        const blockY = H - (g.blocks.length + 1) * BLOCK_HEIGHT;
+        ctx.fillStyle = getBlockColor(g.blocks.length);
+        ctx.fillRect(c.x, blockY, c.width, BLOCK_HEIGHT);
 
-        if (wave.y < 8 || wave.y > H - 8) endGame();
-
-        distance += 1;
-        if (distance % 3 === 0) {
-          scoreRef.current = distance + orbsCollected * 50;
-          setScore(scoreRef.current);
-        }
-        speed = 3.6 + Math.min(4.5, distance / 500);
-
-        wave.history.unshift({ x: wave.x, y: wave.y });
-        if (wave.history.length > 38) wave.history.pop();
-
-        gateTimer++;
-        if (gateTimer > Math.max(65, 125 - distance / 25)) {
-          gateTimer = 0;
-          const gapHeight = Math.max(65, 105 - distance / 40);
-          const gapY = 40 + Math.random() * (H - 80);
-          gates.push({ x: W + 30, gapY, gapHeight, passed: false });
-          if (Math.random() > 0.4) orbs.push({ x: W + 30, y: gapY, radius: 6, collected: false });
-        }
+        // Top edge
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.fillRect(c.x, blockY, c.width, 1);
       }
 
-      // Gates
-      for (let g = gates.length - 1; g >= 0; g--) {
-        const gate = gates[g];
-        if (isPlayingRef.current) gate.x -= speed;
+      // Draw & update falling pieces
+      for (let i = g.falling.length - 1; i >= 0; i--) {
+        const f = g.falling[i];
+        f.y += f.vy;
+        f.vy += 0.5;
+        f.opacity -= 0.015;
 
-        const bw = 3;
-        const topH = gate.gapY - gate.gapHeight / 2;
-        const botY = gate.gapY + gate.gapHeight / 2;
-
-        // Thin elegant bars
-        ctx.fillStyle = 'rgba(255,255,255,0.06)';
-        if (topH > 0) { ctx.fillRect(gate.x - bw / 2, 0, bw, topH); }
-        if (H - botY > 0) { ctx.fillRect(gate.x - bw / 2, botY, bw, H - botY); }
-
-        // Cap lines at gap edges
+        ctx.globalAlpha = Math.max(0, f.opacity);
         ctx.fillStyle = 'rgba(255,255,255,0.15)';
-        ctx.fillRect(gate.x - 8, topH - 1, 16, 1);
-        ctx.fillRect(gate.x - 8, botY, 16, 1);
+        ctx.fillRect(f.x, f.y, f.width, BLOCK_HEIGHT);
+        ctx.globalAlpha = 1;
 
-        // Collision
-        if (isPlayingRef.current && wave.x + wave.radius > gate.x - 6 && wave.x - wave.radius < gate.x + 6) {
-          if (wave.y - wave.radius < topH || wave.y + wave.radius > botY) {
-            endGame();
-          } else if (!gate.passed) {
-            gate.passed = true;
-            synth.playChime(1.1);
-            for (let i = 0; i < 6; i++) {
-              particles.push({ x: gate.x, y: wave.y, vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 3, life: 18, maxLife: 18, color: 'rgba(255,255,255,0.6)', size: 1.5 });
-            }
-          }
-        }
-        if (gate.x < -30) gates.splice(g, 1);
-      }
-
-      // Orbs
-      for (let o = orbs.length - 1; o >= 0; o--) {
-        const orb = orbs[o];
-        if (isPlayingRef.current) orb.x -= speed;
-
-        if (!orb.collected) {
-          // Simple clean orb — white ring
-          ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-          ctx.lineWidth = 1.5;
-          ctx.beginPath();
-          ctx.arc(orb.x, orb.y, orb.radius, 0, Math.PI * 2);
-          ctx.stroke();
-
-          // Dot center
-          ctx.fillStyle = '#fff';
-          ctx.beginPath();
-          ctx.arc(orb.x, orb.y, 2, 0, Math.PI * 2);
-          ctx.fill();
-
-          const dist = Math.hypot(wave.x - orb.x, wave.y - orb.y);
-          if (isPlayingRef.current && dist < wave.radius + orb.radius + 4) {
-            orb.collected = true;
-            orbsCollected++;
-            setOrbCount(orbsCollected);
-            synth.playChime(1.5);
-            for (let k = 0; k < 8; k++) {
-              particles.push({ x: orb.x, y: orb.y, vx: (Math.random() - 0.5) * 5, vy: (Math.random() - 0.5) * 5, life: 20, maxLife: 20, color: 'rgba(255,255,255,0.7)', size: 1.5 });
-            }
-          }
-        }
-        if (orb.x < -20) orbs.splice(o, 1);
-      }
-
-      // Wave ribbon trail
-      if (wave.history.length > 2) {
-        const grad = ctx.createLinearGradient(wave.x - 120, 0, wave.x, 0);
-        grad.addColorStop(0, 'rgba(255,255,255,0)');
-        grad.addColorStop(1, 'rgba(255,255,255,0.4)');
-
-        ctx.strokeStyle = grad;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        for (let i = 0; i < wave.history.length; i++) {
-          const pt = wave.history[i];
-          const px = wave.x - i * (speed * 0.92);
-          if (i === 0) ctx.moveTo(px, pt.y);
-          else ctx.lineTo(px, pt.y);
-        }
-        ctx.stroke();
-      }
-
-      // Particles
-      for (let p = particles.length - 1; p >= 0; p--) {
-        const pt = particles[p];
-        pt.x += pt.vx; pt.y += pt.vy; pt.life--;
-        ctx.fillStyle = pt.color;
-        ctx.globalAlpha = Math.max(0, pt.life / pt.maxLife);
-        ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2); ctx.fill();
-        ctx.globalAlpha = 1.0;
-        if (pt.life <= 0) particles.splice(p, 1);
-      }
-
-      // Player dot
-      if (gameState !== 'gameover' || isPlayingRef.current) {
-        const r = wave.radius + (isHoldingRef.current ? 1.5 : 0);
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(wave.x, wave.y, r, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Subtle glow
-        ctx.shadowColor = 'rgba(255,255,255,0.4)';
-        ctx.shadowBlur = 12;
-        ctx.beginPath();
-        ctx.arc(wave.x, wave.y, r * 0.6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
+        if (f.opacity <= 0) g.falling.splice(i, 1);
       }
 
       ctx.restore();
-      animationFrameId.current = requestAnimationFrame(gameLoop);
+
+      animRef.current = requestAnimationFrame(loop);
     };
 
-    const endGame = () => {
-      isPlayingRef.current = false;
-      setGameState('gameover');
-      synth.stopDrone();
-      synth.playCrash();
-      cameraShake = 12;
-
-      const finalScore = scoreRef.current;
-      setHighScore((prev) => {
-        const next = Math.max(prev, finalScore);
-        if (typeof window !== 'undefined') localStorage.setItem('artistant_sine_highscore', next.toString());
-        return next;
-      });
-
-      for (let i = 0; i < 20; i++) {
-        particles.push({
-          x: wave.x, y: wave.y,
-          vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8,
-          life: 25, maxLife: 25,
-          color: 'rgba(255,255,255,0.6)',
-          size: Math.random() * 3 + 1,
-        });
-      }
-    };
-
-    animationFrameId.current = requestAnimationFrame(gameLoop);
-    return () => {
-      if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
-      synth.stopDrone();
-    };
-  }, [isOpen, gameState]);
-
-  // Input handlers
-  const handlePointerDown = (e: React.PointerEvent) => {
-    e.preventDefault();
-    if (gameState === 'idle' || gameState === 'gameover') startGame();
-    else { isHoldingRef.current = true; }
-  };
-
-  const handlePointerUp = (e: React.PointerEvent) => {
-    e.preventDefault();
-    isHoldingRef.current = false;
-  };
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' || e.code === 'ArrowUp') {
-        e.preventDefault();
-        if (gameState === 'idle' || gameState === 'gameover') startGame();
-        else isHoldingRef.current = true;
-      }
-    };
-    const onKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space' || e.code === 'ArrowUp') {
-        e.preventDefault();
-        isHoldingRef.current = false;
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
-    return () => { window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp); };
+    animRef.current = requestAnimationFrame(loop);
+    return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
   }, [isOpen, gameState]);
 
   const startGame = () => {
-    scoreRef.current = 0;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const W = rect.width;
+    const H = rect.height;
+
+    const baseWidth = W * 0.4;
+    const baseX = (W - baseWidth) / 2;
+
+    const g = gameRef.current;
+    g.blocks = [{ x: baseX, y: H - BLOCK_HEIGHT, width: baseWidth, placed: true }];
+    g.current = {
+      x: 0,
+      width: baseWidth,
+      dir: 1,
+      speed: 2.5,
+    };
+    g.falling = [];
+    g.cameraY = 0;
+    g.targetCameraY = 0;
+    g.score = 0;
+    g.perfectStreak = 0;
+    g.playing = true;
+
     setScore(0);
-    setOrbCount(0);
-    isPlayingRef.current = true;
-    isHoldingRef.current = true;
+    setPerfectStreak(0);
+    setLastPerfect(false);
     setGameState('playing');
-    synth.startDrone();
   };
+
+  const handlePlace = () => {
+    if (gameState !== 'playing') {
+      startGame();
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const W = rect.width;
+    const H = rect.height;
+
+    const g = gameRef.current;
+    if (!g.current || !g.playing) return;
+
+    const prev = g.blocks[g.blocks.length - 1];
+    const curr = g.current;
+    const blockY = H - (g.blocks.length + 1) * BLOCK_HEIGHT;
+
+    // Calculate overlap
+    const overlapLeft = Math.max(prev.x, curr.x);
+    const overlapRight = Math.min(prev.x + prev.width, curr.x + curr.width);
+    const overlapWidth = overlapRight - overlapLeft;
+
+    if (overlapWidth <= 0) {
+      // Complete miss — game over
+      g.playing = false;
+      audio.playFail();
+
+      // The whole block falls
+      g.falling.push({ x: curr.x, y: blockY, width: curr.width, vy: 0, opacity: 1 });
+
+      const finalScore = g.score;
+      setHighScore(prev => {
+        const next = Math.max(prev, finalScore);
+        if (typeof window !== 'undefined') localStorage.setItem('artistant_stack_highscore', next.toString());
+        return next;
+      });
+      setGameState('gameover');
+      return;
+    }
+
+    // Check for "perfect" placement
+    const diff = Math.abs(curr.x - prev.x);
+    const isPerfect = diff < PERFECT_THRESHOLD && Math.abs(curr.width - prev.width) < PERFECT_THRESHOLD;
+
+    if (isPerfect) {
+      // Snap to perfect alignment and restore width
+      g.blocks.push({ x: prev.x, y: blockY, width: prev.width, placed: true });
+      g.perfectStreak++;
+      setPerfectStreak(g.perfectStreak);
+      setLastPerfect(true);
+      audio.playPerfect(g.blocks.length);
+
+      // Perfect streak bonus: grow the block slightly
+      const bonusWidth = Math.min(prev.width + 4, W * 0.5);
+      g.current = {
+        x: g.blocks.length % 2 === 0 ? -bonusWidth : W,
+        width: bonusWidth,
+        dir: g.blocks.length % 2 === 0 ? 1 : -1,
+        speed: Math.min(2.5 + g.blocks.length * 0.12, 7),
+      };
+    } else {
+      setLastPerfect(false);
+      g.perfectStreak = 0;
+      setPerfectStreak(0);
+
+      // Place the overlapping portion
+      g.blocks.push({ x: overlapLeft, y: blockY, width: overlapWidth, placed: true });
+
+      // Slice off the overhang as a falling piece
+      if (curr.x < prev.x) {
+        // Overhang on the left
+        g.falling.push({ x: curr.x, y: blockY, width: prev.x - curr.x, vy: 0, opacity: 1 });
+      } else if (curr.x + curr.width > prev.x + prev.width) {
+        // Overhang on the right
+        const sliceX = prev.x + prev.width;
+        g.falling.push({ x: sliceX, y: blockY, width: (curr.x + curr.width) - sliceX, vy: 0, opacity: 1 });
+      }
+
+      audio.playPlace(g.blocks.length);
+
+      // New sliding block with the same width as what was placed
+      g.current = {
+        x: g.blocks.length % 2 === 0 ? -overlapWidth : W,
+        width: overlapWidth,
+        dir: g.blocks.length % 2 === 0 ? 1 : -1,
+        speed: Math.min(2.5 + g.blocks.length * 0.12, 7),
+      };
+    }
+
+    g.score = g.blocks.length - 1; // Don't count the base
+    setScore(g.score);
+
+    // Camera: scroll up to keep the action visible
+    if (g.blocks.length > Math.floor(H / BLOCK_HEIGHT) - 4) {
+      g.targetCameraY = (g.blocks.length - Math.floor(H / BLOCK_HEIGHT) + 5) * BLOCK_HEIGHT;
+    }
+  };
+
+  // Keyboard
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === 'Space' || e.code === 'Enter') {
+        e.preventDefault();
+        handlePlace();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, gameState]);
 
   const toggleSound = () => {
     const next = !soundMuted;
     setSoundMuted(next);
-    synth.enabled = !next;
-    if (next) synth.stopDrone();
-    else if (isPlayingRef.current) synth.startDrone();
+    audio.enabled = !next;
   };
 
   return (
@@ -452,7 +397,7 @@ export default function MiniGameModal({ isOpen, onClose }: MiniGameModalProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="relative w-full max-w-lg bg-[#0A0A0F] border border-white/[0.08] rounded-2xl shadow-2xl text-white"
+            className="relative w-full max-w-sm bg-[#0A0A0F] border border-white/[0.08] rounded-2xl shadow-2xl text-white"
           >
             {/* Close */}
             <button
@@ -464,52 +409,67 @@ export default function MiniGameModal({ isOpen, onClose }: MiniGameModalProps) {
             </button>
 
             {/* Header */}
-            <div className="px-6 pt-6 sm:px-8 sm:pt-8">
-              <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-500 mb-3">
+            <div className="px-6 pt-6">
+              <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-500 mb-2">
                 While you wait
               </p>
-
-              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-tight mb-1.5">
-                Sine Wave Surfer
+              <h2 className="text-xl font-bold tracking-tight text-white mb-1">
+                Stack
               </h2>
-
-              <p className="text-[13px] text-zinc-500 leading-relaxed mb-5">
-                Hold to rise, release to fall. Navigate through the gates.
+              <p className="text-[13px] text-zinc-500 mb-4">
+                Tap to place. Don&apos;t miss.
               </p>
             </div>
 
             {/* Score bar */}
-            <div className="mx-6 sm:mx-8 flex items-center justify-between px-4 py-2 bg-white/[0.03] border border-white/[0.06] rounded-xl mb-4 text-[11px] text-zinc-400">
-              <span>{score}</span>
-              <span>◆ {orbCount}</span>
+            <div className="mx-6 flex items-center justify-between px-4 py-2 bg-white/[0.03] border border-white/[0.06] rounded-xl mb-4 text-[11px] text-zinc-400">
+              <span className="tabular-nums">{score}</span>
+              <AnimatePresence>
+                {lastPerfect && perfectStreak > 0 && (
+                  <motion.span
+                    key={perfectStreak}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="text-white font-medium"
+                  >
+                    Perfect ×{perfectStreak}
+                  </motion.span>
+                )}
+              </AnimatePresence>
               <span>Best: {highScore}</span>
             </div>
 
             {/* Canvas */}
-            <div className="mx-6 sm:mx-8 mb-5">
+            <div className="mx-6 mb-4">
               <div
-                onPointerDown={handlePointerDown}
-                onPointerUp={handlePointerUp}
-                className="relative w-full aspect-[16/9] rounded-xl border border-white/[0.06] bg-[#0A0A0F] overflow-hidden cursor-pointer touch-none"
+                onPointerDown={(e) => { e.preventDefault(); handlePlace(); }}
+                className="relative w-full aspect-[3/4] rounded-xl border border-white/[0.06] bg-[#0A0A0F] overflow-hidden cursor-pointer touch-none"
               >
                 <canvas ref={canvasRef} className="w-full h-full block" />
 
                 {/* Idle */}
                 {gameState === 'idle' && (
                   <div className="absolute inset-0 bg-[#0A0A0F]/90 backdrop-blur-sm flex flex-col items-center justify-center text-center p-6">
-                    <p className="text-[13px] text-zinc-400 mb-5 max-w-xs leading-relaxed">
-                      <span className="text-white font-medium">Hold</span> to pitch up.{' '}
-                      <span className="text-white font-medium">Release</span> to dive.
-                      <br />Collect orbs. Avoid walls.
+                    <div className="flex flex-col items-center gap-1 mb-6">
+                      <div className="flex flex-col gap-1 items-center">
+                        {[48, 44, 40].map((w, i) => (
+                          <div key={i} className="h-3 rounded-sm bg-white/[0.08]" style={{ width: `${w}%` }} />
+                        ))}
+                      </div>
+                    </div>
+
+                    <p className="text-[13px] text-zinc-400 mb-5 leading-relaxed">
+                      Tap to stack blocks.<br />
+                      Line them up perfectly for bonus points.
                     </p>
 
                     <button
                       type="button"
                       onClick={startGame}
-                      className="px-6 py-2.5 rounded-xl bg-white text-black font-semibold text-sm hover:bg-zinc-200 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-2"
+                      className="px-8 py-2.5 rounded-xl bg-white text-black font-semibold text-sm hover:bg-zinc-200 active:scale-[0.98] transition-all cursor-pointer"
                     >
-                      <span>Play</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      Play
                     </button>
                   </div>
                 )}
@@ -519,21 +479,25 @@ export default function MiniGameModal({ isOpen, onClose }: MiniGameModalProps) {
                   <div className="absolute inset-0 bg-[#0A0A0F]/90 backdrop-blur-sm flex flex-col items-center justify-center text-center p-6">
                     <p className="text-[11px] text-zinc-500 mb-2">Game over</p>
 
-                    <div className="text-3xl font-bold text-white mb-1 tracking-tight">
+                    <div className="text-4xl font-bold text-white mb-1 tracking-tight tabular-nums">
                       {score}
                     </div>
 
+                    {score === highScore && score > 0 && (
+                      <p className="text-[11px] text-white/60 mb-3">New best!</p>
+                    )}
+
                     <p className="text-[11px] text-zinc-500 mb-5">
-                      {orbCount} orbs collected
+                      {score >= 30 ? 'Legendary.' : score >= 20 ? 'Incredible.' : score >= 10 ? 'Nice stack.' : 'Keep trying.'}
                     </p>
 
                     <button
                       type="button"
                       onClick={startGame}
-                      className="px-6 py-2.5 rounded-xl bg-white text-black font-semibold text-sm hover:bg-zinc-200 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-2"
+                      className="px-8 py-2.5 rounded-xl bg-white text-black font-semibold text-sm hover:bg-zinc-200 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-2"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
-                      <span>Try again</span>
+                      Again
                     </button>
                   </div>
                 )}
@@ -541,15 +505,15 @@ export default function MiniGameModal({ isOpen, onClose }: MiniGameModalProps) {
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-between px-6 pb-5 sm:px-8 sm:pb-6 text-[11px] text-zinc-500">
-              <span>Spacebar or tap to fly</span>
+            <div className="flex items-center justify-between px-6 pb-5 text-[11px] text-zinc-500">
+              <span>Tap or press Space</span>
               <button
                 type="button"
                 onClick={toggleSound}
                 className="flex items-center gap-1.5 text-zinc-500 hover:text-white transition-colors cursor-pointer"
               >
                 {soundMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
-                <span>{soundMuted ? 'Unmuted' : 'Sound on'}</span>
+                <span>{soundMuted ? 'Muted' : 'Sound'}</span>
               </button>
             </div>
           </motion.div>
