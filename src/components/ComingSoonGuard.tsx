@@ -7,7 +7,8 @@ import { signInWithGoogle, signInWithEmail, signOut as firebaseSignOut } from '@
 import { checkIsAdminAction } from '@/lib/admin-actions';
 import AdminLoginGate from '@/components/admin/AdminLoginGate';
 import MiniGameModal from '@/components/MiniGameModal';
-import { Lock, ExternalLink, X, QrCode, Zap } from 'lucide-react';
+import MarketFeedbackModal from '@/components/MarketFeedbackModal';
+import { Lock, ExternalLink, X, QrCode, Zap, MessageSquarePlus } from 'lucide-react';
 
 const ADMIN_STORAGE_KEY = 'artistant_admin_bypass_active';
 const KNOWN_ADMIN_EMAILS = ['anudeepdash2004@gmail.com'];
@@ -24,6 +25,7 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [showAdminModal, setShowAdminModal] = useState<boolean>(false);
   const [showMiniGame, setShowMiniGame] = useState<boolean>(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState<boolean>(false);
 
   // Auth states for AdminLoginGate
   const [loginEmail, setLoginEmail] = useState<string>('');
@@ -333,13 +335,24 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
               </p>
             </motion.div>
 
-            {/* Playable Mini-Game Trigger Button */}
+            {/* Interactive Actions: Problem & Feature Request + Mini-Game */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className="pt-1"
+              className="flex flex-wrap items-center justify-center gap-2.5 pt-1"
             >
+              {/* Problems & Feature Requests Modal Button */}
+              <button
+                type="button"
+                onClick={() => setShowFeedbackModal(true)}
+                className="group inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-white/20 text-xs sm:text-sm font-mono text-zinc-200 transition-all duration-300 cursor-pointer shadow-lg active:scale-95 hover:shadow-[0_0_25px_rgba(124,92,255,0.2)]"
+              >
+                <MessageSquarePlus className="w-3.5 h-3.5 text-[#7C5CFF] group-hover:scale-110 transition-transform duration-300" />
+                <span>Problems &amp; Feature Requests</span>
+              </button>
+
+              {/* Mini-Game Trigger */}
               <button
                 type="button"
                 onClick={() => setShowMiniGame(true)}
@@ -394,6 +407,14 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
               <Lock className="w-3.5 h-3.5" />
             </button>
           </footer>
+
+          {/* ─────────────────────────────────────────────────────────────
+              The Market Problem & Feature Request Modal Panel
+             ───────────────────────────────────────────────────────────── */}
+          <MarketFeedbackModal
+            isOpen={showFeedbackModal}
+            onClose={() => setShowFeedbackModal(false)}
+          />
 
           {/* ─────────────────────────────────────────────────────────────
               The Playable Mini-Game Modal Panel
@@ -478,7 +499,7 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
             className="text-zinc-400 hover:text-red-400 font-mono text-[11px] cursor-pointer transition-colors flex items-center gap-1"
             title="Re-lock site"
           >
-            <Lock className="w-3 h-3" />
+            <Lock className="w-3.5 h-3.5" />
             Lock
           </button>
         </motion.div>

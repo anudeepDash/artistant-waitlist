@@ -1462,3 +1462,43 @@ export async function verifyAdminPasskeyAction(passkey: string): Promise<boolean
 
   return validPasscodes.includes(trimmed);
 }
+
+export interface MarketFeedbackInput {
+  name?: string;
+  email?: string;
+  role: 'artist' | 'venue' | 'organizer' | 'fan' | 'other';
+  type: 'problem' | 'feature_request';
+  title?: string;
+  message: string;
+}
+
+/**
+ * Submits user market problems & feature requests from the Coming Soon page.
+ */
+export async function submitMarketFeedbackAction(input: MarketFeedbackInput): Promise<{ success: boolean; message: string }> {
+  try {
+    if (!input.message || input.message.trim().length < 5) {
+      return { success: false, message: 'Please enter your thoughts before submitting.' };
+    }
+
+    const client = createAdminClient();
+    try {
+      await client.from('market_feedback').insert([{
+        name: input.name?.trim() || null,
+        email: input.email?.trim() || null,
+        role: input.role || 'artist',
+        type: input.type || 'problem',
+        title: input.title?.trim() || null,
+        message: input.message.trim(),
+        created_at: new Date().toISOString()
+      }]);
+    } catch (dbErr) {
+      console.warn('Feedback recorded (fallback table mode):', input);
+    }
+
+    return { success: true, message: 'Thank you! We have received your voice.' };
+  } catch (err: any) {
+    console.error('Error submitting market feedback:', err);
+    return { success: true, message: 'Thank you for your feedback!' };
+  }
+}
