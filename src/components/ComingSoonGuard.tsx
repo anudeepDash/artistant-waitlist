@@ -13,6 +13,34 @@ import { Lock, ExternalLink, X, QrCode, Zap, MessageSquarePlus } from 'lucide-re
 const ADMIN_STORAGE_KEY = 'artistant_admin_bypass_active';
 const KNOWN_ADMIN_EMAILS = ['anudeepdash2004@gmail.com'];
 
+// ── Rotating taglines with meme references ──
+const TAGLINES = [
+  '"We will be back with a bang."',
+  '"First they ignore you, then they copy your escrow."',
+  '"No middlemen were harmed in the making of this platform."',
+  '"POV: You just booked a gig without losing 40% to a broker."',
+  '"Ctrl+Z the entire booking agent industry."',
+  '"Your promoter\'s promoter is shaking rn."',
+  '"Built different. Literally — no WhatsApp groups."',
+  '"This is not a drill. Unless your drill plays bass."',
+  '"Cooking something so fire, even Spotify can\'t stream it."',
+  '"If you know, you know. If you don\'t, you will."',
+];
+
+// ── Footer easter egg messages ──
+const FOOTER_MESSAGES = [
+  'ArtisTant • Coming Soon',
+  '👀 You\'re still here?',
+  'Okay, you\'re persistent.',
+  'Fine. We respect the grind.',
+  'No secrets here. Or are there?',
+  'Try ⌘K. Or don\'t. We\'re not your boss.',
+  '🫡',
+];
+
+// ── Konami code sequence ──
+const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','KeyB','KeyA'];
+
 interface ComingSoonGuardProps {
   children: React.ReactNode;
 }
@@ -36,6 +64,61 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
 
   // Click counter for secret logo trigger
   const [logoClicks, setLogoClicks] = useState<number>(0);
+
+  // Easter eggs
+  const [currentTagline, setCurrentTagline] = useState(0);
+  const [footerClickCount, setFooterClickCount] = useState(0);
+  const [footerText, setFooterText] = useState(FOOTER_MESSAGES[0]);
+  const [konamiActivated, setKonamiActivated] = useState(false);
+  const [greeting, setGreeting] = useState('');
+  const konamiProgress = useRef<string[]>([]);
+
+  // Time-based greeting
+  useEffect(() => {
+    const h = new Date().getHours();
+    if (h < 5) setGreeting('Late night, huh?');
+    else if (h < 12) setGreeting('Good morning');
+    else if (h < 17) setGreeting('Good afternoon');
+    else if (h < 21) setGreeting('Good evening');
+    else setGreeting('Night owl mode');
+  }, []);
+
+  // Rotating taglines
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTagline(prev => (prev + 1) % TAGLINES.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Footer easter egg
+  const handleFooterEasterEgg = () => {
+    const next = footerClickCount + 1;
+    setFooterClickCount(next);
+    if (next < FOOTER_MESSAGES.length) {
+      setFooterText(FOOTER_MESSAGES[next]);
+    } else {
+      setFooterText(FOOTER_MESSAGES[0]);
+      setFooterClickCount(0);
+    }
+  };
+
+  // Konami code listener
+  useEffect(() => {
+    const handleKonami = (e: KeyboardEvent) => {
+      konamiProgress.current.push(e.code);
+      if (konamiProgress.current.length > KONAMI.length) {
+        konamiProgress.current.shift();
+      }
+      if (konamiProgress.current.join(',') === KONAMI.join(',')) {
+        setKonamiActivated(true);
+        konamiProgress.current = [];
+        setTimeout(() => setKonamiActivated(false), 3500);
+      }
+    };
+    window.addEventListener('keydown', handleKonami);
+    return () => window.removeEventListener('keydown', handleKonami);
+  }, []);
 
   // Verify Admin Status
   const verifyAdminStatus = useCallback(async () => {
@@ -238,9 +321,7 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
 
   return (
     <div className="relative min-h-[100dvh] w-full font-sans bg-[#08080C] text-white overflow-x-hidden">
-      {/* ─────────────────────────────────────────────────────────────
-          1. Underlying Website Content (Heavily Blurred for Non-Admins)
-         ───────────────────────────────────────────────────────────── */}
+      {/* ─── 1. Underlying Website Content (Blurred for Non-Admins) ─── */}
       <div
         className={`transition-all duration-1000 ease-out ${
           !isAdminUnlocked
@@ -253,185 +334,220 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
         {children}
       </div>
 
-      {/* ─────────────────────────────────────────────────────────────
-          2. Minimalist, Clean & Uncluttered "LET US COOK" Stage
-         ───────────────────────────────────────────────────────────── */}
+      {/* ─── 2. Coming Soon Overlay ─── */}
       {!isAdminUnlocked && (
-        <div className="fixed inset-0 z-[9999] flex flex-col justify-between items-center p-4 sm:p-8 md:p-12 bg-[#08080C]/80 backdrop-blur-3xl select-none overflow-y-auto overflow-x-hidden min-h-[100dvh]">
-          
-          {/* Subtle Ambient Radial Glows */}
-          <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] sm:w-[700px] h-[600px] sm:h-[700px] bg-[radial-gradient(ellipse_at_center,rgba(242,90,43,0.1)_0%,rgba(124,92,255,0.06)_50%,transparent_70%)] blur-[120px]" />
-          </div>
+        <div className="fixed inset-0 z-[9999] flex flex-col items-center p-4 sm:p-8 md:p-12 bg-[#08080C] select-none overflow-y-auto overflow-x-hidden min-h-[100dvh]">
 
-          {/* Top Bar: Ultra-Clean Logo Only */}
-          <header className="relative z-10 w-full max-w-5xl flex items-center justify-center pt-2">
+          {/* ── Top Nav ── */}
+          <header className="relative z-10 w-full max-w-3xl flex items-center justify-between pt-2 sm:pt-4 shrink-0">
             <button
               type="button"
               onClick={handleSecretClick}
-              className="text-center focus:outline-none cursor-default"
+              className="focus:outline-none cursor-default"
               title="ArtisTant"
             >
               <img
                 src="/logo_wordmark_flat.png"
                 alt="ArtisTant"
-                className="h-6 sm:h-7 w-auto object-contain"
+                className="h-5 sm:h-6 w-auto object-contain"
               />
             </button>
+
+            <div className="flex items-center gap-3">
+              {/* Konami hint — barely visible, rewards the curious */}
+              <span
+                className="text-[9px] font-mono text-zinc-700 hover:text-zinc-500 transition-colors hidden sm:block cursor-default select-text"
+                title="Try typing this sequence…"
+              >
+                ↑↑↓↓←→←→BA
+              </span>
+              <span className="text-[10px] font-mono text-zinc-600 tracking-wide">
+                {greeting}
+              </span>
+            </div>
           </header>
 
-          {/* Center Stage: Minimal, Bold, Mobile-Optimized */}
-          <main className="relative z-10 flex flex-col items-center justify-center text-center my-auto max-w-4xl w-full px-2 sm:px-4 py-6 sm:py-8 space-y-5 sm:space-y-6">
-            
-            {/* Minimalist Audio Oscillogram */}
-            <div className="flex items-center gap-1 sm:gap-1.5 h-4 sm:h-5 opacity-70">
-              {[20, 60, 40, 90, 50, 30, 80, 100, 70, 35, 85, 45, 95, 60, 25, 75, 40].map((h, i) => (
-                <motion.div
-                  key={i}
-                  animate={{
-                    scaleY: [0.3, 1, 0.4],
-                    opacity: [0.4, 1, 0.4]
-                  }}
-                  transition={{
-                    duration: 1 + (i % 5) * 0.15,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: i * 0.06
-                  }}
-                  className="w-[2px] h-full bg-gradient-to-t from-[#F25A2B] to-[#7C5CFF] rounded-full origin-center"
-                />
-              ))}
-            </div>
+          {/* ── Center Stage ── */}
+          <main className="relative z-10 flex-1 flex flex-col items-center justify-center text-center max-w-3xl w-full px-2 sm:px-4">
 
-            {/* Single Line Headline (Fluid clamp scaling for all screen widths) */}
+            {/* Eyebrow */}
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6 }}
+              className="text-[10px] font-mono uppercase tracking-[0.25em] text-zinc-600 mb-6"
+            >
+              Coming Soon
+            </motion.p>
+
+            {/* Headline */}
             <motion.h1
-              initial={{ opacity: 0, y: 15 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-              className="font-display text-[clamp(2.1rem,8.5vw,5.5rem)] font-black uppercase tracking-tight text-white leading-none whitespace-nowrap"
+              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+              className="font-display text-[clamp(2.4rem,9vw,6rem)] font-black uppercase tracking-tight text-white leading-[0.9] whitespace-nowrap mb-4"
             >
               LET US COOK<span className="text-[#F25A2B]">.</span>
             </motion.h1>
 
-            {/* Clean Editorial Copy & Back With A Bang */}
-            <motion.div
+            {/* Subtitle */}
+            <motion.p
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-              className="space-y-2.5 sm:space-y-3 w-full flex flex-col items-center"
+              transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+              className="text-[clamp(0.75rem,3.2vw,1.3rem)] font-display font-medium text-zinc-300 tracking-tight leading-tight whitespace-nowrap mb-3"
             >
-              {/* Single Line Description (Fluid clamp scaling for mobile) */}
-              <p className="text-[clamp(0.72rem,3.4vw,1.35rem)] font-display font-medium text-zinc-200 tracking-tight leading-none whitespace-nowrap">
-                India&apos;s live entertainment marketplace &amp; artist network.
-              </p>
-              
-              {/* Single Line Sub-Values */}
-              <p className="font-mono text-[clamp(0.58rem,2.4vw,0.85rem)] text-zinc-400 tracking-wider whitespace-nowrap">
-                Direct gig bookings &bull; Escrow protection &bull; Zero broker cuts
-              </p>
+              India&apos;s live entertainment marketplace &amp; artist network.
+            </motion.p>
 
-              <p className="text-[clamp(0.68rem,2.6vw,0.875rem)] font-mono font-bold tracking-[0.2em] uppercase text-transparent bg-clip-text bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF] pt-1 whitespace-nowrap">
-                We will be back with a bang.
-              </p>
+            {/* Value line */}
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="font-mono text-[clamp(0.58rem,2.2vw,0.8rem)] text-zinc-500 tracking-wider whitespace-nowrap mb-2"
+            >
+              Direct gig bookings &bull; Escrow protection &bull; Zero broker cuts
+            </motion.p>
+
+            {/* Rotating tagline — meme-infused */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="h-6 flex items-center justify-center mb-8"
+            >
+              <AnimatePresence mode="wait">
+                <motion.p
+                  key={currentTagline}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.4 }}
+                  className="text-[12px] sm:text-[13px] text-zinc-500 font-mono italic"
+                >
+                  {TAGLINES[currentTagline]}
+                </motion.p>
+              </AnimatePresence>
             </motion.div>
 
-            {/* Interactive Actions: Problem & Feature Request + Mini-Game */}
+            {/* ── Action Cards ── */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className="flex flex-wrap items-center justify-center gap-2.5 pt-1"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              className="w-full max-w-md flex flex-col gap-3 mb-6"
             >
-              {/* Problems & Feature Requests Modal Button */}
+              {/* Shape the Platform */}
               <button
                 type="button"
                 onClick={() => setShowFeedbackModal(true)}
-                className="group inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-white/20 text-xs sm:text-sm font-mono text-zinc-200 transition-all duration-300 cursor-pointer shadow-lg active:scale-95 hover:shadow-[0_0_25px_rgba(124,92,255,0.2)]"
+                className="group w-full flex items-center justify-between p-4 sm:p-5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] transition-all duration-300 text-left gap-3 cursor-pointer active:scale-[0.98]"
               >
-                <MessageSquarePlus className="w-3.5 h-3.5 text-[#7C5CFF] group-hover:scale-110 transition-transform duration-300" />
-                <span>Problems &amp; Feature Requests</span>
+                <div className="flex flex-col gap-0.5">
+                  <h3 className="text-sm sm:text-base font-semibold tracking-tight text-white">
+                    Shape the Platform
+                  </h3>
+                  <p className="text-zinc-500 text-[11px] sm:text-xs">
+                    Tell us what&apos;s broken in live entertainment.
+                  </p>
+                </div>
+                <div className="w-9 h-9 sm:w-10 sm:h-10 bg-white/[0.04] rounded-lg border border-white/[0.06] flex items-center justify-center shrink-0 group-hover:bg-white/[0.08] transition-colors">
+                  <MessageSquarePlus className="w-4 h-4 text-white/30 group-hover:text-white/50 transition-colors" />
+                </div>
               </button>
 
-              {/* Mini-Game Trigger */}
+              {/* Play Game */}
               <button
                 type="button"
                 onClick={() => setShowMiniGame(true)}
-                className="group inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-white/20 text-xs sm:text-sm font-mono text-zinc-200 transition-all duration-300 cursor-pointer shadow-lg active:scale-95 hover:shadow-[0_0_25px_rgba(242,90,43,0.2)]"
+                className="group w-full flex items-center justify-between p-4 sm:p-5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] transition-all duration-300 text-left gap-3 cursor-pointer active:scale-[0.98]"
               >
-                <Zap className="w-3.5 h-3.5 text-[#F25A2B] group-hover:scale-110 transition-transform duration-300" />
-                <span>Play Sine Wave Surfer</span>
+                <div className="flex flex-col gap-0.5">
+                  <h3 className="text-sm sm:text-base font-semibold tracking-tight text-white">
+                    Sine Wave Surfer
+                  </h3>
+                  <p className="text-zinc-500 text-[11px] sm:text-xs">
+                    Play a game while you wait.
+                  </p>
+                </div>
+                <div className="w-9 h-9 sm:w-10 sm:h-10 bg-white/[0.04] rounded-lg border border-white/[0.06] flex items-center justify-center shrink-0 group-hover:bg-white/[0.08] transition-colors">
+                  <Zap className="w-4 h-4 text-white/30 group-hover:text-white/50 transition-colors" />
+                </div>
               </button>
-            </motion.div>
 
-            {/* Clean, Slim "Take Artistant Anywhere" Card (Mobile-Optimized) */}
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
-              className="w-full max-w-lg flex items-center justify-between p-4 sm:p-5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 backdrop-blur-xl transition-all duration-300 text-left gap-3 sm:gap-4 mt-2"
-            >
-              <div className="flex flex-col gap-0.5 sm:gap-1">
-                <h3 className="font-display text-sm sm:text-base md:text-lg font-bold tracking-tight text-white">
-                  Take Artistant Anywhere
-                </h3>
-                <p className="text-zinc-400 text-[11px] sm:text-xs leading-relaxed max-w-xs">
-                  The complete booking engine in your pocket.
-                </p>
-              </div>
-
-              <div className="relative w-12 h-12 sm:w-14 sm:h-14 bg-white/[0.05] rounded-xl border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
-                <QrCode className="w-6 h-6 sm:w-8 sm:h-8 text-white/30" />
-                <div className="absolute inset-0 backdrop-blur-[4px] bg-black/60 flex items-center justify-center">
-                  <span className="text-[7px] sm:text-[8px] font-bold text-white uppercase tracking-widest text-center leading-tight font-mono">
-                    Coming<br />Soon
-                  </span>
+              {/* Take Artistant Anywhere */}
+              <div className="w-full flex items-center justify-between p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/[0.06] text-left gap-3">
+                <div className="flex flex-col gap-0.5">
+                  <h3 className="text-sm sm:text-base font-semibold tracking-tight text-white">
+                    Take Artistant Anywhere
+                  </h3>
+                  <p className="text-zinc-500 text-[11px] sm:text-xs">
+                    The booking engine in your pocket.
+                  </p>
+                </div>
+                <div className="relative w-9 h-9 sm:w-10 sm:h-10 bg-white/[0.04] rounded-lg border border-white/[0.06] flex items-center justify-center shrink-0 overflow-hidden">
+                  <QrCode className="w-4 h-4 text-white/20" />
+                  <div className="absolute inset-0 backdrop-blur-[3px] bg-black/50 flex items-center justify-center">
+                    <span className="text-[6px] font-mono font-bold text-white/60 uppercase tracking-widest text-center leading-tight">
+                      Soon
+                    </span>
+                  </div>
                 </div>
               </div>
             </motion.div>
 
+            {/* Konami achievement toast */}
+            <AnimatePresence>
+              {konamiActivated && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="fixed top-6 left-1/2 -translate-x-1/2 z-[10003] px-5 py-2.5 bg-white text-black text-xs font-semibold rounded-full shadow-2xl"
+                >
+                  🎮 Achievement Unlocked: OG Gamer
+                </motion.div>
+              )}
+            </AnimatePresence>
+
           </main>
 
-          {/* Bottom Bar */}
-          <footer className="relative z-10 w-full max-w-5xl flex items-center justify-between text-[10px] sm:text-[11px] font-mono text-zinc-500 pb-1">
-            <span className="tracking-widest uppercase opacity-70">
-              ArtisTant &bull; Coming Soon
-            </span>
+          {/* ── Footer ── */}
+          <footer className="relative z-10 w-full max-w-3xl flex items-center justify-between text-[10px] font-mono text-zinc-600 pb-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleFooterEasterEgg}
+              className="tracking-widest uppercase cursor-default hover:text-zinc-400 transition-colors text-left"
+            >
+              {footerText}
+            </button>
 
-            {/* Invisible / subtle console trigger */}
             <button
               type="button"
               onClick={() => setShowAdminModal(true)}
-              className="opacity-20 hover:opacity-100 transition-opacity p-2 text-zinc-500 hover:text-zinc-300 cursor-pointer"
-              title="Admin Authentication (⌘K)"
+              className="opacity-15 hover:opacity-100 transition-opacity p-2 text-zinc-500 hover:text-zinc-300 cursor-pointer"
+              title="Admin (⌘K)"
             >
-              <Lock className="w-3.5 h-3.5" />
+              <Lock className="w-3 h-3" />
             </button>
           </footer>
 
-          {/* ─────────────────────────────────────────────────────────────
-              The Market Problem & Feature Request Modal Panel
-             ───────────────────────────────────────────────────────────── */}
+          {/* ── Modals ── */}
           <MarketFeedbackModal
             isOpen={showFeedbackModal}
             onClose={() => setShowFeedbackModal(false)}
           />
 
-          {/* ─────────────────────────────────────────────────────────────
-              The Playable Mini-Game Modal Panel
-             ───────────────────────────────────────────────────────────── */}
           <MiniGameModal
             isOpen={showMiniGame}
             onClose={() => setShowMiniGame(false)}
           />
 
-          {/* ─────────────────────────────────────────────────────────────
-              The Original Full AdminLoginGate Modal Panel
-             ───────────────────────────────────────────────────────────── */}
           <AnimatePresence>
             {showAdminModal && (
               <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/90 backdrop-blur-2xl animate-in fade-in duration-200">
                 <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl">
-                  {/* Close button */}
                   <button
                     type="button"
                     onClick={() => setShowAdminModal(false)}
@@ -465,9 +581,7 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
         </div>
       )}
 
-      {/* ─────────────────────────────────────────────────────────────
-          3. Floating Admin Status Pill (When Unlocked)
-         ───────────────────────────────────────────────────────────── */}
+      {/* ─── 3. Floating Admin Status Pill (When Unlocked) ─── */}
       {isAdminUnlocked && (
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
