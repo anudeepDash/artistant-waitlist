@@ -7,7 +7,7 @@ import { signInWithGoogle, signInWithEmail, signOut as firebaseSignOut } from '@
 import { checkIsAdminAction } from '@/lib/admin-actions';
 import AdminLoginGate from '@/components/admin/AdminLoginGate';
 import MiniGameModal from '@/components/MiniGameModal';
-import { Lock, ExternalLink, X, QrCode, Gamepad2 } from 'lucide-react';
+import { Lock, ExternalLink, X, QrCode, Zap } from 'lucide-react';
 
 const ADMIN_STORAGE_KEY = 'artistant_admin_bypass_active';
 const KNOWN_ADMIN_EMAILS = ['anudeepdash2004@gmail.com'];
@@ -262,25 +262,20 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] sm:w-[700px] h-[600px] sm:h-[700px] bg-[radial-gradient(ellipse_at_center,rgba(242,90,43,0.1)_0%,rgba(124,92,255,0.06)_50%,transparent_70%)] blur-[120px]" />
           </div>
 
-          {/* Top Bar: Minimal Logo + Live Signal */}
-          <header className="relative z-10 w-full max-w-5xl flex items-center justify-between pt-1">
+          {/* Top Bar: Ultra-Clean Logo Only */}
+          <header className="relative z-10 w-full max-w-5xl flex items-center justify-center pt-2">
             <button
               type="button"
               onClick={handleSecretClick}
-              className="text-left focus:outline-none cursor-default"
+              className="text-center focus:outline-none cursor-default"
               title="ArtisTant"
             >
               <img
                 src="/logo_wordmark_flat.png"
                 alt="ArtisTant"
-                className="h-5 sm:h-7 w-auto object-contain"
+                className="h-6 sm:h-7 w-auto object-contain"
               />
             </button>
-
-            <div className="flex items-center gap-2 font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-zinc-400 bg-white/[0.03] border border-white/10 px-3 py-1.5 rounded-full backdrop-blur-md">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#F25A2B] animate-pulse" />
-              <span>Studio In Session</span>
-            </div>
           </header>
 
           {/* Center Stage: Minimal, Bold, Mobile-Optimized */}
@@ -348,13 +343,10 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
               <button
                 type="button"
                 onClick={() => setShowMiniGame(true)}
-                className="group inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-white/20 text-xs sm:text-sm font-mono text-zinc-200 transition-all duration-300 cursor-pointer shadow-lg active:scale-95 hover:shadow-[0_0_25px_rgba(242,90,43,0.2)]"
+                className="group inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-white/20 text-xs sm:text-sm font-mono text-zinc-200 transition-all duration-300 cursor-pointer shadow-lg active:scale-95 hover:shadow-[0_0_25px_rgba(242,90,43,0.2)]"
               >
-                <Gamepad2 className="w-4 h-4 text-[#F25A2B] group-hover:rotate-12 transition-transform duration-300" />
-                <span>Play &quot;Let Us Cook&quot; Mini-Game</span>
-                <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
-                  NEW
-                </span>
+                <Zap className="w-3.5 h-3.5 text-[#F25A2B] group-hover:scale-110 transition-transform duration-300" />
+                <span>Play Soundwave Rider</span>
               </button>
             </motion.div>
 

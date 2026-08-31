@@ -2,83 +2,73 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Play, RotateCcw, Volume2, VolumeX, Trophy, Zap, Radio, Sliders, Music } from 'lucide-react';
+import { X, Play, RotateCcw, Volume2, VolumeX, Trophy, Zap, Sparkles } from 'lucide-react';
 
 interface MiniGameModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-// ── Web Audio API Pentatonic Synthesizer Engine ──
-class StudioAudioEngine {
+// ── Web Audio Synth Engine ──
+class SoundEngine {
   private ctx: AudioContext | null = null;
   public enabled: boolean = true;
 
   private init() {
     if (!this.ctx && typeof window !== 'undefined') {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (AudioCtx) {
-        this.ctx = new AudioCtx();
-      }
+      if (AudioCtx) this.ctx = new AudioCtx();
     }
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume();
     }
   }
 
-  // Pentatonic musical frequencies (C minor: C4, Eb4, F4, G4, Bb4, C5)
-  private readonly NOTES = [261.63, 311.13, 349.23, 392.00, 466.16, 523.25];
-
-  playHit(lane: number, isPerfect: boolean) {
+  playJump(isDouble: boolean = false) {
     if (!this.enabled) return;
     this.init();
     if (!this.ctx) return;
-
     try {
       const now = this.ctx.currentTime;
-      const freq = this.NOTES[(lane * 2 + (isPerfect ? 1 : 0)) % this.NOTES.length];
-
-      // Primary synth oscillator (warm triangle wave)
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
-      osc.type = isPerfect ? 'sine' : 'triangle';
-      osc.frequency.setValueAtTime(freq, now);
+      osc.type = 'sine';
+      const baseFreq = isDouble ? 380 : 260;
+      osc.frequency.setValueAtTime(baseFreq, now);
+      osc.frequency.exponentialRampToValueAtTime(baseFreq * 2.2, now + 0.12);
 
-      // Filter for analog synth warmth
-      const filter = this.ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(isPerfect ? 3200 : 2000, now);
-      filter.frequency.exponentialRampToValueAtTime(300, now + 0.28);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
 
-      // Envelope
-      gain.gain.setValueAtTime(0.001, now);
-      gain.gain.linearRampToValueAtTime(isPerfect ? 0.25 : 0.18, now + 0.015);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
-
-      osc.connect(filter);
-      filter.connect(gain);
+      osc.connect(gain);
       gain.connect(this.ctx.destination);
-
       osc.start(now);
-      osc.stop(now + 0.35);
-
-      // If perfect, add a sub-harmonic layer
-      if (isPerfect) {
-        const sub = this.ctx.createOscillator();
-        const subGain = this.ctx.createGain();
-        sub.type = 'sine';
-        sub.frequency.setValueAtTime(freq / 2, now);
-        subGain.gain.setValueAtTime(0.12, now);
-        subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
-        sub.connect(subGain);
-        subGain.connect(this.ctx.destination);
-        sub.start(now);
-        sub.stop(now + 0.28);
-      }
+      osc.stop(now + 0.13);
     } catch (e) {}
   }
 
-  playMiss() {
+  playGem() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(587.33, now); // D5
+      osc.frequency.setValueAtTime(880, now + 0.06); // A5
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.22);
+    } catch (e) {}
+  }
+
+  playGameOver() {
     if (!this.enabled) return;
     this.init();
     if (!this.ctx) return;
@@ -87,172 +77,43 @@ class StudioAudioEngine {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
       osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(110, now);
-      osc.frequency.linearRampToValueAtTime(65, now + 0.15);
-      gain.gain.setValueAtTime(0.1, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      osc.frequency.setValueAtTime(220, now);
+      osc.frequency.exponentialRampToValueAtTime(45, now + 0.35);
+
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
       osc.connect(gain);
       gain.connect(this.ctx.destination);
       osc.start(now);
-      osc.stop(now + 0.16);
+      osc.stop(now + 0.36);
     } catch (e) {}
   }
 }
 
-const audio = new StudioAudioEngine();
-
-interface Note {
-  id: number;
-  lane: number; // 0, 1, 2
-  y: number; // 0% to 100%
-  speed: number;
-  color: string;
-  hit: boolean;
-  missed: boolean;
-}
-
-interface Particle {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  life: number;
-  color: string;
-  size: number;
-}
+const sfx = new SoundEngine();
 
 export default function MiniGameModal({ isOpen, onClose }: MiniGameModalProps) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [gameState, setGameState] = useState<'idle' | 'playing' | 'gameover'>('idle');
   const [score, setScore] = useState<number>(0);
   const [highScore, setHighScore] = useState<number>(0);
-  const [combo, setCombo] = useState<number>(0);
-  const [maxCombo, setMaxCombo] = useState<number>(0);
+  const [gemsCollected, setGemsCollected] = useState<number>(0);
   const [soundMuted, setSoundMuted] = useState<boolean>(false);
-  const [activeLaneIndex, setActiveLaneIndex] = useState<number | null>(null);
-  const [feedback, setFeedback] = useState<{ text: string; color: string; key: number } | null>(null);
 
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationFrameId = useRef<number | null>(null);
-  const notesRef = useRef<Note[]>([]);
-  const particlesRef = useRef<Particle[]>([]);
-  const lastSpawnRef = useRef<number>(0);
-  const scoreRef = useRef<number>(0);
-  const comboRef = useRef<number>(0);
-  const maxComboRef = useRef<number>(0);
   const isPlayingRef = useRef<boolean>(false);
-
-  const LANE_COLORS = ['#F25A2B', '#D4567A', '#7C5CFF'];
-  const LANE_KEYS = ['A', 'S', 'D'];
+  const jumpTriggerRef = useRef<(() => void) | null>(null);
 
   // Load High Score
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('artistant_rhythm_highscore');
+      const saved = localStorage.getItem('artistant_wave_highscore');
       if (saved) setHighScore(parseInt(saved, 10) || 0);
     }
   }, []);
 
-  // Lane Hit Trigger
-  const triggerLaneHit = useCallback((laneIndex: number) => {
-    if (!isPlayingRef.current) return;
-
-    setActiveLaneIndex(laneIndex);
-    setTimeout(() => setActiveLaneIndex(null), 120);
-
-    const hitZoneY = 82; // Hit bar is at 82% height
-    const threshold = 9.5; // Window of hit in percentage
-
-    let closestNote: Note | null = null;
-    let minDistance = Infinity;
-
-    for (const note of notesRef.current) {
-      if (note.lane === laneIndex && !note.hit && !note.missed) {
-        const dist = Math.abs(note.y - hitZoneY);
-        if (dist < minDistance && dist < threshold) {
-          minDistance = dist;
-          closestNote = note;
-        }
-      }
-    }
-
-    if (closestNote) {
-      closestNote.hit = true;
-      const isPerfect = minDistance < 4.2;
-      const points = isPerfect ? 150 : 80;
-
-      comboRef.current += 1;
-      if (comboRef.current > maxComboRef.current) {
-        maxComboRef.current = comboRef.current;
-        setMaxCombo(maxComboRef.current);
-      }
-      setCombo(comboRef.current);
-
-      const multiplier = comboRef.current >= 15 ? 3 : comboRef.current >= 8 ? 2 : 1;
-      scoreRef.current += points * multiplier;
-      setScore(scoreRef.current);
-
-      audio.playHit(laneIndex, isPerfect);
-
-      // Visual feedback
-      setFeedback({
-        text: isPerfect ? 'PERFECT' : 'GREAT',
-        color: isPerfect ? '#F25A2B' : '#7C5CFF',
-        key: Date.now(),
-      });
-
-      // Spawn burst particles on canvas
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const laneW = canvas.width / 3;
-        const hitX = laneIndex * laneW + laneW / 2;
-        const hitY = (hitZoneY / 100) * canvas.height;
-
-        for (let i = 0; i < (isPerfect ? 16 : 8); i++) {
-          particlesRef.current.push({
-            x: hitX,
-            y: hitY,
-            vx: (Math.random() - 0.5) * 8,
-            vy: (Math.random() - 0.5) * 6 - 2,
-            life: 22,
-            color: LANE_COLORS[laneIndex],
-            size: Math.random() * 3.5 + 1.5,
-          });
-        }
-      }
-    } else {
-      // Miss penalty on bad timing
-      comboRef.current = 0;
-      setCombo(0);
-      audio.playMiss();
-      setFeedback({ text: 'MISS', color: '#EF4444', key: Date.now() });
-    }
-  }, []);
-
-  // Keyboard controls (A, S, D or Left, Down, Right or 1, 2, 3)
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.repeat) return;
-      const key = e.key.toLowerCase();
-
-      if (key === 'a' || key === 'arrowleft' || key === '1') {
-        e.preventDefault();
-        triggerLaneHit(0);
-      } else if (key === 's' || key === 'arrowdown' || key === ' ' || key === '2') {
-        e.preventDefault();
-        triggerLaneHit(1);
-      } else if (key === 'd' || key === 'arrowright' || key === '3') {
-        e.preventDefault();
-        triggerLaneHit(2);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, triggerLaneHit]);
-
-  // Main Canvas Render Loop
+  // Main Canvas Game Loop
   useEffect(() => {
     if (!isOpen) {
       if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
@@ -272,164 +133,425 @@ export default function MiniGameModal({ isOpen, onClose }: MiniGameModalProps) {
 
     const W = rect.width;
     const H = rect.height;
-    const laneW = W / 3;
-    const hitZoneY = H * 0.82;
+    const groundY = H - 36;
 
-    let noteIdCounter = 0;
-    let missedCount = 0;
-    const MAX_MISSES = 5;
+    // Player State
+    const player = {
+      x: 45,
+      y: groundY - 24,
+      radius: 12,
+      vy: 0,
+      gravity: 0.65,
+      jumpStrength: -10.8,
+      isGrounded: true,
+      jumpsLeft: 2,
+      rotation: 0,
+    };
 
-    const gameLoop = (timestamp: number) => {
-      ctx.clearRect(0, 0, W, H);
+    // Game Entities
+    let obstacles: Array<{
+      x: number;
+      y: number;
+      w: number;
+      h: number;
+      type: 'spike' | 'tall';
+      color: string;
+    }> = [];
 
-      // 1. Draw Obsidian Studio Backdrop
-      ctx.fillStyle = '#08080C';
-      ctx.fillRect(0, 0, W, H);
+    let gems: Array<{
+      x: number;
+      y: number;
+      radius: number;
+      collected: boolean;
+      rot: number;
+    }> = [];
 
-      // 2. Draw 3 Precision Lanes
-      for (let i = 0; i < 3; i++) {
-        const laneX = i * laneW;
+    let particles: Array<{
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      life: number;
+      maxLife: number;
+      color: string;
+      size: number;
+    }> = [];
 
-        // Lane divider lines
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(laneX, 0);
-        ctx.lineTo(laneX, H);
-        ctx.stroke();
+    let trailParticles: Array<{
+      x: number;
+      y: number;
+      life: number;
+      color: string;
+    }> = [];
 
-        // Active lane flash highlight
-        if (activeLaneIndex === i) {
-          const flashGrad = ctx.createLinearGradient(0, 0, 0, H);
-          flashGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-          flashGrad.addColorStop(0.8, LANE_COLORS[i] + '33');
-          flashGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
-          ctx.fillStyle = flashGrad;
-          ctx.fillRect(laneX, 0, laneW, H);
-        }
-      }
+    let floatingTexts: Array<{
+      x: number;
+      y: number;
+      text: string;
+      color: string;
+      life: number;
+    }> = [];
 
-      // 3. Draw Neon Hit Target Zone
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(0, hitZoneY);
-      ctx.lineTo(W, hitZoneY);
-      ctx.stroke();
+    let distance = 0;
+    let gemCount = 0;
+    let speed = 4.8;
+    let obstacleTimer = 0;
+    let gemTimer = 0;
+    let cameraShake = 0;
 
-      for (let i = 0; i < 3; i++) {
-        const targetX = i * laneW + laneW / 2;
-        ctx.strokeStyle = activeLaneIndex === i ? LANE_COLORS[i] : 'rgba(255, 255, 255, 0.3)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(targetX, hitZoneY, 14, 0, Math.PI * 2);
-        ctx.stroke();
+    // Jump Handler
+    const jump = () => {
+      if (!isPlayingRef.current) return;
 
-        if (activeLaneIndex === i) {
-          ctx.fillStyle = LANE_COLORS[i] + '44';
-          ctx.beginPath();
-          ctx.arc(targetX, hitZoneY, 14, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
+      if (player.jumpsLeft > 0) {
+        const isDouble = player.jumpsLeft === 1;
+        player.vy = isDouble ? player.jumpStrength * 0.95 : player.jumpStrength;
+        player.jumpsLeft--;
+        player.isGrounded = false;
+        sfx.playJump(isDouble);
 
-      // 4. Update Game State & Spawning
-      if (isPlayingRef.current) {
-        // Spawn notes at tempo
-        if (timestamp - lastSpawnRef.current > 420 - Math.min(180, scoreRef.current / 40)) {
-          lastSpawnRef.current = timestamp;
-          const lane = Math.floor(Math.random() * 3);
-          notesRef.current.push({
-            id: noteIdCounter++,
-            lane,
-            y: 0,
-            speed: 0.85 + Math.min(0.6, scoreRef.current / 3000),
-            color: LANE_COLORS[lane],
-            hit: false,
-            missed: false,
+        if (isDouble) {
+          floatingTexts.push({
+            x: player.x,
+            y: player.y - 15,
+            text: 'DOUBLE JUMP',
+            color: '#7C5CFF',
+            life: 25,
           });
         }
 
-        // Move notes
-        for (let i = notesRef.current.length - 1; i >= 0; i--) {
-          const note = notesRef.current[i];
-          note.y += note.speed;
+        // Jump burst particles
+        for (let i = 0; i < 8; i++) {
+          particles.push({
+            x: player.x,
+            y: player.y + player.radius,
+            vx: (Math.random() - 0.5) * 5,
+            vy: (Math.random() - 0.5) * 3 + 1,
+            life: 18,
+            maxLife: 18,
+            color: isDouble ? '#7C5CFF' : '#F25A2B',
+            size: Math.random() * 3 + 1.5,
+          });
+        }
+      }
+    };
 
-          // Check if missed below hit zone
-          if (note.y > 92 && !note.hit && !note.missed) {
-            note.missed = true;
-            comboRef.current = 0;
-            setCombo(0);
-            missedCount++;
+    jumpTriggerRef.current = jump;
 
-            if (missedCount >= MAX_MISSES) {
-              // Game Over
-              isPlayingRef.current = false;
-              setGameState('gameover');
+    const gameLoop = () => {
+      ctx.save();
 
-              const finalScore = scoreRef.current;
-              if (typeof window !== 'undefined') {
-                const saved = localStorage.getItem('artistant_rhythm_highscore');
-                const currHi = saved ? parseInt(saved, 10) : 0;
-                if (finalScore > currHi) {
-                  localStorage.setItem('artistant_rhythm_highscore', finalScore.toString());
-                  setHighScore(finalScore);
-                }
-              }
-            }
-          }
+      // Camera Shake Effect on Crash
+      if (cameraShake > 0) {
+        const dx = (Math.random() - 0.5) * cameraShake;
+        const dy = (Math.random() - 0.5) * cameraShake;
+        ctx.translate(dx, dy);
+        cameraShake *= 0.85;
+        if (cameraShake < 0.5) cameraShake = 0;
+      }
 
-          if (note.y > 105 || note.hit) {
-            notesRef.current.splice(i, 1);
-          }
+      ctx.clearRect(0, 0, W, H);
+
+      // 1. Dark Neon Grid Background
+      ctx.fillStyle = '#08080C';
+      ctx.fillRect(0, 0, W, H);
+
+      // Perspective Grid Lines
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < W; x += 30) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, H);
+        ctx.stroke();
+      }
+
+      // 2. Glowing Horizon Line / Soundwave Floor
+      ctx.strokeStyle = 'rgba(124, 92, 255, 0.5)';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#7C5CFF';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.moveTo(0, groundY);
+      ctx.lineTo(W, groundY);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Floor Underglow Gradient
+      const floorGrad = ctx.createLinearGradient(0, groundY, 0, H);
+      floorGrad.addColorStop(0, 'rgba(124, 92, 255, 0.15)');
+      floorGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = floorGrad;
+      ctx.fillRect(0, groundY, W, H - groundY);
+
+      if (isPlayingRef.current) {
+        // Physics update
+        player.vy += player.gravity;
+        player.y += player.vy;
+        player.rotation += 0.12;
+
+        if (player.y >= groundY - player.radius) {
+          player.y = groundY - player.radius;
+          player.vy = 0;
+          player.isGrounded = true;
+          player.jumpsLeft = 2;
+        }
+
+        // Add trail
+        trailParticles.push({
+          x: player.x,
+          y: player.y,
+          life: 14,
+          color: player.jumpsLeft === 1 ? '#7C5CFF' : '#F25A2B',
+        });
+
+        // Distance & Speed
+        distance += 1;
+        if (distance % 4 === 0) {
+          setScore(distance + gemCount * 50);
+        }
+        speed = 4.8 + Math.min(5, distance / 400);
+
+        // Spawn Obstacles (Neon Vector Spikes)
+        obstacleTimer++;
+        if (obstacleTimer > Math.max(50, 105 - distance / 18)) {
+          obstacleTimer = 0;
+          const isTall = Math.random() > 0.65;
+          obstacles.push({
+            x: W + 20,
+            y: groundY,
+            w: isTall ? 22 : 18,
+            h: isTall ? 36 : 24,
+            type: isTall ? 'tall' : 'spike',
+            color: '#EF4444',
+          });
+        }
+
+        // Spawn Audio Gems
+        gemTimer++;
+        if (gemTimer > 85) {
+          gemTimer = 0;
+          gems.push({
+            x: W + 30,
+            y: groundY - 35 - Math.random() * 45,
+            radius: 8,
+            collected: false,
+            rot: 0,
+          });
         }
       }
 
-      // 5. Draw Falling Notes (Precision Neon Glow Capsules)
-      for (const note of notesRef.current) {
-        if (note.hit) continue;
-
-        const noteX = note.lane * laneW + laneW / 2;
-        const noteY = (note.y / 100) * H;
-
-        // Glowing outer halo
-        ctx.shadowColor = note.color;
-        ctx.shadowBlur = 12;
-        ctx.fillStyle = note.color;
-
-        // Capsule Body
-        const noteWidth = Math.min(laneW * 0.65, 52);
-        const noteHeight = 14;
+      // 3. Draw Player Trail
+      for (let t = trailParticles.length - 1; t >= 0; t--) {
+        const tr = trailParticles[t];
+        tr.life--;
+        ctx.fillStyle = tr.color;
+        ctx.globalAlpha = Math.max(0, tr.life / 14) * 0.4;
         ctx.beginPath();
-        ctx.roundRect(noteX - noteWidth / 2, noteY - noteHeight / 2, noteWidth, noteHeight, 7);
+        ctx.arc(tr.x - (14 - tr.life) * 2, tr.y, player.radius * (tr.life / 14), 0, Math.PI * 2);
         ctx.fill();
+        ctx.globalAlpha = 1.0;
+        if (tr.life <= 0) trailParticles.splice(t, 1);
+      }
 
-        // White core reflection
-        ctx.fillStyle = '#FFFFFF';
+      // 4. Draw & Update Obstacles (Neon Glowing Vector Pyramids)
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        const obs = obstacles[i];
+        if (isPlayingRef.current) obs.x -= speed;
+
+        // Glow
+        ctx.shadowColor = obs.color;
+        ctx.shadowBlur = 10;
+        ctx.fillStyle = obs.color;
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 1.5;
+
+        // Vector Triangle / Spike
         ctx.beginPath();
-        ctx.roundRect(noteX - noteWidth / 4, noteY - 2, noteWidth / 2, 4, 2);
+        ctx.moveTo(obs.x, obs.y);
+        ctx.lineTo(obs.x + obs.w / 2, obs.y - obs.h);
+        ctx.lineTo(obs.x + obs.w, obs.y);
+        ctx.closePath();
         ctx.fill();
-
+        ctx.stroke();
         ctx.shadowBlur = 0;
+
+        // Collision Check (Circle vs Triangle approximation)
+        const hitX = player.x;
+        const hitY = player.y;
+        if (
+          isPlayingRef.current &&
+          hitX + player.radius * 0.7 > obs.x &&
+          hitX - player.radius * 0.7 < obs.x + obs.w &&
+          hitY + player.radius * 0.7 > obs.y - obs.h
+        ) {
+          // Crash! Game Over
+          isPlayingRef.current = false;
+          setGameState('gameover');
+          cameraShake = 12;
+          sfx.playGameOver();
+
+          const finalScore = distance + gemCount * 50;
+          setHighScore((prev) => {
+            const nextBest = Math.max(prev, finalScore);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('artistant_wave_highscore', nextBest.toString());
+            }
+            return nextBest;
+          });
+
+          // Explosion Shockwave
+          for (let p = 0; p < 28; p++) {
+            particles.push({
+              x: player.x,
+              y: player.y,
+              vx: (Math.random() - 0.5) * 9,
+              vy: (Math.random() - 0.5) * 9,
+              life: 30,
+              maxLife: 30,
+              color: p % 2 === 0 ? '#F25A2B' : '#7C5CFF',
+              size: Math.random() * 4 + 2,
+            });
+          }
+        }
+
+        if (obs.x + obs.w < -20) obstacles.splice(i, 1);
+      }
+
+      // 5. Draw & Update Audio Gems (Floating Rhombus Crystals)
+      for (let g = gems.length - 1; g >= 0; g--) {
+        const gem = gems[g];
+        if (isPlayingRef.current) {
+          gem.x -= speed;
+          gem.rot += 0.05;
+        }
+
+        if (!gem.collected) {
+          ctx.save();
+          ctx.translate(gem.x, gem.y);
+          ctx.rotate(gem.rot);
+
+          // Glowing diamond
+          ctx.shadowColor = '#06B6D4';
+          ctx.shadowBlur = 12;
+          ctx.fillStyle = '#06B6D4';
+          ctx.strokeStyle = '#FFFFFF';
+          ctx.lineWidth = 1.5;
+
+          ctx.beginPath();
+          ctx.moveTo(0, -gem.radius);
+          ctx.lineTo(gem.radius, 0);
+          ctx.lineTo(0, gem.radius);
+          ctx.lineTo(-gem.radius, 0);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+
+          // Check Pickup Collision
+          const dist = Math.hypot(player.x - gem.x, player.y - gem.y);
+          if (isPlayingRef.current && dist < player.radius + gem.radius) {
+            gem.collected = true;
+            gemCount += 1;
+            setGemsCollected(gemCount);
+            sfx.playGem();
+
+            floatingTexts.push({
+              x: gem.x,
+              y: gem.y - 10,
+              text: '+50',
+              color: '#06B6D4',
+              life: 20,
+            });
+
+            // Gem pickup sparkle
+            for (let k = 0; k < 12; k++) {
+              particles.push({
+                x: gem.x,
+                y: gem.y,
+                vx: (Math.random() - 0.5) * 6,
+                vy: (Math.random() - 0.5) * 6,
+                life: 20,
+                maxLife: 20,
+                color: '#06B6D4',
+                size: Math.random() * 3 + 1,
+              });
+            }
+          }
+        }
+
+        if (gem.x < -20) gems.splice(g, 1);
       }
 
       // 6. Draw Particles
-      for (let p = particlesRef.current.length - 1; p >= 0; p--) {
-        const pt = particlesRef.current[p];
+      for (let p = particles.length - 1; p >= 0; p--) {
+        const pt = particles[p];
         pt.x += pt.vx;
         pt.y += pt.vy;
         pt.life--;
 
         ctx.fillStyle = pt.color;
-        ctx.globalAlpha = Math.max(0, pt.life / 22);
+        ctx.globalAlpha = Math.max(0, pt.life / pt.maxLife);
         ctx.beginPath();
         ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = 1.0;
 
-        if (pt.life <= 0) particlesRef.current.splice(p, 1);
+        if (pt.life <= 0) particles.splice(p, 1);
       }
 
+      // 7. Draw Floating Texts
+      for (let f = floatingTexts.length - 1; f >= 0; f--) {
+        const ft = floatingTexts[f];
+        ft.y -= 1.2;
+        ft.life--;
+
+        ctx.font = 'bold 10px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = ft.color;
+        ctx.globalAlpha = Math.max(0, ft.life / 25);
+        ctx.fillText(ft.text, ft.x, ft.y);
+        ctx.globalAlpha = 1.0;
+
+        if (ft.life <= 0) floatingTexts.splice(f, 1);
+      }
+
+      // 8. Draw Player (Glowing Neon Vector Disc)
+      if (gameState !== 'gameover' || isPlayingRef.current) {
+        ctx.save();
+        ctx.translate(player.x, player.y);
+        ctx.rotate(player.rotation);
+
+        // Outer Neon Ring
+        ctx.shadowColor = '#F25A2B';
+        ctx.shadowBlur = 14;
+        ctx.strokeStyle = '#F25A2B';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Inner Core Ring
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, player.radius * 0.45, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Crosshairs / Spoke Lines
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(-player.radius, 0);
+        ctx.lineTo(player.radius, 0);
+        ctx.moveTo(0, -player.radius);
+        ctx.lineTo(0, player.radius);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      ctx.restore();
       animationFrameId.current = requestAnimationFrame(gameLoop);
     };
 
@@ -438,27 +560,39 @@ export default function MiniGameModal({ isOpen, onClose }: MiniGameModalProps) {
     return () => {
       if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
     };
-  }, [isOpen, activeLaneIndex]);
+  }, [isOpen, gameState]);
 
-  // Start / Restart Game
-  const startGame = () => {
-    notesRef.current = [];
-    particlesRef.current = [];
-    scoreRef.current = 0;
-    comboRef.current = 0;
-    maxComboRef.current = 0;
-    setScore(0);
-    setCombo(0);
-    setMaxCombo(0);
-    setFeedback(null);
-    isPlayingRef.current = true;
-    setGameState('playing');
-  };
+  // Touch / Click Jump Handler
+  const handleJumpPress = useCallback(() => {
+    if (gameState === 'idle' || gameState === 'gameover') {
+      setScore(0);
+      setGemsCollected(0);
+      isPlayingRef.current = true;
+      setGameState('playing');
+    } else if (jumpTriggerRef.current) {
+      jumpTriggerRef.current();
+    }
+  }, [gameState]);
+
+  // Keyboard input (Spacebar / Up arrow)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' || e.code === 'ArrowUp') {
+        e.preventDefault();
+        handleJumpPress();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, handleJumpPress]);
 
   const toggleSound = () => {
     const next = !soundMuted;
     setSoundMuted(next);
-    audio.enabled = !next;
+    sfx.enabled = !next;
   };
 
   return (
@@ -471,18 +605,13 @@ export default function MiniGameModal({ isOpen, onClose }: MiniGameModalProps) {
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
             className="relative w-full max-w-lg rounded-3xl bg-[#09090E] border border-white/15 p-4 sm:p-6 shadow-[0_30px_90px_rgba(0,0,0,0.95)] text-white overflow-hidden flex flex-col"
           >
-            {/* Header: Studio Telemetry */}
+            {/* Header: Clean Arcade Bar */}
             <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-3">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2">
                 <span className="flex h-2 w-2 rounded-full bg-[#F25A2B] animate-pulse" />
-                <div>
-                  <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-widest text-zinc-200 flex items-center gap-2">
-                    <span>BEAT COOKER</span>
-                    <span className="text-[9px] font-mono font-bold tracking-wider text-[#7C5CFF] bg-[#7C5CFF]/15 px-2 py-0.5 rounded-full border border-[#7C5CFF]/30">
-                      128 BPM
-                    </span>
-                  </h3>
-                </div>
+                <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-widest text-zinc-200">
+                  SOUNDWAVE RIDER
+                </h3>
               </div>
 
               <div className="flex items-center gap-2">
@@ -490,7 +619,7 @@ export default function MiniGameModal({ isOpen, onClose }: MiniGameModalProps) {
                   type="button"
                   onClick={toggleSound}
                   className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer text-xs"
-                  title={soundMuted ? 'Unmute Synthesizer' : 'Mute Synthesizer'}
+                  title={soundMuted ? 'Unmute Sound' : 'Mute Sound'}
                 >
                   {soundMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
                 </button>
@@ -505,18 +634,16 @@ export default function MiniGameModal({ isOpen, onClose }: MiniGameModalProps) {
               </div>
             </div>
 
-            {/* Score & Combo HUD */}
-            <div className="flex items-center justify-between px-2 py-1.5 bg-white/[0.03] border border-white/10 rounded-xl mb-3 text-xs font-mono">
+            {/* Score & HUD */}
+            <div className="flex items-center justify-between px-3 py-1.5 bg-white/[0.03] border border-white/10 rounded-xl mb-3 text-xs font-mono">
               <div className="flex items-center gap-2">
-                <span className="text-zinc-500 uppercase">SCORE:</span>
+                <span className="text-zinc-500">SCORE:</span>
                 <span className="font-bold text-white tracking-wider">{score}</span>
               </div>
 
-              {combo > 1 && (
-                <div className="flex items-center gap-1.5 text-transparent bg-clip-text bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] font-black uppercase tracking-wider animate-pulse">
-                  <span>{combo}X COMBO</span>
-                </div>
-              )}
+              <div className="flex items-center gap-1.5 text-[#06B6D4] font-semibold">
+                <span>◆ {gemsCollected}</span>
+              </div>
 
               <div className="flex items-center gap-1 text-zinc-400 text-[11px]">
                 <Trophy className="w-3 h-3 text-amber-400" />
@@ -524,110 +651,74 @@ export default function MiniGameModal({ isOpen, onClose }: MiniGameModalProps) {
               </div>
             </div>
 
-            {/* Rhythm Canvas Arena */}
-            <div className="relative w-full h-64 sm:h-72 rounded-2xl border border-white/10 bg-[#08080C] overflow-hidden shadow-inner flex flex-col justify-end">
+            {/* Game Canvas Screen */}
+            <div
+              onClick={handleJumpPress}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                handleJumpPress();
+              }}
+              className="relative w-full h-64 sm:h-72 rounded-2xl border border-white/10 bg-[#08080C] overflow-hidden shadow-inner cursor-pointer touch-none"
+            >
               <canvas ref={canvasRef} className="w-full h-full block" />
-
-              {/* Floating Timing Feedback (PERFECT / GREAT / MISS) */}
-              <AnimatePresence>
-                {feedback && (
-                  <motion.div
-                    key={feedback.key}
-                    initial={{ opacity: 0, scale: 0.6, y: 0 }}
-                    animate={{ opacity: 1, scale: 1.1, y: -20 }}
-                    exit={{ opacity: 0, scale: 0.8, y: -35 }}
-                    transition={{ duration: 0.3 }}
-                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none font-mono font-black text-lg sm:text-xl tracking-widest px-3 py-1 rounded-full backdrop-blur-md"
-                    style={{ color: feedback.color, textShadow: `0 0 16px ${feedback.color}` }}
-                  >
-                    {feedback.text}
-                  </motion.div>
-                )}
-              </AnimatePresence>
 
               {/* Start Screen Overlay */}
               {gameState === 'idle' && (
                 <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
                   <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/15 flex items-center justify-center mb-3 shadow-lg">
-                    <Music className="w-6 h-6 text-[#F25A2B]" />
+                    <Zap className="w-6 h-6 text-[#F25A2B]" />
                   </div>
-                  
-                  <h4 className="font-display text-lg sm:text-xl font-bold text-white mb-1.5">
-                    Drop The Beat
+
+                  <h4 className="font-display text-lg sm:text-xl font-bold text-white mb-1">
+                    Ride The Soundwave
                   </h4>
-                  
+
                   <p className="text-xs text-zinc-400 max-w-xs mb-5 leading-relaxed">
-                    Hit the falling neon notes when they cross the trigger zone. Every successful beat synthesizes real music.
+                    Tap to jump over red frequency spikes. Tap again in mid-air to <span className="text-white font-bold">Double Jump</span>!
                   </p>
 
                   <button
                     type="button"
-                    onClick={startGame}
-                    className="px-6 py-2.5 rounded-full bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF] text-white font-mono font-bold text-xs uppercase tracking-wider shadow-[0_10px_25px_rgba(242,90,43,0.3)] hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
+                    onClick={handleJumpPress}
+                    className="px-6 py-2.5 rounded-full bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] text-white font-mono font-bold text-xs uppercase tracking-wider shadow-[0_10px_25px_rgba(242,90,43,0.3)] hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
                   >
                     <Play className="w-3.5 h-3.5 fill-white" />
-                    <span>Start Session</span>
+                    <span>Launch</span>
                   </button>
                 </div>
               )}
 
-              {/* Game Over Screen Overlay */}
+              {/* Game Over Overlay */}
               {gameState === 'gameover' && (
                 <div className="absolute inset-0 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400 bg-white/10 px-3 py-1 rounded-full mb-2">
-                    Session Complete
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-red-400 bg-red-500/10 px-3 py-1 rounded-full border border-red-500/25 mb-2">
+                    Signal Lost
                   </span>
-                  
+
                   <div className="text-3xl sm:text-4xl font-display font-black text-white mb-1">
                     {score} <span className="text-xs font-mono text-zinc-500 font-normal">PTS</span>
                   </div>
 
                   <p className="text-xs font-mono text-zinc-400 mb-5">
-                    Max Combo: <span className="text-white font-bold">{maxCombo}x</span>
+                    Gems: <span className="text-[#06B6D4] font-bold">{gemsCollected}</span>
                   </p>
 
                   <button
                     type="button"
-                    onClick={startGame}
-                    className="px-6 py-2.5 rounded-full bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF] text-white font-mono font-bold text-xs uppercase tracking-wider shadow-[0_10px_25px_rgba(242,90,43,0.3)] hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
+                    onClick={handleJumpPress}
+                    className="px-6 py-2.5 rounded-full bg-gradient-to-r from-[#F25A2B] to-[#7C5CFF] text-white font-mono font-bold text-xs uppercase tracking-wider shadow-[0_10px_25px_rgba(242,90,43,0.3)] hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Cook Again</span>
+                    <span>Try Again</span>
                   </button>
                 </div>
               )}
             </div>
 
-            {/* 3 Mobile & Desktop Touch / Keyboard Pads */}
-            <div className="grid grid-cols-3 gap-2.5 pt-3">
-              {[0, 1, 2].map((laneIndex) => (
-                <button
-                  key={laneIndex}
-                  type="button"
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    triggerLaneHit(laneIndex);
-                  }}
-                  className={`relative py-3.5 sm:py-4 rounded-xl border transition-all duration-100 flex flex-col items-center justify-center cursor-pointer select-none active:scale-95 touch-none ${
-                    activeLaneIndex === laneIndex
-                      ? 'bg-white/15 border-white shadow-[0_0_20px_rgba(255,255,255,0.3)]'
-                      : 'bg-white/[0.03] hover:bg-white/[0.06] border-white/10'
-                  }`}
-                >
-                  <span
-                    className="w-2.5 h-2.5 rounded-full mb-1"
-                    style={{ backgroundColor: LANE_COLORS[laneIndex] }}
-                  />
-                  <span className="font-mono text-xs sm:text-sm font-bold text-zinc-200">
-                    {LANE_KEYS[laneIndex]}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            <div className="flex items-center justify-between pt-2.5 text-[10px] font-mono text-zinc-500">
-              <span>Keys: [A] [S] [D] or [◀] [▼] [▶]</span>
-              <span>Tap pads on mobile</span>
+            {/* Footer Control Hints */}
+            <div className="flex items-center justify-between pt-3 text-[11px] font-mono text-zinc-500">
+              <span>Tap screen / Spacebar = Jump</span>
+              <span className="text-zinc-400 font-semibold">Double Jump enabled</span>
             </div>
           </motion.div>
         </div>
