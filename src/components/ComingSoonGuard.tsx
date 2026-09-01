@@ -840,8 +840,8 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
 
           {/* ── Footer ── */}
           <footer className="relative z-10 w-full max-w-3xl flex items-center justify-between text-[10px] font-mono text-zinc-600 pb-2 shrink-0">
-            <span className="tracking-widest uppercase">
-              ArtisTant &bull; Coming Soon &bull; <span className="text-zinc-700 normal-case tracking-normal">try typing something</span>
+            <span className="text-zinc-700 tracking-normal">
+              try typing something
             </span>
 
             <button
