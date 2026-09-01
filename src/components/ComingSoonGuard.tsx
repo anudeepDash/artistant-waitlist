@@ -672,23 +672,41 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
               </AnimatePresence>
             </motion.div>
 
-            {/* ── Precision Feature Modules (Clean, high-craft editorial style) ── */}
+            {/* ── Precision Feature Modules (with Live Preview Tiles) ── */}
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
               className="w-full max-w-lg flex flex-col gap-2.5 mb-6"
             >
-              {/* Module 1: Shape the Platform */}
+              {/* Module 1: Shape the Platform (Live Form Blueprint Tile) */}
               <button
                 type="button"
                 onClick={() => setShowFeedbackModal(true)}
-                className="group relative w-full flex items-center justify-between p-4 sm:p-5 rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.08] hover:border-white/[0.18] transition-all duration-300 text-left cursor-pointer active:scale-[0.99]"
+                className="group relative w-full flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.08] hover:border-white/[0.18] transition-all duration-300 text-left cursor-pointer active:scale-[0.99]"
               >
                 <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center shrink-0 text-zinc-400 group-hover:text-white group-hover:bg-white/[0.08] transition-all">
-                    <MessageSquarePlus className="w-4 h-4" />
+                  {/* Live Form Blueprint Tile */}
+                  <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/[0.04] border border-white/[0.1] p-1.5 flex flex-col justify-between shadow-inner group-hover:border-[#F25A2B]/40 group-hover:bg-white/[0.06] transition-all shrink-0">
+                    <div className="flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#F25A2B] animate-pulse shrink-0" />
+                      <div className="w-full h-[2px] rounded-full bg-white/30" />
+                    </div>
+                    <div className="flex flex-col gap-[3px] my-auto">
+                      <div className="flex items-center gap-1">
+                        <div className="w-1 h-1 rounded-[1px] bg-white/40 shrink-0" />
+                        <div className="w-3/4 h-[1.5px] rounded-full bg-white/20" />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="w-1 h-1 rounded-[1px] bg-white/40 shrink-0" />
+                        <div className="w-1/2 h-[1.5px] rounded-full bg-white/20" />
+                      </div>
+                    </div>
+                    <div className="w-full h-1.5 rounded-sm bg-white/10 group-hover:bg-white/20 transition-colors flex items-center justify-center">
+                      <div className="w-1/2 h-[1px] bg-white/50" />
+                    </div>
                   </div>
+
                   <div className="flex flex-col gap-0.5 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-display text-sm sm:text-base font-semibold text-white tracking-tight truncate">
@@ -703,21 +721,32 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
                     </p>
                   </div>
                 </div>
+
                 <div className="w-8 h-8 rounded-full bg-white/[0.03] border border-white/[0.06] flex items-center justify-center shrink-0 text-zinc-500 group-hover:text-white group-hover:bg-white/[0.08] group-hover:translate-x-0.5 transition-all ml-2">
                   <ArrowUpRight className="w-3.5 h-3.5" />
                 </div>
               </button>
 
-              {/* Module 2: Stack Mini Game */}
+              {/* Module 2: Stack (Live Animated Arcade Game Tile) */}
               <button
                 type="button"
                 onClick={() => setShowMiniGame(true)}
-                className="group relative w-full flex items-center justify-between p-4 sm:p-5 rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.08] hover:border-white/[0.18] transition-all duration-300 text-left cursor-pointer active:scale-[0.99]"
+                className="group relative w-full flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.08] hover:border-white/[0.18] transition-all duration-300 text-left cursor-pointer active:scale-[0.99]"
               >
                 <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center shrink-0 text-zinc-400 group-hover:text-white group-hover:bg-white/[0.08] transition-all">
-                    <Gamepad2 className="w-4 h-4" />
+                  {/* Live Mini-Arcade Screen Tile */}
+                  <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/[0.04] border border-white/[0.1] p-1.5 flex flex-col justify-end items-center gap-[2.5px] shadow-inner relative overflow-hidden group-hover:border-purple-400/40 group-hover:bg-white/[0.06] transition-all shrink-0">
+                    {/* Live gliding top block */}
+                    <motion.div
+                      animate={{ x: [-5, 5, -5] }}
+                      transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+                      className="w-4 h-1 rounded-[1px] bg-white shadow-[0_0_6px_rgba(255,255,255,0.6)]"
+                    />
+                    {/* Stacked stationary blocks */}
+                    <div className="w-5 h-1 rounded-[1px] bg-white/40 border-t border-white/60" />
+                    <div className="w-6 h-1 rounded-[1px] bg-white/20 border-t border-white/30" />
                   </div>
+
                   <div className="flex flex-col gap-0.5 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-display text-sm sm:text-base font-semibold text-white tracking-tight truncate">
@@ -733,17 +762,30 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
                     </p>
                   </div>
                 </div>
+
                 <div className="w-8 h-8 rounded-full bg-white/[0.03] border border-white/[0.06] flex items-center justify-center shrink-0 text-zinc-500 group-hover:text-white group-hover:bg-white/[0.08] group-hover:translate-x-0.5 transition-all ml-2">
                   <ArrowUpRight className="w-3.5 h-3.5" />
                 </div>
               </button>
 
-              {/* Module 3: Take Artistant Anywhere */}
-              <div className="relative w-full flex items-center justify-between p-4 sm:p-5 rounded-2xl bg-white/[0.02] border border-white/[0.08] text-left">
+              {/* Module 3: Take Artistant Anywhere (Live Phone Silhouette Tile) */}
+              <div className="relative w-full flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-white/[0.02] border border-white/[0.08] text-left">
                 <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center shrink-0 text-zinc-400">
-                    <QrCode className="w-4 h-4" />
+                  {/* Live Mobile Device Tile */}
+                  <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/[0.04] border border-white/[0.1] p-1 flex items-center justify-center shadow-inner shrink-0 relative overflow-hidden">
+                    <div className="w-5 h-8 rounded-[4px] border border-white/30 bg-[#08080C] relative p-[2px] flex flex-col justify-between">
+                      {/* Notch */}
+                      <div className="w-2 h-[1px] rounded-full bg-white/30 mx-auto" />
+                      {/* UI content bars */}
+                      <div className="flex flex-col gap-[2px] my-auto">
+                        <div className="w-full h-[1px] rounded-full bg-white/40" />
+                        <div className="w-2/3 h-[1px] rounded-full bg-white/20" />
+                      </div>
+                      {/* Home bar */}
+                      <div className="w-2 h-[1px] rounded-full bg-white/30 mx-auto" />
+                    </div>
                   </div>
+
                   <div className="flex flex-col gap-0.5 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-display text-sm sm:text-base font-semibold text-white tracking-tight truncate">
@@ -758,6 +800,7 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
                     </p>
                   </div>
                 </div>
+
                 <div className="px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-[10px] font-mono uppercase tracking-widest text-zinc-400 shrink-0 ml-2">
                   Soon
                 </div>
