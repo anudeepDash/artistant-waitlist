@@ -13,7 +13,7 @@ import { Lock, ExternalLink, X, QrCode, Zap, MessageSquarePlus } from 'lucide-re
 const ADMIN_STORAGE_KEY = 'artistant_admin_bypass_active';
 const KNOWN_ADMIN_EMAILS = ['anudeepdash2004@gmail.com'];
 
-// ── Rotating taglines with meme references ──
+// ── Rotating taglines ──
 const TAGLINES = [
   '"We will be back with a bang."',
   '"First they ignore you, then they copy your escrow."',
@@ -27,22 +27,58 @@ const TAGLINES = [
   '"If you know, you know. If you don\'t, you will."',
 ];
 
-// ── Footer easter egg messages ──
-const FOOTER_MESSAGES = [
-  'ArtisTant • Coming Soon',
-  '👀 You\'re still here?',
-  'Okay, you\'re persistent.',
-  'Fine. We respect the grind.',
-  'No secrets here. Or are there?',
-  'Try ⌘K. Or don\'t. We\'re not your boss.',
-  '🫡',
-];
+// ── Secret word triggers ──
+// Type these words anywhere on the page to trigger responses
+const SECRET_WORDS: Record<string, string> = {
+  'cook':     '👨‍🍳 The kitchen is heating up.',
+  'gig':      '🎤 Your next gig is closer than you think.',
+  'music':    '🎵 Music is the universal language. Payments shouldn\'t need a translator.',
+  'hire':     '💼 Soon you won\'t need a middleman for that.',
+  'escrow':   '🔒 Smart move. Your money is safe with us.',
+  'broker':   '🚫 We don\'t do that here.',
+  'artistant':'🔥 You found us.',
+  'anudeep':  '👑 The founder sees you.',
+  'help':     '🤫 Try clicking the dot in "LET US COOK."',
+  'sorry':    '💅 No apologies needed. Just vibes.',
+  'hello':    '👋 Hey! We\'re still cooking. Come back soon.',
+  'please':   '🫡 Since you asked nicely... still cooking though.',
+  'money':    '💸 20-40% of your gig fee, gone to a broker? Not anymore.',
+  'whatsapp': '📱 "Bhai gig confirm hai na?" — Never again.',
+  'india':    '🇮🇳 Built for India\'s live entertainment scene.',
+};
 
-// ── Konami code sequence ──
+// ── Konami code ──
 const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','KeyB','KeyA'];
+
+// ── Console art (fires once on mount) ──
+const CONSOLE_ART = `
+%c╔═══════════════════════════════════════════════════╗
+║                                                   ║
+║     █████  ██████  ████████ ██ ███████ ████████   ║
+║    ██   ██ ██   ██    ██    ██ ██         ██      ║
+║    ███████ ██████     ██    ██ ███████    ██      ║
+║    ██   ██ ██   ██    ██    ██      ██    ██      ║
+║    ██   ██ ██   ██    ██    ██ ███████    ██      ║
+║                                                   ║
+║    🔥  We're hiring. Drop us a line.              ║
+║    👀  You found the console. Respect.            ║
+║    🎤  artistant.com                              ║
+║                                                   ║
+╚═══════════════════════════════════════════════════╝`;
 
 interface ComingSoonGuardProps {
   children: React.ReactNode;
+}
+
+// ── Particle type for the dot click effect ──
+interface DotParticle {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  char: string;
 }
 
 export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
@@ -65,15 +101,29 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
   // Click counter for secret logo trigger
   const [logoClicks, setLogoClicks] = useState<number>(0);
 
-  // Easter eggs
+  // Easter egg state
   const [currentTagline, setCurrentTagline] = useState(0);
-  const [footerClickCount, setFooterClickCount] = useState(0);
-  const [footerText, setFooterText] = useState(FOOTER_MESSAGES[0]);
-  const [konamiActivated, setKonamiActivated] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const [greeting, setGreeting] = useState('');
-  const konamiProgress = useRef<string[]>([]);
+  const [dotParticles, setDotParticles] = useState<DotParticle[]>([]);
+  const [dotClickCount, setDotClickCount] = useState(0);
+  const [pageFlipped, setPageFlipped] = useState(false);
+  const [idleMsg, setIdleMsg] = useState<string | null>(null);
 
-  // Time-based greeting
+  // Refs
+  const konamiProgress = useRef<string[]>([]);
+  const typedBuffer = useRef('');
+  const typedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const particleIdCounter = useRef(0);
+
+  // ── Console art on mount ──
+  useEffect(() => {
+    console.log(CONSOLE_ART, 'color: #F25A2B; font-size: 10px; font-family: monospace;');
+  }, []);
+
+  // ── Time-based greeting ──
   useEffect(() => {
     const h = new Date().getHours();
     if (h < 5) setGreeting('Late night, huh?');
@@ -83,7 +133,7 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
     else setGreeting('Night owl mode');
   }, []);
 
-  // Rotating taglines
+  // ── Rotating taglines ──
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTagline(prev => (prev + 1) % TAGLINES.length);
@@ -91,36 +141,152 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
     return () => clearInterval(interval);
   }, []);
 
-  // Footer easter egg
-  const handleFooterEasterEgg = () => {
-    const next = footerClickCount + 1;
-    setFooterClickCount(next);
-    if (next < FOOTER_MESSAGES.length) {
-      setFooterText(FOOTER_MESSAGES[next]);
-    } else {
-      setFooterText(FOOTER_MESSAGES[0]);
-      setFooterClickCount(0);
-    }
-  };
+  // ── Show toast helper ──
+  const showToast = useCallback((msg: string) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast(msg);
+    toastTimer.current = setTimeout(() => setToast(null), 3500);
+  }, []);
 
-  // Konami code listener
+  // ── Idle detection: after 45s of no interaction ──
+  const resetIdleTimer = useCallback(() => {
+    setIdleMsg(null);
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    idleTimer.current = setTimeout(() => {
+      const msgs = [
+        'Still here? We appreciate the patience.',
+        'You\'ve been staring at this page longer than most gig promoters take to pay.',
+        'This page has more visitors than your last open mic. (jk, we love you)',
+        'Fun fact: You\'ve now spent more time here than it takes to book a gig on ArtisTant.',
+      ];
+      setIdleMsg(msgs[Math.floor(Math.random() * msgs.length)]);
+    }, 45000);
+  }, []);
+
   useEffect(() => {
+    if (isAdminUnlocked) return;
+    resetIdleTimer();
+
+    const onActivity = () => resetIdleTimer();
+    window.addEventListener('mousemove', onActivity);
+    window.addEventListener('keydown', onActivity);
+    window.addEventListener('touchstart', onActivity);
+    return () => {
+      window.removeEventListener('mousemove', onActivity);
+      window.removeEventListener('keydown', onActivity);
+      window.removeEventListener('touchstart', onActivity);
+      if (idleTimer.current) clearTimeout(idleTimer.current);
+    };
+  }, [isAdminUnlocked, resetIdleTimer]);
+
+  // ── Secret word detection (type anywhere on page) ──
+  useEffect(() => {
+    if (isAdminUnlocked) return;
+
+    const handleType = (e: KeyboardEvent) => {
+      // Skip modifier keys, arrows, etc.
+      if (e.key.length !== 1) return;
+
+      typedBuffer.current += e.key.toLowerCase();
+
+      // Keep buffer to reasonable length
+      if (typedBuffer.current.length > 30) {
+        typedBuffer.current = typedBuffer.current.slice(-20);
+      }
+
+      // Check if any secret word is at the end of the buffer
+      for (const [word, response] of Object.entries(SECRET_WORDS)) {
+        if (typedBuffer.current.endsWith(word)) {
+          showToast(response);
+          typedBuffer.current = '';
+          break;
+        }
+      }
+
+      // Clear buffer after 2s of no typing
+      if (typedTimer.current) clearTimeout(typedTimer.current);
+      typedTimer.current = setTimeout(() => { typedBuffer.current = ''; }, 2000);
+    };
+
+    window.addEventListener('keydown', handleType);
+    return () => window.removeEventListener('keydown', handleType);
+  }, [isAdminUnlocked, showToast]);
+
+  // ── Konami code listener ──
+  useEffect(() => {
+    if (isAdminUnlocked) return;
+
     const handleKonami = (e: KeyboardEvent) => {
       konamiProgress.current.push(e.code);
       if (konamiProgress.current.length > KONAMI.length) {
         konamiProgress.current.shift();
       }
       if (konamiProgress.current.join(',') === KONAMI.join(',')) {
-        setKonamiActivated(true);
         konamiProgress.current = [];
-        setTimeout(() => setKonamiActivated(false), 3500);
+        // Konami flips the page upside down for 4 seconds
+        setPageFlipped(true);
+        showToast('🎮 ↑↑↓↓←→←→BA — You broke the matrix.');
+        setTimeout(() => setPageFlipped(false), 4000);
       }
     };
     window.addEventListener('keydown', handleKonami);
     return () => window.removeEventListener('keydown', handleKonami);
-  }, []);
+  }, [isAdminUnlocked, showToast]);
 
-  // Verify Admin Status
+  // ── The dot in "LET US COOK." is clickable ──
+  const handleDotClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    const rect = (e.target as HTMLElement).getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+
+    // Spawn emoji particles from the dot
+    const emojis = ['🔥', '🍳', '👨‍🍳', '💥', '✨', '🎵', '🎤', '🎸', '🥁', '🎹'];
+    const newParticles: DotParticle[] = [];
+    for (let i = 0; i < 8; i++) {
+      const angle = (Math.PI * 2 * i) / 8 + (Math.random() - 0.5) * 0.5;
+      newParticles.push({
+        id: particleIdCounter.current++,
+        x: cx,
+        y: cy,
+        vx: Math.cos(angle) * (2 + Math.random() * 3),
+        vy: Math.sin(angle) * (2 + Math.random() * 3) - 2,
+        life: 1,
+        char: emojis[Math.floor(Math.random() * emojis.length)],
+      });
+    }
+    setDotParticles(prev => [...prev, ...newParticles]);
+
+    // Animate particles out
+    const animateParticles = () => {
+      setDotParticles(prev => {
+        const next = prev.map(p => ({
+          ...p,
+          x: p.x + p.vx,
+          y: p.y + p.vy,
+          vy: p.vy + 0.15,
+          life: p.life - 0.025,
+        })).filter(p => p.life > 0);
+        if (next.length > 0) requestAnimationFrame(animateParticles);
+        return next;
+      });
+    };
+    requestAnimationFrame(animateParticles);
+
+    const count = dotClickCount + 1;
+    setDotClickCount(count);
+
+    if (count === 1) showToast('🔥 The dot is interactive. Keep going.');
+    else if (count === 5) showToast('🍳 Now we\'re cooking.');
+    else if (count === 10) showToast('👨‍🍳 Chef mode activated.');
+    else if (count === 20) showToast('💥 You\'re officially obsessed.');
+    else if (count === 50) showToast('🏆 50 clicks. We\'re adding you to the credits.');
+    else if (count === 100) showToast('🐐 100. GOAT status. Screenshot this.');
+  };
+
+  // ── Core admin logic (unchanged) ──
+
   const verifyAdminStatus = useCallback(async () => {
     try {
       if (typeof window !== 'undefined') {
@@ -336,7 +502,13 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
 
       {/* ─── 2. Coming Soon Overlay ─── */}
       {!isAdminUnlocked && (
-        <div className="fixed inset-0 z-[9999] flex flex-col items-center p-4 sm:p-8 md:p-12 bg-[#08080C] select-none overflow-y-auto overflow-x-hidden min-h-[100dvh]">
+        <div
+          className="fixed inset-0 z-[9999] flex flex-col items-center p-4 sm:p-8 md:p-12 bg-[#08080C] select-none overflow-y-auto overflow-x-hidden min-h-[100dvh]"
+          style={{
+            transition: 'transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+            transform: pageFlipped ? 'rotate(180deg)' : 'none',
+          }}
+        >
 
           {/* ── Top Nav ── */}
           <header className="relative z-10 w-full max-w-3xl flex items-center justify-between pt-2 sm:pt-4 shrink-0">
@@ -353,18 +525,9 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
               />
             </button>
 
-            <div className="flex items-center gap-3">
-              {/* Konami hint — barely visible, rewards the curious */}
-              <span
-                className="text-[9px] font-mono text-zinc-700 hover:text-zinc-500 transition-colors hidden sm:block cursor-default select-text"
-                title="Try typing this sequence…"
-              >
-                ↑↑↓↓←→←→BA
-              </span>
-              <span className="text-[10px] font-mono text-zinc-600 tracking-wide">
-                {greeting}
-              </span>
-            </div>
+            <span className="text-[10px] font-mono text-zinc-600 tracking-wide">
+              {greeting}
+            </span>
           </header>
 
           {/* ── Center Stage ── */}
@@ -380,14 +543,23 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
               Coming Soon
             </motion.p>
 
-            {/* Headline */}
+            {/* Headline — the dot is its own interactive element */}
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
               className="font-display text-[clamp(2.4rem,9vw,6rem)] font-black uppercase tracking-tight text-white leading-[0.9] whitespace-nowrap mb-4"
             >
-              LET US COOK<span className="text-[#F25A2B]">.</span>
+              LET US COOK
+              <span
+                className="text-[#F25A2B] cursor-pointer hover:scale-150 inline-block transition-transform duration-200 active:scale-75 select-none"
+                onClick={handleDotClick}
+                title="Click me"
+                role="button"
+                tabIndex={0}
+              >
+                .
+              </span>
             </motion.h1>
 
             {/* Subtitle */}
@@ -410,7 +582,7 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
               Direct gig bookings &bull; Escrow protection &bull; Zero broker cuts
             </motion.p>
 
-            {/* Rotating tagline — meme-infused */}
+            {/* Rotating tagline */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -497,17 +669,17 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
               </div>
             </motion.div>
 
-            {/* Konami achievement toast */}
+            {/* Idle message */}
             <AnimatePresence>
-              {konamiActivated && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
+              {idleMsg && (
+                <motion.p
+                  initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="fixed top-6 left-1/2 -translate-x-1/2 z-[10003] px-5 py-2.5 bg-white text-black text-xs font-semibold rounded-full shadow-2xl"
+                  exit={{ opacity: 0 }}
+                  className="text-[11px] text-zinc-600 font-mono italic mb-4"
                 >
-                  🎮 Achievement Unlocked: OG Gamer
-                </motion.div>
+                  {idleMsg}
+                </motion.p>
               )}
             </AnimatePresence>
 
@@ -515,13 +687,9 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
 
           {/* ── Footer ── */}
           <footer className="relative z-10 w-full max-w-3xl flex items-center justify-between text-[10px] font-mono text-zinc-600 pb-2 shrink-0">
-            <button
-              type="button"
-              onClick={handleFooterEasterEgg}
-              className="tracking-widest uppercase cursor-default hover:text-zinc-400 transition-colors text-left"
-            >
-              {footerText}
-            </button>
+            <span className="tracking-widest uppercase">
+              ArtisTant &bull; Coming Soon
+            </span>
 
             <button
               type="button"
@@ -580,6 +748,36 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
           </AnimatePresence>
         </div>
       )}
+
+      {/* ── Toast notification ── */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: -10, x: '-50%' }}
+            className="fixed bottom-8 left-1/2 z-[10003] px-5 py-2.5 bg-white text-black text-xs font-medium rounded-full shadow-2xl whitespace-nowrap"
+          >
+            {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Dot click particles (emoji confetti) ── */}
+      {dotParticles.map(p => (
+        <span
+          key={p.id}
+          className="fixed z-[10004] pointer-events-none text-lg select-none"
+          style={{
+            left: p.x,
+            top: p.y,
+            opacity: p.life,
+            transform: `translate(-50%, -50%)`,
+          }}
+        >
+          {p.char}
+        </span>
+      ))}
 
       {/* ─── 3. Floating Admin Status Pill (When Unlocked) ─── */}
       {isAdminUnlocked && (
