@@ -47,8 +47,10 @@ const SECRET_WORDS: Record<string, string> = {
   'india':    '🇮🇳 Built for India\'s live entertainment scene.',
 };
 
-// ── Konami code ──
-const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','KeyB','KeyA'];
+
+// ── Shake detection threshold ──
+const SHAKE_THRESHOLD = 25;
+const SHAKE_COUNT_TRIGGER = 3;
 
 // ── Console art (fires once on mount) ──
 const CONSOLE_ART = `
@@ -107,16 +109,20 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
   const [greeting, setGreeting] = useState('');
   const [dotParticles, setDotParticles] = useState<DotParticle[]>([]);
   const [dotClickCount, setDotClickCount] = useState(0);
-  const [pageFlipped, setPageFlipped] = useState(false);
+  const [shakeTriggered, setShakeTriggered] = useState(false);
+  const [longPressActive, setLongPressActive] = useState(false);
   const [idleMsg, setIdleMsg] = useState<string | null>(null);
 
   // Refs
-  const konamiProgress = useRef<string[]>([]);
   const typedBuffer = useRef('');
   const typedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const particleIdCounter = useRef(0);
+  const shakeCount = useRef(0);
+  const lastAccel = useRef({ x: 0, y: 0, z: 0 });
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shakeRecentlyFired = useRef(false);
 
   // ── Console art on mount ──
   useEffect(() => {
@@ -212,28 +218,73 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
     return () => window.removeEventListener('keydown', handleType);
   }, [isAdminUnlocked, showToast]);
 
-  // ── Konami code listener ──
+  // ── Shake detection (mobile) — shake your phone to trigger ──
   useEffect(() => {
     if (isAdminUnlocked) return;
 
-    const handleKonami = (e: KeyboardEvent) => {
-      konamiProgress.current.push(e.code);
-      if (konamiProgress.current.length > KONAMI.length) {
-        konamiProgress.current.shift();
-      }
-      if (konamiProgress.current.join(',') === KONAMI.join(',')) {
-        konamiProgress.current = [];
-        // Konami flips the page upside down for 4 seconds
-        setPageFlipped(true);
-        showToast('🎮 ↑↑↓↓←→←→BA — You broke the matrix.');
-        setTimeout(() => setPageFlipped(false), 4000);
+    const shakeMessages = [
+      '📳 You shook the page! Didn\'t break anything... this time.',
+      '🫨 Earthquake detected. Magnitude: vibes.',
+      '📳 Shake it off, shake it off 🎵 — but the launch date stays.',
+      '🫨 Your phone called. It said stop shaking it.',
+    ];
+
+    let shakeTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const handleMotion = (e: DeviceMotionEvent) => {
+      if (shakeRecentlyFired.current) return;
+
+      const acc = e.accelerationIncludingGravity;
+      if (!acc || acc.x === null || acc.y === null || acc.z === null) return;
+
+      const dx = Math.abs(acc.x - lastAccel.current.x);
+      const dy = Math.abs(acc.y - lastAccel.current.y);
+      const dz = Math.abs(acc.z - lastAccel.current.z);
+
+      lastAccel.current = { x: acc.x, y: acc.y, z: acc.z };
+
+      if (dx + dy + dz > SHAKE_THRESHOLD) {
+        shakeCount.current++;
+
+        // Reset count if no more shakes within 800ms
+        if (shakeTimeout) clearTimeout(shakeTimeout);
+        shakeTimeout = setTimeout(() => { shakeCount.current = 0; }, 800);
+
+        if (shakeCount.current >= SHAKE_COUNT_TRIGGER) {
+          shakeCount.current = 0;
+          shakeRecentlyFired.current = true;
+          setTimeout(() => { shakeRecentlyFired.current = false; }, 5000);
+
+          setShakeTriggered(true);
+          showToast(shakeMessages[Math.floor(Math.random() * shakeMessages.length)]);
+          setTimeout(() => setShakeTriggered(false), 1500);
+        }
       }
     };
-    window.addEventListener('keydown', handleKonami);
-    return () => window.removeEventListener('keydown', handleKonami);
+
+    window.addEventListener('devicemotion', handleMotion);
+    return () => {
+      window.removeEventListener('devicemotion', handleMotion);
+      if (shakeTimeout) clearTimeout(shakeTimeout);
+    };
   }, [isAdminUnlocked, showToast]);
 
-  // ── The dot in "LET US COOK." is clickable ──
+  // ── Long-press headline (3s hold) — works on both mobile and desktop ──
+  const handleHeadlinePressStart = () => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    longPressTimer.current = setTimeout(() => {
+      setLongPressActive(true);
+      showToast('🤐 You held it for 3 seconds. Fine — the launch is closer than you think.');
+      setTimeout(() => setLongPressActive(false), 3000);
+    }, 3000);
+  };
+
+  const handleHeadlinePressEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
   const handleDotClick = (e: React.MouseEvent) => {
     e.stopPropagation();
 
@@ -503,11 +554,9 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
       {/* ─── 2. Coming Soon Overlay ─── */}
       {!isAdminUnlocked && (
         <div
-          className="fixed inset-0 z-[9999] flex flex-col items-center p-4 sm:p-8 md:p-12 bg-[#08080C] select-none overflow-y-auto overflow-x-hidden min-h-[100dvh]"
-          style={{
-            transition: 'transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
-            transform: pageFlipped ? 'rotate(180deg)' : 'none',
-          }}
+          className={`fixed inset-0 z-[9999] flex flex-col items-center p-4 sm:p-8 md:p-12 bg-[#08080C] select-none overflow-y-auto overflow-x-hidden min-h-[100dvh] ${
+            shakeTriggered ? 'animate-[wiggle_0.3s_ease-in-out_3]' : ''
+          }`}
         >
 
           {/* ── Top Nav ── */}
@@ -543,12 +592,17 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
               Coming Soon
             </motion.p>
 
-            {/* Headline — the dot is its own interactive element */}
+            {/* Headline — long-press for 3s for a secret, the dot is also clickable */}
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-              className="font-display text-[clamp(2.4rem,9vw,6rem)] font-black uppercase tracking-tight text-white leading-[0.9] whitespace-nowrap mb-4"
+              className="font-display text-[clamp(2.4rem,9vw,6rem)] font-black uppercase tracking-tight text-white leading-[0.9] whitespace-nowrap mb-4 cursor-default"
+              onMouseDown={handleHeadlinePressStart}
+              onMouseUp={handleHeadlinePressEnd}
+              onMouseLeave={handleHeadlinePressEnd}
+              onTouchStart={handleHeadlinePressStart}
+              onTouchEnd={handleHeadlinePressEnd}
             >
               LET US COOK
               <span

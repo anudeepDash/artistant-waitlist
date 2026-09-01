@@ -31,6 +31,13 @@
   --font-grotesk: var(--font-space-grotesk), "Space Grotesk", system-ui, sans-serif;
 }
 
+/* Shake wiggle animation for easter egg */
+@keyframes wiggle {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px) rotate(-1deg); }
+  75% { transform: translateX(6px) rotate(1deg); }
+}
+
 :root {
   /* LIGHT MODE */
   --bg: #f9fafb;
