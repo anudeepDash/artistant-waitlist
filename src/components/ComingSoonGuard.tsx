@@ -8,7 +8,7 @@ import { checkIsAdminAction } from '@/lib/admin-actions';
 import AdminLoginGate from '@/components/admin/AdminLoginGate';
 import MiniGameModal from '@/components/MiniGameModal';
 import MarketFeedbackModal from '@/components/MarketFeedbackModal';
-import { Lock, ExternalLink, X, QrCode, Zap, MessageSquarePlus } from 'lucide-react';
+import { Lock, ExternalLink, X, QrCode, Zap, MessageSquarePlus, Gamepad2, ArrowUpRight, CheckCircle2, FileText } from 'lucide-react';
 
 const ADMIN_STORAGE_KEY = 'artistant_admin_bypass_active';
 const KNOWN_ADMIN_EMAILS = ['anudeepdash2004@gmail.com'];
@@ -672,67 +672,178 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
               </AnimatePresence>
             </motion.div>
 
-            {/* ── Action Cards ── */}
+            {/* ── Interactive Cards ── */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="w-full max-w-md flex flex-col gap-3 mb-6"
+              className="w-full max-w-lg flex flex-col gap-3 mb-6"
             >
-              {/* Shape the Platform */}
+              {/* Card 1: Shape the Platform — Feedback & Feature Roadmap Blueprint */}
               <button
                 type="button"
                 onClick={() => setShowFeedbackModal(true)}
-                className="group w-full flex items-center justify-between p-4 sm:p-5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] transition-all duration-300 text-left gap-3 cursor-pointer active:scale-[0.98]"
+                className="group w-full rounded-2xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] hover:from-white/[0.07] hover:to-white/[0.02] border border-white/[0.08] hover:border-white/[0.18] transition-all duration-300 overflow-hidden text-left cursor-pointer active:scale-[0.98]"
               >
-                <div className="flex flex-col gap-0.5">
-                  <h3 className="text-sm sm:text-base font-semibold tracking-tight text-white">
-                    Shape the Platform
-                  </h3>
-                  <p className="text-zinc-500 text-[11px] sm:text-xs">
-                    Tell us what&apos;s broken in live entertainment.
-                  </p>
-                </div>
-                <div className="w-9 h-9 sm:w-10 sm:h-10 bg-white/[0.04] rounded-lg border border-white/[0.06] flex items-center justify-center shrink-0 group-hover:bg-white/[0.08] transition-colors">
-                  <MessageSquarePlus className="w-4 h-4 text-white/30 group-hover:text-white/50 transition-colors" />
+                <div className="flex items-stretch">
+                  {/* Left: Form & Feature Blueprint Mockup */}
+                  <div className="w-20 sm:w-24 shrink-0 bg-white/[0.02] border-r border-white/[0.06] flex items-center justify-center py-4 sm:py-5 group-hover:bg-white/[0.04] transition-colors relative overflow-hidden">
+                    {/* Stylized Document / Form Card */}
+                    <div className="w-10 sm:w-11 h-16 sm:h-[4.5rem] rounded-lg border border-white/[0.12] bg-[#0c0c14] p-1.5 flex flex-col justify-between shadow-inner relative group-hover:border-[#F25A2B]/40 transition-colors">
+                      {/* Top row: Radio dot + line */}
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 rounded-full border border-[#F25A2B] bg-[#F25A2B]/20 flex items-center justify-center shrink-0">
+                          <div className="w-0.5 h-0.5 rounded-full bg-[#F25A2B]" />
+                        </div>
+                        <div className="w-full h-[2px] rounded-full bg-white/[0.15]" />
+                      </div>
+
+                      {/* Middle row: Checkbox + input rows */}
+                      <div className="flex flex-col gap-1 my-auto">
+                        <div className="flex items-center gap-1">
+                          <div className="w-1.5 h-1.5 rounded-[2px] bg-white/[0.2] border border-white/[0.3] flex items-center justify-center shrink-0" />
+                          <div className="w-3/4 h-[2px] rounded-full bg-white/[0.1]" />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-1.5 h-1.5 rounded-[2px] bg-white/[0.2] border border-white/[0.3] flex items-center justify-center shrink-0" />
+                          <div className="w-1/2 h-[2px] rounded-full bg-white/[0.1]" />
+                        </div>
+                      </div>
+
+                      {/* Bottom action button */}
+                      <div className="w-full h-2 rounded-sm bg-white/[0.08] group-hover:bg-white/[0.15] transition-colors flex items-center justify-center">
+                        <div className="w-1/2 h-[2px] rounded-full bg-white/40" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: Content & Badges */}
+                  <div className="flex-1 p-4 sm:p-5 flex flex-col justify-center gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h3 className="text-sm sm:text-base font-semibold tracking-tight text-white flex items-center gap-1.5">
+                          Shape the Platform
+                          <ArrowUpRight className="w-3.5 h-3.5 text-white/40 group-hover:text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                        </h3>
+                        <p className="text-zinc-500 text-[11px] sm:text-xs leading-relaxed mt-0.5">
+                          Tell us what&apos;s broken in live entertainment &amp; what features you want built.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Tags / Pills */}
+                    <div className="flex items-center gap-2 pt-0.5">
+                      <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.06]">
+                        <MessageSquarePlus className="w-2.5 h-2.5 text-[#F25A2B]" />
+                        <span className="text-[9px] font-mono text-zinc-400">Market Issues</span>
+                      </div>
+                      <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.06]">
+                        <FileText className="w-2.5 h-2.5 text-[#7C5CFF]" />
+                        <span className="text-[9px] font-mono text-zinc-400">Feature Requests</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </button>
 
-              {/* Play Game */}
+              {/* Card 2: Stack — Arcade Game Mockup */}
               <button
                 type="button"
                 onClick={() => setShowMiniGame(true)}
-                className="group w-full flex items-center justify-between p-4 sm:p-5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] transition-all duration-300 text-left gap-3 cursor-pointer active:scale-[0.98]"
+                className="group w-full rounded-2xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] hover:from-white/[0.07] hover:to-white/[0.02] border border-white/[0.08] hover:border-white/[0.18] transition-all duration-300 overflow-hidden text-left cursor-pointer active:scale-[0.98]"
               >
-                <div className="flex flex-col gap-0.5">
-                  <h3 className="text-sm sm:text-base font-semibold tracking-tight text-white">
-                    Stack
-                  </h3>
-                  <p className="text-zinc-500 text-[11px] sm:text-xs">
-                    Tap to stack. Don&apos;t miss.
-                  </p>
-                </div>
-                <div className="w-9 h-9 sm:w-10 sm:h-10 bg-white/[0.04] rounded-lg border border-white/[0.06] flex items-center justify-center shrink-0 group-hover:bg-white/[0.08] transition-colors">
-                  <Zap className="w-4 h-4 text-white/30 group-hover:text-white/50 transition-colors" />
+                <div className="flex items-stretch">
+                  {/* Left: Animated Arcade Stack Mockup */}
+                  <div className="w-20 sm:w-24 shrink-0 bg-white/[0.02] border-r border-white/[0.06] flex items-center justify-center py-4 sm:py-5 group-hover:bg-white/[0.04] transition-colors relative overflow-hidden">
+                    {/* Stylized Arcade Screen */}
+                    <div className="w-10 sm:w-11 h-16 sm:h-[4.5rem] rounded-lg border border-white/[0.12] bg-[#0c0c14] p-1.5 flex flex-col justify-end items-center gap-[3px] shadow-inner relative overflow-hidden group-hover:border-purple-400/40 transition-colors">
+                      {/* Scanline hint */}
+                      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/[0.02] to-transparent pointer-events-none" />
+
+                      {/* Moving top block */}
+                      <motion.div
+                        animate={{ x: [-6, 6, -6] }}
+                        transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                        className="w-5 h-1.5 rounded-[1px] bg-white border-t border-white shadow-[0_0_8px_rgba(255,255,255,0.4)]"
+                      />
+
+                      {/* Placed stack blocks */}
+                      <div className="w-6 h-1.5 rounded-[1px] bg-white/40 border-t border-white/60" />
+                      <div className="w-7 h-1.5 rounded-[1px] bg-white/25 border-t border-white/40" />
+                      <div className="w-8 h-2 rounded-[1px] bg-white/15 border-t border-white/25" />
+                    </div>
+                  </div>
+
+                  {/* Right: Content & Badges */}
+                  <div className="flex-1 p-4 sm:p-5 flex flex-col justify-center gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h3 className="text-sm sm:text-base font-semibold tracking-tight text-white flex items-center gap-1.5">
+                          Stack — Mini Arcade
+                          <ArrowUpRight className="w-3.5 h-3.5 text-white/40 group-hover:text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                        </h3>
+                        <p className="text-zinc-500 text-[11px] sm:text-xs leading-relaxed mt-0.5">
+                          One-tap precision block stacker. Beat your high score while you wait.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Tags / Pills */}
+                    <div className="flex items-center gap-2 pt-0.5">
+                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.06]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <span className="text-[9px] font-mono text-zinc-400">Playable Now</span>
+                      </div>
+                      <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.06]">
+                        <Zap className="w-2.5 h-2.5 text-amber-400" />
+                        <span className="text-[9px] font-mono text-zinc-400">Tap to Place</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </button>
 
-              {/* Take Artistant Anywhere */}
-              <div className="w-full flex items-center justify-between p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/[0.06] text-left gap-3">
-                <div className="flex flex-col gap-0.5">
-                  <h3 className="text-sm sm:text-base font-semibold tracking-tight text-white">
-                    Take Artistant Anywhere
-                  </h3>
-                  <p className="text-zinc-500 text-[11px] sm:text-xs">
-                    The booking engine in your pocket.
-                  </p>
-                </div>
-                <div className="relative w-9 h-9 sm:w-10 sm:h-10 bg-white/[0.04] rounded-lg border border-white/[0.06] flex items-center justify-center shrink-0 overflow-hidden">
-                  <QrCode className="w-4 h-4 text-white/20" />
-                  <div className="absolute inset-0 backdrop-blur-[3px] bg-black/50 flex items-center justify-center">
-                    <span className="text-[6px] font-mono font-bold text-white/60 uppercase tracking-widest text-center leading-tight">
-                      Soon
-                    </span>
+              {/* Card 3: Take Artistant Anywhere — Mobile App Preview */}
+              <div className="w-full rounded-2xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.08] overflow-hidden text-left">
+                <div className="flex items-stretch">
+                  {/* Left: Phone silhouette */}
+                  <div className="w-20 sm:w-24 shrink-0 bg-white/[0.02] border-r border-white/[0.06] flex items-center justify-center py-4 sm:py-5">
+                    <div className="w-10 sm:w-11 h-16 sm:h-[4.5rem] rounded-lg border-2 border-white/[0.12] bg-[#0c0c14] relative shadow-inner">
+                      {/* Notch */}
+                      <div className="absolute top-1 left-1/2 -translate-x-1/2 w-4 h-1 rounded-full bg-white/[0.08]" />
+                      {/* Screen content hint */}
+                      <div className="absolute inset-[5px] top-3.5 flex flex-col gap-[3px]">
+                        <div className="w-full h-[3px] rounded-full bg-white/[0.1]" />
+                        <div className="w-3/4 h-[3px] rounded-full bg-white/[0.06]" />
+                        <div className="w-1/2 h-[3px] rounded-full bg-white/[0.06]" />
+                      </div>
+                      {/* Home bar */}
+                      <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-4 h-[2px] rounded-full bg-white/[0.1]" />
+                    </div>
+                  </div>
+
+                  {/* Right: Content */}
+                  <div className="flex-1 p-4 sm:p-5 flex flex-col justify-center gap-2">
+                    <div>
+                      <h3 className="text-sm sm:text-base font-semibold tracking-tight text-white">
+                        Take Artistant Anywhere
+                      </h3>
+                      <p className="text-zinc-500 text-[11px] sm:text-xs leading-relaxed mt-0.5">
+                        Direct gig bookings, escrow payments &amp; artist network in your pocket.
+                      </p>
+                    </div>
+
+                    {/* App store hints */}
+                    <div className="flex items-center gap-2 pt-0.5">
+                      <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.06]">
+                        <svg className="w-3 h-3 text-white/40" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                        <span className="text-[9px] font-mono text-white/40 uppercase tracking-wider">iOS App</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.06]">
+                        <svg className="w-3 h-3 text-white/40" viewBox="0 0 24 24" fill="currentColor"><path d="M3.609 1.814L13.792 12 3.61 22.186a.996.996 0 01-.61-.92V2.734a1 1 0 01.609-.92zm10.89 10.893l2.302 2.302-10.937 6.333 8.635-8.635zm3.199-3.198l2.807 1.626a1 1 0 010 1.73l-2.808 1.626L15.206 12l2.492-2.491zM5.864 2.658L16.802 8.99l-2.303 2.303-8.635-8.635z"/></svg>
+                        <span className="text-[9px] font-mono text-white/40 uppercase tracking-wider">Android</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
