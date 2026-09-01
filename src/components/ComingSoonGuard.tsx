@@ -112,6 +112,8 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
   const [shakeTriggered, setShakeTriggered] = useState(false);
   const [longPressActive, setLongPressActive] = useState(false);
   const [idleMsg, setIdleMsg] = useState<string | null>(null);
+  const [showHint, setShowHint] = useState(false);
+  const [hintDismissed, setHintDismissed] = useState(false);
 
   // Refs
   const typedBuffer = useRef('');
@@ -147,10 +149,24 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
     return () => clearInterval(interval);
   }, []);
 
+  // ── Delayed hint — appears after 10s, fades out after 18s ──
+  useEffect(() => {
+    if (isAdminUnlocked || hintDismissed) return;
+    const showTimer = setTimeout(() => setShowHint(true), 10000);
+    const hideTimer = setTimeout(() => {
+      setShowHint(false);
+      setHintDismissed(true);
+    }, 25000);
+    return () => { clearTimeout(showTimer); clearTimeout(hideTimer); };
+  }, [isAdminUnlocked, hintDismissed]);
+
   // ── Show toast helper ──
   const showToast = useCallback((msg: string) => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
     setToast(msg);
+    // Dismiss the hint once someone discovers an easter egg
+    setShowHint(false);
+    setHintDismissed(true);
     toastTimer.current = setTimeout(() => setToast(null), 3500);
   }, []);
 
@@ -606,9 +622,8 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
             >
               LET US COOK
               <span
-                className="text-[#F25A2B] cursor-pointer hover:scale-150 inline-block transition-transform duration-200 active:scale-75 select-none"
+                className="text-[#F25A2B] cursor-pointer hover:scale-150 inline-block transition-transform duration-200 active:scale-75 select-none animate-pulse"
                 onClick={handleDotClick}
-                title="Click me"
                 role="button"
                 tabIndex={0}
               >
@@ -737,12 +752,27 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
               )}
             </AnimatePresence>
 
+            {/* Whisper hint — appears after 10s, auto-hides */}
+            <AnimatePresence>
+              {showHint && (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 1.5 }}
+                  className="text-[11px] text-zinc-700 font-mono tracking-wide mb-2"
+                >
+                  psst — this page has secrets. poke around.
+                </motion.p>
+              )}
+            </AnimatePresence>
+
           </main>
 
           {/* ── Footer ── */}
           <footer className="relative z-10 w-full max-w-3xl flex items-center justify-between text-[10px] font-mono text-zinc-600 pb-2 shrink-0">
             <span className="tracking-widest uppercase">
-              ArtisTant &bull; Coming Soon
+              ArtisTant &bull; Coming Soon &bull; <span className="text-zinc-700 normal-case tracking-normal">try typing something</span>
             </span>
 
             <button
