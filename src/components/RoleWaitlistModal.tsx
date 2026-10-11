@@ -136,7 +136,7 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
       case 'organizer':
         return {
           label: 'Event Host',
-          desc: 'Promote events and book premier performers seamlessly',
+          desc: 'Book verified artists with a proper contract, protected payments and a backup if anything goes wrong.',
           accent: '#7C5CFF', // electric purple
           accentRgb: '124, 92, 255',
           secondary: '#D4567A', // magenta
@@ -147,7 +147,7 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
       case 'venue':
         return {
           label: 'Partner Venue',
-          desc: 'Host verified performers and manage stage logs',
+          desc: 'Run weekly live nights with resident artists — pay week by week, with one invoice a month.',
           accent: '#F25A2B', // orange-red
           accentRgb: '242, 90, 43',
           secondary: '#D4567A', // magenta
@@ -314,7 +314,7 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
                         className="text-xs font-mono uppercase tracking-wider mb-2 font-semibold"
                         style={{ color: roleTokens.accent }}
                       >
-                        {role === 'organizer' ? 'FOR HOSTS' : role === 'venue' ? 'FOR VENUES' : 'FOR ATTENDEES'}
+                        {role === 'organizer' ? 'FOR BOOKERS' : role === 'venue' ? 'FOR VENUES' : 'FOR ATTENDEES'}
                       </div>
                       <h2 className="font-display font-extrabold text-2xl sm:text-3xl text-white tracking-tight uppercase leading-none mb-4">
                         {role === 'organizer' ? (

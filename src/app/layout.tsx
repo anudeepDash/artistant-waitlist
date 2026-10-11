@@ -32,10 +32,10 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
     template: "%s | Artistant",
-    default: "ARTISTANT — India's Live Entertainment Economy, Rebuilt",
+    default: "Artistant — The safe way to book live artists in India",
   },
   description:
-    "The live event ecosystem is broken. We built the contract, escrow, and payment infrastructure India's independent artists actually deserve.",
+    "The safe way to book live artists in India. A proper contract, money held safely, and artists paid in steps — half before they travel, the rest after the show. Join the waitlist.",
   keywords: [
     "ArtisTant",
     "Artistant",
@@ -46,6 +46,10 @@ export const metadata: Metadata = {
     "independent musicians",
     "gig contracts",
     "escrow payments",
+    "book live band Bangalore",
+    "wedding sangeet artists",
+    "corporate event artists",
+    "Bookability Score",
   ],
   authors: [{ name: "Artistant", url: siteUrl }],
   creator: "Artistant",
@@ -64,9 +68,9 @@ export const metadata: Metadata = {
   },
   manifest: "/site.webmanifest",
   openGraph: {
-    title: "ARTISTANT — India's live economy, rebuilt.",
+    title: "Artistant — Every gig booked. Every artist paid.",
     description:
-      "The live event ecosystem is broken. We built the contract, escrow, and payment infrastructure India's independent artists actually deserve.",
+      "The safe way to book live artists in India. A proper contract, money held safely, and artists paid in steps — half before they travel, the rest after the show. Join the waitlist.",
     url: siteUrl,
     type: "website",
     siteName: "Artistant",
@@ -82,9 +86,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "ARTISTANT — India's live economy, rebuilt.",
+    title: "Artistant — Every gig booked. Every artist paid.",
     description:
-      "The live event ecosystem is broken. We built the contract, escrow, and payment infrastructure India's independent artists actually deserve.",
+      "The safe way to book live artists in India. A proper contract, money held safely, and artists paid in steps — half before they travel, the rest after the show. Join the waitlist.",
     site: "@artistant_in",
     creator: "@artistant_in",
     images: ["/brand_palette.png"],

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { signInWithGoogle, signInWithEmail, signOut as firebaseSignOut } from '@/lib/auth';
 import { checkIsAdminAction } from '@/lib/admin-actions';
@@ -83,7 +84,16 @@ interface DotParticle {
   char: string;
 }
 
+// Routes that are live for everyone; every other route stays behind the gate.
+const PUBLIC_PATHS = new Set(['/', '/privacy', '/terms']);
+
 export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
+  const pathname = usePathname();
+  if (PUBLIC_PATHS.has(pathname)) return <>{children}</>;
+  return <ComingSoonGate>{children}</ComingSoonGate>;
+}
+
+function ComingSoonGate({ children }: ComingSoonGuardProps) {
   const { user, loading: authLoading } = useAuth();
 
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(false);
