@@ -8,7 +8,8 @@ import { checkIsAdminAction } from '@/lib/admin-actions';
 import AdminLoginGate from '@/components/admin/AdminLoginGate';
 import MiniGameModal from '@/components/MiniGameModal';
 import MarketFeedbackModal from '@/components/MarketFeedbackModal';
-import { Lock, ExternalLink, X, QrCode, Zap, MessageSquarePlus, Gamepad2, ArrowUpRight } from 'lucide-react';
+import ComingSoonStage from '@/components/ComingSoonStage';
+import { Lock, ExternalLink, X } from 'lucide-react';
 
 const ADMIN_STORAGE_KEY = 'artistant_admin_bypass_active';
 const KNOWN_ADMIN_EMAILS = ['anudeepdash2004@gmail.com'];
@@ -38,7 +39,7 @@ const SECRET_WORDS: Record<string, string> = {
   'broker':   '🚫 We don\'t do that here.',
   'artistant':'🔥 You found us.',
   'anudeep':  '👑 The founder sees you.',
-  'help':     '🤫 Try clicking the dot in "LET US COOK."',
+  'help':     '🤫 Try clicking the orange dot after "EXPOSURE."',
   'sorry':    '💅 No apologies needed. Just vibes.',
   'hello':    '👋 Hey! We\'re still cooking. Come back soon.',
   'please':   '🫡 Since you asked nicely... still cooking though.',
@@ -208,6 +209,9 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
     const handleType = (e: KeyboardEvent) => {
       // Skip modifier keys, arrows, etc.
       if (e.key.length !== 1) return;
+      // Don't hijack real typing (e.g. the stage-name checker)
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
 
       typedBuffer.current += e.key.toLowerCase();
 
@@ -570,289 +574,24 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
       {/* ─── 2. Coming Soon Overlay ─── */}
       {!isAdminUnlocked && (
         <div
-          className={`fixed inset-0 z-[9999] flex flex-col items-center p-4 sm:p-8 md:p-12 bg-[#08080C] select-none overflow-y-auto overflow-x-hidden min-h-[100dvh] ${
+          className={`fixed inset-0 z-[9999] bg-[#07060B] text-white overflow-y-auto overflow-x-hidden overscroll-contain ${
             shakeTriggered ? 'animate-[wiggle_0.3s_ease-in-out_3]' : ''
           }`}
         >
 
-          {/* ── Top Nav ── */}
-          <header className="relative z-10 w-full max-w-3xl flex items-center justify-between pt-2 sm:pt-4 shrink-0">
-            <button
-              type="button"
-              onClick={handleSecretClick}
-              className="focus:outline-none cursor-default"
-              title="ArtisTant"
-            >
-              <img
-                src="/logo_wordmark_flat.png"
-                alt="ArtisTant"
-                className="h-5 sm:h-6 w-auto object-contain"
-              />
-            </button>
-
-            <span className="text-[10px] font-mono text-zinc-600 tracking-wide">
-              {greeting}
-            </span>
-          </header>
-
-          {/* ── Center Stage ── */}
-          <main className="relative z-10 flex-1 flex flex-col items-center justify-center text-center max-w-3xl w-full px-2 sm:px-4">
-
-            {/* Eyebrow */}
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6 }}
-              className="text-[10px] font-mono uppercase tracking-[0.25em] text-zinc-600 mb-6"
-            >
-              Coming Soon
-            </motion.p>
-
-            {/* Headline — long-press for 3s for a secret, the dot is also clickable */}
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-              className="font-display text-[clamp(2.4rem,9vw,6rem)] font-black uppercase tracking-tight text-white leading-[0.9] whitespace-nowrap mb-4 cursor-default"
-              onMouseDown={handleHeadlinePressStart}
-              onMouseUp={handleHeadlinePressEnd}
-              onMouseLeave={handleHeadlinePressEnd}
-              onTouchStart={handleHeadlinePressStart}
-              onTouchEnd={handleHeadlinePressEnd}
-            >
-              LET US COOK
-              <span
-                className="text-[#F25A2B] cursor-pointer hover:scale-150 inline-block transition-transform duration-200 active:scale-75 select-none animate-pulse"
-                onClick={handleDotClick}
-                role="button"
-                tabIndex={0}
-              >
-                .
-              </span>
-            </motion.h1>
-
-            {/* Subtitle */}
-            <motion.p
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-              className="text-[clamp(0.75rem,3.2vw,1.3rem)] font-display font-medium text-zinc-300 tracking-tight leading-tight whitespace-nowrap mb-3"
-            >
-              India&apos;s live entertainment marketplace &amp; artist network.
-            </motion.p>
-
-            {/* Value line */}
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="font-mono text-[clamp(0.58rem,2.2vw,0.8rem)] text-zinc-500 tracking-wider whitespace-nowrap mb-2"
-            >
-              Direct gig bookings &bull; Escrow protection &bull; Zero broker cuts
-            </motion.p>
-
-            {/* Rotating tagline */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              className="h-6 flex items-center justify-center mb-8"
-            >
-              <AnimatePresence mode="wait">
-                <motion.p
-                  key={currentTagline}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.4 }}
-                  className="text-[12px] sm:text-[13px] text-zinc-500 font-mono italic"
-                >
-                  {TAGLINES[currentTagline]}
-                </motion.p>
-              </AnimatePresence>
-            </motion.div>
-
-            {/* ── Precision Feature Modules (with Live Preview Tiles) ── */}
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="w-full max-w-lg flex flex-col gap-2.5 mb-6"
-            >
-              {/* Module 1: Shape the Platform (Live Form Blueprint Tile) */}
-              <button
-                type="button"
-                onClick={() => setShowFeedbackModal(true)}
-                className="group relative w-full flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.08] hover:border-white/[0.18] transition-all duration-300 text-left cursor-pointer active:scale-[0.99]"
-              >
-                <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
-                  {/* Live Form Blueprint Tile */}
-                  <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/[0.04] border border-white/[0.1] p-1.5 flex flex-col justify-between shadow-inner group-hover:border-[#F25A2B]/40 group-hover:bg-white/[0.06] transition-all shrink-0">
-                    <div className="flex items-center gap-1">
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#F25A2B] animate-pulse shrink-0" />
-                      <div className="w-full h-[2px] rounded-full bg-white/30" />
-                    </div>
-                    <div className="flex flex-col gap-[3px] my-auto">
-                      <div className="flex items-center gap-1">
-                        <div className="w-1 h-1 rounded-[1px] bg-white/40 shrink-0" />
-                        <div className="w-3/4 h-[1.5px] rounded-full bg-white/20" />
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <div className="w-1 h-1 rounded-[1px] bg-white/40 shrink-0" />
-                        <div className="w-1/2 h-[1.5px] rounded-full bg-white/20" />
-                      </div>
-                    </div>
-                    <div className="w-full h-1.5 rounded-sm bg-white/10 group-hover:bg-white/20 transition-colors flex items-center justify-center">
-                      <div className="w-1/2 h-[1px] bg-white/50" />
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-0.5 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-display text-sm sm:text-base font-semibold text-white tracking-tight truncate">
-                        Shape the Platform
-                      </h3>
-                      <span className="text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-zinc-400 bg-white/[0.04] px-2 py-0.5 rounded-full border border-white/[0.06] shrink-0">
-                        Feedback
-                      </span>
-                    </div>
-                    <p className="text-zinc-400 text-xs leading-relaxed truncate sm:whitespace-normal">
-                      Report broken workflows, broker cuts, or request features.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="w-8 h-8 rounded-full bg-white/[0.03] border border-white/[0.06] flex items-center justify-center shrink-0 text-zinc-500 group-hover:text-white group-hover:bg-white/[0.08] group-hover:translate-x-0.5 transition-all ml-2">
-                  <ArrowUpRight className="w-3.5 h-3.5" />
-                </div>
-              </button>
-
-              {/* Module 2: Stack (Live Animated Arcade Game Tile) */}
-              <button
-                type="button"
-                onClick={() => setShowMiniGame(true)}
-                className="group relative w-full flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.08] hover:border-white/[0.18] transition-all duration-300 text-left cursor-pointer active:scale-[0.99]"
-              >
-                <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
-                  {/* Live Mini-Arcade Screen Tile */}
-                  <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/[0.04] border border-white/[0.1] p-1.5 flex flex-col justify-end items-center gap-[2.5px] shadow-inner relative overflow-hidden group-hover:border-purple-400/40 group-hover:bg-white/[0.06] transition-all shrink-0">
-                    {/* Live gliding top block */}
-                    <motion.div
-                      animate={{ x: [-5, 5, -5] }}
-                      transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
-                      className="w-4 h-1 rounded-[1px] bg-white shadow-[0_0_6px_rgba(255,255,255,0.6)]"
-                    />
-                    {/* Stacked stationary blocks */}
-                    <div className="w-5 h-1 rounded-[1px] bg-white/40 border-t border-white/60" />
-                    <div className="w-6 h-1 rounded-[1px] bg-white/20 border-t border-white/30" />
-                  </div>
-
-                  <div className="flex flex-col gap-0.5 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-display text-sm sm:text-base font-semibold text-white tracking-tight truncate">
-                        Stack
-                      </h3>
-                      <span className="text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1 shrink-0">
-                        <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
-                        Playable
-                      </span>
-                    </div>
-                    <p className="text-zinc-400 text-xs leading-relaxed truncate sm:whitespace-normal">
-                      Precision block stacker. Beat your high score while you wait.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="w-8 h-8 rounded-full bg-white/[0.03] border border-white/[0.06] flex items-center justify-center shrink-0 text-zinc-500 group-hover:text-white group-hover:bg-white/[0.08] group-hover:translate-x-0.5 transition-all ml-2">
-                  <ArrowUpRight className="w-3.5 h-3.5" />
-                </div>
-              </button>
-
-              {/* Module 3: Take Artistant Anywhere (Live Phone Silhouette Tile) */}
-              <div className="relative w-full flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-white/[0.02] border border-white/[0.08] text-left">
-                <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
-                  {/* Live Mobile Device Tile */}
-                  <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/[0.04] border border-white/[0.1] p-1 flex items-center justify-center shadow-inner shrink-0 relative overflow-hidden">
-                    <div className="w-5 h-8 rounded-[4px] border border-white/30 bg-[#08080C] relative p-[2px] flex flex-col justify-between">
-                      {/* Notch */}
-                      <div className="w-2 h-[1px] rounded-full bg-white/30 mx-auto" />
-                      {/* UI content bars */}
-                      <div className="flex flex-col gap-[2px] my-auto">
-                        <div className="w-full h-[1px] rounded-full bg-white/40" />
-                        <div className="w-2/3 h-[1px] rounded-full bg-white/20" />
-                      </div>
-                      {/* Home bar */}
-                      <div className="w-2 h-[1px] rounded-full bg-white/30 mx-auto" />
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-0.5 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-display text-sm sm:text-base font-semibold text-white tracking-tight truncate">
-                        Take Artistant Anywhere
-                      </h3>
-                      <span className="text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-zinc-400 bg-white/[0.04] px-2 py-0.5 rounded-full border border-white/[0.06] shrink-0">
-                        iOS &bull; Android
-                      </span>
-                    </div>
-                    <p className="text-zinc-400 text-xs leading-relaxed truncate sm:whitespace-normal">
-                      Direct gig bookings, escrow, and artist network in your pocket.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-[10px] font-mono uppercase tracking-widest text-zinc-400 shrink-0 ml-2">
-                  Soon
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Idle message */}
-            <AnimatePresence>
-              {idleMsg && (
-                <motion.p
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="text-[11px] text-zinc-600 font-mono italic mb-4"
-                >
-                  {idleMsg}
-                </motion.p>
-              )}
-            </AnimatePresence>
-
-            {/* Whisper hint — appears after 10s, auto-hides */}
-            <AnimatePresence>
-              {showHint && (
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 1.5 }}
-                  className="text-[11px] text-zinc-700 font-mono tracking-wide mb-2"
-                >
-                  psst — this page has secrets. poke around.
-                </motion.p>
-              )}
-            </AnimatePresence>
-
-          </main>
-
-          {/* ── Footer ── */}
-          <footer className="relative z-10 w-full max-w-3xl flex items-center justify-between text-[10px] font-mono text-zinc-600 pb-2 shrink-0">
-            <span className="text-zinc-700 tracking-normal">
-              try typing something
-            </span>
-
-            <button
-              type="button"
-              onClick={() => setShowAdminModal(true)}
-              className="opacity-15 hover:opacity-100 transition-opacity p-2 text-zinc-500 hover:text-zinc-300 cursor-pointer"
-              title="Admin (⌘K)"
-            >
-              <Lock className="w-3 h-3" />
-            </button>
-          </footer>
+          <ComingSoonStage
+            greeting={greeting}
+            tagline={TAGLINES[currentTagline]}
+            idleMsg={idleMsg}
+            showHint={showHint}
+            onLogoClick={handleSecretClick}
+            onDotClick={handleDotClick}
+            onHeadlinePressStart={handleHeadlinePressStart}
+            onHeadlinePressEnd={handleHeadlinePressEnd}
+            onOpenFeedback={() => setShowFeedbackModal(true)}
+            onOpenGame={() => setShowMiniGame(true)}
+            onOpenAdmin={() => setShowAdminModal(true)}
+          />
 
           {/* ── Modals ── */}
           <MarketFeedbackModal
