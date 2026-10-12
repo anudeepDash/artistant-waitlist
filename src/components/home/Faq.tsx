@@ -2,53 +2,50 @@
 
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { EASE, Eyebrow, Reveal, SplitWords } from './primitives';
+import { EASE, Reveal } from './primitives';
 import s from './home.module.css';
 
 export const FAQS = [
   {
     q: 'What is Artistant?',
-    a: 'A safer way to book live artists in India. Bookers find verified performers, sign a proper contract and pay into a protected account. Artists get paid in steps — half before they travel, a quarter when they arrive, and the rest after the show.',
+    a: 'An app for booking live artists in India. Clients find you, sign a proper contract and pay your full fee into a safe account before the show. You get half before you travel, a quarter at soundcheck and the rest after the show. No chasing, no ghosting, no middlemen.',
   },
   {
-    q: 'Is it free for artists?',
-    a: 'Yes. Claiming your name and setting up your booking page is free. We only take a small fee when a booking happens through Artistant. Managers and touring acts can add PRO tools later if they want them.',
+    q: 'Is it really free for artists?',
+    a: 'Yes. Claiming your name and setting up your booking page costs nothing. We only take a small fee when you get booked through Artistant — 6% the first time with a new client, and just 1% when they book you again.',
   },
   {
-    q: 'What does “money held safely” mean?',
-    a: 'When a booking is confirmed, the booker’s payment goes into a protected account with our regulated payment partners — not into anyone’s pocket. It’s released to the artist step by step as the show happens, so artists don’t chase payments and bookers never pay for a no-show.',
+    q: 'How do I get paid before the gig?',
+    a: 'The moment the contract is signed, 50% of your fee is released to you — enough for flights, hotel and paying your band. Another 25% lands when you check in at soundcheck, and the last 25% two hours after the show.',
   },
   {
-    q: 'What if part of the payment is in cash?',
-    a: 'That’s fine. For weddings and private events, the booker pays 30–40% online to lock the date and hands over the rest in cash at soundcheck. The artist shares a 4-digit code once they’ve received it, and entering that code activates the contract and our protection.',
+    q: 'My client wants to pay in cash. Is that okay?',
+    a: 'Yes. For weddings and private events, the client pays 30–40% online to lock the date and hands you the rest in cash at soundcheck. You share a 4-digit code once you have it, and your contract and protection switch on.',
   },
   {
-    q: 'What is the Bookability Score?',
-    a: 'A score out of 100 built only from real Artistant bookings: showing up on time (35%), getting booked again (25%), rarely cancelling or having disputes (20%) and replying quickly (20%). Artists move from New to Rising, Trusted and Elite as it grows.',
+    q: 'What if I fall sick or can’t make it?',
+    a: 'Life happens. We line up a replacement with a similar score and sound within 90 minutes so the show goes on. If just one bandmate is out, send an SOS on Backstage and trusted session players nearby get pinged.',
   },
   {
-    q: 'What happens if an artist cancels?',
-    a: 'We line up a replacement with a similar score and sound within 90 minutes, and the booker’s money stays protected. If one member of a band falls sick, a trusted session musician nearby can step in through Backstage.',
+    q: 'What’s a Bookability Score?',
+    a: 'A score out of 100 built only from real Artistant bookings: showing up on time, getting booked again, rarely cancelling and replying fast. It grows with every good show — and higher scores get the bigger gigs.',
   },
   {
-    q: 'What are the fees?',
-    a: 'A first booking has a 10% fee, split between the booker (4%) and the artist (6%). When the same booker books the same artist again, it drops to 3% in total. Venue residencies go down to 5% from the sixth show.',
+    q: 'My city or category isn’t open yet. What now?',
+    a: 'Claim your name anyway. We open city by city and category by category so every listed artist actually gets work. Bengaluru is first, then Mumbai and Delhi NCR — you’ll be first in line when yours opens.',
   },
   {
-    q: 'Why can’t everyone join straight away?',
-    a: 'We add artists city by city based on what bookers are actually looking for, so everyone listed gets real work. Claim your name now and you’ll be first in line when your city and category open.',
-  },
-  {
-    q: 'Where and when are you launching?',
-    a: 'Bengaluru first, then Mumbai and Delhi NCR. Join the waitlist and we’ll email you the moment your spot opens.',
+    q: 'I manage a few artists. Is there something for me?',
+    a: 'Yes — Artistant PRO. One calendar for your whole roster, a booking page on your own domain, 0% Artistant fee on clients you bring yourself, and automatic payouts to band and crew.',
   },
 ];
 
-function Item({ q, a }: { q: string; a: string }) {
+function Item({ q, a, i }: { q: string; a: string; i: number }) {
   const [open, setOpen] = useState(false);
   return (
     <div className={`${s.faqItem} ${open ? s.faqItemOpen : ''}`}>
       <button type="button" className={s.faqQ} onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        <span className={s.faqNum}>{String(i + 1).padStart(2, '0')}</span>
         {q}
         <motion.span className={s.faqPlus} animate={{ rotate: open ? 45 : 0 }} transition={{ duration: 0.35, ease: EASE }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
@@ -75,18 +72,21 @@ function Item({ q, a }: { q: string; a: string }) {
 
 export default function Faq() {
   return (
-    <section id="faq" className={s.section} style={{ paddingTop: 0 }}>
+    <section id="faq" className={s.section}>
       <div className={s.container}>
         <div className={s.faqGrid}>
           <div className={s.faqHead}>
-            <Eyebrow>Questions</Eyebrow>
-            <h2 className={s.h2}>
-              <SplitWords text="Good questions." inView />
-              <SplitWords text="Straight answers." inView delay={0.1} className={s.gradText} />
-            </h2>
             <Reveal>
+              <span className={s.label}>FAQ</span>
+            </Reveal>
+            <Reveal delay={0.05}>
+              <h2 className={s.faqTitle}>
+                Good questions, <em>straight answers.</em>
+              </h2>
+            </Reveal>
+            <Reveal delay={0.1}>
               <p className={s.lead}>
-                Still wondering about something? Write to us at{' '}
+                Anything else? Write to us at{' '}
                 <a href="mailto:hello@artistant.in" style={{ color: 'var(--ink)' }}>
                   hello@artistant.in
                 </a>
@@ -96,8 +96,8 @@ export default function Faq() {
           </div>
           <Reveal>
             <div className={s.faqList}>
-              {FAQS.map((f) => (
-                <Item key={f.q} q={f.q} a={f.a} />
+              {FAQS.map((f, i) => (
+                <Item key={f.q} q={f.q} a={f.a} i={i} />
               ))}
             </div>
           </Reveal>

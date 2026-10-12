@@ -10,8 +10,9 @@ import s from './home.module.css';
 
 const LINKS = [
   { href: '#how', label: 'How it works' },
-  { href: '#features', label: 'Features' },
-  { href: '#for-you', label: 'Who it’s for' },
+  { href: '#features', label: 'What you get' },
+  { href: '#founding', label: 'The first 140' },
+  { href: '#fees', label: 'Fees' },
   { href: '#faq', label: 'FAQ' },
 ];
 
@@ -24,11 +25,11 @@ interface HomeNavProps {
 }
 
 export default function HomeNav({ user, reservation, onSignIn, onClaim, onDashboard }: HomeNavProps) {
-  const [scrolled, setScrolled] = useState(false);
+  const [solid, setSolid] = useState(false);
   const [open, setOpen] = useState(false);
   const { scrollY } = useScroll();
 
-  useMotionValueEvent(scrollY, 'change', (y) => setScrolled(y > 24));
+  useMotionValueEvent(scrollY, 'change', (y) => setSolid(y > 40));
 
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : '';
@@ -43,15 +44,14 @@ export default function HomeNav({ user, reservation, onSignIn, onClaim, onDashbo
   return (
     <>
       <motion.header
-        className={`${s.nav} ${scrolled ? s.navScrolled : ''}`}
-        initial={{ y: -24, opacity: 0 }}
+        className={`${s.nav} ${solid && !open ? s.navSolid : ''}`}
+        initial={{ y: -30, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.8, ease: EASE }}
+        transition={{ duration: 0.8, ease: EASE, delay: 0.2 }}
       >
         <nav className={s.navInner} aria-label="Main">
           <Link href="/" className={s.brand} aria-label="Artistant home">
-            <img src="/logo_a.png" alt="" />
-            <img src="/logo_wordmark_flat.png" alt="Artistant" className={s.brandWordmark} />
+            <img src="/brand/wordmark.svg" alt="Artistant" width={118} height={22} />
           </Link>
 
           <div className={s.navLinks}>
@@ -68,12 +68,12 @@ export default function HomeNav({ user, reservation, onSignIn, onClaim, onDashbo
                 {photo ? <img src={photo} alt="" referrerPolicy="no-referrer" /> : initial}
               </button>
             ) : (
-              <button type="button" className={`${s.btnGhost} ${s.hideOnMobile}`} onClick={onSignIn}>
+              <button type="button" className={`${s.navSignIn} ${s.hideSm}`} onClick={onSignIn}>
                 Sign in
               </button>
             )}
             {!reservation && (
-              <button type="button" className={`${s.btnPrimary} ${s.hideOnMobile}`} onClick={onClaim}>
+              <button type="button" className={s.navCta} onClick={onClaim}>
                 Claim your name
               </button>
             )}
@@ -96,10 +96,10 @@ export default function HomeNav({ user, reservation, onSignIn, onClaim, onDashbo
         {open && (
           <motion.div
             className={s.mobileMenu}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
+            initial={{ clipPath: 'circle(0% at 92% 6%)' }}
+            animate={{ clipPath: 'circle(150% at 92% 6%)' }}
+            exit={{ clipPath: 'circle(0% at 92% 6%)' }}
+            transition={{ duration: 0.6, ease: EASE }}
           >
             {LINKS.map((l, i) => (
               <motion.a
@@ -107,10 +107,11 @@ export default function HomeNav({ user, reservation, onSignIn, onClaim, onDashbo
                 href={l.href}
                 className={s.mobileMenuLink}
                 onClick={() => setOpen(false)}
-                initial={{ opacity: 0, y: 24 }}
+                initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.05 + i * 0.06, duration: 0.6, ease: EASE }}
+                transition={{ delay: 0.15 + i * 0.06, duration: 0.6, ease: EASE }}
               >
+                <small>{String(i + 1).padStart(2, '0')}</small>
                 {l.label}
               </motion.a>
             ))}
@@ -118,7 +119,7 @@ export default function HomeNav({ user, reservation, onSignIn, onClaim, onDashbo
               className={s.mobileMenuFoot}
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.35, duration: 0.6, ease: EASE }}
+              transition={{ delay: 0.4, duration: 0.6, ease: EASE }}
             >
               {!reservation && (
                 <button
@@ -129,12 +130,12 @@ export default function HomeNav({ user, reservation, onSignIn, onClaim, onDashbo
                     onClaim();
                   }}
                 >
-                  Claim your name
+                  Claim your name — it&apos;s free
                 </button>
               )}
               <button
                 type="button"
-                className={s.btnPrimary}
+                className={s.btnWhite}
                 onClick={() => {
                   setOpen(false);
                   if (user) onDashboard();

@@ -1,0 +1,195 @@
+.section {
+  position: relative;
+  padding: clamp(96px, 12vw, 168px) 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: clamp(40px, 6vw, 96px);
+  align-items: center;
+}
+
+.copy {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* A paper rider on the dark stage. */
+.doc {
+  position: relative;
+  padding: clamp(26px, 3.4vw, 48px);
+  border-radius: 6px;
+  background: var(--day);
+  color: var(--day-ink);
+  box-shadow: 0 70px 100px -50px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.doc::before {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  width: 90px;
+  height: 26px;
+  transform: translateX(-50%) rotate(-2deg);
+  background: rgba(242, 239, 232, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(2px);
+}
+
+.docHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 18px;
+  border-bottom: 2px solid var(--day-ink);
+}
+
+.docBrand { height: 22px; width: auto; }
+
+.docMeta {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--day-ink-2);
+}
+
+.clauses {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.clause {
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  gap: 14px;
+  align-items: baseline;
+  padding: 18px 0;
+  border-bottom: 1px dashed var(--day-line);
+}
+
+.clauseNum {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  color: var(--brand-orange);
+}
+
+.clauseText {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.clauseText small {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--day-ink-2);
+}
+
+.fee {
+  font-family: var(--f-mono);
+  font-size: clamp(24px, 2.4vw, 32px);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.schedule {
+  margin-top: 26px;
+}
+
+.scheduleLabel {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--day-ink-2);
+  margin-bottom: 12px;
+}
+
+.scheduleRow {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 6px;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--day-ink-2);
+}
+
+.step b {
+  font-family: var(--f-mono);
+  font-size: 18px;
+  color: var(--day-ink);
+}
+
+.stepBar {
+  display: block;
+  height: 8px;
+  border-radius: 99px;
+  background: var(--grad);
+  transform-origin: 0 50%;
+  margin-bottom: 6px;
+}
+
+.step:nth-child(2) .stepBar { background: var(--brand-pink); }
+.step:nth-child(3) .stepBar { background: var(--brand-violet); }
+
+.sign {
+  margin-top: 30px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.sign > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.signature {
+  font-family: var(--f-marker);
+  font-size: 24px;
+  line-height: 1.2;
+  color: var(--day-ink);
+  transform: rotate(-3deg);
+  transform-origin: left bottom;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.signYou { color: var(--brand-orange); }
+
+.signLine {
+  padding-top: 6px;
+  border-top: 1px solid var(--day-ink);
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--day-ink-2);
+}
+
+.fine {
+  margin-top: 40px;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr; }
+  .scheduleRow { grid-template-columns: 1fr; gap: 14px; }
+}

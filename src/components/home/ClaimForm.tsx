@@ -13,21 +13,27 @@ interface ClaimFormProps {
   reservation: WaitlistEntry | null;
   onSubmit: () => void;
   onDashboard: () => void;
+  /** Light tone for use on the pale poster frames. */
+  tone?: 'dark' | 'light';
+  /** Centre the status line and suggestions under the field. */
+  center?: boolean;
   className?: string;
 }
 
-export default function ClaimForm({ claim, inputId, reservation, onSubmit, onDashboard, className }: ClaimFormProps) {
+export default function ClaimForm({ claim, inputId, reservation, onSubmit, onDashboard, tone = 'dark', center, className }: ClaimFormProps) {
   const { username, setUsername, status, error, suggestions, suggestionsLoading } = claim;
   const [shakeScope, animateShake] = useAnimate<HTMLDivElement>();
+  const toneClass = `${tone === 'light' ? s.light : ''} ${center ? s.claimCenter : ''}`;
 
   if (reservation) {
     return (
       <motion.div
-        className={`${s.reserved} ${className ?? ''}`}
+        className={`${toneClass} ${className ?? ''}`}
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, ease: EASE }}
       >
+        <div className={s.reserved}>
         <span className={s.reservedCheck}>
           <CheckIcon size={18} />
         </span>
@@ -35,9 +41,10 @@ export default function ClaimForm({ claim, inputId, reservation, onSubmit, onDas
           <div className={s.reservedLabel}>Your name is saved. We&apos;ll email you when your spot opens.</div>
           <div className={s.reservedName}>artistant.in/{reservation.username}</div>
         </div>
-        <button type="button" className={s.btnPrimary} onClick={onDashboard}>
+        <button type="button" className={tone === 'light' ? s.btnInk : s.btnWhite} onClick={onDashboard}>
           Dashboard <ArrowIcon size={14} />
         </button>
+        </div>
       </motion.div>
     );
   }
@@ -68,7 +75,7 @@ export default function ClaimForm({ claim, inputId, reservation, onSubmit, onDas
           : error;
 
   return (
-    <form className={`${s.claim} ${className ?? ''}`} onSubmit={handleSubmit} noValidate>
+    <form className={`${s.claim} ${toneClass} ${className ?? ''}`} onSubmit={handleSubmit} noValidate>
       <div ref={shakeScope}>
         <label className={`${s.claimField} ${fieldTone}`} htmlFor={inputId}>
           <span className={s.claimPrefix}>artistant.in/</span>

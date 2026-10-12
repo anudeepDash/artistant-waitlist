@@ -1,10 +1,23 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { animate, motion, useInView, useReducedMotion, type MotionValue, useTransform } from 'motion/react';
+import { animate, motion, useInView, useReducedMotion, useScroll, useTransform } from 'motion/react';
 import s from './home.module.css';
 
 export const EASE = [0.16, 1, 0.3, 1] as const;
+
+type ScrollOffset = NonNullable<Parameters<typeof useScroll>[0]>['offset'];
+
+/**
+ * Scroll progress (0 → 1) of `target` through the viewport.
+ * Passed through a plain function so motion keeps it in JS instead of handing
+ * opacity / clip-path to the browser's ViewTimeline, which gets the range wrong
+ * for tall pinned sections.
+ */
+export function useSectionProgress(target: React.RefObject<HTMLElement | null>, offset: ScrollOffset) {
+  const { scrollYProgress } = useScroll({ target, offset });
+  return useTransform(scrollYProgress, (v) => v);
+}
 
 /** Fades + lifts its children into place the first time they scroll into view. */
 export function Reveal({
@@ -113,66 +126,6 @@ export function CountUp({
       {shown.toLocaleString('en-IN', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}
       {suffix}
     </span>
-  );
-}
-
-export function Eyebrow({ children }: { children: React.ReactNode }) {
-  return (
-    <Reveal>
-      <span className={s.eyebrow}>
-        <span className={s.eyebrowDot} />
-        {children}
-      </span>
-    </Reveal>
-  );
-}
-
-/** Card with a soft light that follows the cursor. */
-export function SpotlightCard({
-  children,
-  className,
-  delay = 0,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  delay?: number;
-}) {
-  const onMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    const r = e.currentTarget.getBoundingClientRect();
-    e.currentTarget.style.setProperty('--mx', `${e.clientX - r.left}px`);
-    e.currentTarget.style.setProperty('--my', `${e.clientY - r.top}px`);
-  };
-  return (
-    <motion.div
-      className={`${s.card} ${className ?? ''}`}
-      onPointerMove={onMove}
-      initial={{ opacity: 0, y: 40 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '0px 0px -8% 0px' }}
-      transition={{ duration: 0.9, delay, ease: EASE }}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-/** One word of a scroll-scrubbed paragraph: brightens as the reader scrolls past it. */
-export function ScrubWord({
-  progress,
-  range,
-  children,
-  className,
-}: {
-  progress: MotionValue<number>;
-  range: [number, number];
-  children: React.ReactNode;
-  className?: string;
-}) {
-  const opacity = useTransform(progress, range, [0.14, 1]);
-  return (
-    <motion.span className={className} style={{ opacity }}>
-      {children}
-    </motion.span>
   );
 }
 

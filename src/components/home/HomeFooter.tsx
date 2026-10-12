@@ -2,16 +2,17 @@
 
 import React, { useRef } from 'react';
 import Link from 'next/link';
-import { motion, useScroll, useTransform } from 'motion/react';
+import { motion, useTransform } from 'motion/react';
+import { useSectionProgress } from './primitives';
 import s from './home.module.css';
 
 const COLUMNS = [
   {
-    title: 'Product',
+    title: 'Artists',
     links: [
-      { href: '#how', label: 'How payments work' },
-      { href: '#features', label: 'Features' },
-      { href: '#for-you', label: 'Who it’s for' },
+      { href: '#features', label: 'What you get' },
+      { href: '#founding', label: 'The first 140' },
+      { href: '#fees', label: 'Fees' },
       { href: '/card', label: 'Your digital card' },
     ],
   },
@@ -36,9 +37,8 @@ const COLUMNS = [
 
 export default function HomeFooter() {
   const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end end'] });
-  const y = useTransform(scrollYProgress, [0, 1], ['45%', '0%']);
-  const opacity = useTransform(scrollYProgress, [0, 1], [0.2, 1]);
+  const scrollYProgress = useSectionProgress(ref, ['start end', 'end end']);
+  const clip = useTransform(scrollYProgress, [0.05, 0.9], ['inset(0 100% 0 0)', 'inset(0 0% 0 0)']);
 
   return (
     <footer className={s.footer}>
@@ -46,10 +46,11 @@ export default function HomeFooter() {
         <div className={s.footTop}>
           <div className={s.footBrand}>
             <Link href="/" className={s.brand} aria-label="Artistant home">
-              <img src="/logo_a.png" alt="" />
-              <img src="/logo_wordmark_flat.png" alt="Artistant" className={s.brandWordmark} />
+              <img src="/brand/wordmark.svg" alt="Artistant" width={118} height={22} />
             </Link>
-            <p className={s.footTag}>The safe way to book live artists in India. Made in Bengaluru, for every stage.</p>
+            <p className={s.footTag}>
+              Made in Bengaluru, for <em>every stage</em> in India.
+            </p>
           </div>
           {COLUMNS.map((col) => (
             <div key={col.title}>
@@ -72,13 +73,14 @@ export default function HomeFooter() {
             </div>
           ))}
         </div>
+      </div>
 
-        <div ref={ref} className={s.footWord} aria-hidden="true">
-          <motion.span className={s.footWordInner} style={{ y, opacity }}>
-            artistant
-          </motion.span>
-        </div>
+      <div ref={ref} className={s.footWord} aria-hidden="true">
+        <img src="/brand/wordmark-white.svg" alt="" className={s.footWordGhost} />
+        <motion.img src="/brand/wordmark.svg" alt="" style={{ clipPath: clip }} />
+      </div>
 
+      <div className={s.container}>
         <div className={s.footBottom}>
           <span>© {new Date().getFullYear()} Artistant. All rights reserved.</span>
           <span style={{ display: 'flex', gap: 20 }}>

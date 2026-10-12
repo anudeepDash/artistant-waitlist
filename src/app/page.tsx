@@ -10,16 +10,15 @@ import { getUserReservation, type WaitlistEntry } from '@/lib/waitlist';
 import { logActivityAction } from '@/lib/admin-actions';
 import HomeNav from '@/components/home/HomeNav';
 import Hero from '@/components/home/Hero';
-import Marquee from '@/components/home/Marquee';
-import Problem from '@/components/home/Problem';
-import PaymentFlow from '@/components/home/PaymentFlow';
-import TwoWaysToPay from '@/components/home/TwoWaysToPay';
-import Features from '@/components/home/Features';
-import Backstage from '@/components/home/Backstage';
-import Audiences, { type AudienceAction } from '@/components/home/Audiences';
-import Launch from '@/components/home/Launch';
-import Join from '@/components/home/Join';
+import ChaosToPaid from '@/components/home/ChaosToPaid';
+import Setlist from '@/components/home/Setlist';
+import EveryStage from '@/components/home/EveryStage';
+import Lineup from '@/components/home/Lineup';
+import BackstagePass from '@/components/home/BackstagePass';
+import Rider from '@/components/home/Rider';
+import OtherSide from '@/components/home/OtherSide';
 import Faq from '@/components/home/Faq';
+import Encore from '@/components/home/Encore';
 import HomeFooter from '@/components/home/HomeFooter';
 import s from '@/components/home/home.module.css';
 
@@ -71,8 +70,9 @@ export default function Home() {
   }, [user]);
 
   const goToClaim = useCallback(() => {
-    document.getElementById('join')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    setTimeout(() => document.getElementById('username-join-input')?.focus({ preventScroll: true }), 700);
+    const input = document.getElementById('username-pass-input');
+    input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => input?.focus({ preventScroll: true }), 700);
   }, []);
 
   const handleClaimSubmit = () => {
@@ -88,12 +88,9 @@ export default function Home() {
     if (claim.status === 'available') setAuthOpen(true);
   };
 
-  const handleAudienceAction = (action: AudienceAction) => {
-    if (action === 'claim') goToClaim();
-    else setRole(action);
-  };
-
   const openDashboard = () => router.push('/dashboard');
+  // The name shown on the pass, poster and rider: the saved one, or whatever is being typed.
+  const shownName = reservation?.username ?? claim.username;
 
   return (
     <MotionConfig reducedMotion="user">
@@ -113,24 +110,18 @@ export default function Home() {
             reservation={reservation}
             onClaimSubmit={handleClaimSubmit}
             onDashboard={openDashboard}
-            onBooker={() => setRole('organizer')}
-          />
-          <Marquee />
-          <Problem />
-          <PaymentFlow />
-          <TwoWaysToPay />
-          <Features />
-          <Backstage />
-          <Audiences onAction={handleAudienceAction} />
-          <Launch />
-          <Join
-            claim={claim}
-            reservation={reservation}
-            onClaimSubmit={handleClaimSubmit}
-            onDashboard={openDashboard}
             onRole={setRole}
           />
+          <GigTypes />
+          <ChaosToPaid />
+          <Setlist username={shownName} />
+          <EveryStage />
+          <Lineup username={shownName} onClaim={goToClaim} />
+          <BackstagePass claim={claim} reservation={reservation} onClaimSubmit={handleClaimSubmit} onDashboard={openDashboard} />
+          <Rider username={shownName} />
+          <OtherSide onRole={setRole} />
           <Faq />
+          <Encore claim={claim} reservation={reservation} onClaimSubmit={handleClaimSubmit} onDashboard={openDashboard} />
         </main>
 
         <HomeFooter />
@@ -147,6 +138,25 @@ export default function Home() {
       />
       <RoleWaitlistModal isOpen={role !== null} onClose={() => setRole(null)} role={role} />
     </MotionConfig>
+  );
+}
+
+const GIG_TYPES = ['Sangeets', 'College fests', 'Club nights', 'Café gigs', 'Garba nights', 'Baithaks', 'House concerts', 'Office parties'];
+
+/** A slow, endless roll of the kinds of gig Artistant is built for. */
+function GigTypes() {
+  const items = [...GIG_TYPES, ...GIG_TYPES];
+  return (
+    <div className={s.marquee} aria-label={GIG_TYPES.join(', ')}>
+      <div className={s.marqueeRow} aria-hidden="true">
+        {items.map((t, i) => (
+          <span key={i} className={s.marqueeItem}>
+            {t}
+            <span className={s.marqueeStar} />
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
