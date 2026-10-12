@@ -1,7 +1,7 @@
 /* ============================================================
    Artistant — landing page (V4)
-   "The one dark room": near-black stage, editorial serif with an
-   italic accent word, money in mono, and the four logo colours.
+   "The one dark room": near-black stage, tight grotesk headlines with
+   one accent-coloured phrase, money in mono, and the four logo colours.
    Shared tokens and building blocks live here; each section keeps
    its own CSS module next to it.
    ============================================================ */
@@ -36,11 +36,11 @@
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --gutter: clamp(16px, 4vw, 56px);
   --max: 1280px;
-  --f-serif: var(--font-serif-display), 'Instrument Serif', Georgia, serif;
+  --f-display: var(--font-bricolage), 'Bricolage Grotesque', system-ui, sans-serif;
   --f-marker: var(--font-marker), 'Permanent Marker', cursive;
   --f-grotesk: var(--font-space-grotesk), 'Space Grotesk', system-ui, sans-serif;
   --f-mono: var(--font-geist-mono), ui-monospace, monospace;
-  --f-sans: var(--font-inter), Inter, system-ui, sans-serif;
+  --f-sans: var(--font-geist), var(--font-inter), system-ui, sans-serif;
 
   position: relative;
   min-height: 100vh;
@@ -70,20 +70,21 @@
 /* ───────────── Type ───────────── */
 
 .serif {
-  font-family: var(--f-serif);
-  font-weight: 400;
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-stretch: 90%;
   letter-spacing: -0.02em;
   line-height: 0.95;
 }
 
 .serif em,
 .em {
-  font-style: italic;
+  font-style: normal;
   color: var(--accent);
 }
 
 .emGrad {
-  font-style: italic;
+  font-style: normal;
   background: var(--grad);
   -webkit-background-clip: text;
   background-clip: text;
@@ -116,16 +117,17 @@
 }
 
 .title {
-  font-family: var(--f-serif);
-  font-weight: 400;
-  letter-spacing: -0.025em;
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-stretch: 90%;
+  letter-spacing: -0.032em;
   line-height: 0.95;
   font-size: clamp(46px, 7.4vw, 112px);
   margin: 0;
 }
 
 .title em {
-  font-style: italic;
+  font-style: normal;
   color: var(--accent);
 }
 
@@ -408,7 +410,19 @@
 }
 
 .reservedText { flex: 1; min-width: 0; }
-.reservedLabel { font-size: 13px; color: var(--ink-2); }
+.reservedTitle {
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-stretch: 90%;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+}
+
+.light .reservedTitle { color: var(--day-ink); }
+
+.reservedLabel { margin-top: 3px; font-size: 14px; line-height: 1.45; color: var(--ink-2); }
+.reservedLabel b { color: var(--ink); font-family: var(--f-mono); font-weight: 600; word-break: break-all; }
+.light .reservedLabel b { color: var(--day-ink); }
 .light .reservedLabel { color: var(--day-ink-2); }
 
 .reservedName {
@@ -524,15 +538,67 @@
   color: var(--day-ink);
 }
 
-.avatarBtn {
+.navLeft {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  min-width: 0;
+}
+
+.sideSwitch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+}
+
+.sideBtn {
+  position: relative;
   appearance: none;
+  border: 0;
+  background: none;
+  padding: 7px 13px;
+  border-radius: 99px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+.sideBtn:hover { color: var(--ink); }
+.sideOn { color: #fff; }
+
+.sidePill {
+  position: absolute;
+  inset: 0;
+  border-radius: 99px;
+  background: var(--accent);
+}
+
+.sideText { position: relative; }
+
+.mobileMenuSwitch {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.mobileMenuSwitch .sideSwitch { align-self: flex-start; }
+.mobileMenuSwitch .sideBtn { padding: 10px 16px; font-size: 14px; }
+
+.avatar {
   border: 1px solid var(--line-2);
   width: 38px;
   height: 38px;
   border-radius: 99px;
   overflow: hidden;
   padding: 0;
-  cursor: pointer;
   background: var(--grad);
   color: #fff;
   font-weight: 700;
@@ -541,7 +607,7 @@
   justify-content: center;
 }
 
-.avatarBtn img { width: 100%; height: 100%; object-fit: cover; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
 
 .menuBtn {
   display: none;
@@ -585,7 +651,10 @@
   align-items: baseline;
   gap: 14px;
   padding: 12px 0;
-  font-family: var(--f-serif);
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-stretch: 90%;
+  letter-spacing: -0.032em;
   font-size: clamp(38px, 11vw, 58px);
   line-height: 1;
   color: var(--ink);
@@ -610,8 +679,11 @@
 
 .mobileMenuFoot button { padding: 16px; font-size: 16px; }
 
-@media (max-width: 960px) {
+@media (max-width: 1180px) {
   .navLinks { display: none; }
+}
+
+@media (max-width: 960px) {
   .menuBtn { display: inline-flex; }
   .hideSm { display: none !important; }
 }
@@ -655,7 +727,10 @@
   align-items: center;
   gap: clamp(22px, 3vw, 40px);
   padding-right: clamp(22px, 3vw, 40px);
-  font-family: var(--f-serif);
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-stretch: 90%;
+  letter-spacing: -0.032em;
   font-size: clamp(30px, 4.2vw, 56px);
   line-height: 1.1;
   white-space: nowrap;
@@ -663,7 +738,7 @@
 }
 
 .marqueeItem:nth-child(even) {
-  font-style: italic;
+  font-style: normal;
   color: var(--ink-2);
 }
 
@@ -713,7 +788,9 @@
   gap: 12px;
   padding: 26px 0;
   font: inherit;
-  font-family: var(--f-serif);
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-stretch: 90%;
   font-size: clamp(22px, 2.2vw, 30px);
   line-height: 1.15;
   color: var(--ink);
@@ -788,14 +865,16 @@
 
 .footTag {
   margin: 0;
-  font-family: var(--f-serif);
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-stretch: 90%;
   font-size: clamp(26px, 2.6vw, 36px);
   line-height: 1.1;
   color: var(--ink);
   max-width: 360px;
 }
 
-.footTag em { font-style: italic; color: var(--accent); }
+.footTag em { font-style: normal; color: var(--accent); }
 
 .footColTitle {
   font-family: var(--f-mono);
@@ -822,7 +901,20 @@
   transition: color 0.2s;
 }
 
-.footLinks a:hover { color: var(--ink); }
+.footLinks a:hover,
+.footLinkBtn:hover { color: var(--ink); }
+
+.footLinkBtn {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 15px;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: color 0.2s;
+}
 
 .footWord {
   position: relative;

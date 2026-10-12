@@ -60,7 +60,9 @@
 }
 
 .ask {
-  font-family: var(--f-serif);
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-stretch: 90%;
   font-size: clamp(22px, 2.2vw, 30px);
   line-height: 1.1;
   color: var(--ink);
@@ -68,7 +70,7 @@
 }
 
 .ask em {
-  font-style: italic;
+  font-style: normal;
   color: var(--accent);
   transition: color 0.5s;
 }
@@ -116,15 +118,21 @@
 
 .h1 {
   margin: clamp(26px, 4vh, 40px) 0 0;
-  font-family: var(--f-serif);
-  font-weight: 400;
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-stretch: 90%;
   font-size: clamp(56px, 8.4vw, 128px);
   line-height: 0.92;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.032em;
   min-height: 1.84em;
 }
 
-.h1Inner { display: block; }
+.h1 { display: grid; }
+
+.h1Layer {
+  grid-area: 1 / 1;
+  display: block;
+}
 
 .mask {
   display: block;
@@ -136,14 +144,16 @@
 .mask > span { display: inline-block; }
 
 .h1Em {
-  font-style: italic;
+  font-style: normal;
   color: var(--accent);
 }
 
 .below {
   margin-top: clamp(20px, 3vh, 30px);
-  min-height: 190px;
+  display: grid;
 }
+
+.belowLayer { grid-area: 1 / 1; }
 
 .lead {
   margin: 0 0 22px;
@@ -233,6 +243,5 @@
   .switch { display: flex; width: 100%; }
   .switchBtn { flex: 1; padding: 10px 6px; font-size: 13px; }
   .h1 { font-size: clamp(52px, 15vw, 68px); }
-  .below { min-height: 250px; }
   .actions > * { flex: 1; }
 }

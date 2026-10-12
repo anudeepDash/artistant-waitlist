@@ -4,7 +4,7 @@ import React from 'react';
 import { AnimatePresence, motion, useAnimate } from 'motion/react';
 import type { UsernameClaim } from '@/hooks/useUsernameClaim';
 import type { WaitlistEntry } from '@/lib/waitlist';
-import { ArrowIcon, CheckIcon, EASE } from './primitives';
+import { CheckIcon, EASE } from './primitives';
 import s from './home.module.css';
 
 interface ClaimFormProps {
@@ -12,7 +12,6 @@ interface ClaimFormProps {
   inputId: string;
   reservation: WaitlistEntry | null;
   onSubmit: () => void;
-  onDashboard: () => void;
   /** Light tone for use on the pale poster frames. */
   tone?: 'dark' | 'light';
   /** Centre the status line and suggestions under the field. */
@@ -20,7 +19,7 @@ interface ClaimFormProps {
   className?: string;
 }
 
-export default function ClaimForm({ claim, inputId, reservation, onSubmit, onDashboard, tone = 'dark', center, className }: ClaimFormProps) {
+export default function ClaimForm({ claim, inputId, reservation, onSubmit, tone = 'dark', center, className }: ClaimFormProps) {
   const { username, setUsername, status, error, suggestions, suggestionsLoading } = claim;
   const [shakeScope, animateShake] = useAnimate<HTMLDivElement>();
   const toneClass = `${tone === 'light' ? s.light : ''} ${center ? s.claimCenter : ''}`;
@@ -34,16 +33,15 @@ export default function ClaimForm({ claim, inputId, reservation, onSubmit, onDas
         transition={{ duration: 0.7, ease: EASE }}
       >
         <div className={s.reserved}>
-        <span className={s.reservedCheck}>
-          <CheckIcon size={18} />
-        </span>
-        <div className={s.reservedText}>
-          <div className={s.reservedLabel}>Your name is saved. We&apos;ll email you when your spot opens.</div>
-          <div className={s.reservedName}>artistant.in/{reservation.username}</div>
-        </div>
-        <button type="button" className={tone === 'light' ? s.btnInk : s.btnWhite} onClick={onDashboard}>
-          Dashboard <ArrowIcon size={14} />
-        </button>
+          <span className={s.reservedCheck}>
+            <CheckIcon size={18} />
+          </span>
+          <div className={s.reservedText}>
+            <div className={s.reservedTitle}>Thanks for registering!</div>
+            <div className={s.reservedLabel}>
+              <b>artistant.in/{reservation.username}</b> is yours. We&apos;ll email you with the details once we&apos;re live.
+            </div>
+          </div>
         </div>
       </motion.div>
     );

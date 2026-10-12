@@ -6,28 +6,46 @@ import { AnimatePresence, motion, useMotionValueEvent, useScroll } from 'motion/
 import type { User } from 'firebase/auth';
 import type { WaitlistEntry } from '@/lib/waitlist';
 import { EASE } from './primitives';
+import { NAV_LINKS, SIDE_CTA, SIDE_LABEL, SIDE_ORDER, type Side } from './sides';
 import s from './home.module.css';
 
-const LINKS = [
-  { href: '#how', label: 'How it works' },
-  { href: '#features', label: 'What you get' },
-  { href: '#founding', label: 'The first 140' },
-  { href: '#fees', label: 'Fees' },
-  { href: '#faq', label: 'FAQ' },
-];
-
 interface HomeNavProps {
+  side: Side;
+  onSide: (side: Side) => void;
   user: User | null;
   reservation: WaitlistEntry | null;
   onSignIn: () => void;
-  onClaim: () => void;
-  onDashboard: () => void;
+  /** The main action for the current side: claim a name, or open the host / venue sign-up. */
+  onCta: () => void;
 }
 
-export default function HomeNav({ user, reservation, onSignIn, onClaim, onDashboard }: HomeNavProps) {
+function SideSwitch({ side, onSide, id }: { side: Side; onSide: (side: Side) => void; id: string }) {
+  return (
+    <div className={s.sideSwitch} role="tablist" aria-label="Show the page for">
+      {SIDE_ORDER.map((k) => (
+        <button
+          key={k}
+          type="button"
+          role="tab"
+          aria-selected={k === side}
+          className={`${s.sideBtn} ${k === side ? s.sideOn : ''}`}
+          onClick={() => onSide(k)}
+        >
+          {k === side && <motion.span layoutId={`side-${id}`} className={s.sidePill} transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
+          <span className={s.sideText}>{SIDE_LABEL[k]}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export default function HomeNav({ side, onSide, user, reservation, onSignIn, onCta }: HomeNavProps) {
   const [solid, setSolid] = useState(false);
   const [open, setOpen] = useState(false);
   const { scrollY } = useScroll();
+  const links = NAV_LINKS[side];
+  // Artists who already hold a name don't need the claim button any more.
+  const showCta = side !== 'artist' || !reservation;
 
   useMotionValueEvent(scrollY, 'change', (y) => setSolid(y > 40));
 
@@ -50,12 +68,17 @@ export default function HomeNav({ user, reservation, onSignIn, onClaim, onDashbo
         transition={{ duration: 0.8, ease: EASE, delay: 0.2 }}
       >
         <nav className={s.navInner} aria-label="Main">
-          <Link href="/" className={s.brand} aria-label="Artistant home">
-            <img src="/brand/wordmark.svg" alt="Artistant" width={118} height={22} />
-          </Link>
+          <div className={s.navLeft}>
+            <Link href="/" className={s.brand} aria-label="Artistant home">
+              <img src="/brand/wordmark.svg" alt="Artistant" width={118} height={22} />
+            </Link>
+            <div className={s.hideSm}>
+              <SideSwitch side={side} onSide={onSide} id="nav" />
+            </div>
+          </div>
 
           <div className={s.navLinks}>
-            {LINKS.map((l) => (
+            {links.map((l) => (
               <a key={l.href} href={l.href} className={s.navLink}>
                 {l.label}
               </a>
@@ -64,17 +87,17 @@ export default function HomeNav({ user, reservation, onSignIn, onClaim, onDashbo
 
           <div className={s.navActions}>
             {user ? (
-              <button type="button" className={s.avatarBtn} onClick={onDashboard} aria-label="Open your dashboard">
+              <span className={s.avatar} title={reservation ? `You're registered as @${reservation.username}` : 'Signed in'}>
                 {photo ? <img src={photo} alt="" referrerPolicy="no-referrer" /> : initial}
-              </button>
+              </span>
             ) : (
               <button type="button" className={`${s.navSignIn} ${s.hideSm}`} onClick={onSignIn}>
                 Sign in
               </button>
             )}
-            {!reservation && (
-              <button type="button" className={s.navCta} onClick={onClaim}>
-                Claim your name
+            {showCta && (
+              <button type="button" className={s.navCta} onClick={onCta}>
+                {SIDE_CTA[side]}
               </button>
             )}
             <button
@@ -101,7 +124,23 @@ export default function HomeNav({ user, reservation, onSignIn, onClaim, onDashbo
             exit={{ clipPath: 'circle(0% at 92% 6%)' }}
             transition={{ duration: 0.6, ease: EASE }}
           >
-            {LINKS.map((l, i) => (
+            <motion.div
+              className={s.mobileMenuSwitch}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.6, ease: EASE }}
+            >
+              <span className={s.label}>Show me the page for</span>
+              <SideSwitch
+                side={side}
+                onSide={(k) => {
+                  onSide(k);
+                  setOpen(false);
+                }}
+                id="menu"
+              />
+            </motion.div>
+            {links.map((l, i) => (
               <motion.a
                 key={l.href}
                 href={l.href}
@@ -121,29 +160,30 @@ export default function HomeNav({ user, reservation, onSignIn, onClaim, onDashbo
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4, duration: 0.6, ease: EASE }}
             >
-              {!reservation && (
+              {showCta && (
                 <button
                   type="button"
                   className={s.btnGrad}
                   onClick={() => {
                     setOpen(false);
-                    onClaim();
+                    onCta();
                   }}
                 >
-                  Claim your name — it&apos;s free
+                  {SIDE_CTA[side]}
                 </button>
               )}
-              <button
-                type="button"
-                className={s.btnWhite}
-                onClick={() => {
-                  setOpen(false);
-                  if (user) onDashboard();
-                  else onSignIn();
-                }}
-              >
-                {user ? 'Open dashboard' : 'Sign in'}
-              </button>
+              {!user && (
+                <button
+                  type="button"
+                  className={s.btnWhite}
+                  onClick={() => {
+                    setOpen(false);
+                    onSignIn();
+                  }}
+                >
+                  Sign in
+                </button>
+              )}
             </motion.div>
           </motion.div>
         )}

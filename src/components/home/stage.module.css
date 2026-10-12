@@ -39,15 +39,16 @@
 
 .introTitle {
   margin: 0;
-  font-family: var(--f-serif);
-  font-weight: 400;
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-stretch: 90%;
   font-size: clamp(54px, 7vw, 108px);
   line-height: 0.92;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.032em;
 }
 
 .introTitle em {
-  font-style: italic;
+  font-style: normal;
   background: var(--grad);
   -webkit-background-clip: text;
   background-clip: text;
@@ -108,7 +109,9 @@
 }
 
 .capType {
-  font-family: var(--f-serif);
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-stretch: 90%;
   font-size: clamp(24px, 2.2vw, 32px);
   line-height: 1.05;
 }

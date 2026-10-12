@@ -59,15 +59,16 @@
 
 .trackTitle {
   margin: 0;
-  font-family: var(--f-serif);
-  font-weight: 400;
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-stretch: 90%;
   font-size: clamp(42px, 5.2vw, 76px);
   line-height: 0.98;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.032em;
 }
 
 .trackTitle em {
-  font-style: italic;
+  font-style: normal;
   color: var(--accent);
 }
 
@@ -161,7 +162,7 @@
   position: absolute;
   z-index: -1;
   inset: 10% -30%;
-  background: radial-gradient(closest-side, rgba(242, 90, 43, 0.28), rgba(124, 92, 255, 0.12) 60%, transparent);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 32%, transparent), rgba(124, 92, 255, 0.1) 60%, transparent);
   filter: blur(20px);
 }
 

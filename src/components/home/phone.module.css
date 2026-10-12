@@ -88,3 +88,11 @@
   object-position: top;
   display: block;
 }
+
+.statusOver {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}

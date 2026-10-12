@@ -3,25 +3,18 @@
 import React, { useRef, useState } from 'react';
 import { motion, useMotionValueEvent, useReducedMotion, useTransform, type MotionValue } from 'motion/react';
 import Phone from './Phone';
-import { useMediaQuery, useSectionProgress } from './primitives';
+import { useSectionProgress } from './primitives';
+import { CHAOS, type Side } from './sides';
 import s from './chaos.module.css';
 
-// Every line here is something working artists hear far too often.
-const CHAOS = [
-  { text: 'bro payment next week pakka 🙏', left: '6%', top: '30%', r: -6, green: true },
-  { text: 'can you do it for exposure? crowd bahut bada hai', left: '68%', top: '26%', r: 5 },
-  { text: 'advance? event ke baad dekhte hain', left: '3%', top: '58%', r: 4, sm: true },
-  { text: 'sorry yaar, event cancel ho gaya. aaj.', left: '72%', top: '55%', r: -4, green: true },
-  { text: 'rate thoda kam karo na, regular client hain', left: '14%', top: '80%', r: -3 },
-  { text: 'sound system? venue pe kuch toh hoga', left: '64%', top: '80%', r: 6, sm: true },
-  { text: 'who gave you this number?', left: '36%', top: '22%', r: 2, sm: true },
-];
-
-const NOTES = [
-  { at: 0.5, app: 'Payment', when: 'now', text: <><b>₹90,000 received</b> — half your fee for Wedding Sangeet, Jaipur. Book those flights ✈️</> },
-  { at: 0.6, app: 'Contract', when: 'now', text: <><b>Contract signed</b> by you and the client. Date locked.</> },
-  { at: 0.7, app: 'Check-in', when: 'now', text: <><b>You&apos;re checked in.</b> ₹45,000 released at soundcheck.</> },
-  { at: 0.8, app: 'Show day', when: 'now', text: <><b>Show done 🎉</b> Final ₹45,000 on its way. Rebooking this client: 1% fee.</> },
+// Where each message sits inside the phone's stage, so none of them cross the headline.
+const SPOTS = [
+  { left: '0%', top: '6%', r: -6 },
+  { left: '56%', top: '14%', r: 5 },
+  { left: '2%', top: '40%', r: 4 },
+  { left: '58%', top: '48%', r: -4 },
+  { left: '4%', top: '74%', r: -3, sm: true },
+  { left: '54%', top: '80%', r: 6, sm: true },
 ];
 
 /** A WhatsApp-style message, the way these conversations usually arrive. */
@@ -36,13 +29,21 @@ function ChatBubble({ text, time, mine, width }: { text: string; time: string; m
   );
 }
 
-function ChaosBubble({ b, i, progress }: { b: (typeof CHAOS)[number]; i: number; progress: MotionValue<number> }) {
+function ChaosBubble({
+  b,
+  i,
+  progress,
+}: {
+  b: (typeof SPOTS)[number] & { text: string; mine?: boolean };
+  i: number;
+  progress: MotionValue<number>;
+}) {
   // Push each bubble away from the centre as the phone arrives.
-  const dx = parseFloat(b.left) < 50 ? -1 : 1;
-  const dy = parseFloat(b.top) < 50 ? -1 : 1;
+  const dx = parseFloat(b.left) < 40 ? -1 : 1;
+  const dy = parseFloat(b.top) < 45 ? -1 : 1;
   const start = 0.12 + (i % 4) * 0.04;
-  const x = useTransform(progress, [start, start + 0.3], [0, dx * 260]);
-  const y = useTransform(progress, [start, start + 0.3], [0, dy * 140]);
+  const x = useTransform(progress, [start, start + 0.3], [0, dx * 220]);
+  const y = useTransform(progress, [start, start + 0.3], [0, dy * 120]);
   const rotate = useTransform(progress, [start, start + 0.3], [b.r, b.r + dx * 25]);
   const opacity = useTransform(progress, [start + 0.1, start + 0.3], [1, 0]);
   const blur = useTransform(progress, [start, start + 0.3], ['blur(0px)', 'blur(8px)']);
@@ -55,15 +56,16 @@ function ChaosBubble({ b, i, progress }: { b: (typeof CHAOS)[number]; i: number;
       viewport={{ once: true }}
       transition={{ type: 'spring', stiffness: 260, damping: 16, delay: i * 0.08 }}
     >
-      <ChatBubble text={b.text} mine={b.green} time={`11:${String(40 + i * 3).padStart(2, '0')} PM`} width={230} />
+      <ChatBubble text={b.text} mine={b.mine} time={`11:${String(40 + i * 3).padStart(2, '0')} PM`} />
     </motion.div>
   );
 }
 
-export default function ChaosToPaid() {
+export default function ChaosToPaid({ side }: { side: Side }) {
+  const story = CHAOS[side];
+  const NOTES = story.notes;
   const ref = useRef<HTMLElement>(null);
   const reduce = useReducedMotion();
-  const small = useMediaQuery('(max-width: 760px)');
   const scrollYProgress = useSectionProgress(ref, ['start start', 'end end']);
   const [shown, setShown] = useState(0);
 
@@ -84,60 +86,74 @@ export default function ChaosToPaid() {
   return (
     <section ref={ref} className={s.track} id="how">
       <div className={s.sticky}>
-        <div className={s.titles}>
-          <motion.h2 className={s.title} style={reduce ? { opacity: 0 } : { opacity: titleAOpacity, y: titleAY }}>
-            <span className={s.titleSmall}>From</span>
-            <span className={s.quote}>“Bro, payment <em>kab?</em>”</span>
-          </motion.h2>
-          <motion.h2 className={s.title} style={reduce ? undefined : { opacity: titleBOpacity, y: titleBY }}>
-            <span className={s.titleSmall}>To</span>
-            <span className={s.quote}>
-              “Paid. <span className={s.grad}>On time.</span>”
-            </span>
-          </motion.h2>
-        </div>
-
-        {!reduce && (
-          <div className={s.bubbles} aria-hidden="true">
-            {CHAOS.map((b, i) => (
-              <ChaosBubble key={b.text} b={b} i={i} progress={scrollYProgress} />
-            ))}
+        <div className={`${s.inner}`}>
+          <div className={s.copy}>
+            <div className={s.stack}>
+              <motion.div className={s.layer} style={reduce ? { opacity: 0 } : { opacity: titleAOpacity, y: titleAY }}>
+                <span className={s.kicker}>
+                  <i>01</i> How it is now
+                </span>
+                <h2 className={s.title}>{story.before.title}</h2>
+                <p className={s.text}>{story.before.text}</p>
+              </motion.div>
+              <motion.div className={`${s.layer} ${s.after}`} style={reduce ? undefined : { opacity: titleBOpacity, y: titleBY }}>
+                <span className={s.kicker}>
+                  <i>02</i> With Artistant
+                </span>
+                <h2 className={s.title}>{story.after.title}</h2>
+                <p className={s.text}>{story.after.text}</p>
+              </motion.div>
+            </div>
+            <div className={s.stat}>
+              <b>{story.stat.big}</b>
+              <span>{story.stat.text}</span>
+            </div>
           </div>
-        )}
 
-        <motion.div className={s.stage} style={reduce ? undefined : { y: phoneY, rotate: phoneRotate, scale: phoneScale }}>
-          <Phone width={small ? 250 : 300} time="10:42" background="linear-gradient(180deg,#3a1a10 0%,#1a0d14 40%,#0a0a0a 100%)">
-            <div className={s.lock}>
-              <div className={s.lockDate}>Saturday, 14 December</div>
-              <div className={s.lockTime}>10:42</div>
-            </div>
-            <div className={s.notes} aria-live="polite">
-              {NOTES.slice(0, notesShown).map((n, i) => (
-                <motion.div
-                  key={i}
-                  className={s.note}
-                  initial={{ opacity: 0, y: -16, scale: 0.92 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 380, damping: 26 }}
-                >
-                  <span className={s.noteIcon}>
-                    <img src="/logo_a.png" alt="" />
-                  </span>
-                  <div style={{ flex: 1 }}>
-                    <div className={s.noteHead}>
-                      <span>{n.app}</span>
-                      <span>{n.when}</span>
-                    </div>
-                    <div className={s.noteText}>{n.text}</div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </Phone>
-        </motion.div>
+          <div className={s.stage}>
+            {!reduce && (
+              <div className={s.bubbles} aria-hidden="true">
+                {story.chats.map((c, i) => (
+                  <ChaosBubble key={c.text} b={{ ...SPOTS[i], ...c }} i={i} progress={scrollYProgress} />
+                ))}
+              </div>
+            )}
 
-        <div className={s.stat}>
-          <b>68%</b> of artists wait 30+ days to get paid. On Artistant, half lands before you pack.
+            <motion.div className={s.phoneWrap} style={reduce ? undefined : { y: phoneY, rotate: phoneRotate, scale: phoneScale }}>
+              <Phone
+                width="min(300px, calc(100cqh * 0.45), 70cqw)"
+                time="10:42"
+                background="linear-gradient(180deg,#3a1a10 0%,#1a0d14 40%,#0a0a0a 100%)"
+              >
+                <div className={s.lock}>
+                  <div className={s.lockDate}>Saturday, 14 December</div>
+                  <div className={s.lockTime}>10:42</div>
+                </div>
+                <div className={s.notes} aria-live="polite">
+                  {NOTES.slice(0, notesShown).map((n, i) => (
+                    <motion.div
+                      key={i}
+                      className={s.note}
+                      initial={{ opacity: 0, y: -16, scale: 0.92 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ type: 'spring', stiffness: 380, damping: 26 }}
+                    >
+                      <span className={s.noteIcon}>
+                        <img src="/logo_a.png" alt="" />
+                      </span>
+                      <div style={{ flex: 1 }}>
+                        <div className={s.noteHead}>
+                          <span>{n.app}</span>
+                          <span>now</span>
+                        </div>
+                        <div className={s.noteText}>{n.text}</div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </Phone>
+            </motion.div>
+          </div>
         </div>
       </div>
     </section>

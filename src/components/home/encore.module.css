@@ -54,15 +54,16 @@
 
 .title {
   margin: 28px 0 0;
-  font-family: var(--f-serif);
-  font-weight: 400;
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-stretch: 90%;
   font-size: clamp(64px, 12vw, 190px);
   line-height: 0.88;
-  letter-spacing: -0.035em;
+  letter-spacing: -0.032em;
 }
 
 .em {
-  font-style: italic;
+  font-style: normal;
   background: var(--grad);
   -webkit-background-clip: text;
   background-clip: text;
@@ -88,4 +89,9 @@
   margin: 14px 0 0;
   font-size: 13px;
   color: var(--ink-2);
+}
+
+.cta {
+  padding: 18px 32px;
+  font-size: 17px;
 }

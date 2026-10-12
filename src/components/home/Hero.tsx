@@ -1,17 +1,17 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { AnimatePresence, motion, useReducedMotion, useSpring, useTransform } from 'motion/react';
 import type { UsernameClaim } from '@/hooks/useUsernameClaim';
 import type { WaitlistEntry } from '@/lib/waitlist';
 import ClaimForm from './ClaimForm';
-import Phone from './Phone';
+import Phone, { PhoneBody } from './Phone';
 import { DiscoverScreen, ProfileScreen, VenueScreen } from './Screens';
 import { ArrowIcon, EASE, useSectionProgress } from './primitives';
+import { SIDE_ORDER, type Side } from './sides';
 import h from './hero.module.css';
 import base from './home.module.css';
 
-type Side = 'artist' | 'host' | 'venue';
 
 const SIDES: Record<
   Side,
@@ -46,18 +46,18 @@ const SIDES: Record<
   },
 };
 
-const ORDER: Side[] = ['artist', 'host', 'venue'];
+const ORDER = SIDE_ORDER;
 
 interface HeroProps {
+  side: Side;
+  onSide: (side: Side) => void;
   claim: UsernameClaim;
   reservation: WaitlistEntry | null;
   onClaimSubmit: () => void;
-  onDashboard: () => void;
   onRole: (role: 'organizer' | 'venue') => void;
 }
 
-export default function Hero({ claim, reservation, onClaimSubmit, onDashboard, onRole }: HeroProps) {
-  const [side, setSide] = useState<Side>('artist');
+export default function Hero({ side, onSide, claim, reservation, onClaimSubmit, onRole }: HeroProps) {
   const ref = useRef<HTMLElement>(null);
   const reduce = useReducedMotion();
   const cur = SIDES[side];
@@ -103,8 +103,8 @@ export default function Hero({ claim, reservation, onClaimSubmit, onDashboard, o
       <div className={h.shade} aria-hidden="true" />
       <div className={h.spot} aria-hidden="true" />
 
-      <motion.div className={`${base.container} ${h.inner}`} style={reduce ? undefined : { y: contentY, opacity: contentOpacity }}>
-        <div className={h.copy}>
+      <div className={`${base.container} ${h.inner}`}>
+        <motion.div className={h.copy} style={reduce ? undefined : { y: contentY, opacity: contentOpacity }}>
           <motion.div
             className={h.ask}
             initial={{ opacity: 0, y: 14 }}
@@ -129,7 +129,7 @@ export default function Hero({ claim, reservation, onClaimSubmit, onDashboard, o
                 role="tab"
                 aria-selected={k === side}
                 className={`${h.switchBtn} ${k === side ? h.switchOn : ''}`}
-                onClick={() => setSide(k)}
+                onClick={() => onSide(k)}
               >
                 {k === side && (
                   <motion.span layoutId="hero-side" className={h.switchPill} transition={{ type: 'spring', stiffness: 420, damping: 34 }} />
@@ -139,62 +139,77 @@ export default function Hero({ claim, reservation, onClaimSubmit, onDashboard, o
             ))}
           </motion.div>
 
+          {/*
+            All three headlines stay mounted in one grid cell and slide in or out.
+            Nothing waits on an exit animation, so quick clicks can't leave a line stuck.
+          */}
           <h1 className={h.h1}>
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.span key={side} className={h.h1Inner} initial="hide" animate="show" exit="out">
-                {[cur.line1, cur.line2].map((line, i) => (
-                  <span key={line} className={h.mask}>
-                    <motion.span
-                      className={i === 1 ? h.h1Em : undefined}
-                      variants={{
-                        hide: { y: '108%', rotate: 3 },
-                        show: { y: '0%', rotate: 0, transition: { duration: 1, ease: EASE, delay: 0.35 + i * 0.1 } },
-                        out: { y: '-108%', transition: { duration: 0.35, ease: [0.7, 0, 0.84, 0], delay: i * 0.04 } },
-                      }}
-                    >
-                      {line}
-                    </motion.span>
-                  </span>
-                ))}
-              </motion.span>
-            </AnimatePresence>
+            {ORDER.map((k) => {
+              const on = k === side;
+              return (
+                <span key={k} className={h.h1Layer} aria-hidden={!on}>
+                  {[SIDES[k].line1, SIDES[k].line2].map((line, i) => (
+                    <span key={line} className={h.mask}>
+                      <motion.span
+                        className={i === 1 ? h.h1Em : undefined}
+                        initial={false}
+                        animate={on ? { y: '0%', opacity: 1 } : { y: '110%', opacity: 0 }}
+                        transition={
+                          on
+                            ? { duration: 0.9, ease: EASE, delay: 0.12 + i * 0.08 }
+                            : { duration: 0.35, ease: [0.7, 0, 0.84, 0] }
+                        }
+                      >
+                        {line}
+                      </motion.span>
+                    </span>
+                  ))}
+                </span>
+              );
+            })}
           </h1>
 
           <div className={h.below}>
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={side}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0, transition: { duration: 0.7, ease: EASE, delay: 0.25 } }}
-                exit={{ opacity: 0, y: -10, transition: { duration: 0.25 } }}
-              >
-                <p className={h.lead}>{cur.lead}</p>
-                {side === 'artist' ? (
-                  <>
-                    <ClaimForm
-                      claim={claim}
-                      inputId="username-waitlist-input"
-                      reservation={reservation}
-                      onSubmit={onClaimSubmit}
-                      onDashboard={onDashboard}
-                      className={h.claim}
-                    />
-                    {!reservation && <p className={h.small}>Free for artists. Takes 30 seconds. Bengaluru opens first.</p>}
-                  </>
-                ) : (
-                  <div className={h.actions}>
-                    <button type="button" className={base.btnAccent} onClick={() => onRole(side === 'host' ? 'organizer' : 'venue')}>
-                      {side === 'host' ? 'Join as a host' : 'List your space'} <ArrowIcon size={15} />
-                    </button>
-                    <a href="#hosts" className={base.btnGhost}>
-                      See how it works
-                    </a>
-                  </div>
-                )}
-              </motion.div>
-            </AnimatePresence>
+            {ORDER.map((k) => {
+              const on = k === side;
+              return (
+                <motion.div
+                  key={k}
+                  className={h.belowLayer}
+                  inert={!on}
+                  aria-hidden={!on}
+                  initial={false}
+                  animate={on ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
+                  transition={{ duration: on ? 0.6 : 0.2, ease: EASE, delay: on ? 0.2 : 0 }}
+                  style={{ pointerEvents: on ? 'auto' : 'none' }}
+                >
+                  <p className={h.lead}>{SIDES[k].lead}</p>
+                  {k === 'artist' ? (
+                    <>
+                      <ClaimForm
+                        claim={claim}
+                        inputId="username-waitlist-input"
+                        reservation={reservation}
+                        onSubmit={onClaimSubmit}
+                        className={h.claim}
+                      />
+                      {!reservation && <p className={h.small}>Free for artists. Takes 30 seconds. Bengaluru opens first.</p>}
+                    </>
+                  ) : (
+                    <div className={h.actions}>
+                      <button type="button" className={base.btnAccent} onClick={() => onRole(k === 'host' ? 'organizer' : 'venue')}>
+                        {k === 'host' ? 'Join as a host' : 'List your space'} <ArrowIcon size={15} />
+                      </button>
+                      <a href="#how" className={base.btnGhost}>
+                        See how it works
+                      </a>
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })}
           </div>
-        </div>
+        </motion.div>
 
         <motion.div className={h.device} style={reduce ? undefined : { y: phoneY }}>
           <motion.div
@@ -204,7 +219,7 @@ export default function Hero({ claim, reservation, onClaimSubmit, onDashboard, o
             animate={{ opacity: 1, y: 0, rotate: 0 }}
             transition={{ duration: 1.3, ease: EASE, delay: 0.45 }}
           >
-            <Phone width={290}>
+            <Phone width={290} edge>
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div
                   key={side}
@@ -216,10 +231,8 @@ export default function Hero({ claim, reservation, onClaimSubmit, onDashboard, o
                 >
                   {side === 'artist' ? (
                     <ProfileScreen username={reservation?.username ?? claim.username} />
-                  ) : side === 'host' ? (
-                    <DiscoverScreen />
                   ) : (
-                    <VenueScreen />
+                    <PhoneBody>{side === 'host' ? <DiscoverScreen /> : <VenueScreen />}</PhoneBody>
                   )}
                 </motion.div>
               </AnimatePresence>
@@ -236,7 +249,7 @@ export default function Hero({ claim, reservation, onClaimSubmit, onDashboard, o
             )}
           </motion.div>
         </motion.div>
-      </motion.div>
+      </div>
 
       <div className={`${base.container} ${h.foot}`}>
         <AnimatePresence mode="wait" initial={false}>

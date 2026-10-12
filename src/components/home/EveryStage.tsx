@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion, useSpring, useTransform } from 'motion/react';
 import { useSectionProgress } from './primitives';
+import type { Side } from './sides';
 import s from './stage.module.css';
 import base from './home.module.css';
 
@@ -17,7 +18,7 @@ const STAGES = [
   { img: '/photos/tabla.webp', type: 'Festive & company nights', who: 'Booked by brands and office teams', tall: false },
 ];
 
-export default function EveryStage() {
+export default function EveryStage({ side }: { side: Side }) {
   const track = useRef<HTMLElement>(null);
   const row = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
@@ -41,7 +42,7 @@ export default function EveryStage() {
     return (
       <section className={s.static} aria-label="Every stage in India">
         <div className={s.row} style={{ overflowX: 'auto' }}>
-          <Intro />
+          <Intro side={side} />
           {STAGES.map((st, i) => (
             <Card key={st.type} st={st} i={i} />
           ))}
@@ -54,7 +55,7 @@ export default function EveryStage() {
     <section ref={track} id="stages" className={s.track} style={{ height: `calc(100vh + ${dist}px)` }} aria-label="Every stage in India">
       <div className={s.sticky}>
         <motion.div ref={row} className={s.row} style={{ x }}>
-          <Intro />
+          <Intro side={side} />
           {STAGES.map((st, i) => (
             <Card key={st.type} st={st} i={i} />
           ))}
@@ -71,7 +72,14 @@ export default function EveryStage() {
   );
 }
 
-function Intro() {
+const INTRO: Record<Side, string> = {
+  artist:
+    'Sangeets, fests, club nights, baithaks and the café down the road. Wherever you play, the booking, the contract and the money work the same way.',
+  host: 'Weddings, fests, office parties and house concerts. Whatever you’re planning, the booking, the contract and the payment work the same way.',
+  venue: 'From a café open mic to a club’s weekend DJ. Whatever your room, booking and paying artists works the same way.',
+};
+
+function Intro({ side }: { side: Side }) {
   return (
     <div className={s.intro}>
       <span className={base.label}>Made for India</span>
@@ -80,10 +88,7 @@ function Intro() {
         <br />
         in <em>India.</em>
       </h2>
-      <p className={s.introText}>
-        Sangeets, fests, club nights, baithaks and the café down the road. Wherever you play, the booking, the contract and the
-        money work the same way.
-      </p>
+      <p className={s.introText}>{INTRO[side]}</p>
     </div>
   );
 }

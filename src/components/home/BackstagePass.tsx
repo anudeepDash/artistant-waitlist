@@ -36,14 +36,12 @@ interface PassProps {
   claim: UsernameClaim;
   reservation: WaitlistEntry | null;
   onClaimSubmit: () => void;
-  onDashboard: () => void;
 }
 
 export default function BackstagePass({
   claim,
   reservation,
   onClaimSubmit,
-  onDashboard,
 }: PassProps) {
   const reduce = useReducedMotion();
   const name = reservation?.username ?? (claim.username || "yourname");
@@ -103,7 +101,6 @@ export default function BackstagePass({
               inputId="username-pass-input"
               reservation={reservation}
               onSubmit={onClaimSubmit}
-              onDashboard={onDashboard}
               className={s.claim}
             />
           </Reveal>

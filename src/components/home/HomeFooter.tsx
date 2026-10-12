@@ -4,18 +4,10 @@ import React, { useRef } from 'react';
 import Link from 'next/link';
 import { motion, useTransform } from 'motion/react';
 import { useSectionProgress } from './primitives';
+import { SIDE_LABEL, SIDE_ORDER, type Side } from './sides';
 import s from './home.module.css';
 
 const COLUMNS = [
-  {
-    title: 'Artists',
-    links: [
-      { href: '#features', label: 'What you get' },
-      { href: '#founding', label: 'The first 140' },
-      { href: '#fees', label: 'Fees' },
-      { href: '/card', label: 'Your digital card' },
-    ],
-  },
   {
     title: 'Company',
     links: [
@@ -35,7 +27,7 @@ const COLUMNS = [
   },
 ];
 
-export default function HomeFooter() {
+export default function HomeFooter({ onSide }: { onSide: (side: Side) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const scrollYProgress = useSectionProgress(ref, ['start end', 'end end']);
   const clip = useTransform(scrollYProgress, [0.05, 0.9], ['inset(0 100% 0 0)', 'inset(0 0% 0 0)']);
@@ -51,6 +43,21 @@ export default function HomeFooter() {
             <p className={s.footTag}>
               Made in Bengaluru, for <em>every stage</em> in India.
             </p>
+          </div>
+          <div>
+            <div className={s.footColTitle}>Pages</div>
+            <ul className={s.footLinks}>
+              {SIDE_ORDER.map((k) => (
+                <li key={k}>
+                  <button type="button" className={s.footLinkBtn} onClick={() => onSide(k)}>
+                    For {SIDE_LABEL[k].toLowerCase()}
+                  </button>
+                </li>
+              ))}
+              <li>
+                <Link href="/card">Your digital card</Link>
+              </li>
+            </ul>
           </div>
           {COLUMNS.map((col) => (
             <div key={col.title}>

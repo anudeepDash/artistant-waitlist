@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Space_Grotesk, Geist_Mono, Permanent_Marker, Instrument_Serif } from "next/font/google";
+import { Inter, Space_Grotesk, Geist, Geist_Mono, Permanent_Marker, Bricolage_Grotesque } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { Analytics } from "@vercel/analytics/next";
@@ -25,11 +25,17 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
-const serif = Instrument_Serif({
+// Homepage type: a characterful variable grotesk for headlines, Geist for text.
+const display = Bricolage_Grotesque({
   subsets: ["latin"],
-  weight: "400",
-  style: ["normal", "italic"],
-  variable: "--font-serif-display",
+  axes: ["opsz", "wdth"],
+  variable: "--font-bricolage",
+  display: "swap",
+});
+
+const geist = Geist({
+  subsets: ["latin"],
+  variable: "--font-geist",
   display: "swap",
 });
 
@@ -163,7 +169,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`h-full antialiased ${inter.variable} ${spaceGrotesk.variable} ${geistMono.variable} ${marker.variable} ${serif.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`h-full antialiased ${inter.variable} ${spaceGrotesk.variable} ${geistMono.variable} ${marker.variable} ${display.variable} ${geist.variable}`} suppressHydrationWarning>
       <head>
         <JsonLd data={websiteSchema} />
       </head>

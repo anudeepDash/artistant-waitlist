@@ -41,8 +41,9 @@
 }
 
 .perk b {
-  font-family: var(--f-serif);
-  font-weight: 400;
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-stretch: 90%;
   font-size: 24px;
   line-height: 1.1;
 }
@@ -176,7 +177,9 @@
 
 .passName {
   margin-top: 30px;
-  font-family: var(--f-serif);
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-stretch: 90%;
   font-size: 44px;
   line-height: 1.05;
   letter-spacing: -0.02em;
@@ -187,8 +190,10 @@
 }
 
 .passRole {
-  font-family: var(--f-serif);
-  font-style: italic;
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-stretch: 90%;
+  font-style: normal;
   font-size: 22px;
   color: var(--accent);
 }

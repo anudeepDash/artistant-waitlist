@@ -76,14 +76,15 @@
 
 .cardTitle {
   margin: 0;
-  font-family: var(--f-serif);
-  font-weight: 400;
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-stretch: 90%;
   font-size: clamp(36px, 3.8vw, 56px);
   line-height: 1;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.032em;
 }
 
-.cardTitle em { font-style: italic; color: var(--accent); }
+.cardTitle em { font-style: normal; color: var(--accent); }
 
 .text {
   margin: 16px 0 0;
@@ -120,10 +121,31 @@
   color: var(--accent);
 }
 
-.cta {
+.actions {
   margin-top: auto;
-  align-self: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
 }
+
+.pageLink {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 8px 0;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-2);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: var(--line-2);
+  transition: color 0.2s;
+}
+
+.pageLink:hover { color: var(--ink); }
 
 @media (max-width: 860px) {
   .grid { grid-template-columns: 1fr; }

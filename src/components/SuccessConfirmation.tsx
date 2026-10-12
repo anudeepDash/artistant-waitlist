@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
-import { useRouter } from 'next/navigation';
 
 /* ──────────────────────────────────────────────
    SuccessConfirmation — the celebratory payoff
@@ -89,7 +88,6 @@ export default function SuccessConfirmation({
   username,
   onClose,
 }: SuccessConfirmationProps) {
-  const router = useRouter();
   /* ── Generate confetti pieces once on mount ── */
   const confetti = useMemo(() => generateConfetti(), []);
 
@@ -161,9 +159,10 @@ export default function SuccessConfirmation({
         {/* ── Heading ── */}
         <motion.h2
           variants={itemVariants}
-          className="text-3xl font-display font-bold brand-text mb-4"
+          className="text-3xl font-bold text-white mb-4"
+          style={{ fontFamily: 'var(--font-bricolage), system-ui, sans-serif', letterSpacing: '-0.025em' }}
         >
-          You&apos;re on the list!
+          Thanks for registering!
         </motion.h2>
 
         {/* ── Reserved username pill ── */}
@@ -174,7 +173,7 @@ export default function SuccessConfirmation({
             <span
               className="text-lg sm:text-xl md:text-22px font-extrabold bg-gradient-to-r from-[#F25A2B] via-[#D4567A] to-[#7C5CFF] bg-clip-text text-transparent inline-block"
               style={{
-                fontFamily: 'var(--font-display, sans-serif)',
+                fontFamily: 'var(--font-bricolage), sans-serif',
                 lineHeight: '1.2'
               }}
             >
@@ -188,8 +187,8 @@ export default function SuccessConfirmation({
           variants={itemVariants}
           className="text-text-secondary leading-relaxed mb-8"
         >
-          You&apos;ve secured your spot on ArtisTant. We&apos;ll notify you
-          when it&apos;s time to set up your artist profile.
+          Your name is saved. We&apos;ll email you with the details once
+          Artistant is live.
         </motion.p>
 
         {/* ── Early Access badge ── */}
@@ -202,18 +201,16 @@ export default function SuccessConfirmation({
           </div>
         </motion.div>
 
-        {/* ── View Profile button ── */}
+        {/* ── Close ── */}
         <motion.button
           variants={itemVariants}
-          onClick={() => {
-            router.push('/dashboard');
-            onClose();
-          }}
+          onClick={onClose}
           whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.97 }}
-          className="rounded-full gradient-bg px-8 py-3 text-sm font-semibold text-white cursor-pointer transition-all duration-200 shadow-lg shadow-brand-orange/20"
+          className="rounded-full px-8 py-3 text-sm font-semibold text-white cursor-pointer transition-all duration-200 shadow-lg shadow-brand-orange/20"
+          style={{ background: 'linear-gradient(100deg, #F25A2B, #D4567A 45%, #7C5CFF)' }}
         >
-          View My Profile Dashboard
+          Done
         </motion.button>
       </motion.div>
     </div>
