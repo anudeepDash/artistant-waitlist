@@ -47,7 +47,7 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
   maintenance_mode: false,
   founding_artist_limit: 1000,
   instagram_url: "https://instagram.com/artistant.in",
-  twitter_url: "https://twitter.com/artistant",
+  twitter_url: "https://x.com/artistant_in",
   youtube_url: "",
   spotify_url: "",
   whatsapp_number: "",

@@ -1,4 +1,4 @@
-import { auth, isFirebaseConfigured } from "./firebase/client";
+import { auth, ensureRecaptchaConfig, isFirebaseConfigured } from "./firebase/client";
 import { 
   GoogleAuthProvider, 
   signInWithPopup, 
@@ -39,6 +39,7 @@ export async function signUpWithEmail(email: string, password: string, displayNa
   if (!isFirebaseConfigured) {
     throw new Error(CONFIG_ERROR);
   }
+  await ensureRecaptchaConfig();
   const result = await createUserWithEmailAndPassword(auth, email, password);
   if (displayName && result.user) {
     try {
@@ -58,6 +59,7 @@ export async function signInWithEmail(email: string, password: string) {
   if (!isFirebaseConfigured) {
     throw new Error(CONFIG_ERROR);
   }
+  await ensureRecaptchaConfig();
   const result = await signInWithEmailAndPassword(auth, email, password);
   return result;
 }

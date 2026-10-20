@@ -1,3 +1,6 @@
+-- ⚠️ SUPERSEDED: this script grants public (anon/authenticated) access that is no longer
+-- needed and is unsafe. If you re-run it, run supabase_migration_security_hardening.sql again afterwards.
+
 -- ===========================================================================
 -- Migration: Create booking_requests table for storing client booking requests
 --

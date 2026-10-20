@@ -2,7 +2,9 @@
 
 import { sendWelcomeEmail, sendCustomEmail, sendPasswordResetEmail } from './mailer';
 import { verifyIdToken, verifyAdminToken, generatePasswordResetLink, auth } from './firebase/admin';
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { getAdminSupabaseClient } from './supabase/admin';
+import { checkRateLimit } from './rate-limit';
+import { isValidEmail } from './validation';
 
 interface SendWelcomeEmailActionParams {
   idToken: string;
@@ -223,36 +225,45 @@ export async function sendMassEmailAction({
  * Generates the reset link via Firebase Admin SDK and sends it via Nodemailer with custom theme.
  */
 export async function sendPasswordResetEmailAction(email: string) {
+  // Same response whether or not the account exists, so this can't be used to discover users.
+  const genericResponse = {
+    success: true,
+    message: 'If an account exists for this email, a password reset link is on its way.',
+  };
+
   try {
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!isValidEmail(email)) {
       return { success: false, message: 'A valid email address is required.' };
     }
+    const normalisedEmail = email.trim().toLowerCase();
 
-    // Generate Firebase password reset link
-    const resetLink = await generatePasswordResetLink(email);
+    const ipAllowed = await checkRateLimit('password-reset-ip', 5, 15 * 60 * 1000);
+    const emailAllowed = await checkRateLimit('password-reset-email', 3, 60 * 60 * 1000, normalisedEmail);
+    if (!ipAllowed || !emailAllowed) {
+      return { success: false, message: 'Too many reset requests. Please wait a few minutes and try again.' };
+    }
 
-    // Try to find the user's name from Firebase Admin or Supabase to personalize the greeting
+    let resetLink: string;
+    try {
+      resetLink = await generatePasswordResetLink(normalisedEmail);
+    } catch (err: any) {
+      if (err?.code === 'auth/user-not-found' || /EMAIL_NOT_FOUND|user-not-found/i.test(err?.message || '')) {
+        return genericResponse;
+      }
+      throw err;
+    }
+
+    // Personalise the greeting from Firebase or the waitlist entry, if available
     let name = 'ArtisTant Member';
     try {
-      const userRecord = await auth.getUserByEmail(email);
+      const userRecord = await auth.getUserByEmail(normalisedEmail);
       if (userRecord.displayName) {
         name = userRecord.displayName;
       } else {
-        // Fallback to searching waitlist in Supabase if exists
-        const supabase = createSupabaseClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!,
-          {
-            auth: {
-              persistSession: false,
-              autoRefreshToken: false,
-            },
-          }
-        );
-        const { data } = await supabase
+        const { data } = await getAdminSupabaseClient()
           .from('waitlist_users')
           .select('display_name')
-          .eq('email', email)
+          .eq('email', normalisedEmail)
           .maybeSingle();
         if (data && data.display_name) {
           name = data.display_name;
@@ -262,12 +273,14 @@ export async function sendPasswordResetEmailAction(email: string) {
       console.warn('Could not retrieve user displayName for reset email:', e);
     }
 
-    return await sendPasswordResetEmail({ email, name, resetLink });
+    const res = await sendPasswordResetEmail({ email: normalisedEmail, name, resetLink });
+    if (!res.success) {
+      console.error('Password reset email failed to send:', res.message);
+      return { success: false, message: 'We could not send the reset email right now. Please try again shortly.' };
+    }
+    return genericResponse;
   } catch (error: any) {
     console.error('Failed to trigger sendPasswordResetEmail action:', error);
-    if (error.code === 'auth/user-not-found') {
-      return { success: false, message: 'There is no user record corresponding to this identifier. The user may have been deleted.' };
-    }
-    return { success: false, message: error?.message || 'Server action error.' };
+    return { success: false, message: 'We could not send the reset email right now. Please try again shortly.' };
   }
 }

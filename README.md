@@ -35,7 +35,23 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
-## Security Warning: Hardcoded Secrets
-**CRITICAL**: Hardcoded secrets were previously found in this repository (e.g. `EMAIL_PASS`, `SUPABASE_ANON_KEY`, and `ARTISTANT_ADMIN_2026`). 
-These have now been moved to environment variables, but the old values are permanently visible in your git history. 
-**You MUST rotate these sensitive keys immediately after deployment** to prevent unauthorized access.
+## Security
+
+**Data access model.** The browser never talks to Supabase directly. All reads/writes go through
+server actions (`src/lib/*-actions.ts`) that verify the caller's Firebase ID token and use the
+service-role key. Admin actions additionally require a *verified* email that is the super-admin,
+the developer account or listed in `admin_users`.
+
+**Database lock-down.** After deploying the app, run `supabase_migration_security_hardening.sql`
+in the Supabase SQL editor. It enables RLS on every app table, drops the old permissive policies
+and revokes all anon/authenticated access (the anon key ships in client JS). Each verification
+query at the bottom of that file should return zero rows. Older `supabase_migration_*.sql` files
+grant public access — if you ever re-run one, re-run the hardening script afterwards.
+
+**Rotate leaked secrets.** Values previously committed to git (`EMAIL_PASS`, the Supabase keys
+and the `ARTISTANT_ADMIN_2026` passcode used by the `admin_*` RPCs) remain in git history.
+Rotate them; the hardening migration also makes those RPCs callable by the service role only.
+
+**Rate limiting.** Abuse-prone public actions (password reset, booking requests, careers,
+feedback, inquiries) are rate limited per IP in `src/lib/rate-limit.ts`. This is per server
+instance; for a global limit add Vercel Firewall rules or an Upstash/Redis-backed limiter.

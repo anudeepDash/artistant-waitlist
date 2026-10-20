@@ -39,8 +39,9 @@ if (typeof window === 'undefined' && process.env.NODE_ENV !== 'test') {
 const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
-      // Allow up to 100MB videos (which become ~135MB when base64 encoded)
-      bodySizeLimit: '150mb',
+      // Images (max 8MB) are posted as base64 (~11MB). Videos upload directly to
+      // Supabase Storage via signed URLs, so actions never need large bodies.
+      bodySizeLimit: '12mb',
     },
   },
   // 4. Security Headers & 6. CORS Configuration

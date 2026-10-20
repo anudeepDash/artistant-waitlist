@@ -2898,3 +2898,8 @@
 
 
 
+
+/* Public profile serif headings (font loaded via next/font in app/[username]/layout.tsx) */
+.font-serif-display {
+  font-family: var(--font-serif-display), 'Playfair Display', Georgia, serif;
+}

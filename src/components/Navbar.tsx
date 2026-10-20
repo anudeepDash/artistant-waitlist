@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -7,7 +8,7 @@ import { type User } from 'firebase/auth';
 import { type WaitlistEntry } from '@/lib/waitlist';
 import { usePathname, useRouter } from 'next/navigation';
 import { deleteAccountDataAction } from '@/lib/account-actions';
-import { checkIsAdminAction } from '@/lib/admin-actions';
+import { checkIsAdminCached } from '@/lib/admin-status';
 import MobileNavDrawer from '@/components/MobileNavDrawer';
 
 interface NavbarProps {
@@ -53,8 +54,7 @@ const Navbar = ({
     }
     const checkAccess = async () => {
       try {
-        const idToken = await user.getIdToken();
-        const res = await checkIsAdminAction(idToken);
+        const res = await checkIsAdminCached(user);
         setIsAdmin(res);
       } catch (err) {
         setIsAdmin(false);
@@ -182,7 +182,7 @@ const Navbar = ({
         <div className="flex items-center justify-between">
           
           {/* ── LEFT: Wordmark ──────────────────────── */}
-          <a
+          <Link
             href="/"
             aria-label="ArtisTant home"
             onClick={(e) => {
@@ -202,7 +202,7 @@ const Navbar = ({
               }}
               className={`object-contain transition-all duration-300 dark:invert-0 invert ${scrolled ? 'h-[14px] md:h-[16px]' : 'h-[17px] md:h-[20px]'}`}
             />
-          </a>
+          </Link>
 
           {/* ── RIGHT: Controls & Profile ────────────── */}
           <div className="flex items-center gap-2 md:gap-3">
@@ -222,7 +222,7 @@ const Navbar = ({
             )}
 
             {isAdmin && (
-              <a
+              <Link
                 href="/admin"
                 className="
                   inline-flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-full
@@ -232,7 +232,7 @@ const Navbar = ({
                 "
               >
                 Admin
-              </a>
+              </Link>
             )}
 
             <ThemeToggle />

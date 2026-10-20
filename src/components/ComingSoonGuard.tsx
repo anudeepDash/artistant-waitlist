@@ -2,16 +2,35 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import dynamic from 'next/dynamic';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { signInWithGoogle, signInWithEmail, signOut as firebaseSignOut } from '@/lib/auth';
-import { checkIsAdminAction } from '@/lib/admin-actions';
-import AdminLoginGate from '@/components/admin/AdminLoginGate';
-import MiniGameModal from '@/components/MiniGameModal';
-import MarketFeedbackModal from '@/components/MarketFeedbackModal';
+import { checkIsAdminCached } from '@/lib/admin-status';
+
+// Only needed after an interaction, so keep them out of the initial bundle.
+const AdminLoginGate = dynamic(() => import('@/components/admin/AdminLoginGate'));
+const MiniGameModal = dynamic(() => import('@/components/MiniGameModal'));
+const MarketFeedbackModal = dynamic(() => import('@/components/MarketFeedbackModal'));
 import { Lock, ExternalLink, X, QrCode, Zap, MessageSquarePlus, Gamepad2, ArrowUpRight } from 'lucide-react';
 
 const ADMIN_STORAGE_KEY = 'artistant_admin_bypass_active';
 const KNOWN_ADMIN_EMAILS = ['anudeepdash2004@gmail.com'];
+
+/**
+ * Pages hidden behind the Coming Soon screen until launch. Everything else — public
+ * artist profiles (/<username>), /card, /links, /privacy, /terms, campaign pages and
+ * /admin (which has its own login) — is reachable by everyone.
+ */
+const GATED_PATHS = new Set([
+  '/', '/dashboard', '/claim', '/directory', '/gigs', '/events', '/careers', '/changelog',
+]);
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
+}
 
 // ── Rotating taglines ──
 const TAGLINES = [
@@ -64,7 +83,7 @@ const CONSOLE_ART = `
 ║                                                   ║
 ║    🔥  We're hiring. Drop us a line.              ║
 ║    👀  You found the console. Respect.            ║
-║    🎤  artistant.com                              ║
+║    🎤  artistant.in                               ║
 ║                                                   ║
 ╚═══════════════════════════════════════════════════╝`;
 
@@ -85,8 +104,11 @@ interface DotParticle {
 
 export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
   const { user, loading: authLoading } = useAuth();
+  const pathname = usePathname();
+  const isGatedPath = GATED_PATHS.has(pathname || '/');
 
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(false);
+  const locked = isGatedPath && !isAdminUnlocked;
   const [checkingAdmin, setCheckingAdmin] = useState<boolean>(false);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [showAdminModal, setShowAdminModal] = useState<boolean>(false);
@@ -128,8 +150,9 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
 
   // ── Console art on mount ──
   useEffect(() => {
+    if (!isGatedPath) return;
     console.log(CONSOLE_ART, 'color: #F25A2B; font-size: 10px; font-family: monospace;');
-  }, []);
+  }, [isGatedPath]);
 
   // ── Time-based greeting ──
   useEffect(() => {
@@ -143,22 +166,23 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
 
   // ── Rotating taglines ──
   useEffect(() => {
+    if (!locked) return;
     const interval = setInterval(() => {
       setCurrentTagline(prev => (prev + 1) % TAGLINES.length);
     }, 4000);
     return () => clearInterval(interval);
-  }, []);
+  }, [locked]);
 
   // ── Delayed hint — appears after 10s, fades out after 18s ──
   useEffect(() => {
-    if (isAdminUnlocked || hintDismissed) return;
+    if (!locked || hintDismissed) return;
     const showTimer = setTimeout(() => setShowHint(true), 10000);
     const hideTimer = setTimeout(() => {
       setShowHint(false);
       setHintDismissed(true);
     }, 25000);
     return () => { clearTimeout(showTimer); clearTimeout(hideTimer); };
-  }, [isAdminUnlocked, hintDismissed]);
+  }, [locked, hintDismissed]);
 
   // ── Show toast helper ──
   const showToast = useCallback((msg: string) => {
@@ -186,7 +210,7 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
   }, []);
 
   useEffect(() => {
-    if (isAdminUnlocked) return;
+    if (!locked) return;
     resetIdleTimer();
 
     const onActivity = () => resetIdleTimer();
@@ -199,15 +223,15 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
       window.removeEventListener('touchstart', onActivity);
       if (idleTimer.current) clearTimeout(idleTimer.current);
     };
-  }, [isAdminUnlocked, resetIdleTimer]);
+  }, [locked, resetIdleTimer]);
 
   // ── Secret word detection (type anywhere on page) ──
   useEffect(() => {
-    if (isAdminUnlocked) return;
+    if (!locked) return;
 
     const handleType = (e: KeyboardEvent) => {
-      // Skip modifier keys, arrows, etc.
-      if (e.key.length !== 1) return;
+      // Skip modifier keys, arrows, etc. and real typing in form fields
+      if (e.key.length !== 1 || isTypingTarget(e.target)) return;
 
       typedBuffer.current += e.key.toLowerCase();
 
@@ -232,11 +256,11 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
 
     window.addEventListener('keydown', handleType);
     return () => window.removeEventListener('keydown', handleType);
-  }, [isAdminUnlocked, showToast]);
+  }, [locked, showToast]);
 
   // ── Shake detection (mobile) — shake your phone to trigger ──
   useEffect(() => {
-    if (isAdminUnlocked) return;
+    if (!locked) return;
 
     const shakeMessages = [
       '📳 You shook the page! Didn\'t break anything... this time.',
@@ -283,7 +307,7 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
       window.removeEventListener('devicemotion', handleMotion);
       if (shakeTimeout) clearTimeout(shakeTimeout);
     };
-  }, [isAdminUnlocked, showToast]);
+  }, [locked, showToast]);
 
   // ── Long-press headline (3s hold) — works on both mobile and desktop ──
   const handleHeadlinePressStart = () => {
@@ -379,8 +403,7 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
         }
 
         try {
-          const token = await user.getIdToken();
-          const adminCheck = await checkIsAdminAction(token);
+          const adminCheck = await checkIsAdminCached(user);
           setIsAdmin(adminCheck);
           if (adminCheck) {
             setIsAdminUnlocked(true);
@@ -404,6 +427,18 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
     }
   }, [user]);
 
+  // Admins who unlocked earlier shouldn't wait for Firebase auth before seeing the site.
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(ADMIN_STORAGE_KEY) === 'true') {
+        setIsAdminUnlocked(true);
+        setIsAdmin(true);
+      }
+    } catch {
+      // Storage unavailable (private mode) — fall back to the auth check below.
+    }
+  }, []);
+
   useEffect(() => {
     if (!authLoading) {
       verifyAdminStatus();
@@ -412,7 +447,9 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
 
   // Keyboard shortcut: Cmd+K / Ctrl+K / `~`
   useEffect(() => {
+    if (!locked) return;
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isTypingTarget(e.target)) return;
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setShowAdminModal(prev => !prev);
@@ -424,23 +461,18 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [locked]);
 
   // Lock body scrolling when overlay is active
   useEffect(() => {
-    if (!isAdminUnlocked) {
-      document.body.style.overflow = 'hidden';
-      document.documentElement.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-      document.documentElement.style.overflow = '';
-    }
-
+    if (!locked) return;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = '';
       document.documentElement.style.overflow = '';
     };
-  }, [isAdminUnlocked]);
+  }, [locked]);
 
   // Secret Logo Trigger: 3 clicks
   const handleSecretClick = () => {
@@ -470,8 +502,7 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
           return;
         }
 
-        const token = await res.user.getIdToken();
-        const adminCheck = await checkIsAdminAction(token);
+        const adminCheck = await checkIsAdminCached(res.user);
         setIsAdmin(adminCheck);
         if (adminCheck) {
           setIsAdminUnlocked(true);
@@ -512,8 +543,7 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
           return;
         }
 
-        const token = await res.user.getIdToken();
-        const adminCheck = await checkIsAdminAction(token);
+        const adminCheck = await checkIsAdminCached(res.user);
         setIsAdmin(adminCheck);
         if (adminCheck) {
           setIsAdminUnlocked(true);
@@ -552,23 +582,25 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
     setIsAdminUnlocked(false);
   };
 
-  return (
-    <div className="relative min-h-[100dvh] w-full font-sans bg-[#08080C] text-white overflow-x-hidden">
-      {/* ─── 1. Underlying Website Content (Blurred for Non-Admins) ─── */}
-      <div
-        className={`transition-all duration-1000 ease-out ${
-          !isAdminUnlocked
-            ? 'filter blur-3xl opacity-15 pointer-events-none select-none overflow-hidden max-h-screen scale-[0.98]'
-            : 'filter-none opacity-100 pointer-events-auto select-auto scale-100'
-        }`}
-        aria-hidden={!isAdminUnlocked}
-        inert={!isAdminUnlocked ? true : undefined}
-      >
+  // Unlocked or public page: render the page directly. No wrapper element, because any
+  // transform/scale/overflow on an ancestor breaks `position: fixed` and `sticky` children.
+  if (!locked) {
+    return (
+      <>
         {children}
-      </div>
+        {isAdminUnlocked && isAdmin && (
+          <AdminStatusPill onLock={handleLockSite} />
+        )}
+      </>
+    );
+  }
 
-      {/* ─── 2. Coming Soon Overlay ─── */}
-      {!isAdminUnlocked && (
+  // Locked: render only the Coming Soon screen. The hidden page is not rendered at all,
+  // so visitors don't download, hydrate or run it underneath the overlay.
+  return (
+    <div className="relative min-h-[100dvh] w-full font-sans bg-[#08080C] text-white overflow-x-clip">
+      {/* ─── Coming Soon Overlay ─── */}
+      {locked && (
         <div
           className={`fixed inset-0 z-[9999] flex flex-col items-center p-4 sm:p-8 md:p-12 bg-[#08080C] select-none overflow-y-auto overflow-x-hidden min-h-[100dvh] ${
             shakeTriggered ? 'animate-[wiggle_0.3s_ease-in-out_3]' : ''
@@ -909,7 +941,7 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
             initial={{ opacity: 0, y: 20, x: '-50%' }}
             animate={{ opacity: 1, y: 0, x: '-50%' }}
             exit={{ opacity: 0, y: -10, x: '-50%' }}
-            className="fixed bottom-8 left-1/2 z-[10003] px-5 py-2.5 bg-white text-black text-xs font-medium rounded-full shadow-2xl whitespace-nowrap"
+            className="fixed bottom-8 left-1/2 z-[10003] px-5 py-2.5 bg-white text-black text-xs font-medium rounded-2xl shadow-2xl max-w-[90vw] w-max text-center"
           >
             {toast}
           </motion.div>
@@ -932,43 +964,45 @@ export default function ComingSoonGuard({ children }: ComingSoonGuardProps) {
         </span>
       ))}
 
-      {/* ─── 3. Floating Admin Status Pill (When Unlocked) ─── */}
-      {isAdminUnlocked && (
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="fixed bottom-5 right-5 z-[9999] flex items-center gap-3 bg-[#0F0F17]/95 border border-emerald-500/40 px-4 py-2 rounded-full shadow-[0_10px_35px_rgba(0,0,0,0.85)] backdrop-blur-xl text-xs text-emerald-400"
-        >
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-mono font-bold uppercase tracking-wider text-[11px] text-white">
-              Admin Active
-            </span>
-          </div>
-
-          <span className="text-zinc-600">|</span>
-
-          <a
-            href="/admin"
-            className="text-zinc-300 hover:text-white flex items-center gap-1 font-mono text-[11px] transition-colors"
-          >
-            Portal
-            <ExternalLink className="w-3 h-3" />
-          </a>
-
-          <span className="text-zinc-600">|</span>
-
-          <button
-            type="button"
-            onClick={handleLockSite}
-            className="text-zinc-400 hover:text-red-400 font-mono text-[11px] cursor-pointer transition-colors flex items-center gap-1"
-            title="Re-lock site"
-          >
-            <Lock className="w-3.5 h-3.5" />
-            Lock
-          </button>
-        </motion.div>
-      )}
     </div>
+  );
+}
+
+function AdminStatusPill({ onLock }: { onLock: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="fixed bottom-5 right-5 z-[9999] flex items-center gap-3 bg-[#0F0F17]/95 border border-emerald-500/40 px-4 py-2 rounded-full shadow-[0_10px_35px_rgba(0,0,0,0.85)] text-xs text-emerald-400"
+    >
+      <div className="flex items-center gap-2">
+        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        <span className="font-mono font-bold uppercase tracking-wider text-[11px] text-white">
+          Admin Active
+        </span>
+      </div>
+
+      <span className="text-zinc-600">|</span>
+
+      <Link
+        href="/admin"
+        className="text-zinc-300 hover:text-white flex items-center gap-1 font-mono text-[11px] transition-colors"
+      >
+        Portal
+        <ExternalLink className="w-3 h-3" />
+      </Link>
+
+      <span className="text-zinc-600">|</span>
+
+      <button
+        type="button"
+        onClick={onLock}
+        className="text-zinc-400 hover:text-red-400 font-mono text-[11px] cursor-pointer transition-colors flex items-center gap-1"
+        title="Re-lock site"
+      >
+        <Lock className="w-3.5 h-3.5" />
+        Lock
+      </button>
+    </motion.div>
   );
 }

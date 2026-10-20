@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform, useMotionValueEvent } from 'motion/react';
@@ -14,7 +15,8 @@ import {
   updateFeatureFoundingCardAction,
   uploadGalleryPhotoAction,
   deleteGalleryPhotoAction,
-  uploadShowreelVideoAction,
+  createShowreelUploadAction,
+  finalizeShowreelUploadAction,
   deleteShowreelVideoAction
 } from '@/lib/profile-actions';
 import { compressImage } from '@/lib/image-utils';
@@ -3221,16 +3223,16 @@ export default function ProfilePage() {
       {/* ═══ FOOTER BAR ═══ */}
       <footer className="w-full px-8 md:px-16 pt-10 pb-20 md:pb-24 flex flex-col sm:flex-row items-center justify-between gap-6 bg-bg-soft border-t border-line-soft text-ink-2 relative z-10">
         <div className="flex items-center">
-          <a href="/" className="inline-block transition-transform duration-300 hover:scale-105 hover:opacity-90">
+          <Link href="/" className="inline-block transition-transform duration-300 hover:scale-105 hover:opacity-90">
             <img src="/logo_wordmark_flat.png" alt="ArtisTant" className="w-[140px] md:w-[170px] h-auto object-contain object-left pointer-events-none dark:invert-0 invert" />
-          </a>
+          </Link>
         </div>
         <div className="flex items-center gap-6">
-          <a href="/terms" className="font-mono text-[9px] text-[var(--ink-3)] uppercase tracking-widest font-bold hover:text-[var(--ink)] transition-colors">Terms</a>
-          <a href="/privacy" className="font-mono text-[9px] text-[var(--ink-3)] uppercase tracking-widest font-bold hover:text-[var(--ink)] transition-colors">Privacy</a>
-          <a href="/" className="font-mono text-[9px] text-[var(--ink-3)] uppercase tracking-widest font-bold hover:text-[var(--ink)] transition-colors flex items-center gap-1.5">
+          <Link href="/terms" className="font-mono text-[9px] text-[var(--ink-3)] uppercase tracking-widest font-bold hover:text-[var(--ink)] transition-colors">Terms</Link>
+          <Link href="/privacy" className="font-mono text-[9px] text-[var(--ink-3)] uppercase tracking-widest font-bold hover:text-[var(--ink)] transition-colors">Privacy</Link>
+          <Link href="/" className="font-mono text-[9px] text-[var(--ink-3)] uppercase tracking-widest font-bold hover:text-[var(--ink)] transition-colors flex items-center gap-1.5">
             Home <ExternalLink className="w-3 h-3 text-[#F25A2B]" />
-          </a>
+          </Link>
           <div className="w-px h-4 bg-[var(--line-soft)]" />
           <a href="https://instagram.com/artistant.in" target="_blank" rel="noopener noreferrer" className="font-mono text-[9px] text-[var(--ink-3)] uppercase tracking-widest font-bold hover:text-[var(--ink)] transition-colors flex items-center gap-1.5">
             <InstagramIcon className="w-3 h-3 text-[#F25A2B]" /> Instagram
@@ -4224,33 +4226,31 @@ export default function ProfilePage() {
                                 return;
                               }
 
+                              // Upload straight to Storage via a signed URL (server actions can't take large bodies)
+                              setIsSaving(true);
+                              showToast('Uploading video...');
                               try {
-                                showToast('Reading video file...');
-                                const reader = new FileReader();
-                                reader.onload = async () => {
-                                  const base64DataUrl = reader.result as string;
-                                  showToast('Uploading video to Storage...');
-                                  setIsSaving(true);
-                                  try {
-                                    const idToken = await user.getIdToken();
-                                    const ext = file.name.split('.').pop() || 'mp4';
-                                    const publicUrl = await uploadShowreelVideoAction(idToken, base64DataUrl, ext);
-                                    setYoutubeUrl(publicUrl);
-                                    if (reservation) {
-                                      setReservation({ ...reservation, youtube_url: publicUrl });
-                                    }
-                                    showToast('Video uploaded and saved!');
-                                  } catch (err: any) {
-                                    console.error(err);
-                                    showToast(err.message || 'Upload failed');
-                                  } finally {
-                                    setIsSaving(false);
-                                  }
-                                };
-                                reader.readAsDataURL(file);
-                              } catch (err) {
+                                const idToken = await user.getIdToken();
+                                const { path, signedUrl } = await createShowreelUploadAction(idToken, file.type, file.size);
+                                const body = new FormData();
+                                body.append('cacheControl', '3600');
+                                body.append('', file);
+                                const uploadRes = await fetch(signedUrl, { method: 'PUT', body, headers: { 'x-upsert': 'false' } });
+                                if (!uploadRes.ok) {
+                                  throw new Error('Upload failed. Please check your connection and try again.');
+                                }
+                                const publicUrl = await finalizeShowreelUploadAction(idToken, path);
+                                setYoutubeUrl(publicUrl);
+                                if (reservation) {
+                                  setReservation({ ...reservation, youtube_url: publicUrl });
+                                }
+                                showToast('Video uploaded and saved!');
+                              } catch (err: any) {
                                 console.error(err);
-                                showToast('Failed to process video file');
+                                showToast(err?.message || 'Upload failed');
+                              } finally {
+                                setIsSaving(false);
+                                e.target.value = '';
                               }
                             }}
                           />
