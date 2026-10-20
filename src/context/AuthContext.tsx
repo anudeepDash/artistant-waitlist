@@ -7,8 +7,7 @@ import {
   useMemo,
   type ReactNode,
 } from "react";
-import { onAuthStateChanged, type User } from "firebase/auth";
-import { auth, isFirebaseConfigured } from "@/lib/firebase/client";
+import type { User } from "firebase/auth";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -45,17 +44,36 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    if (!isFirebaseConfigured) {
-      setLoading(false);
-      return;
-    }
+    // Firebase is large, so it loads after the page has painted instead of
+    // blocking the first render on every page.
+    let unsubscribe: (() => void) | undefined;
+    let cancelled = false;
 
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser);
-      setLoading(false);
-    });
+    const start = async () => {
+      const [{ onAuthStateChanged }, { auth, isFirebaseConfigured }] = await Promise.all([
+        import("firebase/auth"),
+        import("@/lib/firebase/client"),
+      ]);
+      if (cancelled) return;
+      if (!isFirebaseConfigured) {
+        setLoading(false);
+        return;
+      }
+      unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+        setUser(firebaseUser);
+        setLoading(false);
+      });
+    };
 
-    return () => unsubscribe();
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
+    const idle = w.requestIdleCallback ? w.requestIdleCallback(() => void start(), { timeout: 1500 }) : window.setTimeout(() => void start(), 200);
+
+    return () => {
+      cancelled = true;
+      if (w.cancelIdleCallback) w.cancelIdleCallback(idle);
+      else window.clearTimeout(idle);
+      unsubscribe?.();
+    };
   }, []);
 
   const value = useMemo<AuthContextValue>(

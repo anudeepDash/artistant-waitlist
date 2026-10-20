@@ -7,16 +7,19 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import JsonLd from "@/components/JsonLd";
 import ComingSoonGuard from "@/components/ComingSoonGuard";
 
+// Fonts the homepage doesn't use aren't preloaded; they still load on pages that use them.
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
   display: "swap",
+  preload: false,
 });
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-space-grotesk",
   display: "swap",
+  preload: false,
 });
 
 const geistMono = Geist_Mono({
@@ -28,7 +31,7 @@ const geistMono = Geist_Mono({
 // Homepage type: a characterful variable grotesk for headlines, Geist for text.
 const display = Bricolage_Grotesque({
   subsets: ["latin"],
-  axes: ["opsz", "wdth"],
+  axes: ["wdth"],
   variable: "--font-bricolage",
   display: "swap",
 });
@@ -44,6 +47,7 @@ const marker = Permanent_Marker({
   weight: "400",
   variable: "--font-marker",
   display: "swap",
+  preload: false,
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://artistant.in";
@@ -143,8 +147,7 @@ const websiteSchema = {
       "logo": `${siteUrl}/logo_a_highres.png`,
       "sameAs": [
         "https://instagram.com/artistant.in",
-        "https://x.com/artistant_in",
-        "https://youtube.com/@artistant"
+        "https://x.com/artistant_in"
       ],
       "description": "Contract, escrow, and payment infrastructure for India's independent artists and creators."
     },

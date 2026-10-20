@@ -230,10 +230,17 @@ export async function sendMassEmailAction({
  * Next.js Server Action to securely trigger password reset email dispatch.
  * Generates the reset link via Firebase Admin SDK and sends it via Nodemailer with custom theme.
  */
+const RESET_SENT_MESSAGE = 'If an account exists for that email, a reset link is on its way.';
+
 export async function sendPasswordResetEmailAction(email: string) {
   try {
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return { success: false, message: 'A valid email address is required.' };
+    }
+    email = email.trim().toLowerCase();
+    // At most a few reset emails per address per 10 minutes.
+    if (tooMany(`reset:${email}`, 3)) {
+      return { success: true, message: RESET_SENT_MESSAGE };
     }
 
     // Generate Firebase password reset link
@@ -273,10 +280,11 @@ export async function sendPasswordResetEmailAction(email: string) {
     return await sendPasswordResetEmail({ email, name, resetLink });
   } catch (error: any) {
     console.error('Failed to trigger sendPasswordResetEmail action:', error);
-    if (error.code === 'auth/user-not-found') {
-      return { success: false, message: 'There is no user record corresponding to this identifier. The user may have been deleted.' };
+    // Same answer whether or not the account exists, so this can't be used to check who has signed up.
+    if (error?.code === 'auth/user-not-found' || error?.errorInfo?.code === 'auth/email-not-found') {
+      return { success: true, message: RESET_SENT_MESSAGE };
     }
-    return { success: false, message: error?.message || 'Server action error.' };
+    return { success: false, message: 'We couldn’t send the reset email just now. Please try again in a minute.' };
   }
 }
 

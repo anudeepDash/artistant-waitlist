@@ -1,3 +1,6 @@
+-- SUPERSEDED (Oct 2026 security audit): do not re-run the access rules in this file.
+-- They opened tables and admin functions to the public key. See supabase/security-lockdown-2026-10.sql.
+
 -- ===========================================================================
 -- Migration: Create booking_requests table for storing client booking requests
 --

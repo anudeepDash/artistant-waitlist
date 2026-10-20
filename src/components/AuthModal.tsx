@@ -16,7 +16,7 @@ import { logActivityAction } from '@/lib/admin-actions';
 import { uploadProfilePhotoAction } from '@/lib/profile-actions';
 import { compressImage } from '@/lib/image-utils';
 
-import { auth, isFirebaseConfigured } from '@/lib/firebase/client';
+import { auth, isFirebaseConfigured, ensureRecaptchaConfig } from '@/lib/firebase/client';
 import { RecaptchaVerifier, signInWithPhoneNumber, updateProfile } from 'firebase/auth';
 import SuccessConfirmation from '@/components/SuccessConfirmation';
 import ImageCropperModal from '@/components/ImageCropperModal';
@@ -697,6 +697,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
         document.body.appendChild(container);
 
         checkpoint = "instantiate-RecaptchaVerifier";
+        await ensureRecaptchaConfig();
         verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
           size: 'invisible',
         });

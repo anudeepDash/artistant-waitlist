@@ -83,8 +83,8 @@ export default function HomeFooter({ onSide }: { onSide: (side: Side) => void })
       </div>
 
       <div ref={ref} className={s.footWord} aria-hidden="true">
-        <img src="/brand/wordmark-white.svg" alt="" className={s.footWordGhost} />
-        <motion.img src="/brand/wordmark.svg" alt="" style={{ clipPath: clip }} />
+        <img src="/brand/wordmark-white.svg" alt="" className={s.footWordGhost} loading="lazy" />
+        <motion.img src="/brand/wordmark.svg" alt="" style={{ clipPath: clip }} loading="lazy" />
       </div>
 
       <div className={s.container}>

@@ -64,6 +64,8 @@ function getTransporter() {
     tls: {
       rejectUnauthorized: true,
     },
+    // Never let an attachment path read files from the server.
+    disableFileAccess: true,
   });
 }
 
@@ -188,6 +190,27 @@ export interface EmailAttachmentItem {
   description?: string;
 }
 
+const ATTACHMENT_HOSTS = (() => {
+  const hosts = ['artistant.in', 'www.artistant.in'];
+  try {
+    const h = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || '').hostname;
+    if (h) hosts.push(h);
+  } catch {
+    /* no Supabase URL configured */
+  }
+  return hosts;
+})();
+
+function isAllowedAttachmentUrl(raw: string | undefined): boolean {
+  if (!raw) return false;
+  try {
+    const u = new URL(raw);
+    return u.protocol === 'https:' && ATTACHMENT_HOSTS.includes(u.hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Renders an inline visual attachment card for email HTML body.
  */
@@ -261,8 +284,9 @@ export async function sendCustomEmail({
     });
 
     // Prepare Nodemailer attachment array if URLs exist
+    // Attachments are fetched by URL, so only allow https links on our own hosts.
     const mailerAttachments = attachments
-      .filter((att) => att.url)
+      .filter((att) => isAllowedAttachmentUrl(att.url))
       .map((att) => ({
         filename: att.title || 'Attachment',
         path: att.url,

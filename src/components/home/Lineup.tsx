@@ -48,7 +48,7 @@ export default function Lineup({ username, onClaim }: { username: string; onClai
           transition={{ duration: 1.1, ease: EASE }}
         >
           <div className={s.photo}>
-            <motion.img src="/photos/street-art-dj.webp" alt="Street art of a DJ on a café wall" style={{ y: photoY }} />
+            <motion.img src="/photos/street-art-dj.webp" alt="Street art of a DJ on a café wall" style={{ y: photoY }} loading="lazy" decoding="async" />
             <span className={s.photoTag}>Bengaluru · opening first</span>
           </div>
 

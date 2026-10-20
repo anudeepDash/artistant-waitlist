@@ -1,3 +1,6 @@
+-- SUPERSEDED (Oct 2026 security audit): do not re-run the access rules in this file.
+-- They opened tables and admin functions to the public key. See supabase/security-lockdown-2026-10.sql.
+
 -- ===========================================================================
 -- Artistant Admin Side Migrations
 -- 
@@ -90,8 +93,8 @@ END;
 $$;
 
 -- 4. Grant execute permissions to anon and authenticated users (for fallback mode)
-GRANT EXECUTE ON FUNCTION admin_get_registrations(text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION admin_update_registration(text, text, boolean, boolean, integer) TO anon, authenticated;
+REVOKE EXECUTE ON FUNCTION admin_get_registrations(text) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION admin_update_registration(text, text, boolean, boolean, integer) FROM PUBLIC, anon, authenticated;
 
 -- ===========================================================================
 -- SECURITY RESOLUTIONS FOR DATABASE LINTER (WARNINGS 0028 & 0029)

@@ -1,6 +1,9 @@
 import type { MetadataRoute } from 'next';
 import { getPublicCreatorsDirectoryAction } from '@/lib/profile-actions';
 
+// Rebuild hourly so new artist pages show up without waiting for a deploy.
+export const revalidate = 3600;
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://artistant.in';
 

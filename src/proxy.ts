@@ -20,13 +20,18 @@ const rateLimitMap = new Map<string, { count: number; timestamp: number }>();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const MAX_ATTEMPTS = 30;
 
-export default function middleware(req: NextRequest) {
-  const ip = req.headers.get('x-forwarded-for') || '127.0.0.1';
-  const isLocal = ip === '127.0.0.1' || ip === '::1';
+export default function proxy(req: NextRequest) {
+  // On Vercel the first x-forwarded-for entry is the real client. A missing header is
+  // treated as an unknown client, not as localhost, so it can't skip the limit.
+  const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown';
   const isDev = process.env.NODE_ENV === 'development';
-  
-  if (req.method === 'POST' && !isLocal && !isDev) {
+
+  if (req.method === 'POST' && !isDev) {
     const now = Date.now();
+    // Keep memory bounded: drop expired entries once the map gets large.
+    if (rateLimitMap.size > 5000) {
+      for (const [key, rec] of rateLimitMap) if (rec.timestamp < now - RATE_LIMIT_WINDOW_MS) rateLimitMap.delete(key);
+    }
     const windowStart = now - RATE_LIMIT_WINDOW_MS;
     const record = rateLimitMap.get(ip);
     
@@ -45,7 +50,14 @@ export default function middleware(req: NextRequest) {
   }
 
   const url = req.nextUrl;
-  
+
+  // A broken %-escape in the path otherwise crashes the page render with a 500.
+  try {
+    decodeURIComponent(url.pathname);
+  } catch {
+    return new NextResponse('Bad request', { status: 400 });
+  }
+
   // Get hostname (e.g., admin.artistant.in, localhost:3000)
   const hostname = req.headers.get('host') || '';
 

@@ -179,10 +179,12 @@ export async function updateProfilePhotoUrlAction(
 ): Promise<boolean> {
   const decodedToken = await verifyIdToken(idToken);
   const client = createAdminClient();
+  // Only our own storage or Google profile photos, so a profile can't load images from anywhere.
+  const safeUrl = checkLink(photoUrl, ['googleusercontent.com', ...(SUPABASE_HOST ? [SUPABASE_HOST] : [])], 'photo') || null;
 
   const { error } = await client
     .from('waitlist_users')
-    .update({ profile_photo_url: photoUrl })
+    .update({ profile_photo_url: safeUrl })
     .eq('user_id', decodedToken.uid);
 
   if (error) {
@@ -350,6 +352,59 @@ export async function updateContactSettingsAction(
   return true;
 }
 
+const SUPABASE_HOST = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || '').hostname;
+  } catch {
+    return '';
+  }
+})();
+
+/** Accepts an https link on one of the allowed hosts (or an empty value to clear it). */
+function checkLink(value: string | undefined, hosts: string[], label: string): string | undefined {
+  if (value === undefined) return undefined;
+  const v = String(value).trim();
+  if (!v) return '';
+  let url: URL;
+  try {
+    url = new URL(v);
+  } catch {
+    throw new Error(`Please enter a full ${label} link.`);
+  }
+  const host = url.hostname.toLowerCase();
+  const ok = url.protocol === 'https:' && hosts.some((h) => host === h || host.endsWith(`.${h}`));
+  if (!ok) throw new Error(`Please use a ${label} link.`);
+  return url.toString().slice(0, 500);
+}
+
+const clipText = (v: string | undefined, max: number) => (v === undefined ? undefined : String(v).slice(0, max));
+
+/** Server-side limits on profile fields. They're shown on public pages, so never trust the client. */
+function validateProfileDetails<T extends {
+  display_name?: string;
+  category?: string;
+  genres?: string[];
+  city?: string;
+  bio?: string;
+  instagram_url?: string;
+  spotify_url?: string;
+  youtube_url?: string;
+  youtube_channel_url?: string;
+}>(d: T): T {
+  return {
+    ...d,
+    display_name: clipText(d.display_name, 80),
+    category: clipText(d.category, 40),
+    city: clipText(d.city, 80),
+    bio: clipText(d.bio, 1000),
+    genres: d.genres === undefined ? undefined : (Array.isArray(d.genres) ? d.genres : []).slice(0, 12).map((g) => String(g).slice(0, 40)),
+    instagram_url: checkLink(d.instagram_url, ['instagram.com'], 'Instagram'),
+    spotify_url: checkLink(d.spotify_url, ['spotify.com', 'spotify.link'], 'Spotify'),
+    youtube_url: checkLink(d.youtube_url, ['youtube.com', 'youtu.be', 'youtube-nocookie.com', ...(SUPABASE_HOST ? [SUPABASE_HOST] : [])], 'YouTube'),
+    youtube_channel_url: checkLink(d.youtube_channel_url, ['youtube.com'], 'YouTube channel'),
+  };
+}
+
 export async function updateProfileDetailsAction(
   idToken: string,
   details: {
@@ -366,6 +421,7 @@ export async function updateProfileDetailsAction(
 ): Promise<boolean> {
   const decodedToken = await verifyIdToken(idToken);
   const client = createAdminClient();
+  details = validateProfileDetails(details);
 
   // If display_name is passed, sanitize it and protect existing real names from email overwrite
   let sanitizedDisplayName: string | undefined = details.display_name;
@@ -711,8 +767,9 @@ export async function deleteGalleryPhotoAction(
 
   // Attempt to delete from Supabase storage
   try {
-    const fileName = photoUrl.split('/').pop();
-    if (fileName) {
+    // Only delete files that were in this user's gallery and that this user uploaded.
+    const fileName = photoUrl.split('/').pop()?.split('?')[0];
+    if (fileName && currentPhotos.includes(photoUrl) && fileName.startsWith(`gallery_${uid}_`)) {
       await client.storage.from('profiles').remove([fileName]);
     }
   } catch (err) {
@@ -798,8 +855,9 @@ export async function deleteShowreelVideoAction(
   if (currentUrl) {
     // If it's a self-hosted uploaded video, delete it from storage
     if (currentUrl.includes('/profiles/video_')) {
-      const fileName = currentUrl.split('/').pop();
-      if (fileName) {
+      // youtube_url is user-editable, so only delete a file this user uploaded.
+      const fileName = currentUrl.split('/').pop()?.split('?')[0];
+      if (fileName && fileName.startsWith(`video_${uid}_`)) {
         await client.storage
           .from('profiles')
           .remove([fileName]);
@@ -874,30 +932,44 @@ export async function linkImportedProfile(
   const decodedToken = await verifyIdToken(idToken);
   const client = createAdminClient();
 
+  if (typeof waitlistId !== 'string' || !/^[0-9a-f-]{36}$/i.test(waitlistId)) {
+    throw new Error('Invalid profile');
+  }
+
   const { data: existing } = await client
     .from('waitlist_users')
-    .select('display_name, username, email')
+    .select('display_name, username, email, user_id')
     .eq('id', waitlistId)
     .maybeSingle();
 
-  const updatePayload: { user_id: string; email?: string; display_name?: string } = {
-    user_id: decodedToken.uid,
-    email: decodedToken.email || undefined
-  };
+  if (!existing) throw new Error('Profile not found');
 
-  if (existing) {
-    if (!existing.display_name || existing.display_name.includes('@')) {
-      updatePayload.display_name = ensureValidDisplayName(null, existing.username, existing.email || decodedToken.email);
-    }
+  // Already yours: nothing to do.
+  if (existing.user_id === decodedToken.uid) return true;
+
+  // An imported profile can only be claimed by the person it was made for:
+  // it must still be unclaimed, and the caller must have signed in with the
+  // same, verified email address that the profile was imported with.
+  const tokenEmail = (decodedToken.email || '').trim().toLowerCase();
+  const rowEmail = (existing.email || '').trim().toLowerCase();
+  if (existing.user_id || !rowEmail || decodedToken.email_verified !== true || tokenEmail !== rowEmail) {
+    throw new Error('This profile can only be claimed by the email address it was created for.');
   }
 
-  const { error } = await client
+  const updatePayload: { user_id: string; display_name?: string } = { user_id: decodedToken.uid };
+  if (!existing.display_name || existing.display_name.includes('@')) {
+    updatePayload.display_name = ensureValidDisplayName(null, existing.username, existing.email || decodedToken.email);
+  }
+
+  const { data: updated, error } = await client
     .from('waitlist_users')
     .update(updatePayload)
-    .eq('id', waitlistId);
+    .eq('id', waitlistId)
+    .is('user_id', null)
+    .select('id');
 
-  if (error) {
-    console.error("Error linking profile:", error);
+  if (error || !updated || updated.length === 0) {
+    console.error('Error linking profile:', error);
     throw new Error('Failed to link profile');
   }
   return true;
@@ -982,7 +1054,7 @@ export async function getPublicCreatorsDirectoryAction(params?: {
     }
 
     if (params?.city && params.city !== 'all') {
-      query = query.ilike('city', `%${params.city}%`);
+      query = query.ilike('city', `%${String(params.city).replace(/[%*\\]/g, '').slice(0, 60)}%`);
     }
 
     if (params?.verifiedOnly) {
@@ -990,8 +1062,10 @@ export async function getPublicCreatorsDirectoryAction(params?: {
     }
 
     if (params?.search && params.search.trim() !== '') {
-      const s = params.search.trim();
-      query = query.or(`username.ilike.%${s}%,display_name.ilike.%${s}%`);
+      // Letters, numbers, spaces, dots, dashes and underscores only. Anything else
+      // (commas, brackets, wildcards) could change the meaning of the filter.
+      const s = params.search.trim().replace(/[^\p{L}\p{N} ._-]/gu, '').slice(0, 50);
+      if (s) query = query.or(`username.ilike.%${s}%,display_name.ilike.%${s}%`);
     }
 
     query = query.order('is_verified', { ascending: false }).order('reserved_at', { ascending: true }).limit(60);

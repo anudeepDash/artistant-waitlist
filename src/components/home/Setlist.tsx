@@ -51,7 +51,7 @@ function TrackPhone({ k, username, width }: { k: ScreenKey; username: string; wi
   if (k === 'score') {
     return (
       <Phone width={width} bare>
-        <img src="/mockups/screen_13.jpg" alt="The Bookability Score screen in the Artistant app, showing a score of 82, Trusted" />
+        <img loading="lazy" decoding="async" src="/mockups/screen_13.jpg" alt="The Bookability Score screen in the Artistant app, showing a score of 82, Trusted" />
       </Phone>
     );
   }

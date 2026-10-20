@@ -1,3 +1,6 @@
+-- SUPERSEDED (Oct 2026 security audit): do not re-run the access rules in this file.
+-- They opened tables and admin functions to the public key. See supabase/security-lockdown-2026-10.sql.
+
 -- Migration: Add exclude_from_waitlist column and update RPCs
 -- Run this in the Supabase SQL Editor: https://supabase.com/dashboard/project/gpuedwozcbzlkhdkcebm/sql/new
 
@@ -90,5 +93,5 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION admin_get_registrations(text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION admin_update_registration(text, text, boolean, boolean, integer, boolean, boolean) TO anon, authenticated;
+REVOKE EXECUTE ON FUNCTION admin_get_registrations(text) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION admin_update_registration(text, text, boolean, boolean, integer, boolean, boolean) FROM PUBLIC, anon, authenticated;

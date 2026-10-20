@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import { getPublicProfileDataAction } from "@/lib/profile-actions";
 import { ensureValidDisplayName } from "@/lib/waitlist";
 import JsonLd from "@/components/JsonLd";
+
+// The page title and the layout both need the profile; fetch it once per request.
+const loadProfile = cache((username: string) => getPublicProfileDataAction(username));
 
 interface ProfileLayoutProps {
   children: React.ReactNode;
@@ -14,7 +18,7 @@ export async function generateMetadata({
   params: Promise<{ username: string }>;
 }): Promise<Metadata> {
   const { username } = await params;
-  const profile = await getPublicProfileDataAction(username);
+  const profile = await loadProfile(username);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://artistant.in";
 
   if (!profile || !profile.reservation) {
@@ -85,7 +89,7 @@ export async function generateMetadata({
 
 export default async function ProfileLayout({ children, params }: ProfileLayoutProps) {
   const { username } = await params;
-  const profile = await getPublicProfileDataAction(username);
+  const profile = await loadProfile(username);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://artistant.in";
 
   let artistSchema = null;

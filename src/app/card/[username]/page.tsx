@@ -2,6 +2,7 @@
 
 import React, { useState, use } from 'react';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { motion } from 'motion/react';
 import { 
   Download, Calendar, PhoneCall, Mail, MessageSquare, 
@@ -15,7 +16,7 @@ import ParticleBackground from '@/components/ParticleBackground';
 import BusinessCardPreview from '@/components/BusinessCardPreview';
 import BookCallModal from '@/components/BookCallModal';
 import LinktreeQRModal from '@/components/LinktreeQRModal';
-import { getTeamMember, downloadVCard, type TeamMember } from '@/lib/team-data';
+import { findTeamMember, downloadVCard, type TeamMember } from '@/lib/team-data';
 
 interface PageProps {
   params: Promise<{ username: string }>;
@@ -25,11 +26,16 @@ export default function MemberBusinessCardPage({ params }: PageProps) {
   const resolvedParams = use(params);
   const username = resolvedParams.username;
 
-  const member: TeamMember = getTeamMember(username);
+  const found = findTeamMember(username);
 
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [isQRModalOpen, setIsQRModalOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+
+  // Only real team members get a card; anything else is a 404, so nobody can
+  // make a convincing "Artistant team" page for a made-up person.
+  if (!found) notFound();
+  const member: TeamMember = found;
 
   const pageUrl = `https://artistant.in/card/${member.username}`;
 

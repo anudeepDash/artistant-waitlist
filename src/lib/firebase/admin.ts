@@ -219,7 +219,10 @@ export async function verifyAdminToken(
   const decoded = await verifyIdToken(idToken);
   const email = decoded.email;
 
-  if (!email) {
+  // Admin rights come from the email address, so the address must be proven.
+  // Without this, anyone could sign up with email/password using an admin's
+  // address (Firebase doesn't require verification) and act as that admin.
+  if (!email || decoded.email_verified !== true) {
     throw new Error('Unauthorized');
   }
 
@@ -228,11 +231,6 @@ export async function verifyAdminToken(
   // Fast-path: super-admin
   const SUPER_ADMIN = process.env.SUPER_ADMIN_EMAIL;
   if (SUPER_ADMIN && normalizedEmail === SUPER_ADMIN.trim().toLowerCase()) {
-    return decoded;
-  }
-
-  // Developer email bypass
-  if (normalizedEmail === 'anudeepdash2004@gmail.com') {
     return decoded;
   }
 
@@ -247,7 +245,7 @@ export async function verifyAdminToken(
   const { data, error } = await supabase
     .from('admin_users')
     .select('email')
-    .eq('email', email)
+    .eq('email', normalizedEmail)
     .maybeSingle();
 
   if (error || !data) {

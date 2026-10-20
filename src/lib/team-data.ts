@@ -167,6 +167,11 @@ export function saveTeamMembersMap(map: Record<string, TeamMember>) {
   }
 }
 
+/** The real team member for this username, or null if there isn't one. */
+export function findTeamMember(username: string): TeamMember | null {
+  return getAllTeamMembersMap()[username.toLowerCase().trim()] ?? null;
+}
+
 export function getTeamMember(username: string): TeamMember {
   const normalized = username.toLowerCase().trim();
   const currentMap = getAllTeamMembersMap();
