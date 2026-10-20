@@ -126,7 +126,7 @@ export default function BusinessCardPreview({ member, onDownloadVCard, onBookCal
                 </span>
                 <h4 className="font-display text-lg font-bold text-white leading-tight">{member.name}</h4>
                 <p className="text-[11px] text-white/60 font-mono mt-0.5">{member.email}</p>
-                <p className="text-[11px] text-white/60 font-mono">{member.phone}</p>
+                {member.phone && <p className="text-[11px] text-white/60 font-mono">{member.phone}</p>}
               </div>
 
               <div className="space-y-1">

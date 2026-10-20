@@ -73,7 +73,7 @@ export const metadata: Metadata = {
     locale: "en_IN",
     images: [
       {
-        url: "/brand_palette.png",
+        url: "/og-image.jpg",
         width: 1200,
         height: 630,
         alt: "Artistant - India's Live Entertainment Infrastructure",
@@ -87,7 +87,7 @@ export const metadata: Metadata = {
       "The live event ecosystem is broken. We built the contract, escrow, and payment infrastructure India's independent artists actually deserve.",
     site: "@artistant_in",
     creator: "@artistant_in",
-    images: ["/brand_palette.png"],
+    images: ["/og-image.jpg"],
   },
   robots: {
     index: true,

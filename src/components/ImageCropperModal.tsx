@@ -38,6 +38,7 @@ export default function ImageCropperModal({
   const frameRef = useRef<HTMLDivElement>(null);
   const dragStart = useRef({ x: 0, y: 0 });
   const isDragging = useRef(false);
+  const [showDragHint, setShowDragHint] = useState(true);
   const startPosition = useRef({ x: 0, y: 0 });
 
   // Calculate dimensions and minScale to cover crop frame
@@ -181,6 +182,7 @@ export default function ImageCropperModal({
     dragStart.current = { x: e.clientX, y: e.clientY };
     startPosition.current = { ...position };
     isDragging.current = true;
+    setShowDragHint(false);
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -212,6 +214,7 @@ export default function ImageCropperModal({
     if (isDragging.current) {
       e.currentTarget.releasePointerCapture(e.pointerId);
       isDragging.current = false;
+      setShowDragHint(true);
     }
   };
 
@@ -327,7 +330,7 @@ export default function ImageCropperModal({
                 </div>
 
                 {/* Move Hint */}
-                {!isDragging.current && imgLoaded && (
+                {showDragHint && imgLoaded && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/10 transition-opacity duration-300">
                     <div className="p-2 rounded-xl bg-black/60 backdrop-blur-sm border border-white/10 flex items-center gap-1.5 text-[10px] text-white/80 font-medium">
                       <Move className="w-3.5 h-3.5" />

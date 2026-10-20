@@ -1,7 +1,15 @@
 import type { Metadata } from "next";
-import { getPublicProfileDataAction } from "@/lib/profile-actions";
-import { ensureValidDisplayName } from "@/lib/waitlist";
+import { Playfair_Display } from "next/font/google";
+import { ensureValidDisplayName } from "@/lib/waitlist-shared";
 import JsonLd from "@/components/JsonLd";
+import { getPublicProfile } from "./data";
+
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+  variable: "--font-serif-display",
+  display: "swap",
+});
 
 interface ProfileLayoutProps {
   children: React.ReactNode;
@@ -14,7 +22,7 @@ export async function generateMetadata({
   params: Promise<{ username: string }>;
 }): Promise<Metadata> {
   const { username } = await params;
-  const profile = await getPublicProfileDataAction(username);
+  const profile = await getPublicProfile(username);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://artistant.in";
 
   if (!profile || !profile.reservation) {
@@ -38,7 +46,7 @@ export async function generateMetadata({
     ? `${bioExcerpt}... Book ${artistName} on Artistant.`
     : `Book ${artistName} — ${categoryLabel}${cityLabel} on Artistant. View music, videos, gallery, and send direct performance booking requests.`;
 
-  const profileImageUrl = res.profile_photo_url || res.cover_photo_url || "/brand_palette.png";
+  const profileImageUrl = res.profile_photo_url || res.cover_photo_url || "/og-image.jpg";
   const fullImageUrl = profileImageUrl.startsWith("http")
     ? profileImageUrl
     : `${siteUrl}${profileImageUrl.startsWith("/") ? "" : "/"}${profileImageUrl}`;
@@ -85,7 +93,7 @@ export async function generateMetadata({
 
 export default async function ProfileLayout({ children, params }: ProfileLayoutProps) {
   const { username } = await params;
-  const profile = await getPublicProfileDataAction(username);
+  const profile = await getPublicProfile(username);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://artistant.in";
 
   let artistSchema = null;
@@ -118,9 +126,9 @@ export default async function ProfileLayout({ children, params }: ProfileLayoutP
   }
 
   return (
-    <>
+    <div className={playfair.variable}>
       {artistSchema && <JsonLd data={artistSchema} />}
       {children}
-    </>
+    </div>
   );
 }

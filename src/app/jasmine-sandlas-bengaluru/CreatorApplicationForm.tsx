@@ -1,7 +1,9 @@
 'use client';
+import Link from 'next/link';
 
 import { type FormEvent, useState } from 'react';
 import { Camera, Check, ChevronRight, MapPin, Music2, Sparkles, Users } from 'lucide-react';
+import { submitInquiryAction } from '@/lib/inquiry-actions';
 
 const minimumFollowers = 3000;
 
@@ -14,8 +16,9 @@ export default function CreatorApplicationForm() {
   const [followers, setFollowers] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [eligibilityMessage, setEligibilityMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const followerCount = Number(followers.replace(/[^0-9]/g, ''));
 
@@ -24,8 +27,34 @@ export default function CreatorApplicationForm() {
       return;
     }
 
+    const form = new FormData(event.currentTarget);
+    const field = (key: string) => String(form.get(key) || '');
     setEligibilityMessage('');
-    setIsSubmitted(true);
+    setIsSubmitting(true);
+    try {
+      const res = await submitInquiryAction({
+        source: 'creator_application',
+        context: 'jasmine-sandlas-bengaluru',
+        name: field('name'),
+        email: field('email'),
+        phone: field('phone'),
+        message: field('why'),
+        details: {
+          instagram: field('instagram'),
+          followers: String(followerCount),
+          niche: field('niche'),
+        },
+      });
+      if (res.success) {
+        setIsSubmitted(true);
+      } else {
+        setEligibilityMessage(res.message);
+      }
+    } catch {
+      setEligibilityMessage('We could not submit your application right now. Please try again in a moment.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isSubmitted) {
@@ -51,7 +80,7 @@ export default function CreatorApplicationForm() {
 
       <div className="relative mx-auto max-w-6xl px-5 py-7 sm:px-8 lg:px-12 lg:py-10">
         <header className="flex items-center justify-between border-b border-white/10 pb-6">
-          <a href="/" className="logo-typo text-xl" aria-label="Artistant home"><span className="artis">Artis</span><span className="tant">Tant</span></a>
+          <Link href="/" className="logo-typo text-xl" aria-label="Artistant home"><span className="artis">Artis</span><span className="tant">Tant</span></Link>
           <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-[10px] font-bold tracking-[0.16em] text-[#d8d1e0] uppercase">Creator call</span>
         </header>
 
@@ -132,8 +161,8 @@ export default function CreatorApplicationForm() {
                 <span>I&apos;m based in Bengaluru and can deliver <strong className="font-semibold text-white">2 Reels + 1 Story</strong> if selected.</span>
               </label>
               {eligibilityMessage && <p role="alert" className="rounded-xl border border-[#f25a2b]/30 bg-[#f25a2b]/10 px-4 py-3 text-sm text-[#f6ad96]">{eligibilityMessage}</p>}
-              <button type="submit" className="group flex w-full items-center justify-center gap-2 rounded-xl bg-[#f25a2b] px-5 py-4 text-sm font-bold text-white transition hover:bg-[#ff6e41] focus:outline-none focus:ring-2 focus:ring-[#f9a287] focus:ring-offset-2 focus:ring-offset-[#1b1626]">
-                Apply for the creator call <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              <button type="submit" disabled={isSubmitting} className="group flex w-full items-center justify-center gap-2 rounded-xl bg-[#f25a2b] px-5 py-4 text-sm font-bold text-white transition hover:bg-[#ff6e41] disabled:opacity-60 disabled:cursor-wait focus:outline-none focus:ring-2 focus:ring-[#f9a287] focus:ring-offset-2 focus:ring-offset-[#1b1626]">
+                {isSubmitting ? 'Submitting…' : 'Apply for the creator call'} <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </button>
               <p className="text-center text-xs leading-5 text-[#83798e]">Shortlisted creators will be contacted with the campaign brief, timeline, and commercial details.</p>
             </form>

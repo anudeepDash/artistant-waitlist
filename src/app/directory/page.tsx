@@ -29,13 +29,16 @@ export default function DirectoryPage() {
   const [selectedCity, setSelectedCity] = useState('all');
   const [verifiedOnly, setVerifiedOnly] = useState(false);
 
-  const fetchCreators = async () => {
+  // Supports deep links like /directory?search=dj (used by the site's search schema)
+  const [initialQueryRead, setInitialQueryRead] = useState(false);
+
+  const fetchCreators = async (searchOverride?: string) => {
     setLoading(true);
     try {
       const data = await getPublicCreatorsDirectoryAction({
         category: selectedCategory,
         city: selectedCity,
-        search,
+        search: searchOverride ?? search,
         verifiedOnly,
       });
       setCreators(data || []);
@@ -47,7 +50,15 @@ export default function DirectoryPage() {
   };
 
   useEffect(() => {
+    if (!initialQueryRead) {
+      const q = new URLSearchParams(window.location.search).get('search')?.trim() || '';
+      setInitialQueryRead(true);
+      if (q) setSearch(q);
+      fetchCreators(q);
+      return;
+    }
     fetchCreators();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCategory, selectedCity, verifiedOnly]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {

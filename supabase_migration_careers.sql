@@ -1,3 +1,6 @@
+-- ⚠️ SUPERSEDED: this script grants public (anon/authenticated) access that is no longer
+-- needed and is unsafe. If you re-run it, run supabase_migration_security_hardening.sql again afterwards.
+
 -- Run this script in the Supabase SQL Editor to enable Careers & Job Applications management:
 -- https://supabase.com/dashboard/project/gpuedwozcbzlkhdkcebm/sql/new
 

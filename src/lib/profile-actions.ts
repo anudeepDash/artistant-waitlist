@@ -1,11 +1,19 @@
 'use server';
 
 import { createClient } from '@supabase/supabase-js';
-import { verifyIdToken } from './firebase/admin';
+import { verifyIdToken, getBuiltInAdminEmails } from './firebase/admin';
 import { sendContactInfoUpdatedEmail } from './mailer';
 import { cookies, headers } from 'next/headers';
 import crypto from 'crypto';
-import { type WaitlistEntry, ensureValidDisplayName } from './waitlist';
+import { type WaitlistEntry, ensureValidDisplayName } from './waitlist-shared';
+import {
+  cleanStringArray,
+  cleanText,
+  isValidEmail,
+  sanitizeFilterValue,
+  sanitizeUrl,
+  validateUsername,
+} from './validation';
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
@@ -56,9 +64,31 @@ function parseBase64Upload(
 }
 
 import { getAdminSupabaseClient } from './supabase/admin';
+import { checkRateLimit } from './rate-limit';
 
 function createAdminClient() {
   return getAdminSupabaseClient();
+}
+
+// Buckets confirmed to exist in this server instance, so uploads skip the listBuckets round-trip.
+const ensuredBuckets = new Set<string>();
+
+async function ensurePublicBucket(client: ReturnType<typeof createAdminClient>, bucket: string) {
+  if (ensuredBuckets.has(bucket)) return;
+  const { data: buckets } = await client.storage.listBuckets();
+  if (!buckets?.some(b => b.name === bucket)) {
+    await client.storage.createBucket(bucket, { public: true });
+  }
+  ensuredBuckets.add(bucket);
+}
+
+/** Storage object name inside a public bucket URL, or null if the URL is not from that bucket. */
+function storageObjectName(publicUrl: string, bucket: string): string | null {
+  const marker = `/storage/v1/object/public/${bucket}/`;
+  const idx = publicUrl.indexOf(marker);
+  if (idx === -1) return null;
+  const name = decodeURIComponent(publicUrl.slice(idx + marker.length).split('?')[0]);
+  return name && !name.includes('/') ? name : null;
 }
 
 export async function incrementProfileVisitorsAction(username: string) {
@@ -99,7 +129,7 @@ export async function updateCustomStatusMessageAction(idToken: string, message: 
   
   const { error } = await client
     .from('waitlist_users')
-    .update({ custom_status_message: message })
+    .update({ custom_status_message: cleanText(message, 160) })
     .eq('user_id', decodedToken.uid);
     
   if (error) {
@@ -128,12 +158,7 @@ export async function uploadProfilePhotoAction(
   const { buffer, contentType, extension } = parseBase64Upload(base64DataUrl, IMAGE_TYPES, MAX_IMAGE_BYTES);
   const fileName = `${uid}_${Date.now()}.${extension}`;
 
-  // Ensure the 'profiles' bucket exists (service role can create buckets)
-  const { data: buckets } = await client.storage.listBuckets();
-  const bucketExists = buckets?.some(b => b.name === 'profiles');
-  if (!bucketExists) {
-    await client.storage.createBucket('profiles', { public: true });
-  }
+  await ensurePublicBucket(client, 'profiles');
 
   // Upload to storage (upsert to handle re-uploads)
   const { error: uploadError } = await client.storage
@@ -179,10 +204,14 @@ export async function updateProfilePhotoUrlAction(
 ): Promise<boolean> {
   const decodedToken = await verifyIdToken(idToken);
   const client = createAdminClient();
+  const safeUrl = sanitizeUrl(photoUrl);
+  if (!safeUrl || !safeUrl.startsWith('https://')) {
+    throw new Error('Invalid photo URL');
+  }
 
   const { error } = await client
     .from('waitlist_users')
-    .update({ profile_photo_url: photoUrl })
+    .update({ profile_photo_url: safeUrl })
     .eq('user_id', decodedToken.uid);
 
   if (error) {
@@ -204,11 +233,7 @@ export async function uploadCoverPhotoAction(
   const { buffer, contentType, extension } = parseBase64Upload(base64DataUrl, IMAGE_TYPES, MAX_IMAGE_BYTES);
   const fileName = `cover_${uid}_${Date.now()}.${extension}`;
 
-  const { data: buckets } = await client.storage.listBuckets();
-  const bucketExists = buckets?.some(b => b.name === 'covers');
-  if (!bucketExists) {
-    await client.storage.createBucket('covers', { public: true });
-  }
+  await ensurePublicBucket(client, 'covers');
 
   const { error: uploadError } = await client.storage
     .from('covers')
@@ -246,6 +271,9 @@ export async function updatePortfolioThemeAction(
   theme: 'dark' | 'minimal' | 'creative' | 'bold',
 ): Promise<boolean> {
   const decodedToken = await verifyIdToken(idToken);
+  if (!['dark', 'minimal', 'creative', 'bold'].includes(theme)) {
+    throw new Error('Invalid portfolio theme');
+  }
   const client = createAdminClient();
 
   const { error } = await client
@@ -270,7 +298,7 @@ export async function updateSectionOrderAction(
 
   const { error } = await client
     .from('waitlist_users')
-    .update({ section_order: sectionOrder })
+    .update({ section_order: cleanStringArray(sectionOrder, 20, 40) })
     .eq('user_id', decodedToken.uid);
 
   if (error) {
@@ -293,6 +321,13 @@ export async function updateContactSettingsAction(
   const decodedToken = await verifyIdToken(idToken);
   const client = createAdminClient();
 
+  if (settings.email !== undefined && settings.email !== '' && !isValidEmail(settings.email)) {
+    throw new Error('Please enter a valid email address.');
+  }
+  if (settings.phone !== undefined && settings.phone !== '' && !/^\+?[0-9 ()-]{7,20}$/.test(settings.phone)) {
+    throw new Error('Please enter a valid phone number.');
+  }
+
   // Fetch current user email/phone for notification
   let existing: {
     email: string;
@@ -314,8 +349,8 @@ export async function updateContactSettingsAction(
   const { error } = await client
     .from('waitlist_users')
     .update({
-      ...(settings.email !== undefined ? { email: settings.email } : {}),
-      ...(settings.phone !== undefined ? { phone: settings.phone } : {}),
+      ...(settings.email !== undefined ? { email: settings.email.trim().toLowerCase() } : {}),
+      ...(settings.phone !== undefined ? { phone: settings.phone.trim() } : {}),
       ...(settings.contact_email_enabled !== undefined ? { contact_email_enabled: settings.contact_email_enabled } : {}),
       ...(settings.contact_phone_enabled !== undefined ? { contact_phone_enabled: settings.contact_phone_enabled } : {}),
     })
@@ -338,8 +373,9 @@ export async function updateContactSettingsAction(
 
     if (updatedFields.length > 0) {
       const name = existing.display_name || existing.username;
-      const targetEmail = settings.email || existing.email;
-      if (targetEmail) {
+      // Alert the previous address too, so a hijacked session can't silently redirect contact details.
+      const targets = new Set([existing.email, settings.email].filter((e): e is string => !!e && isValidEmail(e)));
+      for (const targetEmail of targets) {
         sendContactInfoUpdatedEmail(targetEmail, name, updatedFields).catch(err => {
           console.error('Failed to send contact settings update alert email:', err);
         });
@@ -387,17 +423,25 @@ export async function updateProfileDetailsAction(
     }
   }
 
-  const fullPayload = {
+  if (sanitizedDisplayName !== undefined) {
+    sanitizedDisplayName = sanitizedDisplayName.slice(0, 80);
+  }
+
+  const corePayload = {
     ...(sanitizedDisplayName !== undefined ? { display_name: sanitizedDisplayName } : {}),
-    ...(details.category !== undefined ? { category: details.category } : {}),
-    ...(details.genres !== undefined ? { genres: details.genres } : {}),
-    ...(details.city !== undefined ? { city: details.city } : {}),
-    ...(details.bio !== undefined ? { bio: details.bio } : {}),
-    ...(details.instagram_url !== undefined ? { instagram_url: details.instagram_url } : {}),
-    ...(details.spotify_url !== undefined ? { spotify_url: details.spotify_url } : {}),
-    ...(details.youtube_url !== undefined ? { youtube_url: details.youtube_url } : {}),
-    ...(details.youtube_channel_url !== undefined ? { youtube_channel_url: details.youtube_channel_url } : {}),
+    ...(details.category !== undefined ? { category: cleanText(details.category, 40) } : {}),
+    ...(details.genres !== undefined ? { genres: cleanStringArray(details.genres, 5, 40) } : {}),
+    ...(details.city !== undefined ? { city: cleanText(details.city, 80) } : {}),
+    ...(details.bio !== undefined ? { bio: cleanText(details.bio, 1000) } : {}),
+    ...(details.instagram_url !== undefined ? { instagram_url: sanitizeUrl(details.instagram_url) } : {}),
+    ...(details.spotify_url !== undefined ? { spotify_url: sanitizeUrl(details.spotify_url) } : {}),
+    ...(details.youtube_url !== undefined ? { youtube_url: sanitizeUrl(details.youtube_url) } : {}),
     is_verified: true,
+  };
+
+  const fullPayload = {
+    ...corePayload,
+    ...(details.youtube_channel_url !== undefined ? { youtube_channel_url: sanitizeUrl(details.youtube_channel_url) } : {}),
     feature_founding_card: true
   };
 
@@ -420,17 +464,7 @@ export async function updateProfileDetailsAction(
 
     if (isColumnError) {
       console.warn('Optional column missing in waitlist_users table, falling back to core fields.');
-      const fallbackPayload = {
-        ...(details.display_name !== undefined ? { display_name: details.display_name } : {}),
-        ...(details.category !== undefined ? { category: details.category } : {}),
-        ...(details.genres !== undefined ? { genres: details.genres } : {}),
-        ...(details.city !== undefined ? { city: details.city } : {}),
-        ...(details.bio !== undefined ? { bio: details.bio } : {}),
-        ...(details.instagram_url !== undefined ? { instagram_url: details.instagram_url } : {}),
-        ...(details.spotify_url !== undefined ? { spotify_url: details.spotify_url } : {}),
-        ...(details.youtube_url !== undefined ? { youtube_url: details.youtube_url } : {}),
-        is_verified: true
-      };
+      const fallbackPayload = corePayload;
 
       const fallbackRes = await client
         .from('waitlist_users')
@@ -520,31 +554,21 @@ export async function getPublicProfileDataAction(username: string): Promise<Publ
       return null;
     }
     
-    // 2. Fetch referral count (all)
-    const { count: referralCount } = await client
-      .from('waitlist_users')
-      .select('id', { count: 'exact', head: true })
-      .eq('referred_by', normalisedUsername);
-      
+    // 2. Referral count and admin list are independent — fetch them in parallel
+    const adminEmailsSet = getBuiltInAdminEmails();
+    const [{ count: referralCount }, { data: adminRows }] = await Promise.all([
+      client
+        .from('waitlist_users')
+        .select('id', { count: 'exact', head: true })
+        .eq('referred_by', normalisedUsername),
+      client.from('admin_users').select('email'),
+    ]);
+    adminRows?.forEach(a => {
+      if (a.email) adminEmailsSet.add(a.email.trim().toLowerCase());
+    });
+
     const totalRefs = referralCount || 0;
     const calculatedPoints = 100 + totalRefs * 50 + (reservation.story_shared === true ? 80 : 0);
-    
-    // Check if user is admin or excluded
-    const adminEmailsSet = new Set<string>();
-    if (process.env.SUPER_ADMIN_EMAIL) {
-      adminEmailsSet.add(process.env.SUPER_ADMIN_EMAIL.trim().toLowerCase());
-    }
-    adminEmailsSet.add('anudeepdash2004@gmail.com');
-    try {
-      const { data: adminRows } = await client.from('admin_users').select('email');
-      if (adminRows) {
-        adminRows.forEach(a => {
-          if (a.email) adminEmailsSet.add(a.email.trim().toLowerCase());
-        });
-      }
-    } catch (e) {
-      // ignore
-    }
 
     const isExcluded = reservation.exclude_from_waitlist === true ||
       (reservation.email && adminEmailsSet.has(reservation.email.trim().toLowerCase()));
@@ -619,12 +643,7 @@ export async function uploadGalleryPhotoAction(
   const { buffer, contentType, extension } = parseBase64Upload(base64DataUrl, IMAGE_TYPES, MAX_IMAGE_BYTES);
   const fileName = `gallery_${uid}_${Date.now()}.${extension}`;
 
-  // Ensure the 'profiles' bucket exists (service role can create buckets)
-  const { data: buckets } = await client.storage.listBuckets();
-  const bucketExists = buckets?.some(b => b.name === 'profiles');
-  if (!bucketExists) {
-    await client.storage.createBucket('profiles', { public: true });
-  }
+  await ensurePublicBucket(client, 'profiles');
 
   // Upload to storage (upsert to handle re-uploads)
   const { error: uploadError } = await client.storage
@@ -696,6 +715,9 @@ export async function deleteGalleryPhotoAction(
   }
 
   const currentPhotos: string[] = userData?.gallery_photos || [];
+  if (!currentPhotos.includes(photoUrl)) {
+    return currentPhotos;
+  }
   const updatedPhotos = currentPhotos.filter(url => url !== photoUrl);
 
   // Update the user's record with the filtered array
@@ -709,10 +731,10 @@ export async function deleteGalleryPhotoAction(
     throw new Error('Failed to update gallery list in database');
   }
 
-  // Attempt to delete from Supabase storage
+  // Delete the file only if it is one this user uploaded (gallery_<uid>_*)
   try {
-    const fileName = photoUrl.split('/').pop();
-    if (fileName) {
+    const fileName = storageObjectName(photoUrl, 'profiles');
+    if (fileName && fileName.startsWith(`gallery_${uid}_`)) {
       await client.storage.from('profiles').remove([fileName]);
     }
   } catch (err) {
@@ -722,57 +744,64 @@ export async function deleteGalleryPhotoAction(
   return updatedPhotos;
 }
 
-export async function uploadShowreelVideoAction(
+/**
+ * Step 1 of a showreel upload: returns a short-lived signed URL the browser uploads the
+ * video to directly. Videos are far larger than the request-body limit for server
+ * actions on Vercel (~4.5MB), so they must not be posted through an action.
+ */
+export async function createShowreelUploadAction(
   idToken: string,
-  base64DataUrl: string,
-  _fileExtension: string
-): Promise<string> {
+  contentType: string,
+  sizeBytes: number
+): Promise<{ path: string; signedUrl: string }> {
+  const decodedToken = await verifyIdToken(idToken);
+  const extension = VIDEO_TYPES[contentType as keyof typeof VIDEO_TYPES];
+  if (!extension) {
+    throw new Error('Unsupported video type. Please upload an MP4, MOV or WebM file.');
+  }
+  if (!Number.isFinite(sizeBytes) || sizeBytes <= 0 || sizeBytes > MAX_VIDEO_BYTES) {
+    throw new Error(`Videos must be smaller than ${Math.floor(MAX_VIDEO_BYTES / 1024 / 1024)}MB.`);
+  }
+
+  const client = createAdminClient();
+  await ensurePublicBucket(client, 'profiles');
+  const path = `video_${decodedToken.uid}_${Date.now()}.${extension}`;
+  const { data, error } = await client.storage.from('profiles').createSignedUploadUrl(path);
+  if (error || !data) {
+    console.error('Error creating signed upload URL:', error);
+    throw new Error('Could not start the upload. Please try again.');
+  }
+  return { path, signedUrl: data.signedUrl };
+}
+
+/** Step 2 of a showreel upload: verifies the uploaded file and saves it on the profile. */
+export async function finalizeShowreelUploadAction(idToken: string, path: string): Promise<string> {
   const decodedToken = await verifyIdToken(idToken);
   const uid = decodedToken.uid;
+  if (!new RegExp(`^video_${uid.replace(/[^a-zA-Z0-9_-]/g, '')}_\\d+\\.(mp4|webm|mov)$`).test(path)) {
+    throw new Error('Invalid upload.');
+  }
+
   const client = createAdminClient();
-
-  const { buffer, contentType, extension } = parseBase64Upload(base64DataUrl, VIDEO_TYPES, MAX_VIDEO_BYTES);
-  const fileName = `video_${uid}_${Date.now()}.${extension}`;
-
-  // Ensure the 'profiles' bucket exists
-  const { data: buckets } = await client.storage.listBuckets();
-  const bucketExists = buckets?.some(b => b.name === 'profiles');
-  if (!bucketExists) {
-    await client.storage.createBucket('profiles', { public: true });
+  const { data: files } = await client.storage.from('profiles').list('', { search: path, limit: 1 });
+  if (!files?.some(f => f.name === path)) {
+    throw new Error('Upload not found. Please try again.');
   }
 
-  // Upload to storage (upsert to handle re-uploads)
-  const { error: uploadError } = await client.storage
-    .from('profiles')
-    .upload(fileName, buffer, {
-      contentType,
-      cacheControl: '3600',
-      upsert: true,
-    });
+  const publicUrl = client.storage.from('profiles').getPublicUrl(path).data.publicUrl;
 
-  if (uploadError) {
-    console.error('Storage upload error:', uploadError);
-    throw new Error(`Failed to upload video: ${uploadError.message}`);
-  }
+  // Remove the previous self-hosted showreel so storage doesn't fill with orphans
+  const { data: userData } = await client.from('waitlist_users').select('youtube_url').eq('user_id', uid).maybeSingle();
+  const previous = userData?.youtube_url ? storageObjectName(userData.youtube_url, 'profiles') : null;
 
-  // Get the public URL
-  const { data: publicUrlData } = client.storage
-    .from('profiles')
-    .getPublicUrl(fileName);
-  
-  const publicUrl = publicUrlData.publicUrl;
-
-  // Update user profile youtube_url with this new public URL
-  const { error: updateError } = await client
-    .from('waitlist_users')
-    .update({ youtube_url: publicUrl })
-    .eq('user_id', uid);
-
-  if (updateError) {
-    console.error('DB update error:', updateError);
+  const { error } = await client.from('waitlist_users').update({ youtube_url: publicUrl }).eq('user_id', uid);
+  if (error) {
+    console.error('DB update error:', error);
     throw new Error('Video uploaded but failed to save URL');
   }
-
+  if (previous && previous !== path && previous.startsWith(`video_${uid}_`)) {
+    await client.storage.from('profiles').remove([previous]).catch(() => undefined);
+  }
   return publicUrl;
 }
 
@@ -798,8 +827,8 @@ export async function deleteShowreelVideoAction(
   if (currentUrl) {
     // If it's a self-hosted uploaded video, delete it from storage
     if (currentUrl.includes('/profiles/video_')) {
-      const fileName = currentUrl.split('/').pop();
-      if (fileName) {
+      const fileName = storageObjectName(currentUrl, 'profiles');
+      if (fileName && fileName.startsWith(`video_${uid}_`)) {
         await client.storage
           .from('profiles')
           .remove([fileName]);
@@ -829,10 +858,9 @@ export async function changeUsernameAction(
 
   const normalised = newUsername.trim().toLowerCase();
 
-  // Validate format
-  const usernameRegex = /^[a-zA-Z0-9_.]{3,30}$/;
-  if (!usernameRegex.test(normalised)) {
-    throw new Error('Username must be 3-30 characters long and can only contain letters, numbers, underscores, and dots.');
+  const usernameError = validateUsername(normalised);
+  if (usernameError) {
+    throw new Error(usernameError);
   }
 
   const client = createAdminClient();
@@ -867,6 +895,11 @@ export async function changeUsernameAction(
   return true;
 }
 
+/**
+ * Links a pre-imported (unclaimed) profile to the signed-in account.
+ * Only profiles that are not yet linked to a login can be claimed, and the caller must
+ * prove ownership via a verified email or phone number matching the profile.
+ */
 export async function linkImportedProfile(
   idToken: string,
   waitlistId: string
@@ -874,27 +907,50 @@ export async function linkImportedProfile(
   const decodedToken = await verifyIdToken(idToken);
   const client = createAdminClient();
 
-  const { data: existing } = await client
+  const { data: existing, error: fetchError } = await client
     .from('waitlist_users')
-    .select('display_name, username, email')
+    .select('user_id, display_name, username, email, phone')
     .eq('id', waitlistId)
     .maybeSingle();
 
-  const updatePayload: { user_id: string; email?: string; display_name?: string } = {
-    user_id: decodedToken.uid,
-    email: decodedToken.email || undefined
-  };
+  if (fetchError || !existing) {
+    throw new Error('We could not find that profile.');
+  }
 
-  if (existing) {
-    if (!existing.display_name || existing.display_name.includes('@')) {
-      updatePayload.display_name = ensureValidDisplayName(null, existing.username, existing.email || decodedToken.email);
-    }
+  // Already linked to this account — nothing to do.
+  if (existing.user_id === decodedToken.uid) {
+    return true;
+  }
+
+  const isUnclaimed = !existing.user_id || existing.user_id.startsWith('imported_');
+  if (!isUnclaimed) {
+    throw new Error('This profile has already been claimed by another account.');
+  }
+
+  const tokenEmail = decodedToken.email_verified ? decodedToken.email?.trim().toLowerCase() : undefined;
+  const rowEmail = existing.email?.trim().toLowerCase();
+  const tokenPhone = decodedToken.phone_number?.replace(/\D/g, '').slice(-10);
+  const rowPhone = existing.phone?.replace(/\D/g, '').slice(-10);
+  const ownsProfile =
+    (!!tokenEmail && tokenEmail === rowEmail) ||
+    (!!tokenPhone && tokenPhone.length === 10 && tokenPhone === rowPhone);
+
+  if (!ownsProfile) {
+    throw new Error('Please sign in with the email address (or phone number) this invite was sent to.');
+  }
+
+  const updatePayload: { user_id: string; display_name?: string } = {
+    user_id: decodedToken.uid,
+  };
+  if (!existing.display_name || existing.display_name.includes('@')) {
+    updatePayload.display_name = ensureValidDisplayName(null, existing.username, existing.email || decodedToken.email);
   }
 
   const { error } = await client
     .from('waitlist_users')
     .update(updatePayload)
-    .eq('id', waitlistId);
+    .eq('id', waitlistId)
+    .or('user_id.is.null,user_id.like.imported_%');
 
   if (error) {
     console.error("Error linking profile:", error);
@@ -921,6 +977,26 @@ export async function submitBookingRequestAction(params: SubmitBookingRequestPar
     if (!params.artistUsername || !params.clientName || !params.clientEmail || !params.clientPhone || !params.eventDate || !params.city) {
       return { success: false, message: 'Please fill out all required fields.' };
     }
+    if (!(await checkRateLimit('booking-request', 5, 10 * 60 * 1000))) {
+      return { success: false, message: 'Too many requests. Please wait a few minutes and try again.' };
+    }
+    if (!isValidEmail(params.clientEmail)) {
+      return { success: false, message: 'Please enter a valid email address.' };
+    }
+    if (!/^[a-z0-9_.]{3,30}$/.test(params.artistUsername.trim().toLowerCase())) {
+      return { success: false, message: 'Invalid artist profile.' };
+    }
+    params = {
+      ...params,
+      artistDisplayName: cleanText(params.artistDisplayName, 80) || params.artistUsername,
+      clientName: cleanText(params.clientName, 120) || '',
+      clientPhone: cleanText(params.clientPhone, 30) || '',
+      eventDate: cleanText(params.eventDate, 40) || '',
+      city: cleanText(params.city, 80) || '',
+      eventType: cleanText(params.eventType, 60) || 'other',
+      budget: cleanText(params.budget, 60) || undefined,
+      notes: cleanText(params.notes, 2000) || undefined,
+    };
 
     const client = createAdminClient();
     
@@ -943,7 +1019,7 @@ export async function submitBookingRequestAction(params: SubmitBookingRequestPar
       console.error('Booking request DB insert error:', dbError.message);
       return {
         success: false,
-        message: `Failed to store booking request in database (${dbError.message}). Please run the database migration if the table does not exist.`
+        message: 'We could not submit your booking request right now. Please try again in a moment.'
       };
     }
 
@@ -959,7 +1035,7 @@ export async function submitBookingRequestAction(params: SubmitBookingRequestPar
     };
   } catch (err: any) {
     console.error('Error submitting booking request:', err);
-    return { success: false, message: err?.message || 'Failed to submit booking request.' };
+    return { success: false, message: 'Failed to submit booking request. Please try again.' };
   }
 }
 
@@ -978,11 +1054,11 @@ export async function getPublicCreatorsDirectoryAction(params?: {
       .not('username', 'is', null);
 
     if (params?.category && params.category !== 'all') {
-      query = query.eq('category', params.category);
+      query = query.eq('category', params.category.slice(0, 40));
     }
 
     if (params?.city && params.city !== 'all') {
-      query = query.ilike('city', `%${params.city}%`);
+      query = query.ilike('city', `%${sanitizeFilterValue(params.city, 60)}%`);
     }
 
     if (params?.verifiedOnly) {
@@ -990,8 +1066,10 @@ export async function getPublicCreatorsDirectoryAction(params?: {
     }
 
     if (params?.search && params.search.trim() !== '') {
-      const s = params.search.trim();
-      query = query.or(`username.ilike.%${s}%,display_name.ilike.%${s}%`);
+      const s = sanitizeFilterValue(params.search, 60);
+      if (s) {
+        query = query.or(`username.ilike.%${s}%,display_name.ilike.%${s}%`);
+      }
     }
 
     query = query.order('is_verified', { ascending: false }).order('reserved_at', { ascending: true }).limit(60);

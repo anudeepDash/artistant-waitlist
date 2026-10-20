@@ -36,7 +36,7 @@ export const TEAM_MEMBERS: Record<string, TeamMember> = {
     tagline: 'Building the contract, escrow & payment infrastructure for live entertainment.',
     bio: 'Founder at Artistant. Passionate about empowering independent artists, venues, and organizers across India through transparent smart contracts, instant payouts, and zero-friction gig booking.',
     email: 'anudeep@artistant.in',
-    phone: '+91 98765 43210',
+    phone: '', // TODO: add real number (placeholder removed)
     location: 'Bengaluru, Karnataka, India',
     avatarUrl: '/logo_a_highres.png',
     badge: 'FOUNDER',
@@ -48,7 +48,6 @@ export const TEAM_MEMBERS: Record<string, TeamMember> = {
       linkedin: 'https://www.linkedin.com/company/artistantco/',
       twitter: 'https://x.com/artistant_in',
       instagram: 'https://instagram.com/artistant.in',
-      whatsapp: 'https://wa.me/919876543210',
     },
     highlights: [
       'Engineered The Bookability Engine™ for Indian Live Industry',
@@ -68,7 +67,7 @@ export const TEAM_MEMBERS: Record<string, TeamMember> = {
     tagline: 'Designing seamless digital infrastructure for creators & live show runners.',
     bio: 'Leading product design, artist experience, and community growth at Artistant. Rebuilding how live shows are contracted and executed in India.',
     email: 'founder@artistant.in',
-    phone: '+91 98765 43211',
+    phone: '', // TODO: add real number (placeholder removed)
     location: 'Bengaluru, India',
     avatarUrl: '/logo_a_highres.png',
     badge: 'CO-FOUNDER',
@@ -99,7 +98,7 @@ export const TEAM_MEMBERS: Record<string, TeamMember> = {
     tagline: 'High-throughput contract automation, real-time audio, and secure payment rails.',
     bio: 'Architecting distributed systems, instant payouts, and anti-fraud escrow engines for Artistant. Focused on bulletproof reliability and ultra-fast user experiences.',
     email: 'engineering@artistant.in',
-    phone: '+91 98765 43212',
+    phone: '', // TODO: add real number (placeholder removed)
     location: 'Bengaluru, India',
     avatarUrl: '/logo_a_highres.png',
     badge: 'CORE TEAM',
@@ -107,7 +106,6 @@ export const TEAM_MEMBERS: Record<string, TeamMember> = {
     company: 'Artistant',
     website: 'https://artistant.in',
     socials: {
-      github: 'https://github.com',
       linkedin: 'https://www.linkedin.com/company/artistantco/',
       twitter: 'https://x.com/artistant_in',
     },
@@ -124,7 +122,7 @@ export const TEAM_MEMBERS: Record<string, TeamMember> = {
     tagline: 'Curating world-class live experiences and showcasing India\'s finest talent.',
     bio: 'Overseeing artist relations, festival partnerships, creative branding, and live sound operations for Artistant.',
     email: 'artists@artistant.in',
-    phone: '+91 98765 43213',
+    phone: '', // TODO: add real number (placeholder removed)
     location: 'Mumbai / Bengaluru',
     avatarUrl: '/logo_a_highres.png',
     badge: 'CORE TEAM',
@@ -167,44 +165,17 @@ export function saveTeamMembersMap(map: Record<string, TeamMember>) {
   }
 }
 
-export function getTeamMember(username: string): TeamMember {
-  const normalized = username.toLowerCase().trim();
-  const currentMap = getAllTeamMembersMap();
+/** Built-in team member for a card slug, or null if there is no such member. */
+export function getDefaultTeamMember(username: string): TeamMember | null {
+  return TEAM_MEMBERS[username.toLowerCase().trim()] ?? null;
+}
 
-  if (currentMap[normalized]) {
-    return currentMap[normalized];
-  }
-
-  // Dynamic fallback for any team member or user
-  const formattedName = normalized
-    .split(/[-_]/)
-    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-
-  return {
-    username: normalized,
-    name: formattedName || 'Artistant Team Member',
-    role: 'Team Member & Specialist',
-    tagline: 'Building the future of live entertainment infrastructure at Artistant.',
-    bio: `Core team member at Artistant working on transforming India's live event ecosystem for artists, venues, and organizers.`,
-    email: `${normalized}@artistant.in`,
-    phone: '+91 98765 43210',
-    location: 'Bengaluru, India',
-    avatarUrl: '/logo_a_highres.png',
-    badge: 'TEAM MEMBER',
-    department: 'Artistant Ecosystem',
-    company: 'Artistant',
-    website: 'https://artistant.in',
-    socials: {
-      linkedin: 'https://www.linkedin.com/company/artistantco/',
-      twitter: 'https://x.com/artistant_in',
-      instagram: 'https://instagram.com/artistant.in',
-    },
-    highlights: [
-      'Verified Artistant Ecosystem Specialist',
-      'Connecting live performers with venues and organizers'
-    ]
-  };
+/**
+ * Team member for a card slug, including any locally saved admin edits.
+ * Reads localStorage, so call it from effects/handlers (not during render).
+ */
+export function getTeamMember(username: string): TeamMember | null {
+  return getAllTeamMembersMap()[username.toLowerCase().trim()] ?? null;
 }
 
 export function generateVCardString(member: TeamMember): string {
@@ -220,7 +191,7 @@ export function generateVCardString(member: TeamMember): string {
     `ORG:${member.company}`,
     `TITLE:${member.role}`,
     `EMAIL;TYPE=INTERNET,WORK:${member.email}`,
-    `TEL;TYPE=CELL,VOICE:${member.phone}`,
+    member.phone ? `TEL;TYPE=CELL,VOICE:${member.phone}` : '',
     `URL;TYPE=WORK:${member.website}`,
     `NOTE:${member.tagline} | ${member.bio.replace(/\n/g, ' ')}`,
     member.socials.linkedin ? `X-SOCIALPROFILE;TYPE=linkedin:${member.socials.linkedin}` : '',

@@ -4,6 +4,14 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Calendar, Clock, User, Mail, Building, CheckCircle2, ArrowRight } from 'lucide-react';
 import { type TeamMember } from '@/lib/team-data';
+import { submitInquiryAction } from '@/lib/inquiry-actions';
+
+/** Tomorrow's date as YYYY-MM-DD (local time), used as the default and minimum booking date. */
+function tomorrowISO(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 interface BookCallModalProps {
   isOpen: boolean;
@@ -13,7 +21,7 @@ interface BookCallModalProps {
 
 export default function BookCallModal({ isOpen, onClose, member }: BookCallModalProps) {
   const [duration, setDuration] = useState<'15' | '30' | '45'>('30');
-  const [selectedDate, setSelectedDate] = useState<string>('2026-08-14');
+  const [selectedDate, setSelectedDate] = useState<string>(tomorrowISO);
   const [selectedTime, setSelectedTime] = useState<string>('15:00');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -21,14 +29,31 @@ export default function BookCallModal({ isOpen, onClose, member }: BookCallModal
   const [agenda, setAgenda] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
+    setError(null);
+    try {
+      const res = await submitInquiryAction({
+        source: 'book_call',
+        context: member.username,
+        name,
+        email,
+        message: agenda,
+        details: { company, date: selectedDate, time: selectedTime, duration: `${duration} min`, with: member.name },
+      });
+      if (res.success) {
+        setSubmitted(true);
+      } else {
+        setError(res.message);
+      }
+    } catch {
+      setError('We could not send your request right now. Please try again.');
+    } finally {
       setLoading(false);
-      setSubmitted(true);
-    }, 1000);
+    }
   };
 
   const handleReset = () => {
@@ -158,6 +183,7 @@ export default function BookCallModal({ isOpen, onClose, member }: BookCallModal
                     <input
                       type="date"
                       value={selectedDate}
+                      min={tomorrowISO()}
                       onChange={(e) => setSelectedDate(e.target.value)}
                       required
                       className="
@@ -265,6 +291,10 @@ export default function BookCallModal({ isOpen, onClose, member }: BookCallModal
                     />
                   </div>
                 </div>
+
+                {error && (
+                  <p role="alert" className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{error}</p>
+                )}
 
                 {/* Submit */}
                 <button

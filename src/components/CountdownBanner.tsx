@@ -27,7 +27,10 @@ export default function CountdownBanner({
     setDismissed(true);
     if (onDismiss) onDismiss();
   };
-  const destination = targetDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+  // Depend on a number, not a Date object: a new Date each render (from the parent or the
+  // fallback below) used to restart the effect on every render — an endless update loop.
+  const [fallbackTarget] = useState(() => Date.now() + 14 * 24 * 60 * 60 * 1000);
+  const targetTime = targetDate && !Number.isNaN(targetDate.getTime()) ? targetDate.getTime() : fallbackTarget;
 
   const [timeLeft, setTimeLeft] = useState({
     days: 0,
@@ -38,7 +41,7 @@ export default function CountdownBanner({
 
   useEffect(() => {
     const updateTime = () => {
-      const diff = destination.getTime() - Date.now();
+      const diff = targetTime - Date.now();
       if (diff <= 0) {
         setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
         return;
@@ -55,7 +58,7 @@ export default function CountdownBanner({
     updateTime();
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
-  }, [destination]);
+  }, [targetTime]);
 
   if (dismissed || !enabled) return null;
 

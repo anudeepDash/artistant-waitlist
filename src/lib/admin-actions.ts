@@ -4,8 +4,9 @@ import crypto from 'crypto';
 import { headers } from 'next/headers';
 
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import { type AdminWaitlistEntry, ensureValidDisplayName } from './waitlist';
-import { verifyAdminToken, verifyIdToken } from './firebase/admin';
+import { type AdminWaitlistEntry, ensureValidDisplayName } from './waitlist-shared';
+import { verifyAdminToken, verifyIdToken, getBuiltInAdminEmails, DEVELOPER_ADMIN_EMAIL } from './firebase/admin';
+import { cleanText, isValidEmail, RESERVED_USERNAMES, sanitizeFilterValue, sanitizeUrl, UUID_REGEX } from './validation';
 import {
   sendAdminAccessGrantedEmail,
   sendAdminAccessRevokedEmail,
@@ -17,9 +18,22 @@ import {
 } from './mailer';
 
 import { getAdminSupabaseClient } from './supabase/admin';
+import { checkRateLimit } from './rate-limit';
 
 function createAdminClient() {
   return getAdminSupabaseClient();
+}
+
+/**
+ * PostgREST `or` filter matching a registration by user_id, username, email or row id.
+ * The identifier is reduced to safe characters so it cannot inject extra filter clauses.
+ */
+function buildUserMatchFilter(userId: string): string {
+  const safe = sanitizeFilterValue(userId, 254);
+  if (!safe) throw new Error('Invalid user identifier.');
+  const conditions = [`user_id.eq.${safe}`, `username.eq.${safe.toLowerCase()}`, `email.eq.${safe.toLowerCase()}`];
+  if (UUID_REGEX.test(safe)) conditions.push(`id.eq.${safe}`);
+  return conditions.join(',');
 }
 
 function sortAdminRegistrations(entries: AdminWaitlistEntry[]): AdminWaitlistEntry[] {
@@ -105,19 +119,16 @@ export async function adminUpdateRegistrationAction(
     await verifyAdminToken(idToken);
 
     const client = createAdminClient();
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
 
     // 1. Fetch current status of this user registration for email alert triggers (single query)
     let existing: any = null;
     try {
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
-      const filterConditions = [`user_id.eq.${userId}`, `username.eq.${userId.toLowerCase()}`, `email.eq.${userId.toLowerCase()}`];
-      if (isUUID) filterConditions.push(`id.eq.${userId}`);
+      const userFilter = buildUserMatchFilter(userId);
       
       const res = await client
         .from('waitlist_users')
         .select('*')
-        .or(filterConditions.join(','))
+        .or(userFilter)
         .limit(1);
 
       if (res.data && res.data.length > 0) {
@@ -143,15 +154,13 @@ export async function adminUpdateRegistrationAction(
             err.message.includes('position_override'))));
 
     const attemptUpdate = async (payload: Record<string, any>) => {
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
-      const filterConditions = [`user_id.eq.${userId}`, `username.eq.${userId.toLowerCase()}`, `email.eq.${userId.toLowerCase()}`];
-      if (isUUID) filterConditions.push(`id.eq.${userId}`);
+      const userFilter = buildUserMatchFilter(userId);
 
       try {
         const r = await client
           .from('waitlist_users')
           .update(payload)
-          .or(filterConditions.join(','))
+          .or(userFilter)
           .select('id');
         return r;
       } catch (e: any) {
@@ -309,14 +318,12 @@ export async function adminUpdateUserRoleAction(
   try {
     await verifyAdminToken(idToken);
     const client = createAdminClient();
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
-    const filterConditions = [`user_id.eq.${userId}`, `username.eq.${userId.toLowerCase()}`, `email.eq.${userId.toLowerCase()}`];
-    if (isUUID) filterConditions.push(`id.eq.${userId}`);
+    const userFilter = buildUserMatchFilter(userId);
 
     const { error } = await client
       .from('waitlist_users')
       .update({ role: newRole })
-      .or(filterConditions.join(','));
+      .or(userFilter);
 
     if (error) {
       console.error('Error updating user role:', error);
@@ -337,44 +344,10 @@ export async function adminUpdateUserRoleAction(
  */
 export async function checkIsAdminAction(idToken: string): Promise<boolean> {
   if (!idToken) return false;
-  
-  let email = '';
   try {
-    const decoded = await verifyIdToken(idToken);
-    email = decoded.email || '';
-  } catch (e) {
-    console.error('Exception verifying ID token in admin check: [REDACTED_ERROR]');
-    return false;
-  }
-  
-  if (!email) return false;
-  const normalised = email.trim().toLowerCase();
-  
-  const superAdminEmail = process.env.SUPER_ADMIN_EMAIL;
-  if (superAdminEmail && normalised === superAdminEmail.trim().toLowerCase()) {
+    await verifyAdminToken(idToken);
     return true;
-  }
-
-  // Developer email bypass
-  if (normalised === 'anudeepdash2004@gmail.com') {
-    return true;
-  }
-
-  const client = createAdminClient();
-  try {
-    const { data, error } = await client
-      .from('admin_users')
-      .select('email')
-      .eq('email', normalised)
-      .maybeSingle();
-
-    if (error) {
-      console.warn('Error reading admin_users table (tables may not be migrated yet):', error.message);
-      return false;
-    }
-    return !!data;
-  } catch (err) {
-    console.error('Exception verifying admin status: [REDACTED_ERROR]');
+  } catch {
     return false;
   }
 }
@@ -413,7 +386,7 @@ export async function adminGetAdminsAction(idToken: string): Promise<any[]> {
     .order('created_at', { ascending: false });
 
   const list = data || [];
-  const developerEmail = 'anudeepdash2004@gmail.com';
+  const developerEmail = DEVELOPER_ADMIN_EMAIL;
   const hasDeveloper = list.some((a: any) => a.email && a.email.toLowerCase() === developerEmail);
   
   if (!hasDeveloper) {
@@ -485,7 +458,7 @@ export async function adminRemoveAdminAction(idToken: string, email: string): Pr
   if (!email) {
     throw new Error('Email is required');
   }
-  if (email.trim().toLowerCase() === 'anudeepdash2004@gmail.com') {
+  if (getBuiltInAdminEmails().has(email.trim().toLowerCase())) {
     throw new Error('Super-admin cannot be deleted.');
   }
 
@@ -559,6 +532,10 @@ export async function logActivityAction(input: {
     username = data?.username || null;
   }
 
+  if (!(await checkRateLimit('activity-log', 30, 60 * 1000))) {
+    return;
+  }
+
   const requestHeaders = await headers();
 
   const client = createAdminClient();
@@ -613,11 +590,7 @@ export async function getWaitlistDashboardDataAction(idToken: string): Promise<{
   const client = createAdminClient();
 
   // 1a. Fetch admin emails from admin_users table + defaults
-  const adminEmailsSet = new Set<string>();
-  if (process.env.SUPER_ADMIN_EMAIL) {
-    adminEmailsSet.add(process.env.SUPER_ADMIN_EMAIL.trim().toLowerCase());
-  }
-  adminEmailsSet.add('anudeepdash2004@gmail.com');
+  const adminEmailsSet = getBuiltInAdminEmails();
 
   try {
     const { data: adminRows } = await client.from('admin_users').select('email');
@@ -829,6 +802,9 @@ export async function checkUsernameAvailableAction(username: string): Promise<Ch
     if (!usernameRegex.test(normalised)) {
       return { success: true, available: false, error: 'Invalid username format' };
     }
+    if (RESERVED_USERNAMES.has(normalised)) {
+      return { success: true, available: false, error: 'This username is reserved' };
+    }
 
     const client = createAdminClient();
 
@@ -873,7 +849,7 @@ export async function checkMultipleUsernamesAvailableAction(usernames: string[])
     const client = createAdminClient();
     const normalisedUsernames = usernames
       .map(u => u.trim().toLowerCase())
-      .filter(u => /^[a-zA-Z0-9_.]{3,30}$/.test(u));
+      .filter(u => /^[a-zA-Z0-9_.]{3,30}$/.test(u) && !RESERVED_USERNAMES.has(u));
 
     if (normalisedUsernames.length === 0) {
       return result;
@@ -893,7 +869,7 @@ export async function checkMultipleUsernamesAvailableAction(usernames: string[])
     
     for (const username of usernames) {
       const norm = username.trim().toLowerCase();
-      if (/^[a-zA-Z0-9_.]{3,30}$/.test(norm)) {
+      if (/^[a-zA-Z0-9_.]{3,30}$/.test(norm) && !RESERVED_USERNAMES.has(norm)) {
         result[username] = !takenSet.has(norm);
       }
     }
@@ -1019,7 +995,7 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
   hero_headline: "The Operating System for Artists & Performers",
   hero_subheading: "Secure your unique handle, build your verified profile, and get direct booking inquiries without agent markups.",
   enable_countdown: true,
-  countdown_target_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+  countdown_target_date: '2026-12-31T18:29:59.000Z',
   countdown_headline: "EARLY ACCESS BATCH CLOSING SOON",
   countdown_cta_text: "Claim Access Keys",
   enable_registrations: true,
@@ -1030,7 +1006,7 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
   twitter_url: "https://x.com/artistant_in",
   youtube_url: "https://youtube.com/@artistant",
   spotify_url: "",
-  whatsapp_number: "+919876543210",
+  whatsapp_number: "",
 };
 
 /**
@@ -1344,52 +1320,50 @@ export async function submitCareerApplicationAction(
   }
 ): Promise<{ success: boolean; message?: string }> {
   try {
-    const client = createAdminClient();
+    const applicantName = cleanText(appData.applicant_name, 120);
+    const jobTitle = cleanText(appData.job_title, 200);
+    if (!(await checkRateLimit('career-application', 5, 10 * 60 * 1000))) {
+      return { success: false, message: 'Too many submissions. Please wait a few minutes and try again.' };
+    }
+    if (!applicantName || !jobTitle || !isValidEmail(appData.email)) {
+      return { success: false, message: 'Please provide your name and a valid email address.' };
+    }
 
-    // Check if job_id is a valid UUID format (static fallback job IDs like "job-1" are not valid Postgres UUIDs)
-    const isUUID = appData.job_id
-      ? /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(appData.job_id)
-      : false;
+    const client = createAdminClient();
+    // Static fallback job IDs like "job-1" are not valid Postgres UUIDs
+    const jobId = appData.job_id && UUID_REGEX.test(appData.job_id) ? appData.job_id : null;
 
     const payload = {
-      ...appData,
-      job_id: isUUID ? appData.job_id : null,
+      job_id: jobId,
+      job_title: jobTitle,
+      applicant_name: applicantName,
+      email: appData.email.trim().toLowerCase(),
+      phone: cleanText(appData.phone, 30),
+      portfolio_url: sanitizeUrl(appData.portfolio_url),
+      resume_url: sanitizeUrl(appData.resume_url),
+      experience_years: cleanText(appData.experience_years, 30),
+      cover_note: cleanText(appData.cover_note, 3000),
       status: 'pending',
       created_at: new Date().toISOString(),
     };
 
-    let { error } = await client
-      .from('career_applications')
-      .insert([payload]);
+    let { error } = await client.from('career_applications').insert([payload]);
 
-    // Fallback: If foreign key constraint or DB error occurs with job_id, retry with job_id: null
+    // If the job_id foreign key fails (e.g. job deleted), keep the application without the reference
     if (error && payload.job_id) {
       console.warn('Retrying career application submission without job_id reference:', error.message);
-      const fallbackPayload = { ...payload, job_id: null };
-      const retryResult = await client
-        .from('career_applications')
-        .insert([fallbackPayload]);
-      error = retryResult.error;
+      ({ error } = await client.from('career_applications').insert([{ ...payload, job_id: null }]));
     }
 
     if (error) {
-      console.warn('Error inserting career application into database:', error);
-      return {
-        success: true,
-        message: 'Application recorded! We will reach out shortly.',
-      };
+      console.error('Error inserting career application into database:', error);
+      return { success: false, message: 'We could not submit your application right now. Please try again in a moment.' };
     }
 
-    return {
-      success: true,
-      message: 'Application submitted successfully!',
-    };
-  } catch (e: any) {
-    console.warn('Fallback submit career application:', e);
-    return {
-      success: true,
-      message: 'Application submitted successfully!',
-    };
+    return { success: true, message: 'Application submitted successfully!' };
+  } catch (e) {
+    console.error('Error submitting career application:', e);
+    return { success: false, message: 'We could not submit your application right now. Please try again in a moment.' };
   }
 }
 
@@ -1445,24 +1419,6 @@ export async function adminUpdateCareerApplicationStatusAction(
   return true;
 }
 
-/**
- * Verifies an admin bypass passkey or passcode.
- */
-export async function verifyAdminPasskeyAction(passkey: string): Promise<boolean> {
-  if (!passkey) return false;
-  const trimmed = passkey.trim();
-  const validPasscodes = [
-    process.env.ADMIN_PASSCODE,
-    process.env.NEXT_PUBLIC_ADMIN_KEY,
-    'artistant-admin-2026',
-    'artistant2026',
-    'artistant@2026',
-    'admin2026'
-  ].filter(Boolean);
-
-  return validPasscodes.includes(trimmed);
-}
-
 export interface MarketFeedbackInput {
   name?: string;
   email?: string;
@@ -1481,24 +1437,28 @@ export async function submitMarketFeedbackAction(input: MarketFeedbackInput): Pr
       return { success: false, message: 'Please enter your thoughts before submitting.' };
     }
 
+    if (!(await checkRateLimit('market-feedback', 10, 10 * 60 * 1000))) {
+      return { success: false, message: 'Too many submissions. Please wait a few minutes and try again.' };
+    }
+    const allowedRoles = ['artist', 'venue', 'organizer', 'fan', 'other'];
     const client = createAdminClient();
-    try {
-      await client.from('market_feedback').insert([{
-        name: input.name?.trim() || null,
-        email: input.email?.trim() || null,
-        role: input.role || 'artist',
-        type: input.type || 'problem',
-        title: input.title?.trim() || null,
-        message: input.message.trim(),
-        created_at: new Date().toISOString()
-      }]);
-    } catch (dbErr) {
-      console.warn('Feedback recorded (fallback table mode):', input);
+    const { error } = await client.from('market_feedback').insert([{
+      name: cleanText(input.name, 120),
+      email: isValidEmail(input.email) ? input.email.trim().toLowerCase() : null,
+      role: allowedRoles.includes(input.role) ? input.role : 'other',
+      type: input.type === 'feature_request' ? 'feature_request' : 'problem',
+      title: cleanText(input.title, 200),
+      message: cleanText(input.message, 5000),
+      created_at: new Date().toISOString()
+    }]);
+    if (error) {
+      console.error('Error saving market feedback:', error.message);
+      return { success: false, message: 'Could not send your feedback right now. Please try again.' };
     }
 
     return { success: true, message: 'Thank you! We have received your voice.' };
   } catch (err: any) {
     console.error('Error submitting market feedback:', err);
-    return { success: true, message: 'Thank you for your feedback!' };
+    return { success: false, message: 'Could not send your feedback right now. Please try again.' };
   }
 }

@@ -183,6 +183,17 @@ export async function verifyIdToken(idToken: string): Promise<DecodedIdToken> {
   }
 }
 
+/** Owner account that always has admin access and cannot be removed. */
+export const DEVELOPER_ADMIN_EMAIL = 'anudeepdash2004@gmail.com';
+
+/** Admin emails that don't live in the admin_users table (super-admin + developer). */
+export function getBuiltInAdminEmails(): Set<string> {
+  const emails = new Set<string>([DEVELOPER_ADMIN_EMAIL]);
+  const superAdmin = process.env.SUPER_ADMIN_EMAIL?.trim().toLowerCase();
+  if (superAdmin) emails.add(superAdmin);
+  return emails;
+}
+
 // In-memory cache for verified admin emails to eliminate repeated DB checks (3 min TTL)
 const adminEmailCache = new Map<string, number>();
 const ADMIN_CACHE_TTL = 3 * 60 * 1000;
@@ -219,20 +230,15 @@ export async function verifyAdminToken(
   const decoded = await verifyIdToken(idToken);
   const email = decoded.email;
 
-  if (!email) {
+  // An unverified email proves nothing: anyone can sign up with email/password
+  // using an admin's address. Only trust emails Firebase has verified.
+  if (!email || decoded.email_verified !== true) {
     throw new Error('Unauthorized');
   }
 
   const normalizedEmail = email.trim().toLowerCase();
 
-  // Fast-path: super-admin
-  const SUPER_ADMIN = process.env.SUPER_ADMIN_EMAIL;
-  if (SUPER_ADMIN && normalizedEmail === SUPER_ADMIN.trim().toLowerCase()) {
-    return decoded;
-  }
-
-  // Developer email bypass
-  if (normalizedEmail === 'anudeepdash2004@gmail.com') {
+  if (getBuiltInAdminEmails().has(normalizedEmail)) {
     return decoded;
   }
 
@@ -247,7 +253,7 @@ export async function verifyAdminToken(
   const { data, error } = await supabase
     .from('admin_users')
     .select('email')
-    .eq('email', email)
+    .eq('email', normalizedEmail)
     .maybeSingle();
 
   if (error || !data) {

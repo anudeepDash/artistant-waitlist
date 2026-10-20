@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, useScroll, useTransform, useSpring, useMotionValue, useInView, AnimatePresence } from 'motion/react';
+import { motion, useScroll, useTransform, useSpring, useInView, AnimatePresence } from 'motion/react';
 import dynamic from 'next/dynamic';
 import Footer from '@/components/Footer';
 import InteractiveTeaser from '@/components/InteractiveTeaser';
@@ -14,7 +14,6 @@ import ExitIntentModal from '@/components/ExitIntentModal';
 import { Sparkles, Zap, ShieldCheck } from 'lucide-react';
 
 // Dynamic lazy imports for heavy components & modals to reduce initial JavaScript payload & load time
-const ParticleBackground = dynamic(() => import('@/components/ParticleBackground'), { ssr: false });
 const AuthModal = dynamic(() => import('@/components/AuthModal'), { ssr: false });
 const RoleWaitlistModal = dynamic(() => import('@/components/RoleWaitlistModal'), { ssr: false });
 const FeatureDetailsModal = dynamic(() => import('@/components/FeatureDetailsModal'), { ssr: false });
@@ -22,11 +21,20 @@ const DashboardPrompt = dynamic(() => import('@/components/DashboardPrompt'), { 
 import { getUserReservation, type WaitlistEntry } from '@/lib/waitlist';
 import { signInWithGoogle, signOut } from '@/lib/auth';
 import { useAuth } from '@/hooks/useAuth';
+import { checkIsAdminCached } from '@/lib/admin-status';
 import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
-import { logActivityAction, checkUsernameAvailableAction, checkMultipleUsernamesAvailableAction, checkIsAdminAction, adminGetSiteSettingsAction, type SiteSettings } from '@/lib/admin-actions';
+import { RESERVED_USERNAMES } from '@/lib/validation';
+import { logActivityAction, checkUsernameAvailableAction, checkMultipleUsernamesAvailableAction, adminGetSiteSettingsAction, type SiteSettings } from '@/lib/admin-actions';
 
 const isUsernameAvailable = checkUsernameAvailableAction;
+
+/** True once `open` has been true — mount lazy modals on first open, then keep them for exit animations. */
+function useMountedOnce(open: boolean): boolean {
+  const [mounted, setMounted] = useState(open);
+  if (open && !mounted) setMounted(true);
+  return mounted;
+}
 
 
 /* ── Sleek SVG Icons for features ── */
@@ -680,6 +688,7 @@ const getCandidateUsernames = (raw: string): string[] => {
   if (cleanInput.length === 0) return [];
 
   const reservedUsernames = new Set([
+    ...RESERVED_USERNAMES,
     'admin', 'administrator', 'support', 'official', 'artistant', 'artist', 'tant',
     'mod', 'moderator', 'help', 'api', 'auth', 'login', 'logout', 'signin', 'signup',
     'register', 'user', 'username', 'null', 'undefined', 'root', 'system', 'security',
@@ -792,8 +801,7 @@ export default function Home() {
     }
     const checkAccess = async () => {
       try {
-        const idToken = await user.getIdToken();
-        const res = await checkIsAdminAction(idToken);
+        const res = await checkIsAdminCached(user);
         setIsAdmin(res);
       } catch (err) {
         setIsAdmin(false);
@@ -892,6 +900,9 @@ export default function Home() {
   }, []);
 
   const openModal = () => setIsModalOpen(true);
+  const authModalMounted = useMountedOnce(isModalOpen);
+  const roleModalMounted = useMountedOnce(isRoleModalOpen);
+  const featureModalMounted = useMountedOnce(isFeatureModalOpen);
   const closeModal = () => setIsModalOpen(false);
 
   const scrollToWaitlist = (e?: React.MouseEvent) => {
@@ -985,6 +996,7 @@ export default function Home() {
     }
 
     const reservedUsernames = new Set([
+    ...RESERVED_USERNAMES,
       'admin', 'administrator', 'support', 'official', 'artistant', 'artist', 'tant',
       'mod', 'moderator', 'help', 'api', 'auth', 'login', 'logout', 'signin', 'signup',
       'register', 'user', 'username', 'null', 'undefined', 'root', 'system', 'security',
@@ -1078,15 +1090,17 @@ export default function Home() {
       if (ref) {
         localStorage.setItem('artistant_ref', ref.trim().toLowerCase());
       }
+      // Pages that need sign-in (e.g. /dashboard) redirect here with ?auth=true
+      if (params.get('auth') === 'true') {
+        setIsModalOpen(true);
+      }
     }
   }, []);
 
   const [activePhase, setActivePhase] = useState('core');
 
   // Framer motion scroll Hook for Parallax Background effects
-  const { scrollY, scrollYProgress } = useScroll();
-  const scrollProgressY = useSpring(scrollYProgress, { stiffness: 100, damping: 30, restDelta: 0.001 });
-  const yBgParallax = useTransform(scrollY, [0, 1000], [0, -120]);
+  const { scrollY } = useScroll();
   const yOrbParallax = useTransform(scrollY, [0, 1000], [0, -180]);
 
   const sectionScroll = useScroll({
@@ -1099,87 +1113,12 @@ export default function Home() {
     restDelta: 0.001
   });
 
-  // Zero-Gravity Mouse Motion Tracker (Antigravity style interactive physics)
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-  const springX = useSpring(mouseX, { stiffness: 70, damping: 25 });
-  const springY = useSpring(mouseY, { stiffness: 70, damping: 25 });
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      const x = (e.clientX / window.innerWidth) - 0.5;
-      const y = (e.clientY / window.innerHeight) - 0.5;
-      mouseX.set(x);
-      mouseY.set(y);
-    };
-    window.addEventListener('mousemove', handleMouseMove, { passive: true });
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, [mouseX, mouseY]);
-
-  // Background Bento Zoom Out transforms for Hero
-  const heroBentoScale = useTransform(scrollY, [0, 600], [1, 1.45]); // zoom in/up to fly towards/off screen
-  const heroBentoOpacity = useTransform(scrollY, [0, 450], [0.5, 0]);
-
-  // Mouse drifting coordinates
-  const c1X = useTransform(springX, [-0.5, 0.5], [-50, 50]);
-  const c1Y = useTransform(springY, [-0.5, 0.5], [-50, 50]);
-  const c2X = useTransform(springX, [-0.5, 0.5], [40, -40]);
-  const c2Y = useTransform(springY, [-0.5, 0.5], [40, -40]);
-  const c3X = useTransform(springX, [-0.5, 0.5], [-60, 60]);
-  const c3Y = useTransform(springY, [-0.5, 0.5], [-60, 60]);
-  const c4X = useTransform(springX, [-0.5, 0.5], [50, -50]);
-  const c4Y = useTransform(springY, [-0.5, 0.5], [50, -50]);
-  const c5X = useTransform(springX, [-0.5, 0.5], [-30, 30]);
-  const c5Y = useTransform(springY, [-0.5, 0.5], [-30, 30]);
-  const c6X = useTransform(springX, [-0.5, 0.5], [45, -45]);
-  const c6Y = useTransform(springY, [-0.5, 0.5], [45, -45]);
-
-  // Dynamic Scatter vectors on scroll (flying away)
-  const c1ScrollX = useTransform(scrollY, [0, 600], [0, -350]);
-  const c1ScrollY = useTransform(scrollY, [0, 600], [0, -300]);
-  const c1CombinedX = useTransform([c1X, c1ScrollX], ([mX, sX]) => (mX as number) + (sX as number));
-  const c1CombinedY = useTransform([c1Y, c1ScrollY], ([mY, sY]) => (mY as number) + (sY as number));
-
-  const c2ScrollY = useTransform(scrollY, [0, 600], [0, -450]);
-  const c2CombinedY = useTransform([c2Y, c2ScrollY], ([mY, sY]) => (mY as number) + (sY as number));
-
-  const c3ScrollX = useTransform(scrollY, [0, 600], [0, 350]);
-  const c3ScrollY = useTransform(scrollY, [0, 600], [0, -300]);
-  const c3CombinedX = useTransform([c3X, c3ScrollX], ([mX, sX]) => (mX as number) + (sX as number));
-  const c3CombinedY = useTransform([c3Y, c3ScrollY], ([mY, sY]) => (mY as number) + (sY as number));
-
-  const c4ScrollX = useTransform(scrollY, [0, 600], [0, -350]);
-  const c4ScrollY = useTransform(scrollY, [0, 600], [0, 300]);
-  const c4CombinedX = useTransform([c4X, c4ScrollX], ([mX, sX]) => (mX as number) + (sX as number));
-  const c4CombinedY = useTransform([c4Y, c4ScrollY], ([mY, sY]) => (mY as number) + (sY as number));
-
-  const c5ScrollY = useTransform(scrollY, [0, 600], [0, 450]);
-  const c5CombinedY = useTransform([c5Y, c5ScrollY], ([mY, sY]) => (mY as number) + (sY as number));
-
-  const c6ScrollX = useTransform(scrollY, [0, 600], [0, 350]);
-  const c6ScrollY = useTransform(scrollY, [0, 600], [0, 300]);
-  const c6CombinedX = useTransform([c6X, c6ScrollX], ([mX, sX]) => (mX as number) + (sX as number));
-  const c6CombinedY = useTransform([c6Y, c6ScrollY], ([mY, sY]) => (mY as number) + (sY as number));
 
 
 
 
 
-  // Tracking active section nodes along the progress line
-  const [activeNode, setActiveNode] = useState(1);
-  useEffect(() => {
-    const handleScrollNodes = () => {
-      const h = window.innerHeight;
-      const y = window.scrollY;
-      if (y < h * 0.8) setActiveNode(1);
-      else if (y < h * 1.8) setActiveNode(2);
-      else if (y < h * 2.8) setActiveNode(3);
-      else if (y < h * 3.8) setActiveNode(4);
-      else setActiveNode(5);
-    };
-    window.addEventListener('scroll', handleScrollNodes, { passive: true });
-    return () => window.removeEventListener('scroll', handleScrollNodes);
-  }, []);
+
 
   const handleWaitlistSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1277,12 +1216,12 @@ export default function Home() {
         >
 
           {/* 3D Scattered photos drifting past the camera */}
-          <ScatterPhoto src="/gallery_1.png" alt="Crowd silhouettes holding hands in heart shape" progress={smoothSectionProgress} layout={{ startX: "-32vw", startY: "-22vh", endX: "-55vw", endY: "-40vh", startZ: -220, endZ: 320, startRotZ: -8, endRotZ: -24, size: 17 }} />
-          <ScatterPhoto src="/gallery_2.png" alt="Vintage microphone on stage" progress={smoothSectionProgress} layout={{ startX: "30vw", startY: "-26vh", endX: "55vw", endY: "-44vh", startZ: -140, endZ: 380, startRotZ: 6, endRotZ: 18, size: 15 }} />
-          <ScatterPhoto src="/gallery_3.png" alt="Singer performing live under spotlight" progress={smoothSectionProgress} layout={{ startX: "-38vw", startY: "18vh", endX: "-58vw", endY: "44vh", startZ: -90, endZ: 360, startRotZ: 5, endRotZ: 22, size: 13 }} />
-          <ScatterPhoto src="/gallery_4.png" alt="Stadium concert crowd under confetti" progress={smoothSectionProgress} layout={{ startX: "34vw", startY: "22vh", endX: "60vw", endY: "44vh", startZ: -200, endZ: 400, startRotZ: -7, endRotZ: -20, size: 16 }} />
-          <ScatterPhoto src="/gallery_5.png" alt="Close-up of a DJ mixer deck" progress={smoothSectionProgress} layout={{ startX: "0vw", startY: "-30vh", endX: "12vw", endY: "-58vh", startZ: -300, endZ: 280, startRotZ: 3, endRotZ: 14, size: 12 }} />
-          <ScatterPhoto src="/gallery_6.png" alt="Concert stage band performance" progress={smoothSectionProgress} layout={{ startX: "0vw", startY: "30vh", endX: "-12vw", endY: "56vh", startZ: -260, endZ: 300, startRotZ: -4, endRotZ: -18, size: 14 }} />
+          <ScatterPhoto src="/gallery_1.webp" alt="Crowd silhouettes holding hands in heart shape" progress={smoothSectionProgress} layout={{ startX: "-32vw", startY: "-22vh", endX: "-55vw", endY: "-40vh", startZ: -220, endZ: 320, startRotZ: -8, endRotZ: -24, size: 17 }} />
+          <ScatterPhoto src="/gallery_2.webp" alt="Vintage microphone on stage" progress={smoothSectionProgress} layout={{ startX: "30vw", startY: "-26vh", endX: "55vw", endY: "-44vh", startZ: -140, endZ: 380, startRotZ: 6, endRotZ: 18, size: 15 }} />
+          <ScatterPhoto src="/gallery_3.webp" alt="Singer performing live under spotlight" progress={smoothSectionProgress} layout={{ startX: "-38vw", startY: "18vh", endX: "-58vw", endY: "44vh", startZ: -90, endZ: 360, startRotZ: 5, endRotZ: 22, size: 13 }} />
+          <ScatterPhoto src="/gallery_4.webp" alt="Stadium concert crowd under confetti" progress={smoothSectionProgress} layout={{ startX: "34vw", startY: "22vh", endX: "60vw", endY: "44vh", startZ: -200, endZ: 400, startRotZ: -7, endRotZ: -20, size: 16 }} />
+          <ScatterPhoto src="/gallery_5.webp" alt="Close-up of a DJ mixer deck" progress={smoothSectionProgress} layout={{ startX: "0vw", startY: "-30vh", endX: "12vw", endY: "-58vh", startZ: -300, endZ: 280, startRotZ: 3, endRotZ: 14, size: 12 }} />
+          <ScatterPhoto src="/gallery_1.webp" alt="Concert stage band performance" progress={smoothSectionProgress} layout={{ startX: "0vw", startY: "30vh", endX: "-12vw", endY: "56vh", startZ: -260, endZ: 300, startRotZ: -4, endRotZ: -18, size: 14 }} />
 
           {/* Orbs */}
           <motion.div className="orb orb-1" aria-hidden="true" style={{ y: yOrbParallax }} />
@@ -3136,18 +3075,24 @@ export default function Home() {
       {/* ──────────────────────── FOOTER ──────────────────────── */}
       <Footer />
 
-      <AuthModal isOpen={isModalOpen} onClose={closeModal} initialUsername={usernameInput} />
-      <RoleWaitlistModal isOpen={isRoleModalOpen} onClose={() => setIsRoleModalOpen(false)} role={selectedRole} />
-      <FeatureDetailsModal 
-        isOpen={isFeatureModalOpen} 
-        onClose={() => setIsFeatureModalOpen(false)} 
-        feature={selectedFeature} 
-        phase={selectedPhase}
-        onReserveClick={() => {
-          setIsFeatureModalOpen(false);
-          highlightBottomBarPill();
-        }}
-      />
+      {authModalMounted && (
+        <AuthModal isOpen={isModalOpen} onClose={closeModal} initialUsername={usernameInput} />
+      )}
+      {roleModalMounted && (
+        <RoleWaitlistModal isOpen={isRoleModalOpen} onClose={() => setIsRoleModalOpen(false)} role={selectedRole} />
+      )}
+      {featureModalMounted && (
+        <FeatureDetailsModal
+          isOpen={isFeatureModalOpen}
+          onClose={() => setIsFeatureModalOpen(false)}
+          feature={selectedFeature}
+          phase={selectedPhase}
+          onReserveClick={() => {
+            setIsFeatureModalOpen(false);
+            highlightBottomBarPill();
+          }}
+        />
+      )}
 
       <AnimatePresence>
         {user && userReservation && showDashboardPrompt && (

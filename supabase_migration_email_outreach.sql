@@ -1,3 +1,6 @@
+-- ⚠️ SUPERSEDED: this script grants public (anon/authenticated) access that is no longer
+-- needed and is unsafe. If you re-run it, run supabase_migration_security_hardening.sql again afterwards.
+
 -- SQL Migration: Email Outreach Suite Support
 -- Run this in Supabase SQL Editor if you wish to store outreach contact lists & campaigns directly in Supabase.
 
