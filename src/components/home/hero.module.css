@@ -1,0 +1,247 @@
+.hero {
+  --sx: 70%;
+  --sy: 40%;
+  position: relative;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  isolation: isolate;
+  padding-top: 110px;
+}
+
+.photos {
+  position: absolute;
+  inset: 0;
+  z-index: -3;
+}
+
+.photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 40%;
+}
+
+.shade {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background:
+    linear-gradient(90deg, rgba(10, 10, 10, 0.92) 0%, rgba(10, 10, 10, 0.62) 42%, rgba(10, 10, 10, 0.2) 75%),
+    linear-gradient(180deg, rgba(10, 10, 10, 0.55) 0%, transparent 25%, transparent 55%, #0a0a0a 100%);
+}
+
+/* A coloured stage light that follows the pointer, tinted by the side you pick. */
+.spot {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(38% 46% at var(--sx) var(--sy), color-mix(in srgb, var(--accent) 34%, transparent), transparent 70%);
+  mix-blend-mode: screen;
+  transition: background 0.6s;
+}
+
+.inner {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: clamp(32px, 5vw, 80px);
+  padding-bottom: clamp(28px, 5vh, 56px);
+}
+
+.copy {
+  max-width: 760px;
+}
+
+.ask {
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-stretch: 90%;
+  font-size: clamp(22px, 2.2vw, 30px);
+  line-height: 1.1;
+  color: var(--ink);
+  margin-bottom: 16px;
+}
+
+.ask em {
+  font-style: normal;
+  color: var(--accent);
+  transition: color 0.5s;
+}
+
+.switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 99px;
+  background: rgba(10, 10, 10, 0.6);
+  border: 1px solid var(--line-2);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  max-width: 100%;
+}
+
+.switchBtn {
+  position: relative;
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 10px 18px;
+  border-radius: 99px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-2);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.3s;
+}
+
+.switchBtn:hover { color: var(--ink); }
+.switchOn { color: #fff; }
+
+.switchPill {
+  position: absolute;
+  inset: 0;
+  border-radius: 99px;
+  background: var(--accent);
+  box-shadow: 0 8px 24px -8px var(--accent);
+}
+
+.switchText { position: relative; }
+
+.h1 {
+  margin: clamp(26px, 4vh, 40px) 0 0;
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-stretch: 90%;
+  font-size: clamp(56px, 8.4vw, 128px);
+  line-height: 0.92;
+  letter-spacing: -0.032em;
+  min-height: 1.84em;
+}
+
+.h1 { display: grid; }
+
+.h1Layer {
+  grid-area: 1 / 1;
+  display: block;
+}
+
+.mask {
+  display: block;
+  overflow: hidden;
+  padding: 0.04em 0.08em 0.12em 0;
+  margin: -0.04em -0.08em -0.12em 0;
+}
+
+.mask > span { display: inline-block; }
+
+.h1Em {
+  font-style: normal;
+  color: var(--accent);
+}
+
+.below {
+  margin-top: clamp(20px, 3vh, 30px);
+  display: grid;
+}
+
+.belowLayer { grid-area: 1 / 1; }
+
+.lead {
+  margin: 0 0 22px;
+  max-width: 520px;
+  font-size: clamp(16px, 1.3vw, 18px);
+  line-height: 1.6;
+  color: rgba(244, 242, 238, 0.78);
+}
+
+.claim { max-width: 560px; }
+
+.small {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.device {
+  position: relative;
+  perspective: 1200px;
+  margin-bottom: -150px;
+}
+
+.deviceTilt {
+  position: relative;
+  transform-style: preserve-3d;
+}
+
+.hint {
+  position: absolute;
+  left: -210px;
+  top: 34%;
+  width: 180px;
+  font-family: var(--f-marker);
+  font-size: 15px;
+  line-height: 1.3;
+  color: var(--accent);
+  transform: rotate(-4deg);
+}
+
+.foot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding-bottom: 22px;
+}
+
+.caption,
+.scroll {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+.scroll { color: var(--ink-3); }
+.scroll:hover { color: var(--ink); }
+
+@media (max-width: 1100px) {
+  .hint { display: none; }
+}
+
+@media (max-width: 900px) {
+  .inner { grid-template-columns: 1fr; }
+  .device { display: none; }
+  .shade {
+    background:
+      linear-gradient(180deg, rgba(10, 10, 10, 0.5) 0%, rgba(10, 10, 10, 0.35) 30%, rgba(10, 10, 10, 0.85) 62%, #0a0a0a 100%);
+  }
+  .photo { object-position: 60% 30%; }
+}
+
+@media (max-width: 560px) {
+  .hero { padding-top: 96px; }
+  .switch { display: flex; width: 100%; }
+  .switchBtn { flex: 1; padding: 10px 6px; font-size: 13px; }
+  .h1 { font-size: clamp(52px, 15vw, 68px); }
+  .actions > * { flex: 1; }
+}

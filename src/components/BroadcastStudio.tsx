@@ -71,6 +71,15 @@ interface BroadcastStudioProps {
   searchQuery: string;
 }
 
+function escapePreviewText(value: string | undefined | null): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 export default function BroadcastStudio({
   user,
   registrations,
@@ -1263,9 +1272,10 @@ export default function BroadcastStudio({
                   <div
                     className="text-xs leading-relaxed space-y-2 text-slate-300 font-normal"
                     dangerouslySetInnerHTML={{
+                      // Names come from sign-ups, so escape them before they go into HTML.
                       __html: emailBody
-                        .replaceAll("{{name}}", persona.name)
-                        .replaceAll("{{username}}", persona.username)
+                        .replaceAll("{{name}}", escapePreviewText(persona.name))
+                        .replaceAll("{{username}}", escapePreviewText(persona.username))
                         .replaceAll("{{claim_url}}", emailCtaUrl || "https://artistant.in")
                         .replace(/\n\n/g, "</p><p>")
                         .replace(/\n/g, "<br/>"),

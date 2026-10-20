@@ -1,6 +1,15 @@
 import nodemailer from 'nodemailer';
-import fs from 'fs';
-import path from 'path';
+import {
+  artistWelcomeEmail,
+  broadcastEmail,
+  hostWelcomeEmail,
+  launchEmail,
+  noticeEmail,
+  passwordResetEmail,
+  teamSignupEmail,
+  venueWelcomeEmail,
+} from './emails/templates';
+import { C, F, esc, type EmailContent, type EmailSide } from './emails/kit';
 
 // Load environment variables
 const EMAIL_HOST = process.env.EMAIL_HOST || 'smtp.gmail.com';
@@ -55,6 +64,8 @@ function getTransporter() {
     tls: {
       rejectUnauthorized: true,
     },
+    // Never let an attachment path read files from the server.
+    disableFileAccess: true,
   });
 }
 
@@ -110,58 +121,64 @@ interface WelcomeEmailParams {
   username: string;
 }
 
-/**
- * Sends a premium themed welcome email to a user who just claimed their username.
- */
-export async function sendWelcomeEmail({ email, name, username }: WelcomeEmailParams): Promise<{ success: boolean; message: string }> {
+/** Sends one rendered Artistant email. */
+async function deliver(to: string, mail: EmailContent, senderAlias: string, label: string): Promise<{ success: boolean; message: string }> {
   try {
     const transporter = getTransporter();
-    
-    // Read the master HTML email template
-    const templatePath = path.join(process.cwd(), 'src/templates/artistant-mail-template.html');
-    let htmlContent = '';
-    
-    try {
-      htmlContent = fs.readFileSync(templatePath, 'utf8');
-    } catch (readError: any) {
-      console.error('Error reading email template file:', readError);
-      return { success: false, message: `Failed to load email template: ${readError.message}` };
-    }
-
-    // Set up default parameters for the dynamic template
-    const ctaText = 'Open Your Dashboard';
-    const ctaUrl = `https://artistant.in/dashboard`;
-    const emailSubject = `Your ArtisTant username @${username} is secured! 🚀`;
-
-    // The premium hype body copy
-    const bodyText = `It's official. You've successfully claimed your premium username <strong>@${username}</strong> on ArtisTant!<br><br>Your professional <strong>portfolio page</strong> is now live at <a href="https://artistant.in/${username}" style="color: #7C5CFF; font-weight: bold; text-decoration: none;">artistant.in/${username}</a>. This is your single source of truth—a gorgeous, fast-loading booking hub designed to showcase your bio, target location, category/genres, media showreels, and social proof (linked via Spotify, YouTube, and Instagram).<br><br>Promoters and clients can visit your portfolio to view your profile photo, listen to your previews, inspect your details, and request direct bookings. You can customize, update, or complete all these details at any time by logging into your <a href="https://artistant.in/dashboard" style="color: #F25A2B; font-weight: bold; text-decoration: none;">ArtisTant Dashboard</a>.<br><br>By securing your handle early, you have received <strong>100 base points</strong> on your Founding Card. Here is how you can level up:<br><ul><li><strong>Cohort 1 Priority Access (250 PTS)</strong>: Earn 250 points to guarantee priority rollout access and waive your first gig's platform fee.</li><li><strong>Founding Artist Badge & Lifetime 0% Fee (500 PTS)</strong>: Reach 500 points to lock in a permanent verified "Founding Artist" badge. The first 50 artists to reach this status receive a lifetime <strong>0% platform fee guarantee</strong>!</li></ul><br>To climb the leaderboard and unlock rewards, share your referral link: <a href="https://artistant.in/?ref=${username}" style="color: #F25A2B; font-weight: bold;">https://artistant.in/?ref=${username}</a> or generate your Founding Card image on social media directly from your dashboard.`;
-
-    // Process and substitute placeholders in the HTML
-    let compiledHtml = htmlContent;
-    compiledHtml = compiledHtml.replaceAll('{{name}}', escapeHtml(name));
-    compiledHtml = compiledHtml.replaceAll('{{username}}', escapeHtml(username));
-    compiledHtml = compiledHtml.replaceAll('{{message}}', bodyText);
-    compiledHtml = compiledHtml.replaceAll('{{cta_text}}', ctaText);
-    compiledHtml = compiledHtml.replaceAll('{{cta_url}}', ctaUrl);
-
-    // Configure mail options
-    const mailOptions = {
-      from: getSenderHeader('welcome'),
-      to: email,
-      subject: emailSubject,
-      text: stripHtml(bodyText), // plain text alternative
-      html: compiledHtml,
-    };
-
-    // Send the email
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`Email successfully sent to ${email}. Message ID: ${info.messageId}`);
+    const info = await transporter.sendMail({
+      from: getSenderHeader(senderAlias),
+      to,
+      subject: mail.subject,
+      text: mail.text,
+      html: mail.html,
+    });
+    console.log(`${label} email sent to ${to}. Message ID: ${info.messageId}`);
     return { success: true, message: `Email sent. Message ID: ${info.messageId}` };
-
-  } catch (error: any) {
-    console.error('Error in sendWelcomeEmail service:', error);
-    return { success: false, message: error.message || 'Unknown error occurred while sending email.' };
+  } catch (error: unknown) {
+    console.error(`Error sending ${label} email:`, error);
+    return { success: false, message: error instanceof Error ? error.message : `Unknown error while sending ${label} email.` };
   }
+}
+
+/** Sends the "you're on the line-up" email to an artist who just claimed a name. */
+export async function sendWelcomeEmail({ email, name, username }: WelcomeEmailParams): Promise<{ success: boolean; message: string }> {
+  return deliver(email, artistWelcomeEmail({ name, username, email }), 'welcome', 'Welcome');
+}
+
+/** Confirmation for someone who joined the host list. */
+export async function sendHostWelcomeEmail(p: { email: string; name: string; city?: string; eventType?: string }) {
+  return deliver(p.email, hostWelcomeEmail(p), 'welcome', 'Host welcome');
+}
+
+/** Confirmation for a venue that joined the list. */
+export async function sendVenueWelcomeEmail(p: { email: string; name: string; venueName?: string; city?: string }) {
+  return deliver(p.email, venueWelcomeEmail(p), 'welcome', 'Venue welcome');
+}
+
+/** Tells the team inbox about a new host or venue sign-up. */
+export async function sendTeamSignupEmail(p: { kind: 'Host' | 'Venue'; details: [string, string][]; replyTo?: string }) {
+  const to = EMAIL_USER || 'hello@artistant.in';
+  const mail = teamSignupEmail(p);
+  try {
+    const transporter = getTransporter();
+    const info = await transporter.sendMail({
+      from: getSenderHeader('official'),
+      to,
+      replyTo: p.replyTo,
+      subject: mail.subject,
+      text: mail.text,
+      html: mail.html,
+    });
+    return { success: true, message: `Email sent. Message ID: ${info.messageId}` };
+  } catch (error: unknown) {
+    console.error('Error sending team sign-up email:', error);
+    return { success: false, message: error instanceof Error ? error.message : 'Unknown error while sending team email.' };
+  }
+}
+
+/** "We're live" email for a side of the stage. Not sent automatically; for launch day. */
+export async function sendLaunchEmail(p: { email: string; name: string; side: EmailSide }) {
+  return deliver(p.email, launchEmail({ side: p.side, name: p.name }), 'official', 'Launch');
 }
 
 export interface EmailAttachmentItem {
@@ -173,77 +190,48 @@ export interface EmailAttachmentItem {
   description?: string;
 }
 
+const ATTACHMENT_HOSTS = (() => {
+  const hosts = ['artistant.in', 'www.artistant.in'];
+  try {
+    const h = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || '').hostname;
+    if (h) hosts.push(h);
+  } catch {
+    /* no Supabase URL configured */
+  }
+  return hosts;
+})();
+
+function isAllowedAttachmentUrl(raw: string | undefined): boolean {
+  if (!raw) return false;
+  try {
+    const u = new URL(raw);
+    return u.protocol === 'https:' && ATTACHMENT_HOSTS.includes(u.hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Renders an inline visual attachment card for email HTML body.
  */
 export function renderAttachmentHtml(attachments?: EmailAttachmentItem[]): string {
   if (!attachments || attachments.length === 0) return '';
-
-  const attachmentItemsHtml = attachments.map((att) => {
-    const extUpper = (att.fileType || 'FILE').toUpperCase();
-    const sizeText = att.size ? ` • ${escapeHtml(att.size)}` : '';
-    const descText = att.description
-      ? `<p style="margin: 4px 0 0 0; font-size: 11px; color: #64748B; font-family: -apple-system, sans-serif;">${escapeHtml(att.description)}</p>`
-      : '';
-
-    let badgeBg = '#EFF6FF';
-    let badgeColor = '#2563EB';
-    if (extUpper.includes('PDF')) {
-      badgeBg = '#FEF2F2';
-      badgeColor = '#EF4444';
-    } else if (extUpper.includes('ZIP') || extUpper.includes('RAR')) {
-      badgeBg = '#FFE4E6';
-      badgeColor = '#E11D48';
-    } else if (extUpper.includes('MP3') || extUpper.includes('WAV') || extUpper.includes('AUDIO')) {
-      badgeBg = '#F0FDFA';
-      badgeColor = '#0D9488';
-    } else if (extUpper.includes('PNG') || extUpper.includes('JPG') || extUpper.includes('IMG')) {
-      badgeBg = '#F0FDF4';
-      badgeColor = '#16A34A';
-    }
-
-    return `
-      <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; margin-bottom: 10px; table-layout: fixed;">
-        <tr>
-          <td style="padding: 14px 16px;">
-            <table border="0" cellpadding="0" cellspacing="0" width="100%">
-              <tr>
-                <td width="42" valign="middle" style="padding-right: 12px;">
-                  <div style="background-color: ${badgeBg}; color: ${badgeColor}; width: 40px; height: 40px; border-radius: 10px; text-align: center; line-height: 40px; font-weight: 800; font-size: 10px; font-family: monospace; letter-spacing: 0.5px;">
-                    ${escapeHtml(extUpper)}
-                  </div>
-                </td>
-                <td valign="middle">
-                  <div style="font-size: 13px; font-weight: 700; color: #0F172A; font-family: -apple-system, sans-serif; line-height: 1.3;">
-                    ${escapeHtml(att.title)}
-                  </div>
-                  <div style="font-size: 10px; font-weight: 600; color: #64748B; font-family: -apple-system, sans-serif; margin-top: 2px;">
-                    <span style="display: inline-block; background-color: #E2E8F0; color: #334155; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 700; font-family: monospace;">${escapeHtml(extUpper)}</span>
-                    ${sizeText}
-                  </div>
-                  ${descText}
-                </td>
-                <td width="95" valign="middle" align="right" style="padding-left: 8px;">
-                  <a href="${escapeHtml(att.url)}" target="_blank" style="display: inline-block; background-color: #0F172A; color: #ffffff; font-size: 10px; font-weight: 700; font-family: -apple-system, sans-serif; text-decoration: none; padding: 8px 12px; border-radius: 8px; text-align: center;">
-                    Open &rarr;
-                  </a>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </table>
-    `;
-  }).join('');
-
-  return `
-    <div style="margin: 25px 0; padding: 18px; background-color: #FFFFFF; border: 1px dashed #CBD5E1; border-radius: 16px;">
-      <div style="font-size: 10px; font-weight: 800; color: #7C5CFF; text-transform: uppercase; letter-spacing: 1.5px; font-family: -apple-system, sans-serif; margin-bottom: 12px;">
-        📎 Attached Resources (${attachments.length})
-      </div>
-      ${attachmentItemsHtml}
-    </div>
-  `;
+  const items = attachments
+    .map((att) => {
+      const ext = (att.fileType || 'FILE').toUpperCase();
+      const meta = [ext, att.size].filter(Boolean).map((x) => esc(x)).join(' &middot; ');
+      return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${C.card2}" style="background-color:${C.card2};border:1px solid ${C.line};border-radius:14px;margin-top:10px;"><tr>
+<td width="52" valign="middle" style="padding:14px 0 14px 14px;"><div style="width:40px;height:40px;line-height:40px;border-radius:10px;background-color:${C.bg};text-align:center;font-family:${F.mono};font-size:10px;font-weight:600;color:${C.orange};">${esc(ext.slice(0, 4))}</div></td>
+<td valign="middle" style="padding:14px 12px;">
+<div style="font-family:${F.sans};font-size:14px;font-weight:700;color:${C.ink};">${esc(att.title)}</div>
+<div style="margin-top:3px;font-family:${F.mono};font-size:11px;color:${C.ink3};">${meta}</div>
+${att.description ? `<div style="margin-top:4px;font-family:${F.sans};font-size:12px;color:${C.ink2};">${esc(att.description)}</div>` : ''}
+</td>
+<td width="84" valign="middle" align="right" style="padding:14px 14px 14px 0;"><a href="${esc(att.url)}" target="_blank" style="display:inline-block;padding:9px 14px;border-radius:99px;background-color:${C.ink};font-family:${F.sans};font-size:12px;font-weight:700;color:${C.dayInk};text-decoration:none;">Open &rarr;</a></td>
+</tr></table>`;
+    })
+    .join('');
+  return `<div style="margin-top:26px;font-family:${F.mono};font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:${C.ink3};">Attached (${attachments.length})</div>${items}`;
 }
 
 interface CustomEmailParams {
@@ -268,7 +256,6 @@ interface CustomEmailParams {
 export async function sendCustomEmail({
   toEmail,
   name,
-  username,
   subject,
   messageBody,
   ctaText = 'Visit ArtisTant',
@@ -281,130 +268,48 @@ export async function sendCustomEmail({
 }: CustomEmailParams): Promise<{ success: boolean; message: string }> {
   try {
     const transporter = getTransporter();
-    const recipientName = escapeHtml(name || 'ArtisTant Member');
-    const recipientHandle = escapeHtml(username || 'artist');
     const formattedMessage = messageBody.replace(/\n/g, '<br />');
     const attachmentHtml = renderAttachmentHtml(attachments);
 
-    let compiledHtml = '';
-
-    if (templateType === 'raw' || templateType === 'plain_minimal') {
-      // Direct Minimal Email (No Fancy Heavy Card, Gmail-like direct letter feel)
-      const ctaHtml = ctaText && ctaUrl ? `
-        <div style="margin-top: 25px; text-align: left;">
-          <a href="${escapeHtml(ctaUrl)}" target="_blank" style="display: inline-block; background-color: #0F172A; color: #ffffff; font-size: 13px; font-weight: 700; font-family: -apple-system, sans-serif; text-decoration: none; padding: 12px 24px; border-radius: 10px;">
-            ${escapeHtml(ctaText)}
-          </a>
-        </div>
-      ` : '';
-
-      compiledHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${escapeHtml(subject)}</title>
-</head>
-<body style="margin: 0; padding: 24px; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0F172A; font-size: 15px; line-height: 1.6;">
-  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #E2E8F0; border-radius: 16px; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.03);">
-    <tr>
-      <td>
-        <div style="margin-bottom: 24px; border-bottom: 1px solid #F1F5F9; padding-bottom: 16px;">
-          <a href="https://artistant.in" target="_blank" style="text-decoration: none;">
-            <img src="https://artistant.in/logo_wordmark_flat.png" alt="ArtisTant" width="120" style="display: block; width: 120px; height: auto;">
-          </a>
-        </div>
-        ${headerTitle ? `<h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 800; color: #0F172A; letter-spacing: -0.3px;">${escapeHtml(headerTitle)}</h2>` : ''}
-        <div style="font-size: 14.5px; line-height: 1.65; color: #334155;">
-          ${formattedMessage}
-        </div>
-        ${attachmentHtml}
-        ${ctaHtml}
-        <div style="margin-top: 35px; border-top: 1px solid #F1F5F9; padding-top: 16px; font-size: 11px; color: #94A3B8;">
-          Sent directly via ArtisTant • <a href="https://artistant.in" style="color: #64748B; text-decoration: underline;">artistant.in</a>
-        </div>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-      `.trim();
-    } else {
-      // Read the master HTML email template
-      const templatePath = path.join(process.cwd(), 'src/templates/artistant-mail-template.html');
-      let htmlContent = '';
-      
-      try {
-        htmlContent = fs.readFileSync(templatePath, 'utf8');
-      } catch (readError: any) {
-        console.error('Error reading email template file:', readError);
-        return { success: false, message: `Failed to load email template: ${readError.message}` };
-      }
-
-      compiledHtml = htmlContent;
-      compiledHtml = compiledHtml.replaceAll('{{name}}', recipientName);
-      compiledHtml = compiledHtml.replaceAll('{{username}}', recipientHandle);
-      compiledHtml = compiledHtml.replaceAll('{{cta_text}}', escapeHtml(ctaText));
-      compiledHtml = compiledHtml.replaceAll('{{cta_url}}', escapeHtml(ctaUrl));
-
-      if (pillTag) {
-        compiledHtml = compiledHtml.replace(
-          '⚡ WAITLIST ACTIVE',
-          escapeHtml(pillTag)
-        );
-      }
-
-      if (headerTitle) {
-        const customHeadingHtml = `Welcome to the stage. <br><span style="color: #F25A2B;">${escapeHtml(headerTitle)}</span>`;
-        compiledHtml = compiledHtml.replace(
-          'Welcome to the stage. <br><span style="color: #F25A2B;">@{{username}}</span> is officially stashed.',
-          customHeadingHtml
-        );
-      }
-
-      // Omit ticket stub if standard or newsletter template
-      if (templateType !== 'welcome' && templateType !== 'vip' && templateType !== 'migrated_artist') {
-        compiledHtml = compiledHtml.replace(
-          /<table border="0" cellpadding="0" cellspacing="0" width="100%" class="ticket-table"[\s\S]*?<\/table>/gi,
-          ''
-        );
-      }
-
-      // Inject attachments right after message content
-      const messageBodyWithAttachment = formattedMessage + attachmentHtml;
-      compiledHtml = compiledHtml.replaceAll('{{message}}', messageBodyWithAttachment);
-    }
+    const compiledHtml = broadcastEmail({
+      style: templateType,
+      name: name || '',
+      subject,
+      headerTitle,
+      pillTag,
+      messageHtml: formattedMessage,
+      extraHtml: attachmentHtml,
+      ctaText,
+      ctaUrl,
+    });
 
     // Prepare Nodemailer attachment array if URLs exist
+    // Attachments are fetched by URL, so only allow https links on our own hosts.
     const mailerAttachments = attachments
-      .filter((att) => att.url)
+      .filter((att) => isAllowedAttachmentUrl(att.url))
       .map((att) => ({
         filename: att.title || 'Attachment',
         path: att.url,
       }));
 
     // Configure mail options
-    const mailOptions: any = {
+    const mailOptions = {
       from: getSenderHeader(senderAlias),
       to: toEmail,
       subject: subject,
       text: stripHtml(messageBody),
       html: compiledHtml,
+      ...(mailerAttachments.length > 0 ? { attachments: mailerAttachments } : {}),
     };
-
-    if (mailerAttachments.length > 0) {
-      mailOptions.attachments = mailerAttachments;
-    }
 
     // Send the email
     const info = await transporter.sendMail(mailOptions);
     console.log(`Custom email successfully sent to ${toEmail}. Message ID: ${info.messageId}`);
     return { success: true, message: `Email sent. Message ID: ${info.messageId}` };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in sendCustomEmail service:', error);
-    return { success: false, message: error.message || 'Unknown error occurred while sending custom email.' };
+    return { success: false, message: error instanceof Error ? error.message : 'Unknown error occurred while sending custom email.' };
   }
 }
 
@@ -422,47 +327,7 @@ export async function sendPasswordResetEmail({
   name,
   resetLink,
 }: PasswordResetEmailParams): Promise<{ success: boolean; message: string }> {
-  try {
-    const transporter = getTransporter();
-    
-    // Read the normal HTML email template
-    const templatePath = path.join(process.cwd(), 'src/templates/artistant-normal-mail-template.html');
-    let htmlContent = '';
-    
-    try {
-      htmlContent = fs.readFileSync(templatePath, 'utf8');
-    } catch (readError: any) {
-      console.error('Error reading normal email template file:', readError);
-      return { success: false, message: `Failed to load normal email template: ${readError.message}` };
-    }
-
-    const emailSubject = 'Reset your ArtisTant password 🔒';
-    const bodyText = `We received a request to reset the password for your ArtisTant account.<br><br>Click the button below to choose a new password. If you did not make this request, you can safely ignore this email; your password will remain secure.<br><br>This link is valid for 1 hour.`;
-
-    let compiledHtml = htmlContent;
-    compiledHtml = compiledHtml.replaceAll('{{name}}', escapeHtml(name || 'ArtisTant Member'));
-    compiledHtml = compiledHtml.replaceAll('{{message}}', bodyText);
-    compiledHtml = compiledHtml.replaceAll('{{cta_text}}', 'Reset Password');
-    compiledHtml = compiledHtml.replaceAll('{{cta_url}}', resetLink);
-
-    // Configure mail options
-    const mailOptions = {
-      from: getSenderHeader('security'),
-      to: email,
-      subject: emailSubject,
-      text: stripHtml(bodyText), // plain text alternative
-      html: compiledHtml,
-    };
-
-    // Send the email
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`Password reset email successfully sent to ${email}. Message ID: ${info.messageId}`);
-    return { success: true, message: `Password reset email sent. Message ID: ${info.messageId}` };
-
-  } catch (error: any) {
-    console.error('Error in sendPasswordResetEmail service:', error);
-    return { success: false, message: error.message || 'Unknown error occurred while sending password reset email.' };
-  }
+  return deliver(email, passwordResetEmail({ name, resetLink }), 'security', 'Password reset');
 }
 
 interface NormalEmailParams {
@@ -473,10 +338,15 @@ interface NormalEmailParams {
   ctaText?: string;
   ctaUrl?: string;
   senderAlias?: string;
+  /** Small label above the headline. */
+  kickerText?: string;
+  /** Headline; `accentPart` is drawn on a second line in orange. */
+  headline?: string;
+  accentPart?: string;
 }
 
 /**
- * Sends a generic styled email using the Artistant normal HTML template.
+ * Sends a notice in the Artistant style (account updates, team access and so on).
  */
 export async function sendNormalEmail({
   toEmail,
@@ -486,174 +356,139 @@ export async function sendNormalEmail({
   ctaText = 'Visit ArtisTant',
   ctaUrl = 'https://artistant.in',
   senderAlias = 'hello',
+  kickerText = 'From Artistant',
+  headline,
+  accentPart,
 }: NormalEmailParams): Promise<{ success: boolean; message: string }> {
-  try {
-    const transporter = getTransporter();
-    
-    // Read the normal HTML email template
-    const templatePath = path.join(process.cwd(), 'src/templates/artistant-normal-mail-template.html');
-    let htmlContent = '';
-    
-    try {
-      htmlContent = fs.readFileSync(templatePath, 'utf8');
-    } catch (readError: unknown) {
-      console.error('Error reading normal email template file:', readError);
-      return { success: false, message: `Failed to load normal email template: ${readError instanceof Error ? readError.message : String(readError)}` };
-    }
-
-    const formattedMessage = messageBody.replace(/\n/g, '<br />');
-    let compiledHtml = htmlContent;
-    compiledHtml = compiledHtml.replaceAll('{{name}}', escapeHtml(name || 'ArtisTant Member'));
-    compiledHtml = compiledHtml.replaceAll('{{message}}', formattedMessage);
-    compiledHtml = compiledHtml.replaceAll('{{cta_text}}', ctaText);
-    compiledHtml = compiledHtml.replaceAll('{{cta_url}}', ctaUrl);
-
-    // Configure mail options
-    const mailOptions = {
-      from: getSenderHeader(senderAlias),
-      to: toEmail,
-      subject: subject,
-      text: stripHtml(messageBody), // plain text alternative
-      html: compiledHtml,
-    };
-
-    // Send the email
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`Normal email successfully sent to ${toEmail}. Message ID: ${info.messageId}`);
-    return { success: true, message: `Email sent. Message ID: ${info.messageId}` };
-
-  } catch (error: unknown) {
-    console.error('Error in sendNormalEmail service:', error);
-    return { success: false, message: error instanceof Error ? error.message : 'Unknown error occurred while sending email.' };
-  }
+  const plainSubject = subject.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').trim();
+  const mail = noticeEmail({
+    name,
+    subject,
+    kickerText,
+    main: headline || plainSubject,
+    accentPart,
+    bodyHtml: messageBody.replace(/\n/g, '<br />'),
+    ctaText,
+    ctaUrl,
+  });
+  return deliver(toEmail, mail, senderAlias, 'Notice');
 }
 
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://artistant.in').replace(/\/$/, '');
+
 export async function sendAdminAccessGrantedEmail(email: string, name: string): Promise<{ success: boolean; message: string }> {
-  const subject = 'Welcome to the ArtisTant Admin Team! 🔑';
-  const messageBody = `You have been officially granted Administrator access on ArtisTant. You can now access the Admin Console to manage registrations, verify members, update waitlist standings, and run auto-verify operations.<br><br>Please log in to your account and navigate to the admin section.`;
-  const ctaText = 'Open Admin Console';
-  const ctaUrl = 'https://artistant.in/admin';
   return sendNormalEmail({
     toEmail: email,
     name,
-    subject,
-    messageBody,
-    ctaText,
-    ctaUrl,
-    senderAlias: 'security'
+    subject: 'You’re on the Artistant team',
+    kickerText: 'Team access',
+    headline: 'Welcome to',
+    accentPart: 'the crew.',
+    messageBody: 'You now have admin access on Artistant. You can review sign-ups, verify artists and manage the waitlist from the admin console.',
+    ctaText: 'Open the admin console',
+    ctaUrl: `${SITE_URL}/admin`,
+    senderAlias: 'security',
   });
 }
 
 export async function sendAdminAccessRevokedEmail(email: string, name: string): Promise<{ success: boolean; message: string }> {
-  const subject = 'ArtisTant Admin Access Revoked';
-  const messageBody = `Your administrator access on ArtisTant has been revoked. You will no longer be able to access the Admin Console or perform administrative operations.<br><br>If you believe this is an error, please reach out to the system administrator or reply to this email.`;
-  const ctaText = 'Visit ArtisTant';
-  const ctaUrl = 'https://artistant.in';
   return sendNormalEmail({
     toEmail: email,
     name,
-    subject,
-    messageBody,
-    ctaText,
-    ctaUrl,
-    senderAlias: 'security'
+    subject: 'Your Artistant admin access has ended',
+    kickerText: 'Team access',
+    headline: 'Admin access',
+    accentPart: 'has ended.',
+    messageBody: 'Your admin access on Artistant has been removed, so the admin console is no longer available to you.<br><br>Think this is a mistake? Just reply to this email.',
+    senderAlias: 'security',
   });
 }
 
 export async function sendProfileVerifiedEmail(email: string, name: string, username: string): Promise<{ success: boolean; message: string }> {
-  const subject = 'Your ArtisTant Profile is verified! 🎉';
-  const messageBody = `Congratulations! Your ArtisTant profile has been reviewed and verified by our team.<br><br>As a verified member, your professional portfolio page at <strong>artistant.in/${username}</strong> is now live with a verified badge. Promoters and clients can visit your profile to view your credentials and make booking inquiries.<br><br>Log in to your dashboard to customize your profile, update your status, upload showreel media, and manage booking settings.`;
-  const ctaText = 'Go to Dashboard';
-  const ctaUrl = 'https://artistant.in/dashboard';
   return sendNormalEmail({
     toEmail: email,
     name,
-    subject,
-    messageBody,
-    ctaText,
-    ctaUrl,
-    senderAlias: 'official'
+    subject: 'You’re verified on Artistant',
+    kickerText: 'Profile verified',
+    headline: 'You’re',
+    accentPart: 'verified.',
+    messageBody: `Our team has checked your profile. Your page at <b style="color:${C.ink};">artistant.in/${esc(username)}</b> now shows a verified badge, so clients know you&rsquo;re the real deal.<br><br>We&rsquo;ll email you with the details once Artistant is live.`,
+    ctaText: 'See my page',
+    ctaUrl: `${SITE_URL}/${encodeURIComponent(username)}`,
+    senderAlias: 'official',
   });
 }
 
 export async function sendProfileVerificationRevokedEmail(email: string, name: string): Promise<{ success: boolean; message: string }> {
-  const subject = 'Update on your ArtisTant verification status';
-  const messageBody = `Your profile verification status on ArtisTant has been updated. The verification badge has been removed.<br><br>You still retain your claimed username and waitlist placement, but your public verified status is currently inactive.<br><br>If you have questions or want to update your application details, please contact our support team.`;
-  const ctaText = 'Go to Dashboard';
-  const ctaUrl = 'https://artistant.in/dashboard';
   return sendNormalEmail({
     toEmail: email,
     name,
-    subject,
-    messageBody,
-    ctaText,
-    ctaUrl,
-    senderAlias: 'support'
+    subject: 'An update on your Artistant verification',
+    kickerText: 'Verification',
+    headline: 'Your verified badge',
+    accentPart: 'is paused.',
+    messageBody: 'We&rsquo;ve removed the verified badge from your profile for now. Your name and your place on the waitlist are still yours.<br><br>Want to know why, or send us more details? Just reply to this email.',
+    ctaText: 'Talk to us',
+    ctaUrl: 'mailto:support@artistant.in',
+    senderAlias: 'support',
   });
 }
 
 export async function sendProfileBlockedEmail(email: string, name: string): Promise<{ success: boolean; message: string }> {
-  const subject = 'Your ArtisTant account has been suspended';
-  const messageBody = `Your profile on ArtisTant has been suspended due to violations of our community guidelines or other administrative actions.<br><br>Your public portfolio page is no longer visible, and you will not be able to log in or access your dashboard.<br><br>If you believe this decision was made in error and want to appeal, please contact support.`;
-  const ctaText = 'Contact Support';
-  const ctaUrl = 'mailto:support@artistant.in';
   return sendNormalEmail({
     toEmail: email,
     name,
-    subject,
-    messageBody,
-    ctaText,
-    ctaUrl,
-    senderAlias: 'security'
+    subject: 'Your Artistant account has been suspended',
+    kickerText: 'Account',
+    headline: 'Your account',
+    accentPart: 'is suspended.',
+    messageBody: 'Your Artistant account has been suspended for breaking our community guidelines. Your public page is hidden and you can&rsquo;t sign in for now.<br><br>If you think we got this wrong, reply to this email and a real person will look at it.',
+    ctaText: 'Contact support',
+    ctaUrl: 'mailto:support@artistant.in',
+    senderAlias: 'security',
   });
 }
 
 export async function sendPositionUpdatedEmail(email: string, name: string, newPosition: number): Promise<{ success: boolean; message: string }> {
-  const subject = 'Your ArtisTant waitlist position has been updated! 📈';
-  const messageBody = `Great news! Your queue position on the ArtisTant waitlist has been updated. You have been moved up in the line!<br><br>Your new waitlist placement is now <strong>#${newPosition}</strong>. This moves you closer to priority beta access.<br><br>You can boost your ranking further and earn more points by inviting other creators using your referral link.`;
-  const ctaText = 'View Leaderboard';
-  const ctaUrl = 'https://artistant.in/dashboard';
   return sendNormalEmail({
     toEmail: email,
     name,
-    subject,
-    messageBody,
-    ctaText,
-    ctaUrl,
-    senderAlias: 'official'
+    subject: `You’ve moved up to #${newPosition} on the Artistant waitlist`,
+    kickerText: 'Waitlist',
+    headline: 'You’ve moved up to',
+    accentPart: `#${newPosition}.`,
+    messageBody: 'Good news: your place on the Artistant waitlist just moved up, so you&rsquo;re closer to getting in when we open.<br><br>We&rsquo;ll email you with the details once we&rsquo;re live.',
+    senderAlias: 'official',
   });
 }
 
 export async function sendFoundingCardFeaturedEmail(email: string, name: string, username: string): Promise<{ success: boolean; message: string }> {
-  const subject = "You've been featured on ArtisTant! 🌟";
-  const messageBody = `We're thrilled to let you know that your profile has been selected and featured as a <strong>Founding Card</strong> on ArtisTant!<br><br>This highlights your profile to our community and early promoters. You can now view your custom card layout, generate card mockups, and share your status on Instagram and Twitter/X.<br><br>Thank you for being a founding member of ArtisTant.`;
-  const ctaText = 'View Featured Card';
-  const ctaUrl = `https://artistant.in/${username}`;
   return sendNormalEmail({
     toEmail: email,
     name,
-    subject,
-    messageBody,
-    ctaText,
-    ctaUrl,
-    senderAlias: 'welcome'
+    subject: 'You’re featured on Artistant',
+    kickerText: 'Featured',
+    headline: 'You’re in',
+    accentPart: 'the spotlight.',
+    messageBody: 'We picked your profile as one of our featured founding artists. It&rsquo;s now shown to our community and the first bookers.<br><br>Thanks for being here early.',
+    ctaText: 'See my page',
+    ctaUrl: `${SITE_URL}/${encodeURIComponent(username)}`,
+    senderAlias: 'welcome',
   });
 }
 
 export async function sendContactInfoUpdatedEmail(email: string, name: string, updatedFields: string[]): Promise<{ success: boolean; message: string }> {
-  const fieldsStr = updatedFields.join(', ');
-  const subject = 'ArtisTant Security Notification: Contact Info Updated 🔒';
-  const messageBody = `This is a quick notification to confirm that your contact settings (${fieldsStr}) on ArtisTant were recently updated.<br><br>If you made these changes, no further action is required. If you did not make these changes, please secure your account immediately and contact support.`;
-  const ctaText = 'Review Security Settings';
-  const ctaUrl = 'https://artistant.in/dashboard';
   return sendNormalEmail({
     toEmail: email,
     name,
-    subject,
-    messageBody,
-    ctaText,
-    ctaUrl,
-    senderAlias: 'security'
+    subject: 'Your Artistant contact details were changed',
+    kickerText: 'Security',
+    headline: 'Your details',
+    accentPart: 'were updated.',
+    messageBody: `Your ${esc(updatedFields.join(', '))} on Artistant just changed.<br><br>If that was you, you&rsquo;re all set. If it wasn&rsquo;t, reply to this email straight away and we&rsquo;ll help you secure your account.`,
+    ctaText: 'This wasn’t me',
+    ctaUrl: 'mailto:security@artistant.in',
+    senderAlias: 'security',
   });
 }
 
@@ -674,7 +509,6 @@ export async function sendBookingRequestNotificationEmail(params: BookingRequest
   const adminEmail = EMAIL_USER || 'hello@artistant.in';
   const subject = `New Booking Request for ${params.artistDisplayName} (@${params.artistUsername})`;
   const messageBody = `
-    <strong>New Booking Request Received!</strong><br><br>
     A new event booking inquiry has been submitted for <strong>${escapeHtml(params.artistDisplayName)}</strong> (@${escapeHtml(params.artistUsername)}).<br><br>
     <strong>Client Details:</strong><br>
     • <strong>Name:</strong> ${escapeHtml(params.clientName)}<br>
@@ -690,12 +524,15 @@ export async function sendBookingRequestNotificationEmail(params: BookingRequest
 
   return sendNormalEmail({
     toEmail: adminEmail,
-    name: 'ArtisTant Concierge',
+    name: 'team',
     subject,
+    kickerText: 'Booking request',
+    headline: `${params.artistDisplayName}`,
+    accentPart: 'has a booking request.',
     messageBody,
-    ctaText: 'Review Admin Dashboard',
-    ctaUrl: 'https://artistant.in/admin',
-    senderAlias: 'official'
+    ctaText: 'Open the admin console',
+    ctaUrl: `${SITE_URL}/admin`,
+    senderAlias: 'official',
   });
 }
 

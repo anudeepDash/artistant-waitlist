@@ -1,0 +1,98 @@
+.phone {
+  position: relative;
+  width: var(--w, 290px);
+  aspect-ratio: 0.485;
+  border-radius: calc(var(--w, 290px) * 0.16);
+  padding: calc(var(--w, 290px) * 0.035);
+  background: linear-gradient(145deg, #3a3936, #121212 40%, #2a2a28);
+  box-shadow:
+    0 60px 90px -40px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.06);
+}
+
+.screen {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: calc(var(--w, 290px) * 0.13);
+  overflow: hidden;
+  background: #0a0a0a;
+  color: #f4f2ee;
+  font-size: calc(var(--w, 290px) * 0.045);
+}
+
+.island {
+  position: absolute;
+  top: 2.2%;
+  left: 50%;
+  width: 32%;
+  height: 4.4%;
+  transform: translateX(-50%);
+  border-radius: 99px;
+  background: #000;
+  z-index: 5;
+}
+
+.status {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4.5% 9% 0;
+  font-size: 0.9em;
+  font-weight: 600;
+}
+
+.statusIcons {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.statusIcons i {
+  display: inline-block;
+  width: 1.3em;
+  height: 0.7em;
+  border-radius: 3px;
+  border: 1.5px solid currentColor;
+  position: relative;
+}
+
+.statusIcons i::after {
+  content: '';
+  position: absolute;
+  inset: 1.5px 30% 1.5px 1.5px;
+  background: currentColor;
+  border-radius: 1px;
+}
+
+.body {
+  position: absolute;
+  inset: 11% 0 0;
+  padding: 0 6%;
+  display: flex;
+  flex-direction: column;
+}
+
+.bare {
+  position: absolute;
+  inset: 0;
+}
+
+.bare img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  display: block;
+}
+
+.statusOver {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}

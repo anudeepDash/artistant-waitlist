@@ -1,0 +1,288 @@
+.track {
+  position: relative;
+  height: 320vh;
+}
+
+.sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+  background:
+    radial-gradient(45% 55% at 75% 100%, rgba(242, 90, 43, 0.2), transparent 70%),
+    radial-gradient(35% 40% at 10% 15%, rgba(124, 92, 255, 0.1), transparent 70%),
+    var(--bg);
+}
+
+/* Two zones that never overlap: the words on the left, the phone stage on the right. */
+.inner {
+  height: 100%;
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 96px var(--gutter) 32px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(24px, 4vw, 64px);
+  align-items: center;
+}
+
+.copy {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+/* Both states sit in the same grid cell, so the box is always as tall as the taller one. */
+.stack { display: grid; }
+
+.layer {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.kicker i {
+  font-style: normal;
+  color: var(--accent);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-stretch: 90%;
+  font-size: clamp(44px, 6.2vw, 96px);
+  line-height: 0.95;
+  letter-spacing: -0.032em;
+  color: var(--ink);
+}
+
+.title em {
+  font-style: normal;
+  color: var(--ink-3);
+}
+
+.after { position: relative; }
+
+.after .title em {
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.grad {
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text {
+  margin: 0;
+  max-width: 440px;
+  font-size: clamp(15px, 1.3vw, 18px);
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 460px;
+  padding: 14px 18px 14px 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+.stat b {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 12px;
+  background: var(--brand-orange);
+  color: #fff;
+  font-family: var(--f-mono);
+  font-weight: 600;
+  font-size: 16px;
+}
+
+/* The stage is a size container, so the phone scales to whatever height is left. */
+.stage {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+  container-type: size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bubbles {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.bubble {
+  position: absolute;
+  max-width: min(240px, 44%);
+}
+
+.phoneWrap {
+  position: relative;
+  z-index: 2;
+}
+
+.chat {
+  position: relative;
+  padding: 9px 13px 7px;
+  border-radius: 16px 16px 16px 4px;
+  background: #1f1f1f;
+  color: #ece9e3;
+  font-size: 14px;
+  line-height: 1.35;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 20px 34px -14px rgba(0, 0, 0, 0.8);
+}
+
+.chatMine {
+  composes: chat;
+  background: #10362a;
+  border-radius: 16px 16px 4px 16px;
+}
+
+.chatMeta {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.ticks { color: #53bdeb; }
+
+/* Lock screen */
+
+.lock {
+  text-align: center;
+  padding-top: 6%;
+}
+
+.lockDate {
+  font-size: 0.85em;
+  opacity: 0.75;
+}
+
+.lockTime {
+  font-family: var(--f-display);
+  font-size: 3.6em;
+  font-weight: 600;
+  font-stretch: 90%;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin-top: 2%;
+}
+
+.notes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  margin-top: 8%;
+}
+
+.note {
+  display: flex;
+  gap: 0.65em;
+  padding: 0.65em 0.7em;
+  border-radius: 1.15em;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  text-align: left;
+}
+
+.noteIcon {
+  flex-shrink: 0;
+  width: 2.3em;
+  height: 2.3em;
+  border-radius: 0.65em;
+  background: #0a0a0a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.noteIcon img {
+  width: 52%;
+  height: auto;
+}
+
+.noteHead {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72em;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.noteText {
+  margin-top: 1px;
+  font-size: 0.82em;
+  line-height: 1.3;
+}
+
+.noteText b { font-weight: 700; }
+
+@media (max-width: 900px) {
+  .inner {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+    align-items: stretch;
+    gap: 16px;
+    padding-top: 84px;
+    padding-bottom: 20px;
+  }
+  .copy { gap: 0; }
+  .layer { gap: 12px; }
+  .title { font-size: clamp(38px, 10.5vw, 60px); }
+  .text { font-size: 15px; }
+  .stat { display: none; }
+  .bubble { max-width: min(200px, 48%); }
+  .chat { font-size: 13px; }
+  .hideSm { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track { height: auto; }
+  .sticky { position: relative; height: auto; }
+  .inner { height: auto; min-height: 100svh; }
+  .stage { height: 640px; }
+}

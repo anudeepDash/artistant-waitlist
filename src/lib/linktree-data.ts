@@ -127,16 +127,6 @@ export const DEFAULT_LINKTREE_ITEMS: LinktreeItem[] = [
     clicksCount: 3100
   },
   {
-    id: 'youtube',
-    title: 'Artistant Live YouTube Channel',
-    description: 'High-definition live session recordings, interviews & performance videos.',
-    url: 'https://youtube.com/@artistant',
-    category: 'community',
-    iconName: 'Youtube',
-    isExternal: true,
-    clicksCount: 1980
-  },
-  {
     id: 'linkedin',
     title: 'Artistant Company Page on LinkedIn',
     description: 'Corporate announcements, partnerships, investor syncs & team news.',

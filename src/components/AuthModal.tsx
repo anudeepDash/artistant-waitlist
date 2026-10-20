@@ -16,7 +16,7 @@ import { logActivityAction } from '@/lib/admin-actions';
 import { uploadProfilePhotoAction } from '@/lib/profile-actions';
 import { compressImage } from '@/lib/image-utils';
 
-import { auth, isFirebaseConfigured } from '@/lib/firebase/client';
+import { auth, isFirebaseConfigured, ensureRecaptchaConfig } from '@/lib/firebase/client';
 import { RecaptchaVerifier, signInWithPhoneNumber, updateProfile } from 'firebase/auth';
 import SuccessConfirmation from '@/components/SuccessConfirmation';
 import ImageCropperModal from '@/components/ImageCropperModal';
@@ -697,6 +697,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
         document.body.appendChild(container);
 
         checkpoint = "instantiate-RecaptchaVerifier";
+        await ensureRecaptchaConfig();
         verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
           size: 'invisible',
         });
@@ -832,10 +833,10 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
           {/* ── Modal Card ─────────────────────────────────── */}
           <motion.div
             key="auth-card"
-            className="relative w-full max-w-full md:max-w-4xl mx-0 md:mx-4 rounded-t-[1.75rem] md:rounded-[2rem] shadow-[0_32px_80px_-20px_rgba(0,0,0,0.8)] overflow-y-auto md:overflow-hidden max-h-[92vh] md:max-h-[85vh] flex flex-col md:flex-row border-t md:border border-white/10 bg-[#121218] mobile-touch-scroll"
-            style={{ 
-              background: 'rgba(18, 18, 24, 0.98)',
-              backdropFilter: 'blur(24px)',
+            className="relative w-full max-w-full md:max-w-[1000px] mx-0 md:mx-4 rounded-t-[1.75rem] md:rounded-[28px] shadow-[0_40px_120px_-30px_rgba(0,0,0,0.9)] overflow-y-auto md:overflow-hidden max-h-[92vh] md:h-[min(700px,88vh)] flex flex-col md:flex-row border-t md:border border-white/10 mobile-touch-scroll"
+            style={{
+              background: '#0e0e0e',
+              fontFamily: 'var(--font-geist), var(--font-inter), system-ui, sans-serif',
             }}
             variants={cardVariants}
             initial="hidden"
@@ -846,44 +847,71 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
             {/* Small drag bar indicator on mobile */}
             <div className="w-12 h-1 bg-white/20 rounded-full mx-auto my-2 shrink-0 md:hidden" />
             {/* ── Left Column (Brand / Visual) ── */}
-            <div className="hidden md:flex flex-col justify-between w-1/2 p-10 relative overflow-hidden bg-black/50">
-              {/* Decorative gradients */}
-              <div className="absolute top-0 left-0 w-full h-full opacity-40 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-brand-orange/40 via-transparent to-transparent pointer-events-none" />
-              <div className="absolute bottom-0 right-0 w-full h-full opacity-40 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-brand-purple/40 via-transparent to-transparent pointer-events-none" />
-              
-              {/* Big Watermark Logo */}
-              <img 
-                src="/logo_a_highres.png" 
-                alt="" 
-                className="absolute -bottom-[10%] -left-[10%] h-[100%] w-auto max-w-none opacity-40 pointer-events-none z-0"
+            <div className="hidden md:flex flex-col w-[46%] shrink-0 relative overflow-hidden">
+              <img src="/photos/fire-stage.webp" alt="" className="absolute inset-0 w-full h-full object-cover" />
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{ background: 'linear-gradient(180deg, rgba(10,10,10,0.7) 0%, rgba(10,10,10,0.15) 30%, rgba(10,10,10,0.55) 60%, #0a0a0a 100%)' }}
+              />
+              <div
+                className="absolute inset-0 pointer-events-none mix-blend-screen"
+                style={{ background: 'radial-gradient(60% 45% at 30% 100%, rgba(242,90,43,0.35), transparent 70%)' }}
               />
 
-              {/* Bottom Gradient Overlay for Text Visibility */}
-              <div 
-                className="absolute bottom-0 left-0 w-full h-[45%] pointer-events-none z-0"
-                style={{ background: 'linear-gradient(to top, rgba(0,0,0,1) 0px, rgba(0,0,0,1) 3px, rgba(0,0,0,0.8) 20%, transparent 100%)' }}
-              />
-              
-              <div className="relative z-10 mt-auto">
-                <h3 className="font-display text-4xl font-bold text-white leading-[1.15] mb-4 drop-shadow-md">
-                  Your creative journey starts here.
-                </h3>
-                <p className="text-white/60 text-sm leading-relaxed max-w-[85%] font-medium">
-                  {initialUsername 
-                    ? "Sign in to lock in your unique artist username before the platform launches."
-                    : "Join the exclusive waitlist and secure your spot among the world's best emerging artists."}
-                </p>
+              <div className="relative z-10 flex flex-col h-full p-9">
+                <img src="/brand/wordmark.svg" alt="Artistant" className="h-[22px] w-auto self-start" />
+
+                <div className="mt-auto">
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md border border-white/10 font-mono text-[11px] tracking-[0.14em] uppercase text-white/80">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#3ddc97]" />
+                    {initialUsername ? 'Saving your name' : 'Founding artists · Bengaluru'}
+                  </div>
+                  <h3
+                    className="mt-5 text-white text-[44px] leading-[0.95] font-bold"
+                    style={{ fontFamily: 'var(--font-bricolage), system-ui, sans-serif', fontStretch: '90%', letterSpacing: '-0.032em' }}
+                  >
+                    {initialUsername ? (
+                      <>
+                        Your name,
+                        <br />
+                        <span className="text-[#F25A2B]">saved.</span>
+                      </>
+                    ) : (
+                      <>
+                        The stage is
+                        <br />
+                        <span className="text-[#F25A2B]">yours.</span>
+                      </>
+                    )}
+                  </h3>
+                  <ul className="mt-6 space-y-3 text-[14px] text-white/75">
+                    {[
+                      initialUsername ? `artistant.in/${initialUsername.trim().toLowerCase()} is held for you` : 'Claim artistant.in/yourname for free',
+                      'Get paid half before you travel',
+                      'Be first in line when your city opens',
+                    ].map((t) => (
+                      <li key={t} className="flex items-center gap-3 min-w-0">
+                        <span className="shrink-0 w-5 h-5 rounded-full bg-[#F25A2B]/20 text-[#F25A2B] flex items-center justify-center">
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M20 6 9 17l-5-5" />
+                          </svg>
+                        </span>
+                        <span className="truncate">{t}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             </div>
 
             {/* ── Right Column (Form) ── */}
-            <div className="w-full md:w-1/2 p-6 sm:p-10 relative flex flex-col justify-center min-h-[500px]">
+            <div className="w-full md:flex-1 p-6 sm:p-10 relative flex flex-col md:overflow-y-auto min-h-[500px] md:min-h-0">
               
               {/* Close button (X) */}
               <button
                 type="button"
                 onClick={onClose}
-                className="absolute top-4 right-4 sm:top-6 sm:right-6 w-8 h-8 rounded-full flex items-center justify-center border border-white/5 bg-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all duration-300 z-50"
+                className="absolute top-4 right-4 sm:top-5 sm:right-5 w-9 h-9 rounded-full flex items-center justify-center border border-white/10 bg-white/5 text-white/60 hover:text-white hover:bg-white/10 transition-all duration-300 z-50"
                 aria-label="Close modal"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -909,14 +937,14 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                     initial="initial"
                     animate="animate"
                     exit="exit"
-                    className="relative z-10 w-full max-w-sm mx-auto"
+                    className="relative z-10 w-full max-w-sm m-auto py-4"
                   >
                     {/* Header logic */}
                     {['main', 'phone_entry'].includes(view) && (
                       <div className="text-center mb-8">
-                        <h2 className="font-display text-3xl font-bold text-white mb-2">
+                        <h2 className="font-[family-name:var(--font-bricolage)] tracking-[-0.025em] text-3xl font-bold text-white mb-2 break-words">
                           {initialUsername ? (
-                            <>Reserve <span style={{ background: 'linear-gradient(135deg, #F25A2B, #7C5CFF)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>@{initialUsername.trim().toLowerCase()}</span></>
+                            <>Reserve <span style={{ background: 'linear-gradient(100deg, #F25A2B, #D4567A 45%, #7C5CFF)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>@{initialUsername.trim().toLowerCase()}</span></>
                           ) : 'Welcome'}
                         </h2>
                         <p className="text-white/50 text-sm font-medium">
@@ -981,7 +1009,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                               value={extraName}
                               onChange={(e) => setExtraName(e.target.value)}
                               placeholder="Full Name (e.g. Jasmine Sandlas)"
-                              className="w-full px-5 py-4 bg-black/40 border border-white/5 rounded-2xl text-white placeholder-white/30 text-sm focus:border-brand-purple/50 focus:ring-1 focus:ring-brand-purple/50 transition-all duration-300 outline-none shadow-inner"
+                              className="w-full px-5 py-4 bg-white/[0.04] border border-white/10 rounded-2xl text-white placeholder-white/30 text-sm focus:border-[#F25A2B]/60 focus:ring-1 focus:ring-[#F25A2B]/30 transition-all duration-300 outline-none shadow-inner"
                               autoComplete="name"
                             />
                           </div>
@@ -993,7 +1021,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                               value={email}
                               onChange={(e) => setEmail(e.target.value)}
                               placeholder="Email address"
-                              className="w-full px-5 py-4 bg-black/40 border border-white/5 rounded-2xl text-white placeholder-white/30 text-sm focus:border-brand-purple/50 focus:ring-1 focus:ring-brand-purple/50 transition-all duration-300 outline-none shadow-inner"
+                              className="w-full px-5 py-4 bg-white/[0.04] border border-white/10 rounded-2xl text-white placeholder-white/30 text-sm focus:border-[#F25A2B]/60 focus:ring-1 focus:ring-[#F25A2B]/30 transition-all duration-300 outline-none shadow-inner"
                               autoComplete="email"
                             />
                           </div>
@@ -1006,7 +1034,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                               onChange={(e) => setPassword(e.target.value)}
                               placeholder="Password"
                               minLength={6}
-                              className="w-full px-5 py-4 bg-black/40 border border-white/5 rounded-2xl text-white placeholder-white/30 text-sm focus:border-brand-purple/50 focus:ring-1 focus:ring-brand-purple/50 transition-all duration-300 outline-none shadow-inner"
+                              className="w-full px-5 py-4 bg-white/[0.04] border border-white/10 rounded-2xl text-white placeholder-white/30 text-sm focus:border-[#F25A2B]/60 focus:ring-1 focus:ring-[#F25A2B]/30 transition-all duration-300 outline-none shadow-inner"
                               autoComplete="current-password"
                             />
                           </div>
@@ -1015,7 +1043,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                             <button
                               type="button"
                               onClick={() => { setView('forgot_password'); setError(null); }}
-                              className="text-xs font-medium text-brand-purple hover:text-brand-orange transition-colors"
+                              className="text-xs font-medium text-white/60 hover:text-[#F25A2B] transition-colors"
                             >
                               Forgot Password?
                             </button>
@@ -1024,10 +1052,10 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                           <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-4 rounded-2xl font-bold text-sm text-white shadow-[0_4px_14px_0_rgba(124,92,255,0.39)]
-                                       transition-all hover:scale-[1.02] hover:shadow-[0_6px_20px_rgba(124,92,255,0.23)] active:scale-[0.98] 
+                            className="w-full py-4 rounded-2xl font-bold text-sm text-white shadow-[0_14px_34px_-14px_rgba(212,86,122,0.8)]
+                                       transition-all hover:scale-[1.02] hover:shadow-[0_18px_40px_-14px_rgba(212,86,122,0.9)] active:scale-[0.98] 
                                        disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                            style={{ background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)' }}
+                            style={{ background: 'linear-gradient(100deg, #F25A2B 0%, #D4567A 45%, #7C5CFF 100%)' }}
                           >
                             {loading ? (
                               <span className="flex items-center justify-center gap-2">
@@ -1046,7 +1074,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                     {view === 'forgot_password' && (
                       <div className="text-center">
                         <div className="mb-8">
-                          <h2 className="font-display text-3xl font-bold text-white mb-2">Reset Password</h2>
+                          <h2 className="font-[family-name:var(--font-bricolage)] tracking-[-0.025em] text-3xl font-bold text-white mb-2">Reset Password</h2>
                           <p className="text-white/50 text-sm font-medium">
                             Enter your email to receive a reset link.
                           </p>
@@ -1073,7 +1101,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder="Email address"
-                                className="w-full px-5 py-4 bg-black/40 border border-white/5 rounded-2xl text-white placeholder-white/30 text-sm focus:border-brand-purple/50 focus:ring-1 focus:ring-brand-purple/50 transition-all duration-300 outline-none shadow-inner"
+                                className="w-full px-5 py-4 bg-white/[0.04] border border-white/10 rounded-2xl text-white placeholder-white/30 text-sm focus:border-[#F25A2B]/60 focus:ring-1 focus:ring-[#F25A2B]/30 transition-all duration-300 outline-none shadow-inner"
                                 autoComplete="email"
                                 autoFocus
                               />
@@ -1081,10 +1109,10 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                             <button
                               type="submit"
                               disabled={loading}
-                              className="w-full py-4 rounded-2xl font-bold text-sm text-white shadow-[0_4px_14px_0_rgba(124,92,255,0.39)]
-                                         transition-all hover:scale-[1.02] hover:shadow-[0_6px_20px_rgba(124,92,255,0.23)] active:scale-[0.98] 
+                              className="w-full py-4 rounded-2xl font-bold text-sm text-white shadow-[0_14px_34px_-14px_rgba(212,86,122,0.8)]
+                                         transition-all hover:scale-[1.02] hover:shadow-[0_18px_40px_-14px_rgba(212,86,122,0.9)] active:scale-[0.98] 
                                          disabled:opacity-50 disabled:cursor-not-allowed"
-                              style={{ background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)' }}
+                              style={{ background: 'linear-gradient(100deg, #F25A2B 0%, #D4567A 45%, #7C5CFF 100%)' }}
                             >
                               {loading ? 'Sending link…' : 'Send Reset Link'}
                             </button>
@@ -1105,7 +1133,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                     {view === 'phone_entry' && (
                       <>
                         <form onSubmit={handleSendOtp} className="space-y-4">
-                          <div className="relative flex items-center bg-black/40 border border-white/5 rounded-2xl text-white focus-within:border-brand-purple/50 focus-within:ring-1 focus-within:ring-brand-purple/50 transition-all duration-300 shadow-inner overflow-hidden">
+                          <div className="relative flex items-center bg-white/[0.04] border border-white/10 rounded-2xl text-white focus-within:border-[#F25A2B]/60 focus-within:ring-1 focus-within:ring-[#F25A2B]/30 transition-all duration-300 shadow-inner overflow-hidden">
                             <span className="pl-5 pr-3 text-white/40 font-mono font-semibold select-none border-r border-white/5 text-sm">+91</span>
                             <input
                               type="tel"
@@ -1123,10 +1151,10 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                           <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-4 rounded-2xl font-bold text-sm text-white shadow-[0_4px_14px_0_rgba(124,92,255,0.39)]
-                                       transition-all hover:scale-[1.02] hover:shadow-[0_6px_20px_rgba(124,92,255,0.23)] active:scale-[0.98] 
+                            className="w-full py-4 rounded-2xl font-bold text-sm text-white shadow-[0_14px_34px_-14px_rgba(212,86,122,0.8)]
+                                       transition-all hover:scale-[1.02] hover:shadow-[0_18px_40px_-14px_rgba(212,86,122,0.9)] active:scale-[0.98] 
                                        disabled:opacity-50 disabled:cursor-not-allowed"
-                            style={{ background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)' }}
+                            style={{ background: 'linear-gradient(100deg, #F25A2B 0%, #D4567A 45%, #7C5CFF 100%)' }}
                           >
                             {loading ? 'Sending OTP…' : 'Send Code'}
                           </button>
@@ -1148,7 +1176,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                     {view === 'phone_verify' && (
                       <div className="text-center">
                         <div className="mb-8">
-                          <h2 className="font-display text-3xl font-bold text-white mb-2">Verify Code</h2>
+                          <h2 className="font-[family-name:var(--font-bricolage)] tracking-[-0.025em] text-3xl font-bold text-white mb-2">Verify Code</h2>
                           <p className="text-white/50 text-sm font-medium">
                             Sent to <span className="text-white">+91 {phoneNumber}</span>
                           </p>
@@ -1168,7 +1196,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                                 value={val}
                                 onChange={(e) => handleOtpCellChange(e.target.value, idx)}
                                 onKeyDown={(e) => handleOtpCellKeyDown(e, idx)}
-                                className="w-10 h-12 sm:w-11 sm:h-14 text-center text-xl font-bold font-mono bg-black/40 border border-white/10 rounded-xl text-white focus:border-brand-purple focus:ring-1 focus:ring-brand-purple outline-none transition-all duration-200"
+                                className="w-10 h-12 sm:w-11 sm:h-14 text-center text-xl font-bold font-mono bg-white/[0.04] border border-white/10 rounded-xl text-white focus:border-[#F25A2B] focus:ring-1 focus:ring-[#F25A2B]/40 outline-none transition-all duration-200"
                                 style={{ boxShadow: val ? '0 0 15px rgba(124,92,255,0.2)' : 'none' }}
                                 initial={{ scale: 0.85, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
@@ -1180,10 +1208,10 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                           <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-4 rounded-2xl font-bold text-sm text-white shadow-[0_4px_14px_0_rgba(124,92,255,0.39)]
-                                       transition-all hover:scale-[1.02] hover:shadow-[0_6px_20px_rgba(124,92,255,0.23)] active:scale-[0.98] 
+                            className="w-full py-4 rounded-2xl font-bold text-sm text-white shadow-[0_14px_34px_-14px_rgba(212,86,122,0.8)]
+                                       transition-all hover:scale-[1.02] hover:shadow-[0_18px_40px_-14px_rgba(212,86,122,0.9)] active:scale-[0.98] 
                                        disabled:opacity-50 disabled:cursor-not-allowed"
-                            style={{ background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)' }}
+                            style={{ background: 'linear-gradient(100deg, #F25A2B 0%, #D4567A 45%, #7C5CFF 100%)' }}
                           >
                             {loading ? 'Verifying…' : 'Verify & Continue'}
                           </button>
@@ -1210,7 +1238,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                     {view === 'collect_phone' && (
                       <div className="text-center">
                         <div className="mb-8">
-                          <h2 className="font-display text-3xl font-bold text-white mb-2">Almost there</h2>
+                          <h2 className="font-[family-name:var(--font-bricolage)] tracking-[-0.025em] text-3xl font-bold text-white mb-2">Almost there</h2>
                           <p className="text-white/50 text-sm font-medium">
                             Add your phone number to secure your account.
                           </p>
@@ -1229,7 +1257,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                           }}
                           className="space-y-4"
                         >
-                          <div className="relative flex items-center bg-black/40 border border-white/5 rounded-2xl text-white focus-within:border-brand-purple/50 focus-within:ring-1 focus-within:ring-brand-purple/50 transition-all duration-300 shadow-inner overflow-hidden">
+                          <div className="relative flex items-center bg-white/[0.04] border border-white/10 rounded-2xl text-white focus-within:border-[#F25A2B]/60 focus-within:ring-1 focus-within:ring-[#F25A2B]/30 transition-all duration-300 shadow-inner overflow-hidden">
                             <span className="pl-5 pr-3 text-white/40 font-mono font-semibold select-none border-r border-white/5 text-sm">+91</span>
                             <input
                               type="tel"
@@ -1247,10 +1275,10 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                           <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-4 rounded-2xl font-bold text-sm text-white shadow-[0_4px_14px_0_rgba(124,92,255,0.39)]
-                                       transition-all hover:scale-[1.02] hover:shadow-[0_6px_20px_rgba(124,92,255,0.23)] active:scale-[0.98] 
+                            className="w-full py-4 rounded-2xl font-bold text-sm text-white shadow-[0_14px_34px_-14px_rgba(212,86,122,0.8)]
+                                       transition-all hover:scale-[1.02] hover:shadow-[0_18px_40px_-14px_rgba(212,86,122,0.9)] active:scale-[0.98] 
                                        disabled:opacity-50 disabled:cursor-not-allowed"
-                            style={{ background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)' }}
+                            style={{ background: 'linear-gradient(100deg, #F25A2B 0%, #D4567A 45%, #7C5CFF 100%)' }}
                           >
                             Continue
                           </button>
@@ -1262,7 +1290,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                     {view === 'collect_email' && (
                       <div className="text-center">
                         <div className="mb-8">
-                          <h2 className="font-display text-3xl font-bold text-white mb-2">Almost there</h2>
+                          <h2 className="font-[family-name:var(--font-bricolage)] tracking-[-0.025em] text-3xl font-bold text-white mb-2">Almost there</h2>
                           <p className="text-white/50 text-sm font-medium">
                             Add your email address to secure your account.
                           </p>
@@ -1287,7 +1315,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                               value={extraEmail}
                               onChange={(e) => setExtraEmail(e.target.value)}
                               placeholder="Email address"
-                              className="w-full px-5 py-4 bg-black/40 border border-white/5 rounded-2xl text-white placeholder-white/30 text-sm focus:border-brand-purple/50 focus:ring-1 focus:ring-brand-purple/50 transition-all duration-300 outline-none shadow-inner"
+                              className="w-full px-5 py-4 bg-white/[0.04] border border-white/10 rounded-2xl text-white placeholder-white/30 text-sm focus:border-[#F25A2B]/60 focus:ring-1 focus:ring-[#F25A2B]/30 transition-all duration-300 outline-none shadow-inner"
                               autoComplete="email"
                               autoFocus
                             />
@@ -1296,10 +1324,10 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                           <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-4 rounded-2xl font-bold text-sm text-white shadow-[0_4px_14px_0_rgba(124,92,255,0.39)]
-                                       transition-all hover:scale-[1.02] hover:shadow-[0_6px_20px_rgba(124,92,255,0.23)] active:scale-[0.98] 
+                            className="w-full py-4 rounded-2xl font-bold text-sm text-white shadow-[0_14px_34px_-14px_rgba(212,86,122,0.8)]
+                                       transition-all hover:scale-[1.02] hover:shadow-[0_18px_40px_-14px_rgba(212,86,122,0.9)] active:scale-[0.98] 
                                        disabled:opacity-50 disabled:cursor-not-allowed"
-                            style={{ background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)' }}
+                            style={{ background: 'linear-gradient(100deg, #F25A2B 0%, #D4567A 45%, #7C5CFF 100%)' }}
                           >
                             Continue
                           </button>
@@ -1340,7 +1368,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                     initial="initial"
                     animate="animate"
                     exit="exit"
-                    className="relative z-10 w-full max-w-sm mx-auto"
+                    className="relative z-10 w-full max-w-sm m-auto py-4"
                   >
                     {/* ── Progress dots ── */}
                     <div className="flex items-center justify-center gap-1.5 mb-8">
@@ -1372,7 +1400,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                           transition={{ duration: 0.3, ease: 'easeOut' }}
                         >
                           <div className="text-center mb-6">
-                            <h2 className="font-display text-3xl font-bold text-white mb-2">What do you do?</h2>
+                            <h2 className="font-[family-name:var(--font-bricolage)] tracking-[-0.025em] text-3xl font-bold text-white mb-2">What do you do?</h2>
                             <p className="text-white/50 text-sm font-medium">Select your primary creative focus</p>
                           </div>
 
@@ -1405,7 +1433,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                           transition={{ duration: 0.3, ease: 'easeOut' }}
                         >
                           <div className="text-center mb-6">
-                            <h2 className="font-display text-3xl font-bold text-white mb-2">Your niche</h2>
+                            <h2 className="font-[family-name:var(--font-bricolage)] tracking-[-0.025em] text-3xl font-bold text-white mb-2">Your niche</h2>
                             <p className="text-white/50 text-sm font-medium">
                               Select up to 3 genres for{' '}
                               <span className="text-brand-orange font-bold">
@@ -1466,10 +1494,10 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                               type="button"
                               disabled={selectedGenres.length === 0}
                               onClick={() => { setProfileSubStep('location'); setError(null); }}
-                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_4px_14px_0_rgba(124,92,255,0.39)]
-                                         transition-all hover:scale-[1.02] hover:shadow-[0_6px_20px_rgba(124,92,255,0.23)] active:scale-[0.98] 
+                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_14px_34px_-14px_rgba(212,86,122,0.8)]
+                                         transition-all hover:scale-[1.02] hover:shadow-[0_18px_40px_-14px_rgba(212,86,122,0.9)] active:scale-[0.98] 
                                          disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                              style={{ background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)' }}
+                              style={{ background: 'linear-gradient(100deg, #F25A2B 0%, #D4567A 45%, #7C5CFF 100%)' }}
                             >
                               Continue →
                             </button>
@@ -1487,7 +1515,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                           transition={{ duration: 0.3, ease: 'easeOut' }}
                         >
                           <div className="text-center mb-6">
-                            <h2 className="font-display text-3xl font-bold text-white mb-2">Where you play</h2>
+                            <h2 className="font-[family-name:var(--font-bricolage)] tracking-[-0.025em] text-3xl font-bold text-white mb-2">Where you play</h2>
                             <p className="text-white/50 text-sm font-medium">Helps us route the right gigs your way.</p>
                           </div>
 
@@ -1618,8 +1646,8 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                                 }
                                 setError(null);
                               }}
-                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_4px_14px_0_rgba(124,92,255,0.39)] transition-all hover:scale-[1.02] hover:shadow-[0_6px_20px_rgba(124,92,255,0.23)] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                              style={{ background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)' }}
+                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_14px_34px_-14px_rgba(212,86,122,0.8)] transition-all hover:scale-[1.02] hover:shadow-[0_18px_40px_-14px_rgba(212,86,122,0.9)] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                              style={{ background: 'linear-gradient(100deg, #F25A2B 0%, #D4567A 45%, #7C5CFF 100%)' }}
                             >
                               Continue →
                             </button>
@@ -1637,7 +1665,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                           transition={{ duration: 0.3, ease: 'easeOut' }}
                         >
                           <div className="text-center mb-6">
-                            <h2 className="font-display text-3xl font-bold text-white mb-2">
+                            <h2 className="font-[family-name:var(--font-bricolage)] tracking-[-0.025em] text-3xl font-bold text-white mb-2">
                               {(!pendingUser?.displayName || pendingUser.displayName.trim().length <= 1) && (!extraName || extraName.trim().length <= 1) ? 'Your Full Name' : (!pendingUser?.email ? 'Enter Email' : 'Enter Phone')}
                             </h2>
                             <p className="text-white/50 text-sm font-medium">
@@ -1728,8 +1756,8 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                                 setError(null);
                                 setProfileSubStep('links');
                               }}
-                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_4px_14px_0_rgba(124,92,255,0.39)] transition-all hover:scale-[1.02] hover:shadow-[0_6px_20px_rgba(124,92,255,0.23)] active:scale-[0.98]"
-                              style={{ background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)' }}
+                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_14px_34px_-14px_rgba(212,86,122,0.8)] transition-all hover:scale-[1.02] hover:shadow-[0_18px_40px_-14px_rgba(212,86,122,0.9)] active:scale-[0.98]"
+                              style={{ background: 'linear-gradient(100deg, #F25A2B 0%, #D4567A 45%, #7C5CFF 100%)' }}
                             >
                               Continue →
                             </button>
@@ -1747,7 +1775,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                           transition={{ duration: 0.3, ease: 'easeOut' }}
                         >
                           <div className="text-center mb-6">
-                            <h2 className="font-display text-3xl font-bold text-white mb-2">Plug in your sound</h2>
+                            <h2 className="font-[family-name:var(--font-bricolage)] tracking-[-0.025em] text-3xl font-bold text-white mb-2">Plug in your sound</h2>
                             <p className="text-white/50 text-sm font-medium">Paste any of these — they show up on your profile.</p>
                           </div>
 
@@ -1818,10 +1846,10 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                               type="button"
                               disabled={!instagramUrl.trim()}
                               onClick={() => { setProfileSubStep('bio'); setError(null); }}
-                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_4px_14px_0_rgba(124,92,255,0.39)]
-                                         transition-all hover:scale-[1.02] hover:shadow-[0_6px_20px_rgba(124,92,255,0.23)] active:scale-[0.98]
+                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_14px_34px_-14px_rgba(212,86,122,0.8)]
+                                         transition-all hover:scale-[1.02] hover:shadow-[0_18px_40px_-14px_rgba(212,86,122,0.9)] active:scale-[0.98]
                                          disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                              style={{ background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)' }}
+                              style={{ background: 'linear-gradient(100deg, #F25A2B 0%, #D4567A 45%, #7C5CFF 100%)' }}
                             >
                               Continue →
                             </button>
@@ -1839,7 +1867,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                           transition={{ duration: 0.3, ease: 'easeOut' }}
                         >
                           <div className="text-center mb-6">
-                            <h2 className="font-display text-3xl font-bold text-white mb-2">Your story, briefly</h2>
+                            <h2 className="font-[family-name:var(--font-bricolage)] tracking-[-0.025em] text-3xl font-bold text-white mb-2">Your story, briefly</h2>
                             <p className="text-white/50 text-sm font-medium">A line or two about your sound and your live energy.</p>
                           </div>
 
@@ -1850,7 +1878,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                               placeholder="e.g. Indie-folk trio out of Bangalore. Mellow weddings, smoky pub sets, the occasional NH7 stage."
                               maxLength={200}
                               rows={5}
-                              className="w-full px-5 py-4 bg-black/40 border border-white/5 rounded-2xl text-white placeholder-white/30 text-sm focus:border-[#7C5CFF] focus:ring-1 focus:ring-[#7C5CFF] transition-all duration-300 outline-none resize-none shadow-inner"
+                              className="w-full px-5 py-4 bg-white/[0.04] border border-white/10 rounded-2xl text-white placeholder-white/30 text-sm focus:border-[#7C5CFF] focus:ring-1 focus:ring-[#7C5CFF] transition-all duration-300 outline-none resize-none shadow-inner"
                             />
                             <div className="text-right text-xs text-white/40 mt-2">{bio.length} / 200</div>
                           </div>
@@ -1867,9 +1895,9 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                             <button
                               type="button"
                               onClick={() => { setProfileSubStep('profile_pic'); setError(null); }}
-                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_4px_14px_0_rgba(124,92,255,0.39)]
-                                         transition-all hover:scale-[1.02] hover:shadow-[0_6px_20px_rgba(124,92,255,0.23)] active:scale-[0.98]"
-                              style={{ background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)' }}
+                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_14px_34px_-14px_rgba(212,86,122,0.8)]
+                                         transition-all hover:scale-[1.02] hover:shadow-[0_18px_40px_-14px_rgba(212,86,122,0.9)] active:scale-[0.98]"
+                              style={{ background: 'linear-gradient(100deg, #F25A2B 0%, #D4567A 45%, #7C5CFF 100%)' }}
                             >
                               {bio ? 'Continue →' : 'Skip for now →'}
                             </button>
@@ -1887,7 +1915,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                           transition={{ duration: 0.3, ease: 'easeOut' }}
                         >
                           <div className="text-center mb-6">
-                            <h2 className="font-display text-3xl font-bold text-white mb-2 flex items-center justify-center gap-2">
+                            <h2 className="font-[family-name:var(--font-bricolage)] tracking-[-0.025em] text-3xl font-bold text-white mb-2 flex items-center justify-center gap-2">
                               Add a profile picture
                               <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 uppercase tracking-widest">Required</span>
                             </h2>
@@ -1937,9 +1965,9 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                               type="button"
                               disabled={!profilePhotoFile}
                               onClick={() => { setProfileSubStep('preview'); setError(null); }}
-                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_4px_14px_0_rgba(124,92,255,0.39)]
-                                         transition-all hover:scale-[1.02] hover:shadow-[0_6px_20px_rgba(124,92,255,0.23)] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                              style={{ background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)' }}
+                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_14px_34px_-14px_rgba(212,86,122,0.8)]
+                                         transition-all hover:scale-[1.02] hover:shadow-[0_18px_40px_-14px_rgba(212,86,122,0.9)] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                              style={{ background: 'linear-gradient(100deg, #F25A2B 0%, #D4567A 45%, #7C5CFF 100%)' }}
                             >
                               Continue →
                             </button>
@@ -1957,7 +1985,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                           transition={{ duration: 0.3, ease: 'easeOut' }}
                         >
                           <div className="text-center mb-6">
-                            <h2 className="font-display text-3xl font-bold text-white mb-2">Looking good</h2>
+                            <h2 className="font-[family-name:var(--font-bricolage)] tracking-[-0.025em] text-3xl font-bold text-white mb-2">Looking good</h2>
                             <p className="text-white/50 text-sm font-medium">This is what clients will see on your profile.</p>
                           </div>
 
@@ -1967,7 +1995,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                                 <img src={profilePhotoPreview} alt="Profile Preview" className="w-full h-full object-cover opacity-90 transition-transform duration-700 group-hover:scale-105" />
                               ) : (
                                 <div className="w-full h-full bg-gradient-to-br from-[#7C5CFF]/10 to-[#D4567A]/10 flex items-center justify-center">
-                                  <span className="text-4xl font-display font-black text-white/20">NO PHOTO</span>
+                                  <span className="text-4xl font-[family-name:var(--font-bricolage)] tracking-[-0.025em] font-black text-white/20">NO PHOTO</span>
                                 </div>
                               )}
                               <div className="absolute inset-0 bg-gradient-to-t from-[#050508] via-[#050508]/40 to-transparent" />
@@ -1975,7 +2003,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                                 <span className="inline-block px-3 py-1.5 bg-[#7C5CFF]/20 border border-[#7C5CFF]/30 backdrop-blur-md rounded-full text-[10px] font-bold text-[#7C5CFF] tracking-widest uppercase mb-3 shadow-[0_4px_12px_rgba(124,92,255,0.2)]">
                                   {category}
                                 </span>
-                                <h3 className="text-white text-3xl font-display font-black tracking-tight mb-1">{pendingUser?.displayName || 'Artist'}</h3>
+                                <h3 className="text-white text-3xl font-[family-name:var(--font-bricolage)] tracking-[-0.025em] font-black tracking-tight mb-1">{pendingUser?.displayName || 'Artist'}</h3>
                                 <p className="text-white/70 text-xs font-medium font-mono">{selectedGenres.join(' • ')} {city ? `• ${city}` : ''}</p>
                               </div>
                             </div>
@@ -1998,10 +2026,10 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                               type="button"
                               disabled={loading}
                               onClick={(e) => handleProfileSubmit(e as any)}
-                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_4px_14px_0_rgba(124,92,255,0.39)]
-                                         transition-all hover:scale-[1.02] hover:shadow-[0_6px_20px_rgba(124,92,255,0.23)] active:scale-[0.98] 
+                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_14px_34px_-14px_rgba(212,86,122,0.8)]
+                                         transition-all hover:scale-[1.02] hover:shadow-[0_18px_40px_-14px_rgba(212,86,122,0.9)] active:scale-[0.98] 
                                          disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                              style={{ background: 'linear-gradient(135deg, #F25A2B 0%, #7C5CFF 100%)' }}
+                              style={{ background: 'linear-gradient(100deg, #F25A2B 0%, #D4567A 45%, #7C5CFF 100%)' }}
                             >
                               {loading ? (
                                 <span className="flex items-center justify-center gap-2">

@@ -41,6 +41,15 @@ function sortAdminRegistrations(entries: AdminWaitlistEntry[]): AdminWaitlistEnt
  * Server Action to fetch all waitlist registrations.
  * Verifies the caller is an authorized admin via Firebase ID token.
  */
+
+/** Admin lookups accept a uid, username, email or row id. Reject anything else so it can't alter the filter. */
+function assertLookupKey(value: string): string {
+  if (typeof value !== 'string' || !/^[\w@.+-]{1,128}$/.test(value)) {
+    throw new Error('Invalid user reference');
+  }
+  return value;
+}
+
 export async function adminGetRegistrationsAction(idToken: string): Promise<AdminWaitlistEntry[]> {
   await verifyAdminToken(idToken);
 
@@ -73,19 +82,8 @@ export async function adminGetRegistrationsAction(idToken: string): Promise<Admi
     }
 
     return sortAdminRegistrations((data || []) as AdminWaitlistEntry[]);
-  } else {
-    // Fallback: call the RPC function (requires execute grant for anon/authenticated roles)
-    const { data, error } = await client.rpc('admin_get_registrations', {
-      p_passcode: process.env.ADMIN_PASSCODE || '',
-    });
-
-    if (error) {
-      console.error('Error calling admin_get_registrations RPC: [REDACTED_ERROR]');
-      const ref = crypto.randomUUID(); console.error('Error Ref:', ref, error); throw new Error('An internal error occurred. Ref: ' + ref);
-    }
-
-    return sortAdminRegistrations((data || []) as AdminWaitlistEntry[]);
   }
+  throw new Error('The server is missing its database key.');
 }
 
 /**
@@ -111,6 +109,7 @@ export async function adminUpdateRegistrationAction(
     let existing: any = null;
     try {
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+      assertLookupKey(userId);
       const filterConditions = [`user_id.eq.${userId}`, `username.eq.${userId.toLowerCase()}`, `email.eq.${userId.toLowerCase()}`];
       if (isUUID) filterConditions.push(`id.eq.${userId}`);
       
@@ -144,6 +143,7 @@ export async function adminUpdateRegistrationAction(
 
     const attemptUpdate = async (payload: Record<string, any>) => {
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+      assertLookupKey(userId);
       const filterConditions = [`user_id.eq.${userId}`, `username.eq.${userId.toLowerCase()}`, `email.eq.${userId.toLowerCase()}`];
       if (isUUID) filterConditions.push(`id.eq.${userId}`);
 
@@ -210,44 +210,6 @@ export async function adminUpdateRegistrationAction(
       console.error('Error updating registration status directly:', res.error);
     }
 
-    // Fallback: If direct update did not succeed, call RPC functions
-    if (!updateSuccess) {
-      let rpcRes = await client.rpc('admin_update_registration', {
-        p_passcode: process.env.ADMIN_PASSCODE || '',
-        p_user_id: userId,
-        p_is_verified: isVerified,
-        p_is_blocked: isBlocked,
-        p_position_override: positionOverride !== undefined ? positionOverride : null,
-        p_feature_founding_card: featureFoundingCard !== undefined ? featureFoundingCard : false,
-        p_exclude_from_waitlist: excludeFromWaitlist !== undefined ? excludeFromWaitlist : false,
-      });
-
-      if (rpcRes.error) {
-        rpcRes = await client.rpc('admin_update_registration', {
-          p_passcode: process.env.ADMIN_PASSCODE || '',
-          p_user_id: userId,
-          p_is_verified: isVerified,
-          p_is_blocked: isBlocked,
-          p_position_override: positionOverride !== undefined ? positionOverride : null,
-        });
-      }
-
-      if (rpcRes.error) {
-        rpcRes = await client.rpc('admin_update_registration', {
-          p_passcode: process.env.ADMIN_PASSCODE || '',
-          p_user_id: userId,
-          p_is_verified: isVerified,
-          p_is_blocked: isBlocked,
-        });
-      }
-
-      if (!rpcRes.error) {
-        updateSuccess = true;
-      } else if (!lastError) {
-        lastError = rpcRes.error.message;
-      }
-    }
-
     if (!updateSuccess) {
       return { success: false, message: lastError || `No matching user found in waitlist database (${userId}).` };
     }
@@ -310,6 +272,7 @@ export async function adminUpdateUserRoleAction(
     await verifyAdminToken(idToken);
     const client = createAdminClient();
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+    assertLookupKey(userId);
     const filterConditions = [`user_id.eq.${userId}`, `username.eq.${userId.toLowerCase()}`, `email.eq.${userId.toLowerCase()}`];
     if (isUUID) filterConditions.push(`id.eq.${userId}`);
 
@@ -337,44 +300,12 @@ export async function adminUpdateUserRoleAction(
  */
 export async function checkIsAdminAction(idToken: string): Promise<boolean> {
   if (!idToken) return false;
-  
-  let email = '';
+  // Same rules as every admin action: a verified email that is the super-admin
+  // or listed in admin_users.
   try {
-    const decoded = await verifyIdToken(idToken);
-    email = decoded.email || '';
-  } catch (e) {
-    console.error('Exception verifying ID token in admin check: [REDACTED_ERROR]');
-    return false;
-  }
-  
-  if (!email) return false;
-  const normalised = email.trim().toLowerCase();
-  
-  const superAdminEmail = process.env.SUPER_ADMIN_EMAIL;
-  if (superAdminEmail && normalised === superAdminEmail.trim().toLowerCase()) {
+    await verifyAdminToken(idToken);
     return true;
-  }
-
-  // Developer email bypass
-  if (normalised === 'anudeepdash2004@gmail.com') {
-    return true;
-  }
-
-  const client = createAdminClient();
-  try {
-    const { data, error } = await client
-      .from('admin_users')
-      .select('email')
-      .eq('email', normalised)
-      .maybeSingle();
-
-    if (error) {
-      console.warn('Error reading admin_users table (tables may not be migrated yet):', error.message);
-      return false;
-    }
-    return !!data;
-  } catch (err) {
-    console.error('Exception verifying admin status: [REDACTED_ERROR]');
+  } catch {
     return false;
   }
 }
@@ -847,7 +778,7 @@ export async function checkUsernameAvailableAction(username: string): Promise<Ch
       });
       if (rpcError) {
         console.error('Fallback RPC check also failed:', rpcError);
-        return { success: false, available: false, error: 'Could not verify username availability due to database error.' };
+        return { success: false, available: false, error: 'We couldn’t check this name right now. Try again in a moment.' };
       }
       return { success: true, available: rpcData === true };
     }
@@ -1028,7 +959,8 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
   founding_artist_limit: 500,
   instagram_url: "https://instagram.com/artistant.in",
   twitter_url: "https://x.com/artistant_in",
-  youtube_url: "https://youtube.com/@artistant",
+  // youtube.com/@artistant belongs to someone else; add the real channel here.
+  youtube_url: "",
   spotify_url: "",
   whatsapp_number: "+919876543210",
 };
@@ -1448,21 +1380,6 @@ export async function adminUpdateCareerApplicationStatusAction(
 /**
  * Verifies an admin bypass passkey or passcode.
  */
-export async function verifyAdminPasskeyAction(passkey: string): Promise<boolean> {
-  if (!passkey) return false;
-  const trimmed = passkey.trim();
-  const validPasscodes = [
-    process.env.ADMIN_PASSCODE,
-    process.env.NEXT_PUBLIC_ADMIN_KEY,
-    'artistant-admin-2026',
-    'artistant2026',
-    'artistant@2026',
-    'admin2026'
-  ].filter(Boolean);
-
-  return validPasscodes.includes(trimmed);
-}
-
 export interface MarketFeedbackInput {
   name?: string;
   email?: string;

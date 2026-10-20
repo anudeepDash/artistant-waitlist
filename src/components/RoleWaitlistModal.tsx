@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { joinRoleWaitlistAction } from '@/lib/email-actions';
 import { 
   User, 
   Mail, 
@@ -108,6 +109,9 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  // Hidden spam trap: real people never see or fill this.
+  const [website, setWebsite] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -117,6 +121,7 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
         setFormData(initialFormData);
         setIsSubmitted(false);
         setLoading(false);
+        setSubmitError(null);
       }, 0);
       return () => clearTimeout(timer);
     }
@@ -136,7 +141,7 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
       case 'organizer':
         return {
           label: 'Event Host',
-          desc: 'Promote events and book premier performers seamlessly',
+          desc: 'Book verified artists with a proper contract, protected payments and a backup if anything goes wrong.',
           accent: '#7C5CFF', // electric purple
           accentRgb: '124, 92, 255',
           secondary: '#D4567A', // magenta
@@ -147,7 +152,7 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
       case 'venue':
         return {
           label: 'Partner Venue',
-          desc: 'Host verified performers and manage stage logs',
+          desc: 'Run weekly live nights with resident artists — pay week by week, with one invoice a month.',
           accent: '#F25A2B', // orange-red
           accentRgb: '242, 90, 43',
           secondary: '#D4567A', // magenta
@@ -223,16 +228,28 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
     setStep(1);
   }, []);
 
-  const handleSubmit = useCallback((e: FormEvent) => {
-    e.preventDefault();
-    if (!isStep1Valid() || !isStep2Valid()) return;
-    
-    setLoading(true);
-    setTimeout(() => {
+  const handleSubmit = useCallback(
+    async (e: FormEvent) => {
+      e.preventDefault();
+      if (!isStep1Valid() || !isStep2Valid()) return;
+      if (role !== 'organizer' && role !== 'venue') {
+        setIsSubmitted(true);
+        return;
+      }
+
+      setLoading(true);
+      setSubmitError(null);
+      // Sends the details to the team inbox and the welcome email to the person.
+      const res = await joinRoleWaitlistAction({ role, website, ...formData }).catch(() => ({
+        success: false,
+        message: 'We couldn’t save that just now. Please try again, or write to hello@artistant.in.',
+      }));
       setLoading(false);
-      setIsSubmitted(true);
-    }, 1200);
-  }, [isStep1Valid, isStep2Valid]);
+      if (res.success) setIsSubmitted(true);
+      else setSubmitError(res.message);
+    },
+    [isStep1Valid, isStep2Valid, role, website, formData],
+  );
 
   // Generate stable futuristic ticket passcode
   const generateTicketNumber = (email: string) => {
@@ -314,7 +331,7 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
                         className="text-xs font-mono uppercase tracking-wider mb-2 font-semibold"
                         style={{ color: roleTokens.accent }}
                       >
-                        {role === 'organizer' ? 'FOR HOSTS' : role === 'venue' ? 'FOR VENUES' : 'FOR ATTENDEES'}
+                        {role === 'organizer' ? 'FOR BOOKERS' : role === 'venue' ? 'FOR VENUES' : 'FOR ATTENDEES'}
                       </div>
                       <h2 className="font-display font-extrabold text-2xl sm:text-3xl text-white tracking-tight uppercase leading-none mb-4">
                         {role === 'organizer' ? (
@@ -349,6 +366,16 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
 
                     {/* Form content steps */}
                     <form onSubmit={handleSubmit} className="overflow-hidden">
+                      <input
+                        type="text"
+                        name="website"
+                        tabIndex={-1}
+                        autoComplete="off"
+                        aria-hidden="true"
+                        value={website}
+                        onChange={(e) => setWebsite(e.target.value)}
+                        style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }}
+                      />
                       <AnimatePresence mode="wait" initial={false} custom={direction}>
                         {step === 1 ? (
                           <motion.div
@@ -688,6 +715,12 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
                               </div>
                             )}
 
+                            {submitError && (
+                              <p role="alert" className="text-sm text-red-300 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+                                {submitError}
+                              </p>
+                            )}
+
                             {/* Action buttons */}
                             <div className="flex gap-3 pt-4">
                               <button
@@ -710,7 +743,7 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
                                 {loading ? (
                                   <>
                                     <span className="animate-spin h-4 w-4 border-2 border-white/40 border-t-white rounded-full" />
-                                    Submitting Waitlist...
+                                    Saving your spot...
                                   </>
                                 ) : (
                                   <>

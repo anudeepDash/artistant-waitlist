@@ -11,7 +11,6 @@ const checkEnvironmentVariables = () => {
     'EMAIL_HOST',
     'EMAIL_USER',
     'EMAIL_PASS',
-    'ADMIN_PASSCODE',
     'SUPER_ADMIN_EMAIL'
   ];
 
@@ -37,10 +36,12 @@ if (typeof window === 'undefined' && process.env.NODE_ENV !== 'test') {
 }
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   experimental: {
     serverActions: {
-      // Allow up to 100MB videos (which become ~135MB when base64 encoded)
-      bodySizeLimit: '150mb',
+      // Big enough for an 8 MB photo. Vercel caps request bodies at 4.5 MB anyway,
+      // so large videos need direct-to-storage uploads rather than server actions.
+      bodySizeLimit: '10mb',
     },
   },
   // 4. Security Headers & 6. CORS Configuration
@@ -63,7 +64,15 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://www.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' data: blob: https:; connect-src 'self' wss: https:; frame-src 'self' https://*.firebaseapp.com https://apis.google.com https://www.google.com https://recaptcha.google.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://www.instagram.com https://instagram.com https://open.spotify.com https://*.spotify.com https://*.spotifycdn.com; child-src 'self' https://*.firebaseapp.com https://apis.google.com https://www.google.com https://recaptcha.google.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://www.instagram.com https://instagram.com https://open.spotify.com https://*.spotify.com https://*.spotifycdn.com;",
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://www.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' data: blob: https:; connect-src 'self' wss: https:; frame-src 'self' https://*.firebaseapp.com https://apis.google.com https://www.google.com https://recaptcha.google.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://www.instagram.com https://instagram.com https://open.spotify.com https://*.spotify.com https://*.spotifycdn.com; child-src 'self' https://*.firebaseapp.com https://apis.google.com https://www.google.com https://recaptcha.google.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://www.instagram.com https://instagram.com https://open.spotify.com https://*.spotify.com https://*.spotifycdn.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';",
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
           },
           // Restrict CORS to our own domain + localhost during dev
           {

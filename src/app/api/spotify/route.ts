@@ -95,10 +95,19 @@ export async function GET(request: NextRequest) {
 
   // If input was a spotify.link short URL and didn't match an ID directly, attempt to resolve redirect
   if (parsed.isUrl && !parsed.id && rawInput.includes('spotify.link')) {
+    // Only ever follow Spotify's own short links, and only one hop to open.spotify.com,
+    // so this endpoint can't be used to make requests to other servers.
     try {
-      const headRes = await fetch(rawInput, { method: 'HEAD', redirect: 'follow' });
-      if (headRes.url && headRes.url !== rawInput) {
-        parsed = parseSpotifyInput(headRes.url);
+      const short = new URL(rawInput.trim());
+      if (short.protocol === 'https:' && short.hostname === 'spotify.link') {
+        const headRes = await fetch(short.toString(), { method: 'HEAD', redirect: 'manual', signal: AbortSignal.timeout(4000) });
+        const location = headRes.headers.get('location');
+        if (location) {
+          const target = new URL(location, short);
+          if (target.protocol === 'https:' && target.hostname === 'open.spotify.com') {
+            parsed = parseSpotifyInput(target.toString());
+          }
+        }
       }
     } catch {}
   }
