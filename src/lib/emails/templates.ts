@@ -6,22 +6,16 @@ import {
   button,
   callout,
   esc,
-  facts,
   footer,
-  kicker,
   layout,
-  lineupPoster,
-  ticker,
+  nextSteps,
   para,
   pass,
   passNumber,
   photoHero,
   plainHero,
   row,
-  setlist,
-  signoff,
   spacer,
-  splitBar,
   topBar,
   type EmailContent,
   type EmailSide,
@@ -34,33 +28,23 @@ import {
 
 const firstName = (name: string) => (name || '').trim().split(/\s+/)[0] || 'there';
 
-const ARTIST_SPLIT = [
-  { pct: 50, big: '50%', label: 'when the contract is signed', color: C.orange },
-  { pct: 25, big: '25%', label: 'at soundcheck', color: C.pink },
-  { pct: 25, big: '25%', label: 'after the show', color: C.violet },
-];
-
-/* ───────────── Artist: name claimed ───────────── */
+/* ───────────── Welcomes ───────────── */
 
 export function artistWelcomeEmail({ name, username, email }: { name: string; username: string; email?: string }): EmailContent {
   const a = ACCENT.artist;
-  const hi = esc(firstName(name));
-  const handle = esc(username);
   const subject = `@${username} is yours. Welcome to the line-up.`;
   const preheader = `Your name is saved. We'll email you with the details once Artistant is live.`;
   const share = `${SITE}/?ref=${encodeURIComponent(username)}`;
 
   const body = `
-${topBar('Founding artist · Bengaluru')}
+${topBar('Founding artist')}
 ${photoHero({ image: 'hero-artist.jpg', kickerText: 'Your name is saved', main: 'You’re on', accentPart: 'the line-up.', accent: a })}
-${ticker(['Sangeets', 'Club nights', 'Baithaks', 'College fests', 'Café gigs', 'Garba nights'], a)}
 ${row(
-  `${para(`Hi ${hi},`, { color: C.ink, size: 17 })}
-${para(
-  `Thanks for registering. <b style="color:${C.ink};">artistant.in/${handle}</b> is yours now, and nobody else can take it. We&rsquo;ll email you with the details once Artistant is live in your city.`,
-  { top: 12 },
-)}`,
-  { top: 34 },
+  para(
+    `Hi ${esc(firstName(name))}, thanks for registering. <b style="color:${C.ink};">artistant.in/${esc(username)}</b> is yours now. We&rsquo;ll email you with the details once we&rsquo;re live in your city.`,
+    { size: 16 },
+  ),
+  { top: 30 },
 )}
 ${row(
   pass({
@@ -70,82 +54,56 @@ ${row(
     fields: [
       ['City', 'Bengaluru'],
       ['Line-up', '1 of 140'],
-      ['Valid', 'Every stage'],
+      ['Paid', '50 · 25 · 25'],
     ],
     footer: `artistant.in/${username}`,
     accent: a,
     seed: email || username,
   }),
-  { top: 34 },
+  { top: 26 },
 )}
-${row(lineupPoster({ name: `@${username}`, accent: a }), { top: 40 })}
 ${row(
-  setlist(
-    'What happens next',
+  nextSteps(
+    'What’s next',
     [
-      { title: 'Your name is held', text: `artistant.in/${handle} stays yours while we get ready. You don&rsquo;t need to do anything.` },
-      { title: 'We open city by city', text: 'Bengaluru first, then Mumbai and Delhi NCR. Only 140 artists to start, so everyone actually gets gigs.' },
-      { title: 'You hear from us first', text: 'When your spot opens we&rsquo;ll email you to set up your booking page, prices and open dates.' },
+      'Bengaluru opens first, then Mumbai and Delhi NCR.',
+      'We email you when your spot opens to set up your page.',
+      `Know an artist who should be here? <a href="${esc(share)}" style="color:${a};text-decoration:none;font-weight:700;">Share your link</a>.`,
     ],
     a,
   ),
-  { top: 44 },
+  { top: 30, bottom: 34 },
 )}
-${row(splitBar('How you’ll get paid on every booking', ARTIST_SPLIT), { top: 30 })}
-${row(
-  callout(
-    `${kicker('Bring your band', C.pink)}
-${para(`Know an artist who belongs on the line-up? Send them your link and they&rsquo;ll be first in line too.`, { top: 10, size: 15 })}
-${spacer(16)}
-<a href="${esc(share)}" target="_blank" style="font-family:${F.mono};font-size:14px;font-weight:600;color:${C.ink};text-decoration:none;word-break:break-all;">${esc(share.replace(/^https?:\/\//, ''))}</a>`,
-    C.pink,
-  ),
-  { top: 30 },
-)}
-${row(signoff('See you on stage.', a), { top: 40, bottom: 44 })}
-${footer('You’re getting this because you claimed a name on artistant.in.')}`;
+${footer('You claimed a name on artistant.in.')}`;
 
-  const text = `Hi ${firstName(name)},
+  const text = `Hi ${firstName(name)}, thanks for registering.
 
-Thanks for registering. artistant.in/${username} is yours now, and nobody else can take it.
-We'll email you with the details once Artistant is live in your city.
+artistant.in/${username} is yours now. We'll email you with the details once we're live in your city.
 
-WHAT HAPPENS NEXT
-01 Your name is held. You don't need to do anything.
-02 We open city by city: Bengaluru first, then Mumbai and Delhi NCR. Only 140 artists to start.
-03 When your spot opens, we'll email you to set up your booking page, prices and open dates.
+What's next
+01 Bengaluru opens first, then Mumbai and Delhi NCR.
+02 We email you when your spot opens to set up your page.
+03 Know an artist who should be here? ${share}
 
-HOW YOU'LL GET PAID
-50% when the contract is signed, 25% at soundcheck, 25% after the show.
-
-Know an artist who belongs on the line-up? Share: ${share}
-
-See you on stage.
-The Artistant team, Bengaluru
-${SITE}`;
+The Artistant team`;
 
   return { subject, preheader, html: layout({ title: subject, preheader, body }), text };
 }
 
-/* ───────────── Host and venue: joined the list ───────────── */
-
 export function hostWelcomeEmail({ name, email, city, eventType }: { name: string; email: string; city?: string; eventType?: string }): EmailContent {
   const a = ACCENT.host;
-  const hi = esc(firstName(name));
   const subject = `You’re on the host list. Your next show, sorted.`;
-  const preheader = `Thanks for registering. We'll email you with the details once booking opens in your city.`;
+  const preheader = `Thanks for registering. We'll email you with the details once booking opens.`;
 
   const body = `
-${topBar('Host list · Early access')}
+${topBar('Host list')}
 ${photoHero({ image: 'hero-host.jpg', kickerText: 'You’re on the host list', main: 'Your next show,', accentPart: 'sorted.', accent: a })}
-${ticker(['Weddings', 'Sangeets', 'Birthdays', 'Office parties', 'House concerts', 'Fests'], a)}
 ${row(
-  `${para(`Hi ${hi},`, { color: C.ink, size: 17 })}
-${para(
-  `Thanks for registering. You&rsquo;re on the list to book artists through Artistant${city ? ` in <b style="color:${C.ink};">${esc(city)}</b>` : ''}. We&rsquo;ll email you with the details as soon as booking opens.`,
-  { top: 12 },
-)}`,
-  { top: 34 },
+  para(
+    `Hi ${esc(firstName(name))}, thanks for registering. You&rsquo;ll be among the first to book artists on Artistant${city ? ` in <b style="color:${C.ink};">${esc(city)}</b>` : ''}. We&rsquo;ll email you with the details once booking opens.`,
+    { size: 16 },
+  ),
+  { top: 30 },
 )}
 ${row(
   pass({
@@ -155,89 +113,53 @@ ${row(
     fields: [
       ['City', city || 'Bengaluru'],
       ['Booking fee', '4%'],
-      ['Rebook', '2%'],
+      ['Backup', '90 min'],
     ],
     footer: passNumber(email, 'HT'),
     accent: a,
     seed: email,
   }),
-  { top: 34 },
+  { top: 26 },
 )}
 ${row(
-  facts(
-    [
-      { big: 'Verified', label: 'Every artist checked by our team' },
-      { big: '0%', label: 'Agency commission. There isn’t one.' },
-      { big: '90 min', label: 'To find a backup if an artist drops out' },
-    ],
+  nextSteps(
+    'What you get',
+    ['Verified artists with real prices, and no agency cut.', 'Your money held safely until the show is done.', 'Planning something? Reply with your date and budget.'],
     a,
   ),
-  { top: 34 },
+  { top: 30, bottom: 34 },
 )}
-${row(
-  setlist(
-    'How booking will work',
-    [
-      { title: 'Find the right act', text: 'Search by city, date, budget and style, with real videos, open dates and prices.' },
-      { title: 'See the real price', text: 'The artist&rsquo;s fee plus a 4% booking fee, shown before you pay. Book them again for 2%.' },
-      { title: 'Pay into a safe account', text: 'Not someone&rsquo;s personal number. The artist is paid in steps, and the last part only after the show.' },
-    ],
-    a,
-  ),
-  { top: 40 },
-)}
-${row(
-  callout(
-    `${kicker('Planning something already?', a)}
-${para(`Reply with your date, city and budget. Our team will help you find the right artist when we open.`, { top: 10, size: 15 })}`,
-    a,
-  ),
-  { top: 30 },
-)}
-${row(signoff('Let’s make it a night to remember.', a), { top: 40, bottom: 44 })}
-${footer('You’re getting this because you joined the host list on artistant.in.')}`;
+${footer('You joined the host list on artistant.in.')}`;
 
-  const text = `Hi ${firstName(name)},
+  const text = `Hi ${firstName(name)}, thanks for registering.
 
-Thanks for registering. You're on the list to book artists through Artistant${city ? ` in ${city}` : ''}.
-We'll email you with the details as soon as booking opens.
+You'll be among the first to book artists on Artistant${city ? ` in ${city}` : ''}. We'll email you with the details once booking opens.
 
-HOW BOOKING WILL WORK
-01 Find the right act: search by city, date, budget and style.
-02 See the real price: the artist's fee plus a 4% booking fee. Book them again for 2%.
-03 Pay into a safe account. The artist is paid in steps, the last part only after the show.
+What you get
+01 Verified artists with real prices, and no agency cut.
+02 Your money held safely until the show is done.
+03 Planning something? Reply with your date and budget.
 
-Planning something already? Reply with your date, city and budget.
-
-The Artistant team, Bengaluru
-${SITE}`;
+The Artistant team`;
 
   return { subject, preheader, html: layout({ title: subject, preheader, body }), text };
 }
 
 export function venueWelcomeEmail({ name, email, venueName, city }: { name: string; email: string; venueName?: string; city?: string }): EmailContent {
   const a = ACCENT.venue;
-  const hi = esc(firstName(name));
   const space = venueName || 'Your space';
   const subject = `${space} is on the list. Your stage, never empty.`;
-  const preheader = `Thanks for registering. We'll help you plan your first month of nights when we open.`;
-  const ladder = [
-    { pct: 40, big: '10%', label: 'gigs 1 and 2 with an act', color: C.blue },
-    { pct: 30, big: '7%', label: 'gigs 3 to 5', color: C.violet },
-    { pct: 30, big: '5%', label: 'gig 6 on, or monthly', color: C.pink },
-  ];
+  const preheader = `Thanks for registering. We'll email you with the details once we're live.`;
 
   const body = `
-${topBar('Venue list · Early access')}
+${topBar('Venue list')}
 ${photoHero({ image: 'hero-venue.jpg', kickerText: 'Your space is on the list', main: 'Your stage,', accentPart: 'never empty.', accent: a })}
-${ticker(['Jazz Thursdays', 'Acoustic brunches', 'Weekend DJs', 'Live band Fridays', 'Open mics'], a)}
 ${row(
-  `${para(`Hi ${hi},`, { color: C.ink, size: 17 })}
-${para(
-  `Thanks for registering <b style="color:${C.ink};">${esc(space)}</b>. When we open${city ? ` in ${esc(city)}` : ''}, we&rsquo;ll help you plan your first month of nights. We&rsquo;ll email you with the details once we&rsquo;re live.`,
-  { top: 12 },
-)}`,
-  { top: 34 },
+  para(
+    `Hi ${esc(firstName(name))}, thanks for registering <b style="color:${C.ink};">${esc(space)}</b>. We&rsquo;ll email you with the details once we&rsquo;re live${city ? ` in ${esc(city)}` : ''}, and help you plan your first month of nights.`,
+    { size: 16 },
+  ),
+  { top: 30 },
 )}
 ${row(
   pass({
@@ -246,46 +168,35 @@ ${row(
     role: 'Live music, every night',
     fields: [
       ['City', city || 'Bengaluru'],
-      ['Runs', '4 or 8 weeks'],
-      ['Billing', 'Monthly'],
+      ['Residencies', '4 or 8 wks'],
+      ['Fees from', '5%'],
     ],
     footer: passNumber(email, 'VN'),
     accent: a,
     seed: email,
   }),
-  { top: 34 },
+  { top: 26 },
 )}
 ${row(
-  setlist(
-    'What you’ll get',
-    [
-      { title: 'Every night, planned', text: 'Post a night, get quotes from artists who suit your room, and book in a few taps.' },
-      { title: 'Residencies made simple', text: 'Book the same act for 4 or 8 weeks. Only the next 14 days of budget is held, and artists are paid weekly.' },
-      { title: 'A backup, sent for you', text: 'If your resident can&rsquo;t play, we send a verified replacement with a similar sound.' },
-    ],
+  nextSteps(
+    'What you get',
+    ['Weekly nights and residencies, booked in a few taps.', 'A replacement sent for you if your artist can&rsquo;t play.', 'One GST invoice a month, and fees that drop the longer you book.'],
     a,
   ),
-  { top: 44 },
+  { top: 30, bottom: 34 },
 )}
-${row(splitBar('Fees drop the longer you book the same act', ladder), { top: 30 })}
-${row(signoff('Let’s keep the lights on.', a), { top: 40, bottom: 44 })}
-${footer('You’re getting this because you listed a space on artistant.in.')}`;
+${footer('You listed a space on artistant.in.')}`;
 
-  const text = `Hi ${firstName(name)},
+  const text = `Hi ${firstName(name)}, thanks for registering ${space}.
 
-Thanks for registering ${space}. When we open${city ? ` in ${city}` : ''}, we'll help you plan your first month of nights.
-We'll email you with the details once we're live.
+We'll email you with the details once we're live${city ? ` in ${city}` : ''}, and help you plan your first month of nights.
 
-WHAT YOU'LL GET
-01 Every night, planned: post a night and get quotes from artists who suit your room.
-02 Residencies: book the same act for 4 or 8 weeks. Only the next 14 days of budget is held.
-03 A backup, sent for you, if your resident can't play.
+What you get
+01 Weekly nights and residencies, booked in a few taps.
+02 A replacement sent for you if your artist can't play.
+03 One GST invoice a month, and fees that drop the longer you book.
 
-FEES DROP THE LONGER YOU BOOK THE SAME ACT
-10% for gigs 1 and 2, 7% for gigs 3 to 5, 5% from gig 6 or on a monthly contract.
-
-The Artistant team, Bengaluru
-${SITE}`;
+The Artistant team`;
 
   return { subject, preheader, html: layout({ title: subject, preheader, body }), text };
 }
@@ -340,18 +251,14 @@ export function launchEmail({ side, name }: { side: EmailSide; name: string }): 
   const preheader = l.text;
   const body = `
 ${topBar('Opening night')}
-${photoHero({ image: 'hero-launch.jpg', kickerText: l.kicker, main: l.main, accentPart: l.accentPart, accent: a, height: 460 })}
-${ticker(['Bengaluru', 'Opening night', 'Bengaluru', 'Opening night'], a)}
+${photoHero({ image: 'hero-launch.jpg', kickerText: l.kicker, main: l.main, accentPart: l.accentPart, accent: a, height: 380 })}
 ${row(
-  `${para(`Hi ${esc(firstName(name))},`, { color: C.ink, size: 17 })}
-${para(l.text, { top: 12 })}
-${spacer(28)}
+  `${para(`Hi ${esc(firstName(name))}, ${esc(l.text)}`, { size: 16 })}
+${spacer(22)}
 ${button(l.cta, SITE, a)}`,
-  { top: 34 },
+  { top: 30 },
 )}
-${row(setlist('Three steps', l.steps, a), { top: 44 })}
-${side === 'artist' ? row(splitBar('How you get paid', ARTIST_SPLIT), { top: 30 }) : ''}
-${row(signoff('The stage is yours.', a), { top: 40, bottom: 44 })}
+${row(nextSteps('Three steps', l.steps.map((st) => `<b>${esc(st.title)}.</b> <span style="color:${C.ink2};">${esc(st.text)}</span>`), a), { top: 30, bottom: 34 })}
 ${footer('You’re getting this because you joined the Artistant waitlist.')}`;
 
   const text = `Hi ${firstName(name)},
@@ -387,7 +294,7 @@ ${para(`The link works for 1 hour. Button not working? Paste this into your brow
 )}
 ${row(
   callout(para(`Didn&rsquo;t ask for this? You can ignore this email. Your password stays the same.`, { size: 14, color: C.ink2 }), C.line),
-  { top: 30, bottom: 44 },
+  { top: 26, bottom: 36 },
 )}
 ${footer('You’re getting this because someone asked to reset the password on your Artistant account.')}`;
   const text = `Hi ${firstName(name)},
@@ -438,7 +345,7 @@ ${row(
 ${ctaText && ctaUrl ? `${spacer(28)}${button(ctaText, ctaUrl, accent)}` : ''}`,
   { top: 18 },
 )}
-${row(signoff('Thanks for being here.', accent), { top: 40, bottom: 44 })}
+${spacer(40)}
 ${footer(reason)}`;
   const text = `Hi ${firstName(name)},
 
@@ -516,7 +423,7 @@ ${extraHtml}
 ${cta}`,
   { top: 34 },
 )}
-${row(signoff('See you on stage.', C.orange), { top: 40, bottom: 44 })}
+${spacer(40)}
 ${footer('You’re getting this because you joined the Artistant waitlist.')}`;
   return layout({ title: subject, preheader, body });
 }

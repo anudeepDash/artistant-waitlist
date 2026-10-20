@@ -99,13 +99,13 @@ export function button(label: string, href: string, bg: string, color = '#FFFFFF
 
 /** Full-bleed photo with the headline set on top of it. Falls back to plain black. */
 export function photoHero(opts: { image: string; kickerText: string; main: string; accentPart: string; accent: string; height?: number }): string {
-  const { image, kickerText, main, accentPart, accent, height = 420 } = opts;
+  const { image, kickerText, main, accentPart, accent, height = 340 } = opts;
   const url = `${ASSETS}/${image}`;
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
 <td class="hero" background="${url}" bgcolor="${C.bg}" valign="bottom" height="${height}" style="height:${height}px;background-color:${C.bg};background-image:url('${url}');background-size:cover;background-position:center;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
 <td class="px" valign="bottom" height="${height}" style="height:${height}px;padding:0 40px 36px;background-color:rgba(10,10,10,0.5);">
-${spacer(Math.max(40, height - 230))}
+${spacer(Math.max(30, height - 220))}
 ${kicker(kickerText, accent, C.ink)}
 ${spacer(16)}
 ${headline(main, accentPart, accent)}
@@ -170,7 +170,7 @@ export function pass(opts: {
 <tr><td align="center">
 <!-- lanyard -->
 <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-<td width="10" height="56" bgcolor="${C.orange}" style="width:10px;height:56px;background-color:${C.orange};font-size:0;">&nbsp;</td>
+<td width="10" height="34" bgcolor="${C.orange}" style="width:10px;height:34px;background-color:${C.orange};font-size:0;">&nbsp;</td>
 <td width="10" bgcolor="${C.pink}" style="width:10px;background-color:${C.pink};font-size:0;">&nbsp;</td>
 <td width="10" bgcolor="${C.violet}" style="width:10px;background-color:${C.violet};font-size:0;">&nbsp;</td>
 <td width="10" bgcolor="${C.blue}" style="width:10px;background-color:${C.blue};font-size:0;">&nbsp;</td>
@@ -199,79 +199,20 @@ export function pass(opts: {
 </td></tr></table>`;
 }
 
-/** Numbered steps, like the setlist on the site. */
-export function setlist(title: string, items: { title: string; text: string }[], accent: string): string {
-  const rows = items
-    .map(
-      (it, i) => `<tr>
-<td width="44" valign="top" style="padding:18px 0;border-top:1px solid ${C.line};font-family:${F.mono};font-size:12px;color:${accent};">${String(i + 1).padStart(2, '0')}</td>
-<td valign="top" style="padding:18px 0;border-top:1px solid ${C.line};">
-<div style="font-family:${F.display};font-weight:700;font-size:20px;line-height:24px;letter-spacing:-0.4px;color:${C.ink};">${esc(it.title)}</div>
-<div style="margin-top:6px;font-family:${F.sans};font-size:14px;line-height:22px;color:${C.ink2};">${it.text}</div>
-</td></tr>`,
-    )
-    .join('');
-  return `${kicker(title, accent)}${spacer(14)}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${rows}</table>`;
-}
-
-/** A split bar in logo colours, e.g. 50 / 25 / 25. Widths are percentages. */
-export function splitBar(title: string, parts: { pct: number; big: string; label: string; color: string }[]): string {
-  const bar = parts
-    .map((p) => `<td width="${p.pct}%" height="10" bgcolor="${p.color}" style="height:10px;background-color:${p.color};font-size:0;line-height:0;border-right:3px solid ${C.card};">&nbsp;</td>`)
-    .join('');
-  const labels = parts
-    .map(
-      (p) => `<td width="${p.pct}%" valign="top" style="padding:12px 10px 0 0;">
-<div style="font-family:${F.mono};font-size:20px;font-weight:600;color:${C.ink};">${esc(p.big)}</div>
-<div style="margin-top:4px;font-family:${F.sans};font-size:12px;line-height:17px;color:${C.ink2};">${esc(p.label)}</div>
-</td>`,
-    )
-    .join('');
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${C.card}" style="background-color:${C.card};border:1px solid ${C.line};border-radius:18px;">
-<tr><td style="padding:22px 22px 22px;">
-<div style="font-family:${F.mono};font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:${C.ink3};">${esc(title)}</div>
-${spacer(14)}
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>${bar}</tr></table>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>${labels}</tr></table>
-</td></tr></table>`;
-}
-
-/** Three short facts in a row, stacking on phones. */
-export function facts(items: { big: string; label: string }[], accent: string): string {
-  const cells = items
-    .map(
-      (f) => `<td class="stack" width="${Math.floor(100 / items.length)}%" valign="top" style="padding:0 6px 0 0;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${C.card}" style="background-color:${C.card};border:1px solid ${C.line};border-radius:16px;"><tr><td style="padding:18px 16px;">
-<div style="font-family:${F.display};font-weight:800;font-size:26px;line-height:28px;letter-spacing:-1px;color:${accent};">${esc(f.big)}</div>
-<div style="margin-top:6px;font-family:${F.sans};font-size:13px;line-height:18px;color:${C.ink2};">${esc(f.label)}</div>
-</td></tr></table>
-</td>`,
-    )
-    .join('');
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>${cells}</tr></table>`;
-}
-
 /** A dashed callout box, e.g. for a share link or a note. */
 export function callout(inner: string, accent: string): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px dashed ${accent};border-radius:18px;"><tr><td style="padding:22px 24px;">${inner}</td></tr></table>`;
 }
 
-/** Sign-off in the brand voice. */
-export function signoff(line: string, accent: string): string {
-  return `<div style="font-family:${F.display};font-weight:700;font-size:24px;line-height:28px;letter-spacing:-0.6px;color:${C.ink};">${esc(line)}</div>
-<div style="margin-top:6px;font-family:${F.mono};font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${accent};">The Artistant team &middot; Bengaluru</div>`;
-}
-
 export function footer(reason: string): string {
   const link = (label: string, href: string) => `<a href="${href}" target="_blank" style="color:${C.ink2};text-decoration:none;">${label}</a>`;
   return `${stripe(4)}
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td class="px" style="padding:40px 40px 18px;">
-<img src="${ASSETS}/wordmark.png" width="200" height="38" alt="Artistant" style="display:block;width:200px;height:auto;border:0;">
-<div style="margin-top:16px;font-family:${F.display};font-weight:700;font-size:20px;line-height:26px;color:${C.ink};">Made in Bengaluru, for <span style="color:${C.orange};">every stage</span> in India.</div>
-<div style="margin-top:22px;font-family:${F.mono};font-size:11px;letter-spacing:2px;text-transform:uppercase;line-height:20px;">
-${link('artistant.in', SITE)} &nbsp;&middot;&nbsp; ${link('Instagram', 'https://instagram.com/artistant.in')} &nbsp;&middot;&nbsp; ${link('LinkedIn', 'https://www.linkedin.com/company/artistantco/')} &nbsp;&middot;&nbsp; ${link('X', 'https://x.com/artistant_in')}
-</div>
-<div style="margin-top:22px;font-family:${F.sans};font-size:12px;line-height:19px;color:${C.ink3};">${reason} Questions? Just reply to this email, a real person reads it.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td class="px" style="padding:24px 40px 22px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+<td class="fl" valign="middle"><img src="${ASSETS}/wordmark.png" width="96" height="18" alt="Artistant" style="display:block;width:96px;height:auto;border:0;"></td>
+<td class="fl fr" valign="middle" align="right" style="font-family:${F.mono};font-size:10px;letter-spacing:2px;text-transform:uppercase;">${link('Instagram', 'https://instagram.com/artistant.in')} &nbsp;&middot;&nbsp; ${link('LinkedIn', 'https://www.linkedin.com/company/artistantco/')} &nbsp;&middot;&nbsp; ${link('X', 'https://x.com/artistant_in')}</td>
+</tr></table>
+<div style="margin-top:14px;font-family:${F.sans};font-size:12px;line-height:18px;color:${C.ink3};">${reason} Reply any time, a real person reads it.</div>
 </td></tr></table>`;
 }
 
@@ -301,6 +242,8 @@ export function layout(opts: { title: string; preheader: string; body: string; a
     .stack { display:block !important; width:100% !important; padding:0 0 8px !important; }
     .pass { width:100% !important; }
     .passName { font-size:32px !important; line-height:36px !important; }
+    .fl { display:block !important; width:100% !important; text-align:left !important; }
+    .fr { padding-top:12px !important; }
   }
 </style>
 </head>
@@ -328,44 +271,15 @@ export function topBar(tag: string): string {
 ${stripe()}`;
 }
 
-/** A band of gig types in big type, like the marquee on the site. Clipped, not animated. */
-export function ticker(items: string[], accent: string): string {
-  const line = items
-    .map((t, i) => `<span style="color:${i % 2 ? C.ink3 : C.ink};">${esc(t)}</span><span style="color:${accent};">&nbsp;&nbsp;&#10022;&nbsp;&nbsp;</span>`)
+/** Short numbered one-liners: the compact "what's next". */
+export function nextSteps(title: string, items: string[], accent: string): string {
+  const rows = items
+    .map(
+      (t, i) => `<tr>
+<td width="34" valign="top" style="padding:9px 0;font-family:${F.mono};font-size:12px;line-height:22px;color:${accent};">${String(i + 1).padStart(2, '0')}</td>
+<td valign="top" style="padding:9px 0;font-family:${F.sans};font-size:15px;line-height:22px;color:${C.ink};">${t}</td>
+</tr>`,
+    )
     .join('');
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${C.bg}" style="background-color:${C.bg};border-top:1px solid ${C.line};border-bottom:1px solid ${C.line};"><tr>
-<td style="padding:16px 0;overflow:hidden;max-width:600px;"><div style="white-space:nowrap;overflow:hidden;max-width:600px;font-family:${F.display};font-weight:800;font-size:28px;line-height:32px;letter-spacing:-0.8px;">&nbsp;&nbsp;${line}${line}</div></td>
-</tr></table>`;
-}
-
-/**
- * The founding line-up as a festival poster on daylight paper, with the reader's
- * name as the last act on the bill.
- */
-export function lineupPoster(opts: { name: string; accent: string }): string {
-  const act = (n: number, what: string, size: number, italic = false) =>
-    `<tr><td align="center" style="padding:2px 0;font-family:${F.display};font-weight:800;font-size:${size}px;line-height:${Math.round(size * 1.02)}px;letter-spacing:-1.5px;color:${C.dayInk};${italic ? 'font-style:italic;' : ''}"><span style="font-family:${F.mono};font-weight:600;font-size:${Math.round(size * 0.38)}px;letter-spacing:0;vertical-align:top;color:${opts.accent};">${n}</span>&nbsp;${esc(what)}</td></tr>`;
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${C.day}" style="background-color:${C.day};border-radius:22px;">
-<tr><td style="padding:0;border-radius:22px 22px 0 0;overflow:hidden;">${stripe(8)}</td></tr>
-<tr><td align="center" style="padding:30px 20px 0;">
-<img src="${ASSETS}/wordmark.png" width="150" height="28" alt="Artistant" style="display:block;width:150px;height:auto;border:0;margin:0 auto;">
-<div style="margin-top:6px;font-family:${F.display};font-weight:700;font-size:18px;color:${C.dayInk};opacity:0.6;">presents</div>
-<div style="margin-top:14px;font-family:${F.mono};font-size:11px;letter-spacing:5px;text-transform:uppercase;color:${C.dayInk};">The founding 140</div>
-</td></tr>
-<tr><td align="center" style="padding:18px 16px 0;"><table role="presentation" cellpadding="0" cellspacing="0" border="0">
-${act(50, 'club DJs', 54)}
-${act(40, 'acoustic acts', 38)}
-${act(30, 'live bands', 38)}
-${act(20, 'college headliners', 28, true)}
-</table></td></tr>
-<tr><td align="center" style="padding:26px 16px 0;font-family:${F.mono};font-size:10px;letter-spacing:4px;text-transform:uppercase;color:#8F8A82;">and introducing</td></tr>
-<tr><td align="center" class="passName" style="padding:6px 16px 0;font-family:${F.display};font-weight:800;font-size:46px;line-height:50px;letter-spacing:-1.8px;color:${opts.accent};word-break:break-all;">${esc(opts.name)}</td></tr>
-<tr><td style="padding:26px 26px 26px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #D9D4CA;"><tr>
-<td style="padding-top:14px;font-family:${F.mono};font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#5C5952;">Bengaluru</td>
-<td align="center" style="padding-top:14px;font-family:${F.mono};font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#5C5952;">Paid on time</td>
-<td align="right" style="padding-top:14px;font-family:${F.mono};font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#5C5952;">Booked first</td>
-</tr></table>
-</td></tr>
-</table>`;
+  return `${kicker(title, accent)}${spacer(8)}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${rows}</table>`;
 }
