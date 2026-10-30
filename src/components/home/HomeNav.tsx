@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion, useMotionValueEvent, useScroll } from 'motion/react';
 import type { User } from 'firebase/auth';
 import type { WaitlistEntry } from '@/lib/waitlist';
+import { signOut } from '@/lib/auth';
 import { EASE } from './primitives';
 import { NAV_LINKS, SIDE_CTA, SIDE_LABEL, SIDE_ORDER, type Side } from './sides';
 import s from './home.module.css';
@@ -39,6 +40,92 @@ function SideSwitch({ side, onSide, id }: { side: Side; onSide: (side: Side) => 
   );
 }
 
+async function handleSignOut() {
+  try {
+    await signOut();
+  } catch (err) {
+    console.error('Sign out failed:', err);
+  }
+}
+
+/** The signed-in avatar, which opens a small menu with the account's pages and sign out. */
+function AccountMenu({ user, reservation }: { user: User; reservation: WaitlistEntry | null }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const initial = (reservation?.username?.[0] ?? user.displayName?.[0] ?? user.email?.[0] ?? 'A').toUpperCase();
+  const photo = reservation?.profile_photo_url || user.photoURL;
+
+  return (
+    <div ref={ref} className={s.account}>
+      <button
+        type="button"
+        className={s.avatar}
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Your account"
+      >
+        {photo ? <img src={photo} alt="" referrerPolicy="no-referrer" /> : initial}
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            role="menu"
+            className={s.accountMenu}
+            initial={{ opacity: 0, y: -6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: EASE }}
+          >
+            <div className={s.accountWho}>
+              <strong>{reservation ? `@${reservation.username}` : user.displayName || 'Signed in'}</strong>
+              {user.email && <span>{user.email}</span>}
+            </div>
+            {reservation && (
+              <>
+                <Link role="menuitem" href={`/${reservation.username}`} className={s.accountItem} onClick={() => setOpen(false)}>
+                  Your page
+                </Link>
+                <Link role="menuitem" href="/dashboard" className={s.accountItem} onClick={() => setOpen(false)}>
+                  Dashboard
+                </Link>
+              </>
+            )}
+            <button
+              role="menuitem"
+              type="button"
+              className={`${s.accountItem} ${s.accountSignOut}`}
+              onClick={() => {
+                setOpen(false);
+                handleSignOut();
+              }}
+            >
+              Sign out
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export default function HomeNav({ side, onSide, user, reservation, onSignIn, onCta }: HomeNavProps) {
   const [solid, setSolid] = useState(false);
   const [open, setOpen] = useState(false);
@@ -55,9 +142,6 @@ export default function HomeNav({ side, onSide, user, reservation, onSignIn, onC
       document.body.style.overflow = '';
     };
   }, [open]);
-
-  const initial = (reservation?.username?.[0] ?? user?.displayName?.[0] ?? user?.email?.[0] ?? 'A').toUpperCase();
-  const photo = reservation?.profile_photo_url || user?.photoURL;
 
   return (
     <>
@@ -87,9 +171,7 @@ export default function HomeNav({ side, onSide, user, reservation, onSignIn, onC
 
           <div className={s.navActions}>
             {user ? (
-              <span className={s.avatar} title={reservation ? `You're registered as @${reservation.username}` : 'Signed in'}>
-                {photo ? <img src={photo} alt="" referrerPolicy="no-referrer" /> : initial}
-              </span>
+              <AccountMenu user={user} reservation={reservation} />
             ) : (
               <button type="button" className={`${s.navSignIn} ${s.hideSm}`} onClick={onSignIn}>
                 Sign in
@@ -172,7 +254,18 @@ export default function HomeNav({ side, onSide, user, reservation, onSignIn, onC
                   {SIDE_CTA[side]}
                 </button>
               )}
-              {!user && (
+              {user ? (
+                <button
+                  type="button"
+                  className={s.btnGhost}
+                  onClick={() => {
+                    setOpen(false);
+                    handleSignOut();
+                  }}
+                >
+                  Sign out
+                </button>
+              ) : (
                 <button
                   type="button"
                   className={s.btnWhite}
