@@ -1,27 +1,13 @@
-import type { Metadata } from 'next';
 import CreatorApplicationForm from './CreatorApplicationForm';
 import JsonLd from '@/components/JsonLd';
+import { pageMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = {
-  title: 'Jasmine Sandlas Bengaluru | Creator Call',
-  description: 'Apply to create campaign content and collaborate for Jasmine Sandlas live event in Bengaluru.',
-  alternates: {
-    canonical: '/jasmine-sandlas-bengaluru',
-  },
-  openGraph: {
-    title: 'Jasmine Sandlas Bengaluru — Creator & Content Call',
-    description: 'Apply to create campaign content and collaborate for Jasmine Sandlas live event in Bengaluru.',
-    url: 'https://artistant.in/jasmine-sandlas-bengaluru',
-    type: 'website',
-    siteName: 'Artistant',
-    locale: 'en_IN',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Jasmine Sandlas Bengaluru — Creator Call',
-    description: 'Apply to create campaign content for Jasmine Sandlas live show in Bengaluru.',
-  },
-};
+export const metadata = pageMetadata({
+  title: 'Jasmine Sandlas Bengaluru — Creator call',
+  socialTitle: 'Jasmine Sandlas, live in Bengaluru — Creator call | Artistant',
+  description: 'Apply to create campaign content for Jasmine Sandlas live in Bengaluru, and collaborate with the Artistant team on the show.',
+  path: '/jasmine-sandlas-bengaluru',
+});
 
 const eventSchema = {
   '@context': 'https://schema.org',

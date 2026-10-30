@@ -6,6 +6,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import JsonLd from "@/components/JsonLd";
 import ComingSoonGuard from "@/components/ComingSoonGuard";
+import { SITE_NAME, SITE_URL, TWITTER_HANDLE } from "@/lib/seo";
 
 // Fonts the homepage doesn't use aren't preloaded; they still load on pages that use them.
 const inter = Inter({
@@ -50,37 +51,44 @@ const marker = Permanent_Marker({
   preload: false,
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://artistant.in";
+const siteUrl = SITE_URL;
+const description =
+  "The safe way to book live artists in India. A proper contract, money held safely, and artists paid in steps — half before they travel, the rest after the show.";
 
-/* ── SEO Metadata ── */
+/* ── SEO Metadata ──
+ * Share images come from opengraph-image.tsx files next to each page (see app/_og). */
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
     template: "%s | Artistant",
-    default: "Artistant — The safe way to book live artists in India",
+    default: "Artistant — Book live artists in India, safely",
   },
-  description:
-    "The safe way to book live artists in India. A proper contract, money held safely, and artists paid in steps — half before they travel, the rest after the show. Join the waitlist.",
+  description,
+  applicationName: "Artistant",
   keywords: [
-    "ArtisTant",
     "Artistant",
-    "live entertainment",
-    "artist booking India",
-    "music platform India",
-    "event booking Bangalore",
-    "independent musicians",
-    "gig contracts",
-    "escrow payments",
+    "book live artists India",
+    "artist booking platform",
     "book live band Bangalore",
-    "wedding sangeet artists",
+    "book singer for wedding",
+    "sangeet performers",
     "corporate event artists",
-    "Bookability Score",
+    "DJ booking India",
+    "gig contracts",
+    "escrow for artists",
+    "independent musicians India",
   ],
   authors: [{ name: "Artistant", url: siteUrl }],
   creator: "Artistant",
   publisher: "Artistant",
+  category: "entertainment",
   alternates: {
     canonical: "/",
+  },
+  formatDetection: {
+    telephone: false,
+    email: false,
+    address: false,
   },
   icons: {
     icon: [
@@ -92,31 +100,24 @@ export const metadata: Metadata = {
     ],
   },
   manifest: "/site.webmanifest",
+  appleWebApp: {
+    title: "Artistant",
+    statusBarStyle: "black-translucent",
+  },
   openGraph: {
-    title: "Artistant — Every gig booked. Every artist paid.",
-    description:
-      "The safe way to book live artists in India. A proper contract, money held safely, and artists paid in steps — half before they travel, the rest after the show. Join the waitlist.",
-    url: siteUrl,
+    title: "Artistant — Get paid. Not ghosted.",
+    description,
+    url: "/",
     type: "website",
-    siteName: "Artistant",
+    siteName: SITE_NAME,
     locale: "en_IN",
-    images: [
-      {
-        url: "/brand_palette.png",
-        width: 1200,
-        height: 630,
-        alt: "Artistant - India's Live Entertainment Infrastructure",
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Artistant — Every gig booked. Every artist paid.",
-    description:
-      "The safe way to book live artists in India. A proper contract, money held safely, and artists paid in steps — half before they travel, the rest after the show. Join the waitlist.",
-    site: "@artistant_in",
-    creator: "@artistant_in",
-    images: ["/brand_palette.png"],
+    title: "Artistant — Get paid. Not ghosted.",
+    description,
+    site: TWITTER_HANDLE,
+    creator: TWITTER_HANDLE,
   },
   robots: {
     index: true,
@@ -132,7 +133,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0B1120",
+  themeColor: "#0a0a0a",
   colorScheme: "dark",
 };
 

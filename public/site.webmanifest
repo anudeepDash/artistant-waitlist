@@ -1,11 +1,11 @@
 {
-  "name": "Artistant - India's Live Entertainment Infrastructure",
+  "name": "Artistant — Book live artists in India, safely",
   "short_name": "Artistant",
-  "description": "Contract, escrow, and payment infrastructure for India's independent live artists & creators.",
+  "description": "The safe way to book live artists in India. A proper contract, money held safely, and artists paid in steps.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0B1120",
-  "theme_color": "#0B1120",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
   "icons": [
     {
       "src": "/icon.png",

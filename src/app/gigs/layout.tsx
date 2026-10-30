@@ -1,35 +1,19 @@
-import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = {
-  title: 'Gigs & Live Opportunities',
+export const metadata = pageMetadata({
+  title: 'Gigs for live artists',
+  socialTitle: 'Gigs that pay on time | Artistant',
   description:
-    'Explore verified live performance gigs, club slots, festival lineups, and corporate opportunities for independent artists across India.',
+    'Club slots, festival lineups, weddings and corporate gigs for independent artists in India. Every gig with a contract and half the fee before you travel.',
+  path: '/gigs',
   keywords: [
     'artist gigs India',
-    'live music opportunities',
-    'DJ slots Bengaluru',
-    'band bookings',
-    'performing gigs',
+    'live music gigs',
+    'DJ gigs Bengaluru',
+    'band gigs',
+    'paid gigs for singers',
   ],
-  alternates: {
-    canonical: '/gigs',
-  },
-  openGraph: {
-    title: 'Gigs & Live Opportunities | Artistant',
-    description:
-      'Explore verified live performance gigs, club slots, festival lineups, and corporate opportunities for independent artists across India.',
-    url: 'https://artistant.in/gigs',
-    type: 'website',
-    siteName: 'Artistant',
-    locale: 'en_IN',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Gigs & Live Opportunities | Artistant',
-    description:
-      'Explore verified live performance gigs, club slots, festival lineups, and corporate opportunities for independent artists across India.',
-  },
-};
+});
 
 export default function GigsLayout({
   children,

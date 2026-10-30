@@ -1,28 +1,12 @@
-import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = {
-  title: 'Changelog & Product Updates',
+export const metadata = pageMetadata({
+  title: 'Changelog',
+  socialTitle: 'What\'s new on Artistant',
   description:
-    'Stay updated with the latest features, improvements, contract tools, and security updates built for Artistant.',
-  alternates: {
-    canonical: '/changelog',
-  },
-  openGraph: {
-    title: 'Changelog & Product Updates | Artistant',
-    description:
-      'Stay updated with the latest features, improvements, contract tools, and security updates built for Artistant.',
-    url: 'https://artistant.in/changelog',
-    type: 'website',
-    siteName: 'Artistant',
-    locale: 'en_IN',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Changelog & Product Updates | Artistant',
-    description:
-      'Stay updated with the latest features, improvements, contract tools, and security updates built for Artistant.',
-  },
-};
+    'New features, fixes and security updates on Artistant — the small things that make booking live artists and getting paid easier.',
+  path: '/changelog',
+});
 
 export default function ChangelogLayout({
   children,

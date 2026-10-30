@@ -1,35 +1,19 @@
-import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = {
-  title: 'Live Events & Concerts',
+export const metadata = pageMetadata({
+  title: 'Live events & concerts',
+  socialTitle: 'Live music near you | Artistant',
   description:
-    'Discover upcoming live concerts, music festivals, open mics, and creator events powered by Artistant across India.',
+    'Upcoming concerts, open mics, festivals and creator nights across India, with artists booked through Artistant.',
+  path: '/events',
   keywords: [
     'live events India',
     'concerts Bengaluru',
-    'music festivals',
-    'Artistant events',
+    'open mics',
+    'music festivals India',
     'live shows',
   ],
-  alternates: {
-    canonical: '/events',
-  },
-  openGraph: {
-    title: 'Live Events & Concerts | Artistant',
-    description:
-      'Discover upcoming live concerts, music festivals, open mics, and creator events powered by Artistant across India.',
-    url: 'https://artistant.in/events',
-    type: 'website',
-    siteName: 'Artistant',
-    locale: 'en_IN',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Live Events & Concerts | Artistant',
-    description:
-      'Discover upcoming live concerts, music festivals, open mics, and creator events powered by Artistant across India.',
-  },
-};
+});
 
 export default function EventsLayout({
   children,

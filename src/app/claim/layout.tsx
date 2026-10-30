@@ -1,28 +1,12 @@
-import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = {
-  title: 'Claim Your Artist Profile',
+export const metadata = pageMetadata({
+  title: 'Claim your artist name',
+  socialTitle: 'Claim your name on Artistant — before it’s gone',
   description:
-    'Claim your founding artist handle on Artistant. Access direct booking requests, escrow protected payouts, and contract management.',
-  alternates: {
-    canonical: '/claim',
-  },
-  openGraph: {
-    title: 'Claim Your Artist Profile | Artistant',
-    description:
-      'Claim your founding artist handle on Artistant. Access direct booking requests, escrow protected payouts, and contract management.',
-    url: 'https://artistant.in/claim',
-    type: 'website',
-    siteName: 'Artistant',
-    locale: 'en_IN',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Claim Your Artist Profile | Artistant',
-    description:
-      'Claim your founding artist handle on Artistant. Access direct booking requests, escrow protected payouts, and contract management.',
-  },
-};
+    'Get your own booking page at artistant.in/yourname. Direct booking requests, a proper contract for every gig, and half your fee before you travel.',
+  path: '/claim',
+});
 
 export default function ClaimLayout({
   children,

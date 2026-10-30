@@ -3,6 +3,7 @@ import { cache } from "react";
 import { getPublicProfileDataAction } from "@/lib/profile-actions";
 import { ensureValidDisplayName } from "@/lib/waitlist";
 import JsonLd from "@/components/JsonLd";
+import { SITE_NAME, TWITTER_HANDLE } from "@/lib/seo";
 
 // The page title and the layout both need the profile; fetch it once per request.
 const loadProfile = cache((username: string) => getPublicProfileDataAction(username));
@@ -19,7 +20,6 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { username } = await params;
   const profile = await loadProfile(username);
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://artistant.in";
 
   if (!profile || !profile.reservation) {
     return {
@@ -35,22 +35,23 @@ export async function generateMetadata({
     res.email
   );
 
-  const categoryLabel = res.category ? `${res.category} ` : "";
-  const cityLabel = res.city ? `based in ${res.city}` : "";
-  const bioExcerpt = res.bio ? res.bio.slice(0, 150) : "";
+  const category = res.category ? res.category.replace(/[-_]+/g, " ") : "live artist";
+  const where = res.city ? ` in ${res.city}` : " in India";
+  const bio = res.bio?.replace(/\s+/g, " ").trim() ?? "";
+  // Keep it near 155 characters so Google and link previews show it whole.
+  const bioExcerpt = bio.length > 110 ? `${bio.slice(0, 107).trimEnd()}…` : bio;
   const description = bioExcerpt
-    ? `${bioExcerpt}... Book ${artistName} on Artistant.`
-    : `Book ${artistName} — ${categoryLabel}${cityLabel} on Artistant. View music, videos, gallery, and send direct performance booking requests.`;
+    ? `${bioExcerpt} Book ${artistName} on Artistant with a real contract and safe payment.`
+    : `${artistName} is a ${category}${where}. Watch their videos, hear their music and book them on Artistant with a real contract and safe payment.`;
 
-  const profileImageUrl = res.profile_photo_url || res.cover_photo_url || "/brand_palette.png";
-  const fullImageUrl = profileImageUrl.startsWith("http")
-    ? profileImageUrl
-    : `${siteUrl}${profileImageUrl.startsWith("/") ? "" : "/"}${profileImageUrl}`;
+  // "Riya Sen — Singer, Bengaluru"
+  const label = `${category[0].toUpperCase()}${category.slice(1)}${res.city ? `, ${res.city}` : ""}`;
+  const title = `${artistName} — ${label}`;
+  const shareTitle = `${title} | Artistant`;
 
-  const profileUrl = `${siteUrl}/${username}`;
-
+  // The share image is drawn by ./opengraph-image.tsx, so none is listed here.
   return {
-    title: artistName,
+    title,
     description,
     keywords: [
       artistName,
@@ -58,31 +59,26 @@ export async function generateMetadata({
       res.category || "artist",
       ...(Array.isArray(res.genres) ? res.genres : []),
       res.city || "India",
-      "Artistant artist",
+      `book ${artistName}`,
       "book live artist",
     ],
     alternates: {
       canonical: `/${username}`,
     },
     openGraph: {
-      title: `${artistName} | Artistant`,
+      title: shareTitle,
       description,
-      url: profileUrl,
+      url: `/${username}`,
       type: "profile",
-      siteName: "Artistant",
+      username,
+      siteName: SITE_NAME,
       locale: "en_IN",
-      images: [
-        {
-          url: fullImageUrl,
-          alt: artistName,
-        },
-      ],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${artistName} | Artistant`,
+      title: shareTitle,
       description,
-      images: [fullImageUrl],
+      site: TWITTER_HANDLE,
     },
   };
 }

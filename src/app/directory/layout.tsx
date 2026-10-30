@@ -1,36 +1,20 @@
-import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = {
-  title: 'Artist & Creator Directory',
+export const metadata = pageMetadata({
+  title: 'Book singers, DJs, bands & comedians',
+  socialTitle: 'Book the act, not the agency | Artistant',
   description:
-    'Discover and book top independent singers, DJs, bands, comedians, dancers, and instrumentalists across Bengaluru, Mumbai, Delhi, and India.',
+    'Find and book singers, DJs, bands, comedians and dancers across Bengaluru, Mumbai, Delhi and India. Clear prices, a real contract and safe payment.',
+  path: '/directory',
   keywords: [
     'artist directory India',
     'book singers Bengaluru',
     'book DJs Mumbai',
-    'independent artists',
-    'live performers',
+    'book live band',
+    'wedding performers',
     'event entertainment India',
   ],
-  alternates: {
-    canonical: '/directory',
-  },
-  openGraph: {
-    title: 'Artist & Creator Directory | Artistant',
-    description:
-      'Discover and book top independent singers, DJs, bands, comedians, dancers, and instrumentalists across India.',
-    url: 'https://artistant.in/directory',
-    type: 'website',
-    siteName: 'Artistant',
-    locale: 'en_IN',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Artist & Creator Directory | Artistant',
-    description:
-      'Discover and book top independent singers, DJs, bands, comedians, dancers, and instrumentalists across India.',
-  },
-};
+});
 
 export default function DirectoryLayout({
   children,
