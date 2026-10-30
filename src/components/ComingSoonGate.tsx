@@ -968,6 +968,17 @@ export default function ComingSoonGate({ children }: ComingSoonGuardProps) {
             <Lock className="w-3.5 h-3.5" />
             Lock
           </button>
+
+          <span className="text-zinc-600">|</span>
+
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="text-zinc-400 hover:text-red-400 font-mono text-[11px] cursor-pointer transition-colors"
+            title={user?.email ? `Sign out of ${user.email}` : 'Sign out'}
+          >
+            Sign out
+          </button>
         </motion.div>
       )}
     </div>

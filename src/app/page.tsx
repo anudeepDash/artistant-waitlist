@@ -13,7 +13,8 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useUsernameClaim } from "@/hooks/useUsernameClaim";
 import { getUserReservation, type WaitlistEntry } from "@/lib/waitlist";
-import { logActivityAction } from "@/lib/admin-actions";
+import { checkIsAdminAction, logActivityAction } from "@/lib/admin-actions";
+import { signOut } from "@/lib/auth";
 import HomeNav from "@/components/home/HomeNav";
 import Hero from "@/components/home/Hero";
 import ChaosToPaid from "@/components/home/ChaosToPaid";
@@ -52,6 +53,9 @@ export default function Home() {
     entry: WaitlistEntry | null;
   } | null>(null);
   const reservation = user && fetched?.uid === user.uid ? fetched.entry : null;
+  // Same uid tagging as above, for the admin check.
+  const [adminFor, setAdminFor] = useState<string | null>(null);
+  const isAdmin = !!user && adminFor === user.uid;
   const [authOpen, setAuthOpen] = useState(false);
   const [role, setRole] = useState<"organizer" | "venue" | null>(null);
   // Which side of the stage the visitor picked. The whole page follows it.
@@ -74,6 +78,35 @@ export default function Home() {
   useEffect(() => {
     refreshReservation();
   }, [refreshReservation]);
+
+  // Admins get a link to the admin portal in the account menu.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    user
+      .getIdToken()
+      .then((token) => checkIsAdminAction(token))
+      .then((ok) => {
+        if (!cancelled && ok) setAdminFor(user.uid);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  const handleSignOut = useCallback(async () => {
+    try {
+      await signOut();
+    } catch (e) {
+      console.warn("Sign out failed", e);
+    }
+    // Re-lock the Coming Soon gate an admin may have unlocked in this browser.
+    try {
+      localStorage.removeItem("artistant_admin_bypass_active");
+    } catch {}
+    setAdminFor(null);
+  }, []);
 
   // Remember who referred this visitor so sign-up can credit them.
   useEffect(() => {
@@ -134,6 +167,8 @@ export default function Home() {
           user={user}
           reservation={reservation}
           onSignIn={() => setAuthOpen(true)}
+          onSignOut={handleSignOut}
+          isAdmin={isAdmin}
           onCta={sideCta}
         />
 

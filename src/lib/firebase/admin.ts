@@ -7,10 +7,13 @@ import { getAdminSupabaseClient } from '../supabase/admin';
 // Firebase Admin SDK — Singleton Initialization
 // ---------------------------------------------------------------------------
 
-const projectId =
+// Trimmed because a stray newline pasted into the Vercel env var made every
+// token fail the audience check ("artistant-15c32\n" vs "artistant-15c32").
+const projectId = (
   process.env.FIREBASE_ADMIN_PROJECT_ID ??
   process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ??
-  "artistant-15c32";
+  "artistant-15c32"
+).trim();
 
 function getOrInitApp(): App {
   const existingApps = getApps();
@@ -242,10 +245,13 @@ export async function verifyAdminToken(
   // Check the admin_users table via Supabase (service-role client)
   const supabase = getAdminSupabaseClient();
 
+  // Case-insensitive, since older rows weren't saved in lowercase. The LIKE
+  // wildcards are escaped so this still only matches the exact address.
   const { data, error } = await supabase
     .from('admin_users')
     .select('email')
-    .eq('email', normalizedEmail)
+    .ilike('email', normalizedEmail.replace(/[\\%_]/g, (c) => `\\${c}`))
+    .limit(1)
     .maybeSingle();
 
   if (error || !data) {
