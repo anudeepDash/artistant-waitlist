@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import sharp from 'sharp';
 
 /*
  * Share images for every page, drawn like the homepage hero: a dark stage, a
@@ -273,6 +274,13 @@ export async function poster({ accent, photo, eyebrow, line1, line2, lead, facts
   );
 }
 
-export function render(element: React.ReactElement) {
-  return new ImageResponse(element, { ...OG_SIZE, fonts: FONTS });
+/**
+ * Draws the image and hands it back as a JPEG. The PNG is ~550 KB; WhatsApp only
+ * shows a full-size preview for images under ~300 KB and otherwise falls back to
+ * a blurry cropped thumbnail. 4:4:4 chroma keeps the coloured headlines crisp.
+ */
+export async function render(element: React.ReactElement) {
+  const png = await new ImageResponse(element, { ...OG_SIZE, fonts: FONTS }).arrayBuffer();
+  const jpeg = await sharp(Buffer.from(png)).jpeg({ quality: 82, mozjpeg: true, progressive: false, chromaSubsampling: '4:4:4' }).toBuffer();
+  return new Response(new Uint8Array(jpeg), { headers: { 'Content-Type': 'image/jpeg' } });
 }

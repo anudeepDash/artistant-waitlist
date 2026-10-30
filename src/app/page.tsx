@@ -181,12 +181,7 @@ export default function Home() {
           </motion.div>
         </main>
 
-        <HomeFooter
-          onSide={(k) => {
-            setSide(k);
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          }}
-        />
+        <HomeFooter />
         {(side !== "artist" || !reservation) && (
           <MobileCta label={SIDE_CTA[side]} onClick={sideCta} />
         )}

@@ -2,7 +2,7 @@ import { BRAND, OG_SIZE, poster } from '../_og/poster';
 
 export const alt = 'Artistant privacy policy.';
 export const size = OG_SIZE;
-export const contentType = 'image/png';
+export const contentType = 'image/jpeg';
 
 export default function Image() {
   return poster({

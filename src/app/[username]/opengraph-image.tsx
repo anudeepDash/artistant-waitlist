@@ -5,7 +5,7 @@ import { HOME_POSTER, OG_SIZE, poster } from '../_og/poster';
 
 export const alt = 'Artist profile on Artistant';
 export const size = OG_SIZE;
-export const contentType = 'image/png';
+export const contentType = 'image/jpeg';
 // Profile edits show up in link previews within the hour.
 export const revalidate = 3600;
 

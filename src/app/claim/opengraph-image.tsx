@@ -2,7 +2,7 @@ import { BRAND, OG_SIZE, poster } from '../_og/poster';
 
 export const alt = 'Claim your name on Artistant — your own booking page for live gigs.';
 export const size = OG_SIZE;
-export const contentType = 'image/png';
+export const contentType = 'image/jpeg';
 
 export default function Image() {
   return poster({

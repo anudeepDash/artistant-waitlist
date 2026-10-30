@@ -2,7 +2,7 @@ import { BRAND, OG_SIZE, poster } from '../_og/poster';
 
 export const alt = 'Artistant changelog — what’s new on Artistant.';
 export const size = OG_SIZE;
-export const contentType = 'image/png';
+export const contentType = 'image/jpeg';
 
 export default function Image() {
   return poster({
