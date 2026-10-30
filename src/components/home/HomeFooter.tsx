@@ -3,7 +3,7 @@
 import React, { useRef } from 'react';
 import Link from 'next/link';
 import { motion, useTransform } from 'motion/react';
-import { useSectionProgress } from './primitives';
+import { ArrowIcon, useSectionProgress } from './primitives';
 import s from './home.module.css';
 
 export default function HomeFooter() {
@@ -15,12 +15,19 @@ export default function HomeFooter() {
     <footer className={s.footer}>
       <div className={s.container}>
         <div className={s.footBrand}>
-          <Link href="/" className={s.brand} aria-label="Artistant home">
-            <img src="/brand/wordmark.svg" alt="Artistant" width={118} height={22} />
-          </Link>
           <p className={s.footTag}>
             Made in Bengaluru, for <em>every stage</em> in India.
           </p>
+          <button
+            type="button"
+            className={s.footTop}
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          >
+            Back to top
+            <span className={s.footTopArrow}>
+              <ArrowIcon size={14} />
+            </span>
+          </button>
         </div>
       </div>
 

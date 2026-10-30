@@ -853,8 +853,10 @@
 
 .footBrand {
   display: flex;
-  flex-direction: column;
-  gap: 22px;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px 40px;
+  flex-wrap: wrap;
 }
 
 .footTag {
@@ -862,19 +864,57 @@
   font-family: var(--f-display);
   font-weight: 700;
   font-stretch: 90%;
-  font-size: clamp(26px, 2.6vw, 36px);
+  font-size: clamp(24px, 2.6vw, 36px);
   line-height: 1.1;
+  letter-spacing: -0.01em;
   color: var(--ink);
-  max-width: 360px;
+  text-wrap: balance;
 }
 
 .footTag em { font-style: normal; color: var(--accent); }
 
+.footTop {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--f-mono);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.footTop:hover { color: var(--ink); }
+
+.footTopArrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  transform: rotate(-90deg);
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.footTop:hover .footTopArrow {
+  border-color: var(--ink-2);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* Lines up with the container's content edge, not the page edge. */
 .footWord {
   position: relative;
-  margin: clamp(56px, 8vw, 110px) auto 0;
+  margin: clamp(40px, 6vw, 80px) auto 0;
   width: calc(100% - 2 * var(--gutter));
-  max-width: 1280px;
+  max-width: calc(var(--max) - 2 * var(--gutter));
   aspect-ratio: 794 / 148;
 }
 
