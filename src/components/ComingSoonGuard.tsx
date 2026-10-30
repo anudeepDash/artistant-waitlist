@@ -9,10 +9,14 @@ import { usePathname } from 'next/navigation';
 const ComingSoonGate = dynamic(() => import('./ComingSoonGate'));
 
 // Routes that are live for everyone; every other route stays behind the gate.
+// /admin has its own sign-in, so it skips the gate rather than showing two.
 const PUBLIC_PATHS = new Set(['/', '/privacy', '/terms']);
+const PUBLIC_PREFIXES = ['/admin'];
 
 export default function ComingSoonGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  if (PUBLIC_PATHS.has(pathname)) return <>{children}</>;
+  if (PUBLIC_PATHS.has(pathname) || PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+    return <>{children}</>;
+  }
   return <ComingSoonGate>{children}</ComingSoonGate>;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion, useMotionValueEvent, useScroll } from 'motion/react';
 import type { User } from 'firebase/auth';
@@ -15,6 +15,9 @@ interface HomeNavProps {
   user: User | null;
   reservation: WaitlistEntry | null;
   onSignIn: () => void;
+  onSignOut: () => void;
+  /** Signed in with an admin account: the account menu links to the admin portal. */
+  isAdmin: boolean;
   /** The main action for the current side: claim a name, or open the host / venue sign-up. */
   onCta: () => void;
 }
@@ -39,9 +42,11 @@ function SideSwitch({ side, onSide, id }: { side: Side; onSide: (side: Side) => 
   );
 }
 
-export default function HomeNav({ side, onSide, user, reservation, onSignIn, onCta }: HomeNavProps) {
+export default function HomeNav({ side, onSide, user, reservation, onSignIn, onSignOut, isAdmin, onCta }: HomeNavProps) {
   const [solid, setSolid] = useState(false);
   const [open, setOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
   const { scrollY } = useScroll();
   const links = NAV_LINKS[side];
   // Artists who already hold a name don't need the claim button any more.
@@ -55,6 +60,29 @@ export default function HomeNav({ side, onSide, user, reservation, onSignIn, onC
       document.body.style.overflow = '';
     };
   }, [open]);
+
+  // Close the account menu on an outside click or Escape.
+  useEffect(() => {
+    if (!accountOpen) return;
+    const onPointer = (e: PointerEvent) => {
+      if (!accountRef.current?.contains(e.target as Node)) setAccountOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setAccountOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [accountOpen]);
+
+  const signOut = () => {
+    setAccountOpen(false);
+    setOpen(false);
+    onSignOut();
+  };
 
   const initial = (reservation?.username?.[0] ?? user?.displayName?.[0] ?? user?.email?.[0] ?? 'A').toUpperCase();
   const photo = reservation?.profile_photo_url || user?.photoURL;
@@ -87,9 +115,43 @@ export default function HomeNav({ side, onSide, user, reservation, onSignIn, onC
 
           <div className={s.navActions}>
             {user ? (
-              <span className={s.avatar} title={reservation ? `You're registered as @${reservation.username}` : 'Signed in'}>
-                {photo ? <img src={photo} alt="" referrerPolicy="no-referrer" /> : initial}
-              </span>
+              <div className={s.account} ref={accountRef}>
+                <button
+                  type="button"
+                  className={s.avatar}
+                  onClick={() => setAccountOpen((o) => !o)}
+                  aria-label="Account menu"
+                  aria-haspopup="menu"
+                  aria-expanded={accountOpen}
+                >
+                  {photo ? <img src={photo} alt="" referrerPolicy="no-referrer" /> : initial}
+                </button>
+                <AnimatePresence>
+                  {accountOpen && (
+                    <motion.div
+                      className={s.accountMenu}
+                      role="menu"
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.18, ease: EASE }}
+                    >
+                      <div className={s.accountWho}>
+                        {reservation ? <b>@{reservation.username}</b> : <b>Signed in</b>}
+                        <span>{user.email || user.phoneNumber}</span>
+                      </div>
+                      {isAdmin && (
+                        <Link href="/admin" role="menuitem" className={s.accountItem}>
+                          Admin portal
+                        </Link>
+                      )}
+                      <button type="button" role="menuitem" className={s.accountItem} onClick={signOut}>
+                        Sign out
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             ) : (
               <button type="button" className={`${s.navSignIn} ${s.hideSm}`} onClick={onSignIn}>
                 Sign in
@@ -172,7 +234,16 @@ export default function HomeNav({ side, onSide, user, reservation, onSignIn, onC
                   {SIDE_CTA[side]}
                 </button>
               )}
-              {!user && (
+              {user && isAdmin && (
+                <Link href="/admin" className={s.btnGhost}>
+                  Admin portal
+                </Link>
+              )}
+              {user ? (
+                <button type="button" className={s.btnWhite} onClick={signOut}>
+                  Sign out
+                </button>
+              ) : (
                 <button
                   type="button"
                   className={s.btnWhite}

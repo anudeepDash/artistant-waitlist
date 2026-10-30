@@ -245,10 +245,13 @@ export async function verifyAdminToken(
   // Check the admin_users table via Supabase (service-role client)
   const supabase = getAdminSupabaseClient();
 
+  // Case-insensitive, since older rows weren't saved in lowercase. The LIKE
+  // wildcards are escaped so this still only matches the exact address.
   const { data, error } = await supabase
     .from('admin_users')
     .select('email')
-    .eq('email', normalizedEmail)
+    .ilike('email', normalizedEmail.replace(/[\\%_]/g, (c) => `\\${c}`))
+    .limit(1)
     .maybeSingle();
 
   if (error || !data) {
