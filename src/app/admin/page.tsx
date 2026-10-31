@@ -1,913 +1,445 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useTheme } from 'next-themes';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { AnimatePresence } from 'motion/react';
+import { TriangleAlert } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { signInWithGoogle, signInWithEmail, signOut as firebaseSignOut } from '@/lib/auth';
-import type { AdminWaitlistEntry } from '@/lib/waitlist';
-import type { BookingRequestEntry } from '@/lib/admin-actions';
+import { signOut } from '@/lib/auth';
+import type { WaitlistRole } from '@/lib/waitlist';
 import {
-  adminGetRegistrationsAction,
+  adminAddAdminAction,
   adminGetActivityLogsAction,
   adminGetAdminsAction,
-  adminGetBookingRequestsAction,
-  adminUpdateRegistrationAction,
-  adminAddAdminAction,
+  adminGetRegistrationsAction,
   adminRemoveAdminAction,
-  adminUpdateBookingRequestStatusAction,
-  adminDeleteBookingRequestAction,
+  adminUpdateRegistrationAction,
   adminUpdateUserRoleAction,
+  checkIsAdminAction,
 } from '@/lib/admin-actions';
+import {
+  VIEWS,
+  peopleToCsv,
+  downloadText,
+  queuePositions,
+  referralCounts,
+  statusOf,
+  type ActivityLog,
+  type AdminMember,
+  type Person,
+  type StatusFilter,
+  type View,
+} from '@/components/admin/data';
+import SignIn from '@/components/admin/SignIn';
+import Shell from '@/components/admin/Shell';
+import Overview from '@/components/admin/Overview';
+import People from '@/components/admin/People';
+import PersonDrawer, { type PersonPatch } from '@/components/admin/PersonDrawer';
+import Email, { type Audience } from '@/components/admin/Email';
+import Team from '@/components/admin/Team';
+import { Spinner, Toast, errorText, useConfirm, type ToastMsg } from '@/components/admin/ui';
+import s from '@/components/admin/admin.module.css';
 
-// Extracted Modular Components
-import AdminLoginGate from '@/components/admin/AdminLoginGate';
-import AdminShell from '@/components/admin/AdminShell';
-import OverviewTab from '@/components/admin/OverviewTab';
-import RegistrationsTab from '@/components/admin/RegistrationsTab';
-import BroadcastStudio from '@/components/BroadcastStudio';
-import BookingRequestsTab from '@/components/admin/BookingRequestsTab';
-import LeaderboardsTab from '@/components/admin/LeaderboardsTab';
-import VisitorActivityTab from '@/components/admin/VisitorActivityTab';
-import ManageAdminsTab from '@/components/admin/ManageAdminsTab';
-import SiteSettingsTab from '@/components/admin/SiteSettingsTab';
-import LinksAndCardsTab from '@/components/admin/LinksAndCardsTab';
-import CareersTab from '@/components/admin/CareersTab';
-import RegistrationDetailModal from '@/components/admin/RegistrationDetailModal';
-import CommandPalette from '@/components/admin/CommandPalette';
-import SqlMigrationModals from '@/components/admin/SqlMigrationModals';
-import { evaluateAutoVerify } from '@/components/admin/shared';
+type Access = 'checking' | 'admin' | 'denied';
+const STALE_MS = 2 * 60 * 1000;
+
+function viewFromHash(): View {
+  if (typeof window === 'undefined') return 'overview';
+  const h = window.location.hash.replace('#', '') as View;
+  return VIEWS.includes(h) ? h : 'overview';
+}
 
 export default function AdminPage() {
-  const { user, loading: authLoading } = useAuth();
-  const { theme, setTheme, resolvedTheme } = useTheme();
+  const { user, loading } = useAuth();
+  const { ask, dialog } = useConfirm();
 
-  const getIdToken = useCallback(async (): Promise<string> => {
-    if (!user) throw new Error("No active authenticated user session.");
-    return await user.getIdToken();
+  // Tagged with the uid it was checked for, so a stale answer never applies to another account.
+  const [access, setAccess] = useState<{ uid: string; state: Access } | null>(null);
+  const accessState: Access | null = user && access?.uid === user.uid ? access.state : null;
+
+  const [people, setPeople] = useState<Person[]>([]);
+  const [logs, setLogs] = useState<ActivityLog[]>([]);
+  const [admins, setAdmins] = useState<AdminMember[]>([]);
+  const [loadedAt, setLoadedAt] = useState<number | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [view, setViewState] = useState<View>(viewFromHash);
+  const [filter, setFilter] = useState<StatusFilter>('all');
+  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [audience, setAudience] = useState<Audience>('everyone');
+  const [oneAddress, setOneAddress] = useState('');
+  const [busy, setBusy] = useState<string | null>(null);
+  const [toastMsg, setToastMsg] = useState<ToastMsg | null>(null);
+
+  const toast = useCallback((text: string, error?: boolean) => setToastMsg({ id: Date.now(), text, error }), []);
+  const clearToast = useCallback(() => setToastMsg(null), []);
+
+  const getIdToken = useCallback(async () => {
+    if (!user) throw new Error('You’re signed out.');
+    return user.getIdToken();
   }, [user]);
 
-  // Core State
-  const [mounted, setMounted] = useState(false);
-  const [isUnlocked, setIsUnlocked] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [checkingAdmin, setCheckingAdmin] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [showToast, setShowToast] = useState<string | null>(null);
+  const setView = useCallback((v: View) => {
+    setViewState(v);
+    window.history.replaceState(null, '', v === 'overview' ? window.location.pathname : `#${v}`);
+    window.scrollTo({ top: 0 });
+  }, []);
 
-  // Form & Auth State
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
-  const [isSigningIn, setIsSigningIn] = useState(false);
-  const [authError, setAuthError] = useState('');
-
-  // Data State
-  const [registrations, setRegistrations] = useState<AdminWaitlistEntry[]>([]);
-  const [activityLogs, setActivityLogs] = useState<any[]>([]);
-  const [adminUsers, setAdminUsers] = useState<any[]>([]);
-  const [bookingRequests, setBookingRequests] = useState<BookingRequestEntry[]>([]);
-  const [bookingRequestsError, setBookingRequestsError] = useState<string | null>(null);
-  const [siteSettingsError, setSiteSettingsError] = useState<string | null>(null);
-  const [careersError, setCareersError] = useState<string | null>(null);
-
-  // Status & Mode State
-  const [isLoading, setIsLoading] = useState(false);
-  const [isLiveMode, setIsLiveMode] = useState(true);
-  const [dbError, setDbError] = useState<string | null>(null);
-
-  // Filtering & Selection State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
-  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
-  const [selectedReg, setSelectedReg] = useState<AdminWaitlistEntry | null>(null);
-  const [newAdminEmail, setNewAdminEmail] = useState('');
-
-  // Broadcast Studio State
-  const [emailAudienceMode, setEmailAudienceMode] = useState('filtered');
-
-  // Modals & Overlays State
-  const [showCommandPalette, setShowCommandPalette] = useState(false);
-  const [showSqlMigration, setShowSqlMigration] = useState(false);
-  const [showCareersSqlModal, setShowCareersSqlModal] = useState(false);
-  const [showSettingsSqlModal, setShowSettingsSqlModal] = useState(false);
-
-  // Mounting Effect
   useEffect(() => {
-    setMounted(true);
+    const onHash = () => setViewState(viewFromHash());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
-  // Toast Helper
-  const triggerToast = useCallback((msg: string) => {
-    setShowToast(msg);
-  }, []);
+  /* ───────────── Loading ───────────── */
 
-  // Keyboard Navigation Effect
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        setShowCommandPalette((prev) => !prev);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  // Authentication & Verification Loaders
-  const verifyAndLoad = useCallback(async (isSilent = false) => {
-    if (!isSilent) setIsLoading(true);
-    setAuthError('');
-    setDbError(null);
+  const load = useCallback(async () => {
+    if (!user) return;
+    setRefreshing(true);
     try {
-      const idToken = await getIdToken();
-      let bErrorMsg: string | null = null;
-      const [regs, logs, admins, bRequests] = await Promise.all([
+      const idToken = await user.getIdToken();
+      const [regs, activity, team] = await Promise.allSettled([
         adminGetRegistrationsAction(idToken),
         adminGetActivityLogsAction(idToken),
         adminGetAdminsAction(idToken),
-        adminGetBookingRequestsAction(idToken).catch((err) => {
-          console.warn('Error fetching booking requests:', err);
-          bErrorMsg = err?.message || 'Failed to fetch booking requests from database';
-          return [];
-        }),
       ]);
-      setRegistrations(regs);
-      setActivityLogs(logs);
-      setAdminUsers(admins);
-      setBookingRequests(bRequests || []);
-      setBookingRequestsError(bErrorMsg);
-      setIsLiveMode(true);
-      setIsUnlocked(true);
-      if (!isSilent) triggerToast('Connected to Live Database.');
-    } catch (err: any) {
-      console.warn('Supabase fetch failed. Falling back to Sandbox LocalStorage / Mock Data.', err);
-      if (err.message?.includes('Unauthorized') || err.code === 'PGRST301') {
-        setAuthError('Authorization failed. You may not have admin access.');
-        setIsUnlocked(false);
+      if (regs.status === 'fulfilled') {
+        setPeople(regs.value);
+        setLoadError(null);
       } else {
-        const sandboxRegs = localStorage.getItem('artistant_sandbox_registrations');
-        setRegistrations(sandboxRegs ? JSON.parse(sandboxRegs) : []);
-
-        const sandboxLogs = localStorage.getItem('artistant_sandbox_logs');
-        setActivityLogs(sandboxLogs ? JSON.parse(sandboxLogs) : []);
-
-        const sandboxAdmins = localStorage.getItem('artistant_sandbox_admins');
-        setAdminUsers(sandboxAdmins ? JSON.parse(sandboxAdmins) : []);
-
-        const sandboxRequests = localStorage.getItem('artistant_sandbox_booking_requests');
-        setBookingRequests(sandboxRequests ? JSON.parse(sandboxRequests) : []);
-
-        setIsLiveMode(false);
-        setIsUnlocked(true);
+        setLoadError(errorText(regs.reason, 'Couldn’t load the waitlist. Try refreshing.'));
       }
+      if (activity.status === 'fulfilled') setLogs(activity.value as ActivityLog[]);
+      if (team.status === 'fulfilled') setAdmins(team.value as AdminMember[]);
+      setLoadedAt(Date.now());
+    } catch (err) {
+      setLoadError(errorText(err, 'Couldn’t load the waitlist. Try refreshing.'));
     } finally {
-      if (!isSilent) setIsLoading(false);
+      setRefreshing(false);
     }
-  }, [getIdToken, triggerToast]);
+  }, [user]);
 
-  // Check Admin Rights on User Change
   useEffect(() => {
-    const checkAdminRights = async () => {
-      if (authLoading) return;
-      if (!user) {
-        setIsAdmin(false);
-        setIsUnlocked(false);
-        setCheckingAdmin(false);
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      let ok = false;
+      try {
+        ok = await checkIsAdminAction(await user.getIdToken());
+      } catch {
+        ok = false;
+      }
+      if (cancelled) return;
+      setAccess({ uid: user.uid, state: ok ? 'admin' : 'denied' });
+      if (ok) load();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, load]);
+
+  // Coming back to the tab after a while picks up new sign-ups.
+  useEffect(() => {
+    if (accessState !== 'admin') return;
+    const onFocus = () => {
+      if (!refreshing && loadedAt && Date.now() - loadedAt > STALE_MS) load();
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [accessState, refreshing, loadedAt, load]);
+
+  /* ───────────── Derived ───────────── */
+
+  const positions = useMemo(() => queuePositions(people), [people]);
+  const referrals = useMemo(() => referralCounts(people), [people]);
+  const reviewCount = useMemo(() => people.filter((p) => statusOf(p) === 'review').length, [people]);
+  const openPerson = openId ? people.find((p) => p.id === openId) : undefined;
+
+  /* ───────────── Actions ───────────── */
+
+  const replacePerson = (id: string, patch: Partial<Person>) =>
+    setPeople((list) => list.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+
+  const patchPerson = async (p: Person, patch: PersonPatch) => {
+    const name = `@${p.username}`;
+    if (patch.is_blocked === true) {
+      const ok = await ask({
+        title: `Block ${name}?`,
+        body: 'They drop out of the queue, won’t get broadcasts, and we email them to say their account is on hold.',
+        confirm: 'Block',
+        danger: true,
+      });
+      if (!ok) return;
+    }
+    if (patch.is_verified === false) {
+      const ok = await ask({
+        title: `Remove ${name}’s verification?`,
+        body: 'We’ll email them to say their profile is back under review.',
+        confirm: 'Remove verification',
+        danger: true,
+      });
+      if (!ok) return;
+    }
+
+    const key = Object.keys(patch)[0];
+    const before = { is_verified: p.is_verified, is_blocked: p.is_blocked, exclude_from_waitlist: p.exclude_from_waitlist };
+    const next = { ...before, ...patch };
+    setBusy(key);
+    replacePerson(p.id, patch);
+    try {
+      const res = await adminUpdateRegistrationAction(
+        await getIdToken(),
+        p.user_id || p.id,
+        next.is_verified,
+        next.is_blocked,
+        undefined,
+        undefined,
+        next.exclude_from_waitlist ?? false,
+      );
+      if (!res.success) throw new Error(res.message || 'Didn’t save.');
+      toast(
+        patch.is_verified === true ? `${name} verified. We emailed them.`
+          : patch.is_verified === false ? `Removed ${name}’s verification.`
+          : patch.is_blocked === true ? `${name} blocked.`
+          : patch.is_blocked === false ? `${name} unblocked.`
+          : next.exclude_from_waitlist ? `${name} no longer counts in the queue.`
+          : `${name} counts in the queue again.`,
+      );
+    } catch (err) {
+      replacePerson(p.id, before);
+      toast(errorText(err, 'Didn’t save. Try again.'), true);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const changeRole = async (p: Person, role: WaitlistRole) => {
+    const prev = p.role;
+    setBusy('role');
+    replacePerson(p.id, { role });
+    try {
+      const res = await adminUpdateUserRoleAction(await getIdToken(), p.user_id || p.id, role);
+      if (!res.success) throw new Error(res.message);
+      toast(`@${p.username} is now ${role === 'artist' ? 'an' : 'a'} ${role}.`);
+    } catch (err) {
+      replacePerson(p.id, { role: prev });
+      toast(errorText(err, 'Didn’t save the role.'), true);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const verifyMany = async (list: Person[]) => {
+    if (list.length === 0) return;
+    const ok = await ask({
+      title: `Verify ${list.length} ${list.length === 1 ? 'person' : 'people'}?`,
+      body: 'Each of them gets the “you’re verified” email.',
+      confirm: `Verify ${list.length}`,
+    });
+    if (!ok) return;
+    setBusy('bulk');
+    let done = 0;
+    const failed: string[] = [];
+    const idToken = await getIdToken();
+    for (const p of list) {
+      try {
+        const res = await adminUpdateRegistrationAction(
+          idToken, p.user_id || p.id, true, p.is_blocked, undefined, undefined, p.exclude_from_waitlist ?? false,
+        );
+        if (!res.success) throw new Error(res.message);
+        replacePerson(p.id, { is_verified: true });
+        done++;
+      } catch {
+        failed.push(`@${p.username}`);
+      }
+    }
+    setBusy(null);
+    setSelected(new Set());
+    if (failed.length) toast(`Verified ${done}. Didn’t work for ${failed.join(', ')}.`, true);
+    else toast(`Verified ${done} ${done === 1 ? 'person' : 'people'}.`);
+  };
+
+  const exportCsv = (list: Person[]) => {
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadText(`artistant-waitlist-${stamp}.csv`, peopleToCsv(list, positions));
+    toast(`Exported ${list.length} ${list.length === 1 ? 'person' : 'people'}.`);
+  };
+
+  const emailPerson = (p: Person) => {
+    setOpenId(null);
+    setAudience('one');
+    setOneAddress(p.email);
+    setView('email');
+  };
+
+  const emailSelected = () => {
+    setAudience('selected');
+    setView('email');
+  };
+
+  const addAdmin = async (email: string) => {
+    setBusy('add');
+    try {
+      const idToken = await getIdToken();
+      await adminAddAdminAction(idToken, email, user?.email || 'admin');
+      setAdmins((await adminGetAdminsAction(idToken)) as AdminMember[]);
+      toast(`${email} can now open admin.`);
+      return true;
+    } catch (err) {
+      toast(errorText(err, 'Couldn’t add them. Try again.'), true);
+      return false;
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const removeAdmin = async (email: string) => {
+    const isMe = email.toLowerCase() === user?.email?.toLowerCase();
+    const ok = await ask({
+      title: isMe ? 'Remove your own access?' : `Remove ${email}?`,
+      body: isMe ? 'You’ll be locked out of admin straight away.' : 'They lose access to admin straight away, and we email them.',
+      confirm: 'Remove',
+      danger: true,
+    });
+    if (!ok) return;
+    setBusy(email);
+    try {
+      const idToken = await getIdToken();
+      await adminRemoveAdminAction(idToken, email);
+      if (isMe) {
+        await signOut();
         return;
       }
-      setCheckingAdmin(true);
-      try {
-        const token = await getIdToken();
-        if (token) {
-          setIsAdmin(true);
-          await verifyAndLoad(true);
-        } else {
-          setIsAdmin(false);
-          setIsUnlocked(false);
-        }
-      } catch (err) {
-        console.error('Error verifying admin authorization:', err);
-        setIsAdmin(false);
-        setIsUnlocked(false);
-      } finally {
-        setCheckingAdmin(false);
-      }
-    };
-
-    checkAdminRights();
-  }, [user, authLoading, getIdToken, verifyAndLoad]);
-
-  // Auth Handlers
-  const handleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isSigningIn) return;
-    setIsSigningIn(true);
-    setAuthError('');
-    try {
-      await signInWithGoogle();
+      setAdmins((await adminGetAdminsAction(idToken)) as AdminMember[]);
+      toast(`${email} no longer has access.`);
     } catch (err) {
-      console.error('Sign in with Google error:', err);
-      setAuthError('Failed to sign in with Google.');
+      toast(errorText(err, 'Couldn’t remove them.'), true);
     } finally {
-      setIsSigningIn(false);
+      setBusy(null);
     }
   };
 
-  const handleEmailLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!loginEmail || !loginPassword) return;
-    if (isSigningIn) return;
-    setIsSigningIn(true);
-    setAuthError('');
+  const handleSignOut = async () => {
     try {
-      await signInWithEmail(loginEmail, loginPassword);
-    } catch (err: any) {
-      console.error('Email sign in error:', err);
-      setAuthError(err.message || 'Failed to sign in with email.');
-    } finally {
-      setIsSigningIn(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await firebaseSignOut();
-      setIsUnlocked(false);
-      setIsAdmin(false);
-      setAuthError('');
+      await signOut();
     } catch (err) {
-      console.error('Logout error:', err);
+      toast(errorText(err, 'Couldn’t sign out.'), true);
     }
   };
 
-  // Helper: target matching
-  const isTargetMatch = (r: AdminWaitlistEntry | null, reg: { user_id?: string | null; id?: string | null }) => {
-    if (!r || !reg) return false;
-    if (r.id && reg.id && r.id === reg.id) return true;
-    if (r.user_id && reg.user_id && r.user_id === reg.user_id) return true;
-    return false;
-  };
+  /* ───────────── Render ───────────── */
 
-  // Admin Actions
-  const handleVerifyAndLock = async (reg: AdminWaitlistEntry) => {
-    const nextState = !reg.is_verified;
-    const targetId = reg.user_id || reg.id;
-    const prevRegistrations = [...registrations];
-    const prevSelected = selectedReg;
+  if (loading || (user && accessState === null)) return <SignIn state="loading" onSignOut={handleSignOut} />;
+  if (!user) return <SignIn state="signed-out" onSignOut={handleSignOut} />;
+  if (accessState === 'denied') return <SignIn state="denied" email={user.email} onSignOut={handleSignOut} />;
 
-    const updated = registrations.map((r) => {
-      if (isTargetMatch(r, reg)) return { ...r, is_verified: nextState };
-      return r;
-    });
-    setRegistrations(updated);
-    if (selectedReg && isTargetMatch(selectedReg, reg)) {
-      setSelectedReg((prev) => (prev ? { ...prev, is_verified: nextState } : null));
-    }
+  const firstLoad = loadedAt === null;
 
-    try {
-      if (isLiveMode) {
-        const idToken = await getIdToken();
-        const res = await adminUpdateRegistrationAction(
-          idToken,
-          targetId,
-          nextState,
-          reg.is_blocked,
-          reg.position_override,
-          reg.feature_founding_card ?? false,
-          reg.exclude_from_waitlist ?? false
-        );
-        if (res && !res.success) {
-          setRegistrations(prevRegistrations);
-          setSelectedReg(prevSelected);
-          triggerToast(`Error updating database: ${res.message || 'Action failed'}`);
-          return;
-        }
-        if (nextState) {
-          triggerToast(`User Verified. Verification Email Dispatched to @${reg.username}!`);
-        } else {
-          triggerToast(`Verification revoked for @${reg.username}`);
-        }
-      } else {
-        localStorage.setItem('artistant_sandbox_registrations', JSON.stringify(updated));
-        triggerToast(`Sandbox: @${reg.username} verification updated!`);
-      }
-    } catch (err: any) {
-      console.error('Error updating database for verify action:', err);
-      setRegistrations(prevRegistrations);
-      setSelectedReg(prevSelected);
-      triggerToast(`Error updating database: ${err.message || 'Action failed'}`);
-    }
-  };
-
-  const handleToggleBlock = async (reg: AdminWaitlistEntry) => {
-    const nextState = !reg.is_blocked;
-    const targetId = reg.user_id || reg.id;
-    const prevRegistrations = [...registrations];
-    const prevSelected = selectedReg;
-
-    const updated = registrations.map((r) => {
-      if (isTargetMatch(r, reg)) return { ...r, is_blocked: nextState };
-      return r;
-    });
-    setRegistrations(updated);
-    if (selectedReg && isTargetMatch(selectedReg, reg)) {
-      setSelectedReg((prev) => (prev ? { ...prev, is_blocked: nextState } : null));
-    }
-
-    try {
-      if (isLiveMode) {
-        const idToken = await getIdToken();
-        const res = await adminUpdateRegistrationAction(
-          idToken,
-          targetId,
-          reg.is_verified,
-          nextState,
-          reg.position_override,
-          reg.feature_founding_card ?? false,
-          reg.exclude_from_waitlist ?? false
-        );
-        if (res && !res.success) {
-          setRegistrations(prevRegistrations);
-          setSelectedReg(prevSelected);
-          triggerToast(`Error saving block status: ${res.message || 'Action failed'}`);
-          return;
-        }
-        triggerToast(`User @${reg.username} block status toggled!`);
-      } else {
-        localStorage.setItem('artistant_sandbox_registrations', JSON.stringify(updated));
-        triggerToast(`Sandbox: @${reg.username} block state updated!`);
-      }
-    } catch (err: any) {
-      console.error('Error updating database for block action:', err);
-      setRegistrations(prevRegistrations);
-      setSelectedReg(prevSelected);
-      triggerToast(`Error saving block status: ${err.message || 'Action failed'}`);
-    }
-  };
-
-  const handleToggleFoundingCard = async (reg: AdminWaitlistEntry) => {
-    const nextState = !reg.feature_founding_card;
-    const targetId = reg.user_id || reg.id;
-    const prevRegistrations = [...registrations];
-    const prevSelected = selectedReg;
-
-    const updated = registrations.map((r) => {
-      if (isTargetMatch(r, reg)) return { ...r, feature_founding_card: nextState };
-      return r;
-    });
-    setRegistrations(updated);
-    if (selectedReg && isTargetMatch(selectedReg, reg)) {
-      setSelectedReg((prev) => (prev ? { ...prev, feature_founding_card: nextState } : null));
-    }
-
-    try {
-      if (isLiveMode) {
-        const idToken = await getIdToken();
-        const res = await adminUpdateRegistrationAction(
-          idToken,
-          targetId,
-          reg.is_verified,
-          reg.is_blocked,
-          reg.position_override,
-          nextState,
-          reg.exclude_from_waitlist ?? false
-        );
-        if (res && !res.success) {
-          setRegistrations(prevRegistrations);
-          setSelectedReg(prevSelected);
-          triggerToast(`Error saving founding card status: ${res.message || 'Action failed'}`);
-          return;
-        }
-        triggerToast(nextState ? `Featured @${reg.username} as Founding Card!` : `Unfeatured @${reg.username} as Founding Card.`);
-      } else {
-        localStorage.setItem('artistant_sandbox_registrations', JSON.stringify(updated));
-        triggerToast(`Sandbox: @${reg.username} founding card toggled!`);
-      }
-    } catch (err: any) {
-      console.error('Error updating database for founding card action:', err);
-      setRegistrations(prevRegistrations);
-      setSelectedReg(prevSelected);
-      triggerToast(`Error saving founding card status: ${err.message || 'Action failed'}`);
-    }
-  };
-
-  const handleToggleExcludeFromWaitlist = async (reg: AdminWaitlistEntry) => {
-    const nextState = !reg.exclude_from_waitlist;
-    const targetId = reg.user_id || reg.id;
-    const prevRegistrations = [...registrations];
-    const prevSelected = selectedReg;
-
-    const updated = registrations.map((r) => {
-      if (isTargetMatch(r, reg)) return { ...r, exclude_from_waitlist: nextState };
-      return r;
-    });
-    setRegistrations(updated);
-    if (selectedReg && isTargetMatch(selectedReg, reg)) {
-      setSelectedReg((prev) => (prev ? { ...prev, exclude_from_waitlist: nextState } : null));
-    }
-
-    try {
-      if (isLiveMode) {
-        const idToken = await getIdToken();
-        const res = await adminUpdateRegistrationAction(
-          idToken,
-          targetId,
-          reg.is_verified,
-          reg.is_blocked,
-          reg.position_override,
-          reg.feature_founding_card ?? false,
-          nextState
-        );
-        if (res && !res.success) {
-          setRegistrations(prevRegistrations);
-          setSelectedReg(prevSelected);
-          triggerToast(`Error saving waitlist exclusion status: ${res.message || 'Action failed'}`);
-          return;
-        }
-        triggerToast(nextState ? `Excluded @${reg.username} from waitlist rank.` : `Restored waitlist rank for @${reg.username}.`);
-      } else {
-        localStorage.setItem('artistant_sandbox_registrations', JSON.stringify(updated));
-        triggerToast(`Sandbox: @${reg.username} rank exclusion toggled!`);
-      }
-    } catch (err: any) {
-      console.error('Error updating database for exclude action:', err);
-      setRegistrations(prevRegistrations);
-      setSelectedReg(prevSelected);
-      triggerToast(`Error saving waitlist exclusion status: ${err.message || 'Action failed'}`);
-    }
-  };
-
-  const sortRegistrations = (entries: AdminWaitlistEntry[]): AdminWaitlistEntry[] => {
-    return [...entries].sort((a, b) => {
-      const posA = a.position_override !== null && a.position_override !== undefined ? a.position_override : Infinity;
-      const posB = b.position_override !== null && b.position_override !== undefined ? b.position_override : Infinity;
-      if (posA !== posB) {
-        return posA - posB;
-      }
-      return new Date(b.reserved_at).getTime() - new Date(a.reserved_at).getTime();
-    });
-  };
-
-  const handleSavePositionOverride = async (reg: AdminWaitlistEntry, val: number | null) => {
-    const prevRegistrations = [...registrations];
-    const prevSelected = selectedReg;
-    const targetId = reg.user_id || reg.id;
-
-    const updated = registrations.map((r) => {
-      if (isTargetMatch(r, reg)) return { ...r, position_override: val };
-      return r;
-    });
-
-    const sortedUpdated = sortRegistrations(updated);
-    setRegistrations(sortedUpdated);
-    if (selectedReg && isTargetMatch(selectedReg, reg)) {
-      setSelectedReg((prev) => (prev ? { ...prev, position_override: val } : null));
-    }
-
-    try {
-      if (isLiveMode) {
-        const idToken = await getIdToken();
-        const res = await adminUpdateRegistrationAction(
-          idToken,
-          targetId,
-          reg.is_verified,
-          reg.is_blocked,
-          val,
-          reg.feature_founding_card ?? false,
-          reg.exclude_from_waitlist ?? false
-        );
-        if (res && !res.success) {
-          setRegistrations(prevRegistrations);
-          setSelectedReg(prevSelected);
-          triggerToast(`Failed to save priority override: ${res.message || 'Action failed'}`);
-          return;
-        }
-        triggerToast(`Priority Override set to position ${val ?? 'Auto'}!`);
-      } else {
-        localStorage.setItem('artistant_sandbox_registrations', JSON.stringify(sortedUpdated));
-        triggerToast(`Sandbox: Override saved.`);
-      }
-    } catch (err: any) {
-      console.error('Error saving priority override:', err);
-      setRegistrations(prevRegistrations);
-      setSelectedReg(prevSelected);
-      triggerToast(`Failed to save priority override: ${err.message || 'Action failed'}`);
-    }
-  };
-
-  const handleRoleChange = async (userId: string, newRole: string) => {
-    if (!user) return;
-    try {
-      const idToken = await user.getIdToken();
-      const res = await adminUpdateUserRoleAction(idToken, userId, newRole);
-      if (res.success) {
-        if (selectedReg) setSelectedReg({ ...selectedReg, role: newRole as any });
-        setRegistrations((prev) => prev.map((r) => (r.id === selectedReg?.id ? { ...r, role: newRole as any } : r)));
-        triggerToast(`Assigned role ${newRole.toUpperCase()}`);
-      }
-    } catch (err) {
-      console.error('Error assigning role:', err);
-    }
-  };
-
-  // Booking Handlers
-  const handleUpdateBookingStatus = async (requestId: string, newStatus: 'pending' | 'contacted' | 'confirmed' | 'archived') => {
-    const prev = [...bookingRequests];
-    const updated = bookingRequests.map((r) => (r.id === requestId ? { ...r, status: newStatus } : r));
-    setBookingRequests(updated);
-    try {
-      if (isLiveMode) {
-        const idToken = await getIdToken();
-        await adminUpdateBookingRequestStatusAction(idToken, requestId, newStatus);
-        triggerToast(`Updated request status to ${newStatus.toUpperCase()}`);
-      } else {
-        localStorage.setItem('artistant_sandbox_booking_requests', JSON.stringify(updated));
-        triggerToast(`Sandbox: Updated status to ${newStatus.toUpperCase()}`);
-      }
-    } catch (err: any) {
-      setBookingRequests(prev);
-      triggerToast(`Failed to update status: ${err.message || 'Error'}`);
-    }
-  };
-
-  const handleDeleteBookingRequest = async (requestId: string) => {
-    if (!window.confirm('Are you sure you want to delete this booking request?')) return;
-    const prev = [...bookingRequests];
-    const updated = bookingRequests.filter((r) => r.id !== requestId);
-    setBookingRequests(updated);
-    try {
-      if (isLiveMode) {
-        const idToken = await getIdToken();
-        await adminDeleteBookingRequestAction(idToken, requestId);
-        triggerToast('Booking request deleted.');
-      } else {
-        localStorage.setItem('artistant_sandbox_booking_requests', JSON.stringify(updated));
-        triggerToast('Sandbox: Request deleted.');
-      }
-    } catch (err: any) {
-      setBookingRequests(prev);
-      triggerToast(`Failed to delete request: ${err.message || 'Error'}`);
-    }
-  };
-
-  // Admin Membership Handlers
-  const handleAddAdmin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newAdminEmail) return;
-    const targetEmail = newAdminEmail.trim().toLowerCase();
-
-    try {
-      if (isLiveMode) {
-        const idToken = await getIdToken();
-        await adminAddAdminAction(idToken, targetEmail, user?.email || 'system');
-        const admins = await adminGetAdminsAction(idToken);
-        setAdminUsers(admins);
-      } else {
-        const newAdmin = {
-          id: `mock-admin-${Date.now()}`,
-          email: targetEmail,
-          added_by: user?.email || 'sandbox_user',
-          created_at: new Date().toISOString(),
-        };
-        const updated = [newAdmin, ...adminUsers];
-        setAdminUsers(updated);
-        localStorage.setItem('artistant_sandbox_admins', JSON.stringify(updated));
-      }
-      setNewAdminEmail('');
-      triggerToast(`Admin ${targetEmail} added successfully!`);
-    } catch (err: any) {
-      console.error('Error adding admin:', err);
-      triggerToast(`Failed to add admin: ${err.message}`);
-    }
-  };
-
-  const handleRemoveAdmin = async (emailToRemove: string) => {
-    const normalised = emailToRemove.trim().toLowerCase();
-    if (normalised === 'anudeepdash2004@gmail.com') {
-      triggerToast('Cannot remove super-admin.');
-      return;
-    }
-
-    try {
-      if (isLiveMode) {
-        const idToken = await getIdToken();
-        await adminRemoveAdminAction(idToken, normalised);
-        const admins = await adminGetAdminsAction(idToken);
-        setAdminUsers(admins);
-      } else {
-        const updated = adminUsers.filter((a) => a.email.toLowerCase() !== normalised);
-        setAdminUsers(updated);
-        localStorage.setItem('artistant_sandbox_admins', JSON.stringify(updated));
-      }
-      triggerToast(`Admin ${normalised} access revoked.`);
-    } catch (err: any) {
-      console.error('Error removing admin:', err);
-      triggerToast(`Failed to remove admin: ${err.message}`);
-    }
-  };
-
-  // Auto-verify Engine
-  const autoVerifyCount = useMemo(() => {
-    return registrations.filter((r) => evaluateAutoVerify(r).eligible).length;
-  }, [registrations]);
-
-  const runAutoVerifyEngine = async () => {
-    const candidates = registrations.filter((r) => evaluateAutoVerify(r).eligible);
-    if (candidates.length === 0) {
-      triggerToast('No new accounts meet auto-verify criteria.');
-      return;
-    }
-
-    setIsLoading(true);
-    let count = 0;
-    const updated = [...registrations];
-
-    for (const reg of candidates) {
-      try {
-        if (isLiveMode) {
-          const idToken = await getIdToken();
-          await adminUpdateRegistrationAction(
-            idToken,
-            reg.user_id,
-            true,
-            reg.is_blocked,
-            reg.position_override,
-            reg.feature_founding_card ?? false,
-            reg.exclude_from_waitlist ?? false
-          );
-        }
-
-        const idx = updated.findIndex((u) => u.user_id === reg.user_id);
-        if (idx !== -1) {
-          updated[idx] = { ...updated[idx], is_verified: true };
-        }
-        count++;
-      } catch (err) {
-        console.error('Heuristics failure for @' + reg.username, err);
-      }
-    }
-
-    setRegistrations(updated);
-    if (!isLiveMode) {
-      localStorage.setItem('artistant_sandbox_registrations', JSON.stringify(updated));
-    }
-    setIsLoading(false);
-    triggerToast(`Engine Complete: Auto-verified ${count} registrations & fired onboarding templates.`);
-  };
-
-  // Leaderboard Calculation
-  const leaderboards = useMemo(() => {
-    const adminEmailsSet = new Set<string>();
-    adminUsers.forEach((a) => {
-      if (a.email) adminEmailsSet.add(a.email.toLowerCase().trim());
-    });
-    adminEmailsSet.add('anudeepdash2004@gmail.com');
-
-    const eligibleRegistrations = registrations.filter((r) => {
-      const email = r.email ? r.email.toLowerCase().trim() : '';
-      return !r.exclude_from_waitlist && !adminEmailsSet.has(email);
-    });
-
-    const referralCounts: Record<string, number> = {};
-    registrations.forEach((r) => {
-      if (r.referred_by) {
-        const ref = r.referred_by.toLowerCase().trim();
-        referralCounts[ref] = (referralCounts[ref] || 0) + 1;
-      }
-    });
-
-    const enriched = eligibleRegistrations.map((reg) => {
-      const refs = referralCounts[reg.username.toLowerCase().trim()] || 0;
-      const points = 100 + refs * 50;
-      return { ...reg, refs, points };
-    });
-
-    return enriched.sort((a, b) => {
-      const posA = a.position_override !== null && a.position_override !== undefined ? a.position_override : Infinity;
-      const posB = b.position_override !== null && b.position_override !== undefined ? b.position_override : Infinity;
-      if (posA !== posB) {
-        return posA - posB;
-      }
-      return b.points - a.points;
-    });
-  }, [registrations, adminUsers]);
-
-  // Filtered Registrations
-  const filteredRegistrations = useMemo(() => {
-    return registrations.filter((reg) => {
-      const searchLower = searchQuery.toLowerCase();
-      const matchesSearch =
-        reg.username.toLowerCase().includes(searchLower) ||
-        reg.email.toLowerCase().includes(searchLower) ||
-        (reg.display_name && reg.display_name.toLowerCase().includes(searchLower)) ||
-        (reg.phone && reg.phone.toLowerCase().includes(searchLower));
-
-      const matchesRole = roleFilter === 'all' || reg.role === roleFilter;
-
-      let matchesStatus = true;
-      if (statusFilter === 'verified') {
-        matchesStatus = reg.is_verified && !reg.is_blocked;
-      } else if (statusFilter === 'blocked') {
-        matchesStatus = reg.is_blocked;
-      } else if (statusFilter === 'pending') {
-        matchesStatus = !reg.is_verified && !reg.is_blocked;
-      }
-
-      return matchesSearch && matchesRole && matchesStatus;
-    });
-  }, [registrations, searchQuery, roleFilter, statusFilter]);
-
-  // Derived user display details
-  const userDisplayName = user?.displayName || (user?.email ? user.email.split('@')[0] : 'Admin');
-  const currentUserAdminRecord = adminUsers.find((a) => a.email === user?.email);
-  const userRole = currentUserAdminRecord ? currentUserAdminRecord.role : user?.email === 'anudeepdash2004@gmail.com' ? 'Developer' : 'Admin';
-
-  // Render Gate Screen if not unlocked
-  if (!isUnlocked) {
-    return (
-      <AdminLoginGate
-        authLoading={authLoading}
-        checkingAdmin={checkingAdmin}
-        user={user}
-        isAdmin={isAdmin}
-        isUnlocked={isUnlocked}
-        isLoading={isLoading}
-        isSigningIn={isSigningIn}
-        loginEmail={loginEmail}
-        setLoginEmail={setLoginEmail}
-        loginPassword={loginPassword}
-        setLoginPassword={setLoginPassword}
-        authError={authError}
-        handleLogout={handleLogout}
-        verifyAndLoad={verifyAndLoad}
-        handleLoginSubmit={handleLoginSubmit}
-        handleEmailLoginSubmit={handleEmailLoginSubmit}
-      />
-    );
-  }
-
-  // Main Dashboard Render
   return (
-    <AdminShell
-      activeTab={activeTab}
-      setActiveTab={setActiveTab}
-      sidebarOpen={sidebarOpen}
-      setSidebarOpen={setSidebarOpen}
-      bookingRequestsCount={bookingRequests.filter((r) => r.status === 'pending').length}
+    <Shell
+      view={view}
+      onView={setView}
       user={user}
-      userDisplayName={userDisplayName}
-      userRole={userRole}
-      handleLogout={handleLogout}
-      setShowCommandPalette={setShowCommandPalette}
-      mounted={mounted}
-      theme={theme}
-      setTheme={setTheme}
-      resolvedTheme={resolvedTheme}
-      successToast={showToast}
-      setSuccessToast={setShowToast}
+      peopleCount={people.length}
+      reviewCount={reviewCount}
+      onSignOut={handleSignOut}
     >
-      {activeTab === 'overview' && (
-        <OverviewTab
-          registrations={registrations}
-          activityLogs={activityLogs}
-          bookingRequests={bookingRequests}
-          user={user}
-          isLiveMode={isLiveMode}
-          autoVerifyCount={autoVerifyCount}
-          onTabChange={setActiveTab}
-          onRunAutoVerify={runAutoVerifyEngine}
-        />
+      {loadError && (
+        <div className={s.banner} role="alert">
+          <TriangleAlert size={16} />
+          <span style={{ flex: 1 }}>{loadError}</span>
+          <button type="button" className={`${s.btn} ${s.btnSm}`} onClick={load} disabled={refreshing}>Try again</button>
+        </div>
       )}
 
-      {activeTab === 'registrations' && (
-        <RegistrationsTab
-          registrations={registrations}
-          filteredRegistrations={filteredRegistrations}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          viewMode={viewMode}
-          setViewMode={setViewMode}
-          roleFilter={roleFilter}
-          setRoleFilter={setRoleFilter}
-          statusFilter={statusFilter}
-          setStatusFilter={setStatusFilter}
-          selectedUserIds={selectedUserIds}
-          setSelectedUserIds={setSelectedUserIds}
-          autoVerifyCount={autoVerifyCount}
-          runAutoVerifyEngine={runAutoVerifyEngine}
-          handleVerifyAndLock={handleVerifyAndLock}
-          handleToggleBlock={handleToggleBlock}
-          handleSavePositionOverride={handleSavePositionOverride}
-          setSelectedReg={setSelectedReg}
-          setActiveTab={setActiveTab}
-          setEmailAudienceMode={setEmailAudienceMode}
-        />
+      {firstLoad ? (
+        <div className={s.loader} style={{ padding: '80px 0', justifyContent: 'center' }}>
+          <Spinner /> Loading the waitlist
+        </div>
+      ) : (
+        <>
+          {view === 'overview' && (
+            <Overview
+              people={people}
+              logs={logs}
+              positions={positions}
+              loadedAt={loadedAt ?? 0}
+              refreshing={refreshing}
+              onRefresh={load}
+              onOpenPerson={(p) => setOpenId(p.id)}
+              onShowPeople={(f) => {
+                setFilter(f);
+                setQuery('');
+                setView('people');
+              }}
+            />
+          )}
+
+          {view === 'people' && (
+            <People
+              people={people}
+              positions={positions}
+              filter={filter}
+              onFilter={setFilter}
+              query={query}
+              onQuery={setQuery}
+              selected={selected}
+              onSelected={setSelected}
+              onOpenPerson={(p) => setOpenId(p.id)}
+              onVerifyMany={verifyMany}
+              onEmailSelected={emailSelected}
+              onExport={exportCsv}
+              busy={busy === 'bulk'}
+            />
+          )}
+
+          {view === 'email' && (
+            <Email
+              user={user}
+              people={people}
+              positions={positions}
+              selected={selected}
+              audience={audience}
+              onAudience={setAudience}
+              oneAddress={oneAddress}
+              onOneAddress={setOneAddress}
+              getIdToken={getIdToken}
+              toast={toast}
+            />
+          )}
+
+          {view === 'team' && (
+            <Team admins={admins} myEmail={user.email} onAdd={addAdmin} onRemove={removeAdmin} busy={busy} />
+          )}
+        </>
       )}
 
-      {activeTab === 'emails' && (
-        <BroadcastStudio
-          user={user}
-          registrations={registrations}
-          filteredRegistrations={filteredRegistrations}
-          selectedUserIds={selectedUserIds}
-          setSelectedUserIds={setSelectedUserIds}
-          showToast={triggerToast}
-          getIdToken={getIdToken}
-          roleFilter={roleFilter}
-          statusFilter={statusFilter}
-          searchQuery={searchQuery}
-        />
-      )}
+      <AnimatePresence>
+        {openPerson && (
+          <PersonDrawer
+            key="drawer"
+            person={openPerson}
+            place={positions.get(openPerson.id)}
+            referred={referrals.get(openPerson.username.toLowerCase()) || 0}
+            referrer={
+              openPerson.referred_by
+                ? people.find((p) => p.username.toLowerCase() === openPerson.referred_by?.toLowerCase())
+                : undefined
+            }
+            busy={busy}
+            onClose={() => setOpenId(null)}
+            onPatch={patchPerson}
+            onRole={changeRole}
+            onEmail={emailPerson}
+            onOpenPerson={(p) => setOpenId(p.id)}
+          />
+        )}
+      </AnimatePresence>
 
-      {activeTab === 'requests' && (
-        <BookingRequestsTab
-          bookingRequests={bookingRequests}
-          bookingRequestsError={bookingRequestsError}
-          onUpdateStatus={handleUpdateBookingStatus}
-          onDelete={handleDeleteBookingRequest}
-          onShowSqlMigration={() => setShowSqlMigration(true)}
-        />
-      )}
-
-      {activeTab === 'leaderboards' && (
-        <LeaderboardsTab leaderboards={leaderboards} />
-      )}
-
-      {activeTab === 'members' && (
-        <VisitorActivityTab
-          activityLogs={activityLogs}
-          totalRegistrations={registrations.length}
-        />
-      )}
-
-      {activeTab === 'admins' && (
-        <ManageAdminsTab
-          adminUsers={adminUsers}
-          onAddAdmin={handleAddAdmin}
-          onRemoveAdmin={handleRemoveAdmin}
-          newAdminEmail={newAdminEmail}
-          setNewAdminEmail={setNewAdminEmail}
-        />
-      )}
-
-      {activeTab === 'settings' && (
-        <SiteSettingsTab
-          getIdToken={getIdToken}
-          showToast={triggerToast}
-          setShowSettingsSqlModal={setShowSettingsSqlModal}
-          siteSettingsError={siteSettingsError}
-          setSiteSettingsError={setSiteSettingsError}
-        />
-      )}
-
-      {activeTab === 'links_cards' && (
-        <LinksAndCardsTab onSuccessToast={triggerToast} />
-      )}
-
-      {activeTab === 'careers' && (
-        <CareersTab
-          getIdToken={getIdToken}
-          showToast={triggerToast}
-          setShowCareersSqlModal={setShowCareersSqlModal}
-          careersError={careersError}
-          setCareersError={setCareersError}
-        />
-      )}
-
-      {/* Global Modals & Overlays */}
-      <RegistrationDetailModal
-        selectedReg={selectedReg}
-        onClose={() => setSelectedReg(null)}
-        onVerify={handleVerifyAndLock}
-        onBlock={handleToggleBlock}
-        onToggleFoundingCard={handleToggleFoundingCard}
-        onToggleExclude={handleToggleExcludeFromWaitlist}
-        onSavePositionOverride={handleSavePositionOverride}
-        onRoleChange={handleRoleChange}
-      />
-
-      <CommandPalette
-        show={showCommandPalette}
-        onClose={() => setShowCommandPalette(false)}
-        registrations={registrations}
-        onTabSelect={(tabId) => setActiveTab(tabId)}
-        onUserSelect={(reg) => {
-          setSelectedReg(reg);
-          setActiveTab('registrations');
-        }}
-      />
-
-      <SqlMigrationModals
-        showSqlMigration={showSqlMigration}
-        setShowSqlMigration={setShowSqlMigration}
-        showCareersSqlModal={showCareersSqlModal}
-        setShowCareersSqlModal={setShowCareersSqlModal}
-        showSettingsSqlModal={showSettingsSqlModal}
-        setShowSettingsSqlModal={setShowSettingsSqlModal}
-        showToast={triggerToast}
-      />
-    </AdminShell>
+      {dialog}
+      <Toast toast={toastMsg} onDone={clearToast} />
+    </Shell>
   );
 }
