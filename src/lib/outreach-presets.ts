@@ -97,7 +97,7 @@ Founder, ArtisTant`,
     templateType: 'welcome',
     senderAlias: 'official',
     ctaText: 'View Your Position',
-    ctaUrl: 'https://artistant.in/dashboard',
+    ctaUrl: 'https://artistant.in/',
     bodyHtml: `<p>Hi <strong>{{name}}</strong>,</p>
 
 <p>Great news! The ArtisTant early access queue is moving fast, and your spot is getting closer to the front!</p>
@@ -121,7 +121,7 @@ Share your unique referral link with fellow artists and creators. Every artist w
     templateType: 'newsletter',
     senderAlias: 'official',
     ctaText: 'Explore New Features',
-    ctaUrl: 'https://artistant.in/dashboard',
+    ctaUrl: 'https://artistant.in/',
     bodyHtml: `<p>Hi <strong>{{name}}</strong>,</p>
 
 <p>We're thrilled to announce a major upgrade to ArtisTant creator portfolios!</p>

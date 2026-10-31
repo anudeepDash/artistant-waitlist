@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
-import Footer from '@/components/Footer';
+import HomeFooter from '@/components/home/HomeFooter';
+import s from '@/components/home/home.module.css';
 import { pageMetadata } from '@/lib/seo';
 
 export const metadata = pageMetadata({
@@ -11,7 +12,8 @@ export const metadata = pageMetadata({
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-[#121212] text-gray-300 font-sans selection:bg-[#F25A2B]/30 selection:text-white">
+    <div className={s.page}>
+      <div className="text-gray-300 selection:bg-[#F25A2B]/30 selection:text-white">
       {/* Background Glows */}
       <div className="fixed top-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-[#F25A2B]/5 rounded-full blur-[120px] pointer-events-none -z-10" />
       <div className="fixed bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] bg-[#7C5CFF]/5 rounded-full blur-[120px] pointer-events-none -z-10" />
@@ -106,8 +108,9 @@ export default function PrivacyPage() {
           </section>
         </div>
       </main>
-      
-      <Footer />
+      </div>
+
+      <HomeFooter />
     </div>
   );
 }

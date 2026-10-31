@@ -35,8 +35,29 @@ if (typeof window === 'undefined' && process.env.NODE_ENV !== 'test') {
   checkEnvironmentVariables();
 }
 
+// Old version 1 pages. They've been removed; send anyone with an old link to the homepage.
+// Temporary (307) so browsers don't cache it forever if a page comes back.
+const RETIRED_V1_PAGES = [
+  '/card',
+  '/careers',
+  '/changelog',
+  '/claim',
+  '/dashboard',
+  '/directory',
+  '/events',
+  '/gigs',
+  '/links',
+  '/jasmine-sandlas-bengaluru',
+];
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  async redirects() {
+    return RETIRED_V1_PAGES.flatMap((path) => [
+      { source: path, destination: '/', permanent: false },
+      { source: `${path}/:rest*`, destination: '/', permanent: false },
+    ]);
+  },
   experimental: {
     serverActions: {
       // Big enough for an 8 MB photo. Vercel caps request bodies at 4.5 MB anyway,

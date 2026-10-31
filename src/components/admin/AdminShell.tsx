@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   BarChart3,
   Users,
-  QrCode,
   Mail,
   CalendarIcon,
   Trophy,
@@ -64,7 +63,6 @@ export default function AdminShell({
   const tabs = [
     { id: "overview", label: "Executive Overview", icon: BarChart3, accent: '#00F2FE', count: null },
     { id: "registrations", label: "Waitlist Directory", icon: Users, accent: 'var(--brand-1)', count: null },
-    { id: "links_cards", label: "Links & Founder Cards", icon: QrCode, accent: '#F25A2B', count: null },
     { id: "emails", label: "Broadcast Studio", icon: Mail, accent: '#7C5CFF', count: null },
     { id: "requests", label: "Booking Requests", icon: CalendarIcon, accent: '#F25A2B', count: bookingRequestsCount },
     { id: "leaderboards", label: "Leaderboards", icon: Trophy, accent: 'var(--brand-2)', count: null },
@@ -258,7 +256,6 @@ export default function AdminShell({
                     {activeTab === "leaderboards" && "Leaderboard Rankings"}
                     {activeTab === "members" && "Visitor Activity Logs"}
                     {activeTab === "admins" && "System Administrators"}
-                    {activeTab === "links_cards" && "Links & Founder Business Cards Studio"}
                     {activeTab === "settings" && "Platform Configuration"}
                     {activeTab === "careers" && "Careers Management"}
                   </h2>

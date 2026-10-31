@@ -172,19 +172,6 @@ export default function RegistrationDetailModal({
                       </span>
                     )}
                   </div>
-
-                  {/* View Live Link */}
-                  <div className="pt-2 flex justify-center sm:justify-start">
-                    <a
-                      href={`/${selectedReg.username}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-4 py-2 rounded-2xl text-xs font-mono font-bold uppercase flex items-center gap-2 bg-bg-soft border border-line-soft hover:bg-bg-soft-hover text-ink transition-all cursor-pointer shadow-sm active:scale-95"
-                    >
-                      <ExternalLink className="w-4 h-4 text-brand" />
-                      <span>View Live Profile</span>
-                    </a>
-                  </div>
                 </div>
               </div>
 

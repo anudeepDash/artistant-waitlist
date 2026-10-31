@@ -20,7 +20,6 @@ export function parseUserAgent(ua: string | null): string {
 export const ADMIN_TABS = [
   { id: "overview", label: "Executive Overview", icon: "BarChart3", accent: '#00F2FE', headerTitle: "Executive Overview & Analytics" },
   { id: "registrations", label: "Waitlist Directory", icon: "Users", accent: 'var(--brand-1)', headerTitle: "Waitlist Directory" },
-  { id: "links_cards", label: "Links & Founder Cards", icon: "QrCode", accent: '#F25A2B', headerTitle: "Links & Founder Business Cards Studio" },
   { id: "emails", label: "Broadcast Studio", icon: "Mail", accent: '#7C5CFF', headerTitle: "Email Broadcast Studio" },
   { id: "requests", label: "Booking Requests", icon: "CalendarIcon", accent: '#F25A2B', headerTitle: "Client Booking Requests Ops" },
   { id: "leaderboards", label: "Leaderboards", icon: "Trophy", accent: 'var(--brand-2)', headerTitle: "Leaderboard Rankings" },

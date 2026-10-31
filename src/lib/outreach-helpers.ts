@@ -18,12 +18,8 @@ export function substitutePersonalizationTokens(
   const position = recipient.position !== undefined && recipient.position !== null ? String(recipient.position) : '100+';
   const customNote = recipient.custom_note || '';
 
-  const queryParts: string[] = [];
-  if (recipient.id) queryParts.push(`id=${encodeURIComponent(recipient.id)}`);
-  if (recipient.username) queryParts.push(`username=${encodeURIComponent(recipient.username)}`);
-  if (recipient.email) queryParts.push(`email=${encodeURIComponent(recipient.email)}`);
-
-  const uniqueClaimUrl = `https://artistant.in/claim${queryParts.length > 0 ? `?${queryParts.join('&')}` : ''}`;
+  // The old /claim page is gone; sign-up now happens on the homepage.
+  const uniqueClaimUrl = 'https://artistant.in/';
 
   return text
     .replaceAll('{{name}}', recipientName)

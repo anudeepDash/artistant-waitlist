@@ -254,7 +254,7 @@ export default function BroadcastStudio({
           "Welcome to ArtisTant Official! Your artist portfolio and profile credentials have been successfully created.\n\nClaim your profile, set up your Bookability Score, link your Spotify & Instagram, and start receiving direct gig requests.\n\nClick below to verify your login and activate your Founding Artist badge."
         );
         setEmailCtaText("Activate Artist Profile");
-        setEmailCtaUrl("https://artistant.in/claim?id={{id}}");
+        setEmailCtaUrl("https://artistant.in/");
         setEmailAlias("welcome");
         showToast("Loaded Migrated Artist Onboarding Template!");
         break;
@@ -266,7 +266,7 @@ export default function BroadcastStudio({
           "It's official. You've successfully claimed your premium username on ArtisTant!\n\nYour professional portfolio page is live. Promoters and clients can visit your portfolio to view your bio, listen to previews, inspect details, and request direct bookings.\n\nYou can customize, update, or complete all these details at any time by logging into your ArtisTant Dashboard."
         );
         setEmailCtaText("Open Your Dashboard");
-        setEmailCtaUrl("https://artistant.in/dashboard");
+        setEmailCtaUrl("https://artistant.in/");
         setEmailAlias("welcome");
         showToast("Loaded Stage Pass / Welcome Template!");
         break;
@@ -278,7 +278,7 @@ export default function BroadcastStudio({
           "As a top-tier Founding Artist on ArtisTant, you have been unlocked for VIP Priority Concierge. Enjoy zero platform commissions on your first 5 bookings and direct concierge assistance.\n\nClaim your VIP Pass key below before public access opens."
         );
         setEmailCtaText("Claim VIP Access Pass");
-        setEmailCtaUrl("https://artistant.in/claim?id={{id}}");
+        setEmailCtaUrl("https://artistant.in/");
         setEmailAlias("founder");
         showToast("Loaded VIP Exclusive Pass Template!");
         break;

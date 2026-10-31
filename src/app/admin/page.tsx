@@ -30,7 +30,6 @@ import LeaderboardsTab from '@/components/admin/LeaderboardsTab';
 import VisitorActivityTab from '@/components/admin/VisitorActivityTab';
 import ManageAdminsTab from '@/components/admin/ManageAdminsTab';
 import SiteSettingsTab from '@/components/admin/SiteSettingsTab';
-import LinksAndCardsTab from '@/components/admin/LinksAndCardsTab';
 import CareersTab from '@/components/admin/CareersTab';
 import RegistrationDetailModal from '@/components/admin/RegistrationDetailModal';
 import CommandPalette from '@/components/admin/CommandPalette';
@@ -860,10 +859,6 @@ export default function AdminPage() {
           siteSettingsError={siteSettingsError}
           setSiteSettingsError={setSiteSettingsError}
         />
-      )}
-
-      {activeTab === 'links_cards' && (
-        <LinksAndCardsTab onSuccessToast={triggerToast} />
       )}
 
       {activeTab === 'careers' && (

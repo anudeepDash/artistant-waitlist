@@ -101,10 +101,6 @@ export default function Home() {
     } catch (e) {
       console.warn("Sign out failed", e);
     }
-    // Re-lock the Coming Soon gate an admin may have unlocked in this browser.
-    try {
-      localStorage.removeItem("artistant_admin_bypass_active");
-    } catch {}
     setAdminFor(null);
   }, []);
 
