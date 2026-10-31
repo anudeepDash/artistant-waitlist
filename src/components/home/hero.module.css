@@ -1,6 +1,4 @@
 .hero {
-  --sx: 70%;
-  --sy: 40%;
   position: relative;
   min-height: 100svh;
   display: flex;
@@ -33,17 +31,6 @@
   background:
     linear-gradient(90deg, rgba(10, 10, 10, 0.92) 0%, rgba(10, 10, 10, 0.62) 42%, rgba(10, 10, 10, 0.2) 75%),
     linear-gradient(180deg, rgba(10, 10, 10, 0.55) 0%, transparent 25%, transparent 55%, #0a0a0a 100%);
-}
-
-/* A coloured stage light that follows the pointer, tinted by the side you pick. */
-.spot {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background: radial-gradient(38% 46% at var(--sx) var(--sy), color-mix(in srgb, var(--accent) 34%, transparent), transparent 70%);
-  mix-blend-mode: screen;
-  transition: background 0.6s;
 }
 
 .inner {
@@ -111,7 +98,6 @@
   inset: 0;
   border-radius: 99px;
   background: var(--accent);
-  box-shadow: 0 8px 24px -8px var(--accent);
 }
 
 .switchText { position: relative; }

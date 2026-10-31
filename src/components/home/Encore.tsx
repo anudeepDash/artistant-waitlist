@@ -38,7 +38,7 @@ export default function Encore({ side, claim, reservation, onClaimSubmit, onRole
 
       <div className={`${base.container} ${s.inner}`}>
         <Reveal>
-          <span className={s.encore}>Encore</span>
+          <span className={base.label}>Encore</span>
         </Reveal>
         <h2 className={s.title}>
           <SplitWords text={e.line1} inView />

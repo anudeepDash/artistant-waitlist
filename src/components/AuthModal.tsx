@@ -853,17 +853,13 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                 className="absolute inset-0 pointer-events-none"
                 style={{ background: 'linear-gradient(180deg, rgba(10,10,10,0.7) 0%, rgba(10,10,10,0.15) 30%, rgba(10,10,10,0.55) 60%, #0a0a0a 100%)' }}
               />
-              <div
-                className="absolute inset-0 pointer-events-none mix-blend-screen"
-                style={{ background: 'radial-gradient(60% 45% at 30% 100%, rgba(242,90,43,0.35), transparent 70%)' }}
-              />
 
               <div className="relative z-10 flex flex-col h-full p-9">
                 <img src="/brand/wordmark.svg" alt="Artistant" className="h-[22px] w-auto self-start" />
 
                 <div className="mt-auto">
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md border border-white/10 font-mono text-[11px] tracking-[0.14em] uppercase text-white/80">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#3ddc97]" />
+                  <div className="inline-flex items-center gap-2.5 font-mono text-[11px] tracking-[0.2em] uppercase text-white/70">
+                    <span className="w-[18px] h-px bg-[#F25A2B]" aria-hidden="true" />
                     {initialUsername ? 'Saving your name' : 'Founding artists · Bengaluru'}
                   </div>
                   <h3
@@ -973,18 +969,6 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
 
                         <button
                           type="button"
-                          disabled
-                          className="relative flex items-center justify-center w-full py-3.5 px-4 mb-3 rounded-2xl bg-white border border-white/10 text-black font-semibold text-sm
-                                     opacity-50 cursor-not-allowed select-none"
-                        >
-                          <svg className="w-5 h-5 mr-3 shrink-0" viewBox="0 0 24 24" fill="black" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.32 2.32-1.55 4.3-3.74 4.25z"/>
-                          </svg>
-                          Continue with Apple
-                        </button>
-
-                        <button
-                          type="button"
                           onClick={() => { setView('phone_entry'); setError(null); }}
                           disabled={loading}
                           className="relative flex items-center justify-center w-full py-3.5 px-4 mb-6 rounded-2xl bg-white/5 border border-white/5 text-white font-semibold text-sm
@@ -1052,8 +1036,8 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                           <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-4 rounded-2xl font-bold text-sm text-white shadow-[0_14px_34px_-14px_rgba(212,86,122,0.8)]
-                                       transition-all hover:scale-[1.02] hover:shadow-[0_18px_40px_-14px_rgba(212,86,122,0.9)] active:scale-[0.98] 
+                            className="w-full py-4 rounded-2xl font-bold text-sm text-white
+                                       transition-all hover:scale-[1.02] active:scale-[0.98] 
                                        disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                             style={{ background: 'linear-gradient(100deg, #F25A2B 0%, #D4567A 45%, #7C5CFF 100%)' }}
                           >
@@ -1109,8 +1093,8 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                             <button
                               type="submit"
                               disabled={loading}
-                              className="w-full py-4 rounded-2xl font-bold text-sm text-white shadow-[0_14px_34px_-14px_rgba(212,86,122,0.8)]
-                                         transition-all hover:scale-[1.02] hover:shadow-[0_18px_40px_-14px_rgba(212,86,122,0.9)] active:scale-[0.98] 
+                              className="w-full py-4 rounded-2xl font-bold text-sm text-white
+                                         transition-all hover:scale-[1.02] active:scale-[0.98] 
                                          disabled:opacity-50 disabled:cursor-not-allowed"
                               style={{ background: 'linear-gradient(100deg, #F25A2B 0%, #D4567A 45%, #7C5CFF 100%)' }}
                             >
@@ -1151,8 +1135,8 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                           <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-4 rounded-2xl font-bold text-sm text-white shadow-[0_14px_34px_-14px_rgba(212,86,122,0.8)]
-                                       transition-all hover:scale-[1.02] hover:shadow-[0_18px_40px_-14px_rgba(212,86,122,0.9)] active:scale-[0.98] 
+                            className="w-full py-4 rounded-2xl font-bold text-sm text-white
+                                       transition-all hover:scale-[1.02] active:scale-[0.98] 
                                        disabled:opacity-50 disabled:cursor-not-allowed"
                             style={{ background: 'linear-gradient(100deg, #F25A2B 0%, #D4567A 45%, #7C5CFF 100%)' }}
                           >
@@ -1208,8 +1192,8 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                           <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-4 rounded-2xl font-bold text-sm text-white shadow-[0_14px_34px_-14px_rgba(212,86,122,0.8)]
-                                       transition-all hover:scale-[1.02] hover:shadow-[0_18px_40px_-14px_rgba(212,86,122,0.9)] active:scale-[0.98] 
+                            className="w-full py-4 rounded-2xl font-bold text-sm text-white
+                                       transition-all hover:scale-[1.02] active:scale-[0.98] 
                                        disabled:opacity-50 disabled:cursor-not-allowed"
                             style={{ background: 'linear-gradient(100deg, #F25A2B 0%, #D4567A 45%, #7C5CFF 100%)' }}
                           >
@@ -1275,8 +1259,8 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                           <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-4 rounded-2xl font-bold text-sm text-white shadow-[0_14px_34px_-14px_rgba(212,86,122,0.8)]
-                                       transition-all hover:scale-[1.02] hover:shadow-[0_18px_40px_-14px_rgba(212,86,122,0.9)] active:scale-[0.98] 
+                            className="w-full py-4 rounded-2xl font-bold text-sm text-white
+                                       transition-all hover:scale-[1.02] active:scale-[0.98] 
                                        disabled:opacity-50 disabled:cursor-not-allowed"
                             style={{ background: 'linear-gradient(100deg, #F25A2B 0%, #D4567A 45%, #7C5CFF 100%)' }}
                           >
@@ -1324,8 +1308,8 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                           <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-4 rounded-2xl font-bold text-sm text-white shadow-[0_14px_34px_-14px_rgba(212,86,122,0.8)]
-                                       transition-all hover:scale-[1.02] hover:shadow-[0_18px_40px_-14px_rgba(212,86,122,0.9)] active:scale-[0.98] 
+                            className="w-full py-4 rounded-2xl font-bold text-sm text-white
+                                       transition-all hover:scale-[1.02] active:scale-[0.98] 
                                        disabled:opacity-50 disabled:cursor-not-allowed"
                             style={{ background: 'linear-gradient(100deg, #F25A2B 0%, #D4567A 45%, #7C5CFF 100%)' }}
                           >
@@ -1494,8 +1478,8 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                               type="button"
                               disabled={selectedGenres.length === 0}
                               onClick={() => { setProfileSubStep('location'); setError(null); }}
-                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_14px_34px_-14px_rgba(212,86,122,0.8)]
-                                         transition-all hover:scale-[1.02] hover:shadow-[0_18px_40px_-14px_rgba(212,86,122,0.9)] active:scale-[0.98] 
+                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white
+                                         transition-all hover:scale-[1.02] active:scale-[0.98] 
                                          disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                               style={{ background: 'linear-gradient(100deg, #F25A2B 0%, #D4567A 45%, #7C5CFF 100%)' }}
                             >
@@ -1646,7 +1630,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                                 }
                                 setError(null);
                               }}
-                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_14px_34px_-14px_rgba(212,86,122,0.8)] transition-all hover:scale-[1.02] hover:shadow-[0_18px_40px_-14px_rgba(212,86,122,0.9)] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                               style={{ background: 'linear-gradient(100deg, #F25A2B 0%, #D4567A 45%, #7C5CFF 100%)' }}
                             >
                               Continue →
@@ -1756,7 +1740,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                                 setError(null);
                                 setProfileSubStep('links');
                               }}
-                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_14px_34px_-14px_rgba(212,86,122,0.8)] transition-all hover:scale-[1.02] hover:shadow-[0_18px_40px_-14px_rgba(212,86,122,0.9)] active:scale-[0.98]"
+                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white transition-all hover:scale-[1.02] active:scale-[0.98]"
                               style={{ background: 'linear-gradient(100deg, #F25A2B 0%, #D4567A 45%, #7C5CFF 100%)' }}
                             >
                               Continue →
@@ -1846,8 +1830,8 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                               type="button"
                               disabled={!instagramUrl.trim()}
                               onClick={() => { setProfileSubStep('bio'); setError(null); }}
-                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_14px_34px_-14px_rgba(212,86,122,0.8)]
-                                         transition-all hover:scale-[1.02] hover:shadow-[0_18px_40px_-14px_rgba(212,86,122,0.9)] active:scale-[0.98]
+                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white
+                                         transition-all hover:scale-[1.02] active:scale-[0.98]
                                          disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                               style={{ background: 'linear-gradient(100deg, #F25A2B 0%, #D4567A 45%, #7C5CFF 100%)' }}
                             >
@@ -1895,8 +1879,8 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                             <button
                               type="button"
                               onClick={() => { setProfileSubStep('profile_pic'); setError(null); }}
-                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_14px_34px_-14px_rgba(212,86,122,0.8)]
-                                         transition-all hover:scale-[1.02] hover:shadow-[0_18px_40px_-14px_rgba(212,86,122,0.9)] active:scale-[0.98]"
+                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white
+                                         transition-all hover:scale-[1.02] active:scale-[0.98]"
                               style={{ background: 'linear-gradient(100deg, #F25A2B 0%, #D4567A 45%, #7C5CFF 100%)' }}
                             >
                               {bio ? 'Continue →' : 'Skip for now →'}
@@ -1917,7 +1901,6 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                           <div className="text-center mb-6">
                             <h2 className="font-[family-name:var(--font-bricolage)] tracking-[-0.025em] text-3xl font-bold text-white mb-2 flex items-center justify-center gap-2">
                               Add a profile picture
-                              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 uppercase tracking-widest">Required</span>
                             </h2>
                             <p className="text-white/50 text-sm font-medium">Profile picture is mandatory to complete your artist identity.</p>
                           </div>
@@ -1965,8 +1948,8 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                               type="button"
                               disabled={!profilePhotoFile}
                               onClick={() => { setProfileSubStep('preview'); setError(null); }}
-                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_14px_34px_-14px_rgba(212,86,122,0.8)]
-                                         transition-all hover:scale-[1.02] hover:shadow-[0_18px_40px_-14px_rgba(212,86,122,0.9)] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white
+                                         transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                               style={{ background: 'linear-gradient(100deg, #F25A2B 0%, #D4567A 45%, #7C5CFF 100%)' }}
                             >
                               Continue →
@@ -2000,7 +1983,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                               )}
                               <div className="absolute inset-0 bg-gradient-to-t from-[#050508] via-[#050508]/40 to-transparent" />
                               <div className="absolute bottom-6 left-6 right-6">
-                                <span className="inline-block px-3 py-1.5 bg-[#7C5CFF]/20 border border-[#7C5CFF]/30 backdrop-blur-md rounded-full text-[10px] font-bold text-[#7C5CFF] tracking-widest uppercase mb-3 shadow-[0_4px_12px_rgba(124,92,255,0.2)]">
+                                <span className="inline-block px-3 py-1.5 bg-[#7C5CFF]/20 border border-[#7C5CFF]/30 backdrop-blur-md rounded-full text-[10px] font-bold text-[#7C5CFF] tracking-widest uppercase mb-3">
                                   {category}
                                 </span>
                                 <h3 className="text-white text-3xl font-[family-name:var(--font-bricolage)] tracking-[-0.025em] font-black tracking-tight mb-1">{pendingUser?.displayName || 'Artist'}</h3>
@@ -2008,7 +1991,7 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                               </div>
                             </div>
                             <div className="absolute top-6 right-6 px-3 py-1 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full flex items-center gap-2">
-                              <div className="w-2 h-2 rounded-full bg-[#7C5CFF] animate-pulse" />
+                              <div className="w-2 h-2 rounded-full bg-[#7C5CFF]" />
                               <span className="text-[10px] font-mono font-bold text-white/80">@{initialUsername?.toLowerCase()}</span>
                             </div>
                           </div>
@@ -2026,8 +2009,8 @@ export default function AuthModal({ isOpen, onClose, initialEmail, initialUserna
                               type="button"
                               disabled={loading}
                               onClick={(e) => handleProfileSubmit(e as any)}
-                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white shadow-[0_14px_34px_-14px_rgba(212,86,122,0.8)]
-                                         transition-all hover:scale-[1.02] hover:shadow-[0_18px_40px_-14px_rgba(212,86,122,0.9)] active:scale-[0.98] 
+                              className="flex-1 py-4 rounded-2xl font-bold text-sm text-white
+                                         transition-all hover:scale-[1.02] active:scale-[0.98] 
                                          disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                               style={{ background: 'linear-gradient(100deg, #F25A2B 0%, #D4567A 45%, #7C5CFF 100%)' }}
                             >

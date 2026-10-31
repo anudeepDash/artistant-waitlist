@@ -77,8 +77,6 @@ export default function Hero({ side, onSide, claim, reservation, onClaimSubmit, 
     const r = e.currentTarget.getBoundingClientRect();
     const px = (e.clientX - r.left) / r.width;
     const py = (e.clientY - r.top) / r.height;
-    e.currentTarget.style.setProperty('--sx', `${px * 100}%`);
-    e.currentTarget.style.setProperty('--sy', `${py * 100}%`);
     tiltX.set((px - 0.5) * 14);
     tiltY.set((py - 0.5) * -10);
   };
@@ -101,7 +99,6 @@ export default function Hero({ side, onSide, claim, reservation, onClaimSubmit, 
         </AnimatePresence>
       </motion.div>
       <div className={h.shade} aria-hidden="true" />
-      <div className={h.spot} aria-hidden="true" />
 
       <div className={`${base.container} ${h.inner}`}>
         <motion.div className={h.copy} style={reduce ? undefined : { y: contentY, opacity: contentOpacity }}>

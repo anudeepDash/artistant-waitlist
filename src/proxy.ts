@@ -15,6 +15,19 @@ export const config = {
   ],
 };
 
+// Pages that are live. Every other page is not launched yet and sends visitors to the homepage.
+const LIVE_PATHS = new Set(['/', '/privacy', '/terms']);
+const LIVE_PREFIXES = ['/admin'];
+
+function isLivePage(pathname: string): boolean {
+  if (LIVE_PATHS.has(pathname)) return true;
+  if (LIVE_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return true;
+  // Files (robots.txt, sitemap.xml, icons, the manifest), share images and Next/Vercel internals.
+  if (pathname.startsWith('/_next') || pathname.startsWith('/_vercel')) return true;
+  if (/\/(opengraph|twitter)-image(\/|$)/.test(pathname)) return true;
+  return /\.[a-z0-9]+$/i.test(pathname);
+}
+
 // Basic in-memory rate limiter for serverless environments.
 const rateLimitMap = new Map<string, { count: number; timestamp: number }>();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
@@ -78,6 +91,13 @@ export default function proxy(req: NextRequest) {
       return NextResponse.rewrite(url);
     }
   } else {
+    // Unlaunched pages go to the homepage, keeping the query (e.g. ?ref= referral codes).
+    if ((req.method === 'GET' || req.method === 'HEAD') && !isLivePage(url.pathname)) {
+      const home = url.clone();
+      home.pathname = '/';
+      return NextResponse.redirect(home, 307);
+    }
+
     // Optional: If someone tries to access /admin on the main domain, redirect them to the subdomain
     // Uncomment this when you go fully live with the subdomain
     /*

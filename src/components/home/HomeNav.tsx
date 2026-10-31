@@ -100,9 +100,6 @@ export default function HomeNav({ side, onSide, user, reservation, onSignIn, onS
             <Link href="/" className={s.brand} aria-label="Artistant home">
               <img src="/brand/wordmark.svg" alt="Artistant" width={118} height={22} />
             </Link>
-            <div className={s.hideSm}>
-              <SideSwitch side={side} onSide={onSide} id="nav" />
-            </div>
           </div>
 
           <div className={s.navLinks}>
