@@ -99,9 +99,9 @@ function Card({ k, onSide, onRole }: { k: Side; onSide: (side: Side) => void; on
     <article ref={ref} className={`${s.card} ${c.cls}`}>
       <div className={s.media}>
         <motion.img src={c.img} alt={c.alt} style={{ y }} loading="lazy" />
-        <span className={s.tag}>{c.tag}</span>
       </div>
       <div className={s.body}>
+        <span className={`${base.label} ${s.cardLabel}`}>{c.tag}</span>
         <h3 className={s.cardTitle}>{c.title}</h3>
         <p className={s.text}>{c.text}</p>
         <ul className={s.points}>

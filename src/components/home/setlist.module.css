@@ -158,14 +158,6 @@
   position: relative;
 }
 
-.glow {
-  position: absolute;
-  z-index: -1;
-  inset: 10% -30%;
-  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 32%, transparent), rgba(124, 92, 255, 0.1) 60%, transparent);
-  filter: blur(20px);
-}
-
 @media (max-width: 900px) {
   .grid { grid-template-columns: 1fr; }
   .stickyCol { display: none; }

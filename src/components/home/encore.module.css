@@ -39,19 +39,6 @@
   text-align: center;
 }
 
-.encore {
-  display: inline-block;
-  padding: 8px 16px;
-  border-radius: 99px;
-  border: 1px solid var(--line-2);
-  background: rgba(10, 10, 10, 0.5);
-  font-family: var(--f-mono);
-  font-size: 11px;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: var(--ink);
-}
-
 .title {
   margin: 28px 0 0;
   font-family: var(--f-display);

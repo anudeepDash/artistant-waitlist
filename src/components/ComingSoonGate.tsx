@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '@/hooks/useAuth';
 import { signInWithGoogle, signInWithEmail, signOut as firebaseSignOut } from '@/lib/auth';
@@ -64,7 +65,7 @@ const CONSOLE_ART = `
 ║                                                   ║
 ║    🔥  We're hiring. Drop us a line.              ║
 ║    👀  You found the console. Respect.            ║
-║    🎤  artistant.com                              ║
+║    🎤  artistant.in                               ║
 ║                                                   ║
 ╚═══════════════════════════════════════════════════╝`;
 
@@ -107,7 +108,6 @@ export default function ComingSoonGate({ children }: ComingSoonGuardProps) {
   // Easter egg state
   const [currentTagline, setCurrentTagline] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
-  const [greeting, setGreeting] = useState('');
   const [dotParticles, setDotParticles] = useState<DotParticle[]>([]);
   const [dotClickCount, setDotClickCount] = useState(0);
   const [shakeTriggered, setShakeTriggered] = useState(false);
@@ -132,15 +132,6 @@ export default function ComingSoonGate({ children }: ComingSoonGuardProps) {
     console.log(CONSOLE_ART, 'color: #F25A2B; font-size: 10px; font-family: monospace;');
   }, []);
 
-  // ── Time-based greeting ──
-  useEffect(() => {
-    const h = new Date().getHours();
-    if (h < 5) setGreeting('Late night, huh?');
-    else if (h < 12) setGreeting('Good morning');
-    else if (h < 17) setGreeting('Good afternoon');
-    else if (h < 21) setGreeting('Good evening');
-    else setGreeting('Night owl mode');
-  }, []);
 
   // ── Rotating taglines ──
   useEffect(() => {
@@ -571,7 +562,7 @@ export default function ComingSoonGate({ children }: ComingSoonGuardProps) {
       {/* ─── 2. Coming Soon Overlay ─── */}
       {!isAdminUnlocked && (
         <div
-          className={`fixed inset-0 z-[9999] flex flex-col items-center p-4 sm:p-8 md:p-12 bg-[#08080C] select-none overflow-y-auto overflow-x-hidden min-h-[100dvh] ${
+          className={`fixed inset-0 z-[9999] flex flex-col items-center p-4 sm:p-8 md:p-12 bg-[#0a0a0a] select-none overflow-y-auto overflow-x-hidden min-h-[100dvh] ${
             shakeTriggered ? 'animate-[wiggle_0.3s_ease-in-out_3]' : ''
           }`}
         >
@@ -585,15 +576,18 @@ export default function ComingSoonGate({ children }: ComingSoonGuardProps) {
               title="ArtisTant"
             >
               <img
-                src="/logo_wordmark_flat.png"
-                alt="ArtisTant"
-                className="h-5 sm:h-6 w-auto object-contain"
+                src="/brand/wordmark.svg"
+                alt="Artistant"
+                className="h-5 sm:h-[22px] w-auto object-contain"
               />
             </button>
 
-            <span className="text-[10px] font-mono text-zinc-600 tracking-wide">
-              {greeting}
-            </span>
+            <Link
+              href="/"
+              className="text-[13px] font-medium text-zinc-400 hover:text-white transition-colors"
+            >
+              Go to homepage <span aria-hidden="true">&rarr;</span>
+            </Link>
           </header>
 
           {/* ── Center Stage ── */}
@@ -604,9 +598,10 @@ export default function ComingSoonGate({ children }: ComingSoonGuardProps) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.6 }}
-              className="text-[10px] font-mono uppercase tracking-[0.25em] text-zinc-600 mb-6"
+              className="inline-flex items-center gap-2.5 text-[11px] font-mono uppercase tracking-[0.2em] text-zinc-400 mb-6"
             >
-              Coming Soon
+              <span className="w-[18px] h-px bg-[#F25A2B]" aria-hidden="true" />
+              Coming soon
             </motion.p>
 
             {/* Headline — long-press for 3s for a secret, the dot is also clickable */}
@@ -614,16 +609,17 @@ export default function ComingSoonGate({ children }: ComingSoonGuardProps) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-              className="font-display text-[clamp(2.4rem,9vw,6rem)] font-black uppercase tracking-tight text-white leading-[0.9] whitespace-nowrap mb-4 cursor-default"
+              className="text-[clamp(3rem,11vw,7rem)] font-bold tracking-[-0.032em] text-[#f4f2ee] leading-[0.92] whitespace-nowrap mb-5 cursor-default"
+              style={{ fontFamily: 'var(--font-bricolage), system-ui, sans-serif', fontStretch: '90%' }}
               onMouseDown={handleHeadlinePressStart}
               onMouseUp={handleHeadlinePressEnd}
               onMouseLeave={handleHeadlinePressEnd}
               onTouchStart={handleHeadlinePressStart}
               onTouchEnd={handleHeadlinePressEnd}
             >
-              LET US COOK
+              Let us cook
               <span
-                className="text-[#F25A2B] cursor-pointer hover:scale-150 inline-block transition-transform duration-200 active:scale-75 select-none animate-pulse"
+                className="text-[#F25A2B] cursor-pointer hover:scale-150 inline-block transition-transform duration-200 active:scale-75 select-none"
                 onClick={handleDotClick}
                 role="button"
                 tabIndex={0}
@@ -637,7 +633,8 @@ export default function ComingSoonGate({ children }: ComingSoonGuardProps) {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-              className="text-[clamp(0.75rem,3.2vw,1.3rem)] font-display font-medium text-zinc-300 tracking-tight leading-tight whitespace-nowrap mb-3"
+              className="text-[clamp(0.95rem,3.4vw,1.35rem)] font-semibold text-zinc-300 tracking-[-0.01em] leading-snug mb-3 text-balance"
+              style={{ fontFamily: 'var(--font-bricolage), system-ui, sans-serif', fontStretch: '90%' }}
             >
               India&apos;s live entertainment marketplace &amp; artist network.
             </motion.p>
@@ -690,7 +687,7 @@ export default function ComingSoonGate({ children }: ComingSoonGuardProps) {
                   {/* Live Form Blueprint Tile */}
                   <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/[0.04] border border-white/[0.1] p-1.5 flex flex-col justify-between shadow-inner group-hover:border-[#F25A2B]/40 group-hover:bg-white/[0.06] transition-all shrink-0">
                     <div className="flex items-center gap-1">
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#F25A2B] animate-pulse shrink-0" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#F25A2B] shrink-0" />
                       <div className="w-full h-[2px] rounded-full bg-white/30" />
                     </div>
                     <div className="flex flex-col gap-[3px] my-auto">
@@ -710,12 +707,9 @@ export default function ComingSoonGate({ children }: ComingSoonGuardProps) {
 
                   <div className="flex flex-col gap-0.5 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-display text-sm sm:text-base font-semibold text-white tracking-tight truncate">
+                      <h3 className="text-base sm:text-[17px] font-bold text-white tracking-[-0.01em] truncate" style={{ fontFamily: 'var(--font-bricolage), system-ui, sans-serif', fontStretch: '90%' }}>
                         Shape the Platform
                       </h3>
-                      <span className="text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-zinc-400 bg-white/[0.04] px-2 py-0.5 rounded-full border border-white/[0.06] shrink-0">
-                        Feedback
-                      </span>
                     </div>
                     <p className="text-zinc-400 text-xs leading-relaxed truncate sm:whitespace-normal">
                       Report broken workflows, broker cuts, or request features.
@@ -741,7 +735,7 @@ export default function ComingSoonGate({ children }: ComingSoonGuardProps) {
                     <motion.div
                       animate={{ x: [-5, 5, -5] }}
                       transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
-                      className="w-4 h-1 rounded-[1px] bg-white shadow-[0_0_6px_rgba(255,255,255,0.6)]"
+                      className="w-4 h-1 rounded-[1px] bg-white"
                     />
                     {/* Stacked stationary blocks */}
                     <div className="w-5 h-1 rounded-[1px] bg-white/40 border-t border-white/60" />
@@ -750,13 +744,9 @@ export default function ComingSoonGate({ children }: ComingSoonGuardProps) {
 
                   <div className="flex flex-col gap-0.5 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-display text-sm sm:text-base font-semibold text-white tracking-tight truncate">
+                      <h3 className="text-base sm:text-[17px] font-bold text-white tracking-[-0.01em] truncate" style={{ fontFamily: 'var(--font-bricolage), system-ui, sans-serif', fontStretch: '90%' }}>
                         Stack
                       </h3>
-                      <span className="text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1 shrink-0">
-                        <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
-                        Playable
-                      </span>
                     </div>
                     <p className="text-zinc-400 text-xs leading-relaxed truncate sm:whitespace-normal">
                       Precision block stacker. Beat your high score while you wait.
@@ -789,22 +779,19 @@ export default function ComingSoonGate({ children }: ComingSoonGuardProps) {
 
                   <div className="flex flex-col gap-0.5 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-display text-sm sm:text-base font-semibold text-white tracking-tight truncate">
+                      <h3 className="text-base sm:text-[17px] font-bold text-white tracking-[-0.01em] truncate" style={{ fontFamily: 'var(--font-bricolage), system-ui, sans-serif', fontStretch: '90%' }}>
                         Take Artistant Anywhere
                       </h3>
-                      <span className="text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-zinc-400 bg-white/[0.04] px-2 py-0.5 rounded-full border border-white/[0.06] shrink-0">
-                        iOS &bull; Android
-                      </span>
                     </div>
                     <p className="text-zinc-400 text-xs leading-relaxed truncate sm:whitespace-normal">
-                      Direct gig bookings, escrow, and artist network in your pocket.
+                      The iOS and Android app. Bookings, payments and your page in your pocket.
                     </p>
                   </div>
                 </div>
 
-                <div className="px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-[10px] font-mono uppercase tracking-widest text-zinc-400 shrink-0 ml-2">
+                <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-500 shrink-0 ml-2">
                   Soon
-                </div>
+                </span>
               </div>
             </motion.div>
 

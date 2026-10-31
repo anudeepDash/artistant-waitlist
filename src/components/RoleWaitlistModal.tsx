@@ -142,22 +142,20 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
         return {
           label: 'Event Host',
           desc: 'Book verified artists with a proper contract, protected payments and a backup if anything goes wrong.',
-          accent: '#7C5CFF', // electric purple
+          accent: '#7C5CFF', // host violet, as on the homepage
           accentRgb: '124, 92, 255',
           secondary: '#D4567A', // magenta
-          gradient: 'linear-gradient(135deg, #7C5CFF 0%, #D4567A 100%)',
-          glowPosition: 'left',
+          gradient: '#7C5CFF',
           icon: <Sliders className="w-5 h-5 text-white" />
         };
       case 'venue':
         return {
           label: 'Partner Venue',
           desc: 'Run weekly live nights with resident artists — pay week by week, with one invoice a month.',
-          accent: '#F25A2B', // orange-red
-          accentRgb: '242, 90, 43',
-          secondary: '#D4567A', // magenta
-          gradient: 'linear-gradient(135deg, #F25A2B 0%, #D4567A 100%)',
-          glowPosition: 'right',
+          accent: '#6B7CDB', // venue blue, as on the homepage
+          accentRgb: '107, 124, 219',
+          secondary: '#7C5CFF', // purple
+          gradient: '#6B7CDB',
           icon: <Building className="w-5 h-5 text-white" />
         };
       case 'attendee':
@@ -167,8 +165,7 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
           accent: '#D4567A', // magenta
           accentRgb: '212, 86, 122',
           secondary: '#7C5CFF', // purple
-          gradient: 'linear-gradient(135deg, #D4567A 0%, #7C5CFF 100%)',
-          glowPosition: 'left',
+          gradient: '#D4567A',
           icon: <Ticket className="w-5 h-5 text-white" />
         };
     }
@@ -181,7 +178,6 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
     accentRgb: '',
     secondary: '',
     gradient: '',
-    glowPosition: 'left',
     icon: null
   };
 
@@ -290,26 +286,12 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
               background: 'rgba(10, 10, 10, 0.95)',
               border: '1px solid rgba(255, 255, 255, 0.08)',
               backdropFilter: 'blur(16px)',
-              boxShadow: '0 10px 30px -10px rgba(0, 0, 0, 0.5)'
+              boxShadow: '0 30px 60px -30px rgba(0, 0, 0, 0.9)'
             } as React.CSSProperties}
           >
             {/* Small drag bar indicator on mobile */}
             <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-3 shrink-0 sm:hidden" />
               
-              {/* Radial Glow Watermark inside card - matching landing page design */}
-              <div 
-                style={{ 
-                  position: 'absolute', 
-                  top: 0, 
-                  left: 0, 
-                  right: 0, 
-                  height: '150px', 
-                  background: `radial-gradient(ellipse at top ${roleTokens.glowPosition}, rgba(${roleTokens.accentRgb}, 0.15), transparent 70%)`, 
-                  pointerEvents: 'none',
-                  zIndex: 1
-                }} 
-              />
-
               {/* Close Button */}
               <button
                 type="button"
@@ -327,19 +309,17 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
                   <div className="relative z-10 flex flex-col gap-5 pt-2">
                     {/* Header */}
                     <div>
-                      <div 
-                        className="text-xs font-mono uppercase tracking-wider mb-2 font-semibold"
-                        style={{ color: roleTokens.accent }}
-                      >
-                        {role === 'organizer' ? 'FOR BOOKERS' : role === 'venue' ? 'FOR VENUES' : 'FOR ATTENDEES'}
+                      <div className="inline-flex items-center gap-2.5 text-[11px] font-mono uppercase tracking-[0.2em] text-gray-400 mb-4">
+                        <span className="w-[18px] h-px" style={{ backgroundColor: roleTokens.accent }} aria-hidden="true" />
+                        {role === 'organizer' ? 'For hosts' : role === 'venue' ? 'For venues' : 'For fans'}
                       </div>
-                      <h2 className="font-display font-extrabold text-2xl sm:text-3xl text-white tracking-tight uppercase leading-none mb-4">
+                      <h2 className="font-bold text-[32px] sm:text-[40px] text-[#f4f2ee] tracking-[-0.032em] leading-[0.95] mb-4" style={{ fontFamily: 'var(--font-bricolage), system-ui, sans-serif', fontStretch: '90%' }}>
                         {role === 'organizer' ? (
-                          <>YOU <span className="brand-text">HIRE</span> ARTISTS.</>
+                          <>Book the act, <span style={{ color: roleTokens.accent }}>not the agency.</span></>
                         ) : role === 'venue' ? (
-                          <>YOU <span className="brand-text">HAVE</span> SPACE.</>
+                          <>Your room, <span style={{ color: roleTokens.accent }}>booked out.</span></>
                         ) : (
-                          <>YOU <span className="brand-text">LOVE</span> LIVE MUSIC.</>
+                          <>Live music, <span style={{ color: roleTokens.accent }}>up close.</span></>
                         )}
                       </h2>
                       <p className="text-sm text-gray-400 leading-relaxed">
@@ -449,13 +429,10 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
                               type="button"
                               onClick={handleNextStep}
                               disabled={!isStep1Valid()}
-                              className="w-full mt-6 py-3.5 px-6 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all transform active:scale-98 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                              style={{
-                                background: roleTokens.gradient,
-                                boxShadow: `0 8px 24px rgba(${roleTokens.accentRgb}, 0.15)`
-                              }}
+                              className="w-full mt-6 py-3.5 px-6 rounded-full font-semibold text-[15px] text-white flex items-center justify-center gap-2 transition-all transform active:scale-98 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                              style={{ background: roleTokens.gradient }}
                             >
-                              Continue Details <ArrowRight className="w-4 h-4" />
+                              Continue <ArrowRight className="w-4 h-4" />
                             </button>
                           </motion.div>
                         ) : (
@@ -726,7 +703,7 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
                               <button
                                 type="button"
                                 onClick={handlePrevStep}
-                                className="py-3.5 px-5 rounded-xl border border-white/10 hover:bg-white/5 text-gray-400 hover:text-white transition-all flex items-center justify-center gap-1.5 cursor-pointer font-bold text-sm"
+                                className="py-3.5 px-5 rounded-full border border-white/10 hover:bg-white/5 text-gray-400 hover:text-white transition-all flex items-center justify-center gap-1.5 cursor-pointer font-bold text-sm"
                               >
                                 <ChevronLeft className="w-4 h-4" /> Back
                               </button>
@@ -734,11 +711,8 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
                               <button
                                 type="submit"
                                 disabled={loading || !isStep2Valid()}
-                                className="flex-1 py-3.5 rounded-xl font-bold text-sm text-white transition-all transform active:scale-98 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
-                                style={{
-                                  background: roleTokens.gradient,
-                                  boxShadow: `0 8px 24px rgba(${roleTokens.accentRgb}, 0.15)`
-                                }}
+                                className="flex-1 py-3.5 rounded-full font-semibold text-[15px] text-white transition-all transform active:scale-98 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
+                                style={{ background: roleTokens.gradient }}
                               >
                                 {loading ? (
                                   <>
@@ -747,7 +721,7 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
                                   </>
                                 ) : (
                                   <>
-                                    Get Early Access Pass <ArrowRight className="w-4 h-4" />
+                                    Get early access <ArrowRight className="w-4 h-4" />
                                   </>
                                 )}
                               </button>
@@ -768,7 +742,7 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
                     className="relative z-10 flex flex-col items-center text-center py-4"
                   >
                     <div 
-                      className="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center text-2xl font-bold shadow-lg"
+                      className="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center text-2xl font-bold"
                       style={{
                         background: 'rgba(52, 211, 153, 0.1)',
                         color: '#34D399',
@@ -778,26 +752,25 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
                       ✓
                     </div>
 
-                    <h3 className="font-display text-2xl sm:text-3xl font-black text-white mb-2 uppercase tracking-wide">
-                      YOU&apos;RE ON THE LIST!
+                    <h3 className="text-[32px] sm:text-[40px] font-bold text-[#f4f2ee] mb-3 tracking-[-0.032em] leading-[0.95]" style={{ fontFamily: 'var(--font-bricolage), system-ui, sans-serif', fontStretch: '90%' }}>
+                      You&apos;re on the <span style={{ color: roleTokens.accent }}>list.</span>
                     </h3>
                     <p className="text-sm text-gray-400 mb-8 max-w-sm">
-                      Your waitlist registration is verified. We&apos;ve reserved an early access position for you on the network.
+                      We&apos;ve saved your spot. We&apos;ll email you as soon as Artistant opens in your city.
                     </p>
 
                     {/* Digital Access Pass / Ticket Mockup */}
                     <div 
                       className="w-full rounded-2xl p-6 text-left border relative overflow-hidden mb-8"
                       style={{
-                        background: 'linear-gradient(180deg, rgba(26, 26, 36, 0.7) 0%, rgba(15, 15, 20, 0.9) 100%)',
-                        borderColor: `rgba(${roleTokens.accentRgb}, 0.25)`,
-                        boxShadow: `0 15px 40px -10px rgba(${roleTokens.accentRgb}, 0.15)`
+                        background: '#131313',
+                        borderColor: 'rgba(255, 255, 255, 0.1)'
                       }}
                     >
                       {/* Ticket header watermark */}
                       <div className="absolute top-4 right-4 flex items-center gap-1.5 opacity-60">
-                        <span className="w-2 h-2 rounded-full animate-pulse bg-green-400" />
-                        <span className="font-mono text-[9px] uppercase tracking-wider text-green-400 font-bold">SECURED</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                        <span className="font-mono text-[9px] uppercase tracking-wider text-green-400 font-bold">Saved</span>
                       </div>
 
                       {/* Ticket Details */}
@@ -809,8 +782,8 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
                           </div>
                           <div className="text-right">
                             <span className="font-mono text-[9px] uppercase tracking-wider text-gray-500 block mb-1">Network Role</span>
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-md font-mono" style={{ backgroundColor: `rgba(${roleTokens.accentRgb}, 0.2)`, color: roleTokens.accent }}>
-                              {roleTokens.label.toUpperCase()}
+                            <span className="text-sm font-semibold" style={{ color: roleTokens.accent }}>
+                              {roleTokens.label}
                             </span>
                           </div>
                         </div>
@@ -828,8 +801,8 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
 
                         {/* Dashed Separator */}
                         <div className="border-t border-dashed border-white/10 my-1 relative">
-                          <div className="absolute -left-8 -top-1.5 w-3 h-3 rounded-full bg-[#0e1524]" />
-                          <div className="absolute -right-8 -top-1.5 w-3 h-3 rounded-full bg-[#0e1524]" />
+                          <div className="absolute -left-8 -top-1.5 w-3 h-3 rounded-full bg-[#0a0a0a]" />
+                          <div className="absolute -right-8 -top-1.5 w-3 h-3 rounded-full bg-[#0a0a0a]" />
                         </div>
 
                         {/* Barcode and Ticket Pass Code */}
@@ -871,9 +844,9 @@ export default function RoleWaitlistModal({ isOpen, onClose, role }: RoleWaitlis
 
                     <button
                       onClick={onClose}
-                      className="w-full py-3.5 rounded-xl font-semibold text-sm text-white bg-white/5 border border-white/10 hover:bg-white/10 transition-all cursor-pointer flex items-center justify-center gap-2"
+                      className="w-full py-3.5 rounded-full font-semibold text-[15px] text-white bg-white/5 border border-white/10 hover:bg-white/10 transition-all cursor-pointer flex items-center justify-center gap-2"
                     >
-                      Return to Home
+                      Done
                     </button>
                   </motion.div>
                 )}

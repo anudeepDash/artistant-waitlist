@@ -144,7 +144,6 @@ export default function Setlist({ side, username }: { side: Side; username: stri
                     <TrackPhone k={tracks[active].screen} username={username} width={300} />
                   </motion.div>
                 </AnimatePresence>
-                <div className={s.glow} aria-hidden="true" />
               </div>
             </div>
           </div>
